@@ -1,0 +1,110 @@
+---
+export const prerender = false;
+
+import Layout from '../../../layouts/Layout.astro';
+import { requireSuperAdmin, listAllRestaurantes } from '../../../lib/superadmin.js';
+
+const gate = await requireSuperAdmin({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+if (!gate) {
+  return Astro.redirect('/admin/login');
+}
+
+const restaurantes = await listAllRestaurantes(gate.supabase);
+---
+
+<Layout
+  title="SuperAdmin · Xemilla"
+  theme="crx"
+  themeColor="#09090b"
+  description="Panel maestro de restaurantes Xemilla"
+>
+  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-16 pt-10 text-white">
+    <header class="flex items-start justify-between gap-4">
+      <div>
+        <p class="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-zinc-500">
+          Súper Administrador
+        </p>
+        <h1 class="mt-2 font-blacksushi-display text-3xl font-semibold tracking-tight">
+          Xemilla
+        </h1>
+        <p class="mt-1.5 text-sm text-zinc-400">
+          {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red
+        </p>
+      </div>
+      <form method="POST" action="/api/admin-logout">
+        <button
+          type="submit"
+          class="rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:bg-white/10 hover:text-white"
+        >
+          Salir
+        </button>
+      </form>
+    </header>
+
+    <a
+      href="/admin/super/nuevo-restaurante"
+      class="glass-btn mt-8 !bg-white !text-zinc-950"
+    >
+      Nuevo restaurante
+    </a>
+
+    {
+      restaurantes.length === 0 ? (
+        <div class="glass-panel mt-8 p-5 text-center">
+          <p class="text-sm leading-relaxed text-zinc-400">
+            Todavía no hay locales registrados. Creá el primero.
+          </p>
+        </div>
+      ) : (
+        <ul class="mt-6 space-y-3">
+          {restaurantes.map((r) => (
+            <li class="glass-panel px-4 py-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium tracking-tight text-white">
+                    {r.nombre_comercial}
+                  </p>
+                  <p class="mt-0.5 text-xs text-zinc-500">/{r.slug}</p>
+                </div>
+              </div>
+
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  class:list={[
+                    'rounded-md px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.12em]',
+                    r.gadget_wifi
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-white/5 text-zinc-600',
+                  ]}
+                >
+                  WiFi {r.gadget_wifi ? 'on' : 'off'}
+                </span>
+                <span
+                  class:list={[
+                    'rounded-md px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.12em]',
+                    r.gadget_dividir_cuenta
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : 'bg-white/5 text-zinc-600',
+                  ]}
+                >
+                  Dividir {r.gadget_dividir_cuenta ? 'on' : 'off'}
+                </span>
+              </div>
+
+              <a
+                href={`/admin/dashboard?restaurante=${r.id}`}
+                class="mt-4 flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white/15 active:scale-[0.98]"
+              >
+                Gestionar Menú
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </main>
+</Layout>

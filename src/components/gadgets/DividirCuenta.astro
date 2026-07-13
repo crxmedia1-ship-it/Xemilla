@@ -1,0 +1,145 @@
+---
+interface Props {
+  textColor?: string;
+  mutedColor?: string;
+  accentText?: string;
+}
+
+const {
+  textColor = 'text-sanza-ink',
+  mutedColor = 'text-sanza-muted',
+  accentText = 'text-sanza-ink',
+} = Astro.props;
+---
+
+<section class="dividir-cuenta glass-panel">
+  <div class="relative px-5 pb-6 pt-6">
+    <div
+      class="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-sanza-gold/20 blur-3xl"
+      aria-hidden="true"
+    >
+    </div>
+
+    <p class={`text-[0.62rem] font-semibold uppercase tracking-[0.28em] ${mutedColor}`}>
+      Gadgets CRX
+    </p>
+    <h2 class={`mt-2 text-xl font-semibold tracking-tight ${textColor}`}>Dividir cuenta</h2>
+    <p class={`mt-1.5 text-sm leading-relaxed ${mutedColor}`}>
+      Ingresa el total y cuántos pagan.
+    </p>
+
+    <form class="relative mt-6 space-y-4" data-dividir-form>
+      <label class="block">
+        <span class={`mb-2 block text-[0.58rem] font-semibold uppercase tracking-[0.24em] ${mutedColor}`}>
+          Total de la cuenta
+        </span>
+        <div class="relative">
+          <span
+            class={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm ${mutedColor}`}
+          >
+            $
+          </span>
+          <input
+            type="number"
+            name="total"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            required
+            class={`glass-field pl-8 ${textColor} placeholder:opacity-35`}
+          />
+        </div>
+      </label>
+
+      <label class="block">
+        <span class={`mb-2 block text-[0.58rem] font-semibold uppercase tracking-[0.24em] ${mutedColor}`}>
+          Número de personas
+        </span>
+        <input
+          type="number"
+          name="personas"
+          inputmode="numeric"
+          min="1"
+          step="1"
+          value="2"
+          required
+          class={`glass-field ${textColor}`}
+        />
+      </label>
+
+      <button type="submit" class="glass-btn">Calcular</button>
+    </form>
+
+    <div
+      class="mt-5 hidden rounded-xl border border-white/10 bg-white/5 px-4 py-4 shadow-inner backdrop-blur-md"
+      data-dividir-resultado
+      aria-live="polite"
+    >
+      <p class={`text-[0.58rem] font-semibold uppercase tracking-[0.24em] ${mutedColor}`}>
+        Cada uno paga
+      </p>
+      <p
+        class={`mt-1 text-3xl font-semibold tabular-nums tracking-tight ${accentText}`}
+        data-dividir-monto
+      >
+        $0.00
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  function initDividirCuenta() {
+    document.querySelectorAll('.dividir-cuenta').forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (root.dataset.ready === 'true') return;
+      root.dataset.ready = 'true';
+
+      const form = root.querySelector('[data-dividir-form]');
+      const resultado = root.querySelector('[data-dividir-resultado]');
+      const montoEl = root.querySelector('[data-dividir-monto]');
+
+      if (!(form instanceof HTMLFormElement)) return;
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const data = new FormData(form);
+        const total = Number.parseFloat(String(data.get('total') ?? ''));
+        const personas = Number.parseInt(String(data.get('personas') ?? ''), 10);
+
+        if (!Number.isFinite(total) || total < 0 || !Number.isFinite(personas) || personas < 1) {
+          return;
+        }
+
+        const porPersona = total / personas;
+        if (montoEl) {
+          montoEl.textContent = `$${porPersona.toFixed(2)}`;
+        }
+        resultado?.classList.remove('hidden');
+        resultado?.classList.add('animate-in');
+      });
+    });
+  }
+
+  initDividirCuenta();
+  document.addEventListener('astro:page-load', initDividirCuenta);
+</script>
+
+<style>
+  .animate-in {
+    animation: fade-up 280ms ease-out;
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>

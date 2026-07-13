@@ -1,0 +1,260 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { getAdminDashboardData } from '../../lib/admin.js';
+
+const restauranteId = Astro.url.searchParams.get('restaurante');
+
+const session = await getAdminDashboardData(
+  { request: Astro.request, cookies: Astro.cookies },
+  { restauranteId },
+);
+
+if (!session) {
+  return Astro.redirect('/admin/login');
+}
+
+// Solo SuperAdmin puede abrir un menú ajeno vía ?restaurante=
+if (restauranteId && !session.isSuperAdmin) {
+  return Astro.redirect('/admin/dashboard');
+}
+
+// SuperAdmin sin local seleccionado → panel maestro
+if (session.isSuperAdmin && !restauranteId) {
+  return Astro.redirect('/admin/super/dashboard');
+}
+
+const { restaurante, platos, managingAsSuperAdmin, isSuperAdmin } = session;
+const nombre = restaurante?.nombre_comercial ?? 'Sin restaurante';
+---
+
+<Layout
+  title={`${nombre} · Panel`}
+  theme="crx"
+  themeColor="#09090b"
+  description="Panel de administración del menú"
+>
+  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-16 pt-10 text-white">
+    <header class="flex items-start justify-between gap-4">
+      <div>
+        {
+          managingAsSuperAdmin ? (
+            <a
+              href="/admin/super/dashboard"
+              class="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-zinc-500 transition hover:text-zinc-300"
+            >
+              ← SuperAdmin
+            </a>
+          ) : (
+            <p class="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-zinc-500">
+              {isSuperAdmin ? 'Modo SuperAdmin' : 'Panel Xemilla'}
+            </p>
+          )
+        }
+        <h1 class="mt-2 font-blacksushi-display text-3xl font-semibold tracking-tight">
+          {nombre}
+        </h1>
+        <p class="mt-1.5 text-sm text-zinc-400">
+          {platos.length} plato{platos.length === 1 ? '' : 's'} en el menú
+          {
+            managingAsSuperAdmin && restaurante?.slug && (
+              <span class="text-zinc-600"> · /{restaurante.slug}</span>
+            )
+          }
+        </p>
+      </div>
+      {
+        managingAsSuperAdmin ? null : (
+          <form method="POST" action="/api/admin-logout">
+            <button
+              type="submit"
+              class="rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            >
+              Salir
+            </button>
+          </form>
+        )
+      }
+    </header>
+
+    {
+      !restaurante ? (
+        <div class="glass-panel mt-10 p-5 text-center">
+          <p class="text-sm leading-relaxed text-zinc-400">
+            {isSuperAdmin
+              ? 'Restaurante no encontrado. Volvé al panel maestro.'
+              : 'Tu usuario no tiene un restaurante vinculado. Contactá a CRX para asociar la cuenta.'}
+          </p>
+          {isSuperAdmin && (
+            <a
+              href="/admin/super/dashboard"
+              class="mt-4 inline-flex text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white underline-offset-4 hover:underline"
+            >
+              Ir al SuperAdmin
+            </a>
+          )}
+        </div>
+      ) : platos.length === 0 ? (
+        <div class="glass-panel mt-10 p-5 text-center">
+          <p class="text-sm leading-relaxed text-zinc-400">Todavía no hay platos en el menú.</p>
+        </div>
+      ) : (
+        <ul class="mt-8 space-y-2.5" id="platos-list" data-platos>
+          {platos.map((plato) => (
+            <li
+              class="glass-panel flex items-center gap-3 px-4 py-3.5"
+              data-plato-id={plato.id}
+              data-disponible={plato.disponible ? 'true' : 'false'}
+            >
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium tracking-tight text-white">{plato.nombre}</p>
+                <p class="mt-0.5 text-xs text-zinc-500">
+                  $<span data-precio>{plato.precio.toFixed(2)}</span>
+                  <span class="mx-1.5 text-zinc-700">·</span>
+                  <span
+                    data-estado
+                    class={plato.disponible ? 'text-emerald-400/90' : 'text-amber-400/90'}
+                  >
+                    {plato.disponible ? 'Disponible' : 'Agotado'}
+                  </span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="edit-precio shrink-0 rounded-lg px-2 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300"
+                data-edit-precio
+                data-precio-actual={plato.precio}
+              >
+                Editar precio
+              </button>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={plato.disponible}
+                aria-label={`Disponibilidad de ${plato.nombre}`}
+                class:list={[
+                  'toggle relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                  plato.disponible ? 'bg-emerald-500/80' : 'bg-zinc-700',
+                ]}
+                data-toggle-disponible
+              >
+                <span
+                  class:list={[
+                    'absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform duration-200',
+                    plato.disponible ? 'translate-x-5' : 'translate-x-0.5',
+                  ]}
+                  data-toggle-knob
+                  aria-hidden="true"
+                />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </main>
+</Layout>
+
+<script>
+  /**
+   * @param {number} id
+   * @param {{ disponible?: boolean, precio?: number }} patch
+   */
+  async function updatePlato(id, patch) {
+    const res = await fetch('/api/update-plato', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...patch }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(json.error || 'No se pudo actualizar el plato.');
+    }
+    return json;
+  }
+
+  /**
+   * @param {HTMLElement} row
+   * @param {boolean} disponible
+   */
+  function paintDisponibilidad(row, disponible) {
+    row.dataset.disponible = disponible ? 'true' : 'false';
+
+    const estado = row.querySelector('[data-estado]');
+    if (estado) {
+      estado.textContent = disponible ? 'Disponible' : 'Agotado';
+      estado.classList.toggle('text-emerald-400/90', disponible);
+      estado.classList.toggle('text-amber-400/90', !disponible);
+    }
+
+    const toggle = row.querySelector('[data-toggle-disponible]');
+    const knob = row.querySelector('[data-toggle-knob]');
+    if (toggle instanceof HTMLElement) {
+      toggle.setAttribute('aria-checked', String(disponible));
+      toggle.classList.toggle('bg-emerald-500/80', disponible);
+      toggle.classList.toggle('bg-zinc-700', !disponible);
+    }
+    if (knob instanceof HTMLElement) {
+      knob.classList.toggle('translate-x-5', disponible);
+      knob.classList.toggle('translate-x-0.5', !disponible);
+    }
+  }
+
+  document.getElementById('platos-list')?.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const row = target.closest('[data-plato-id]');
+    if (!(row instanceof HTMLElement)) return;
+
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    const toggleBtn = target.closest('[data-toggle-disponible]');
+    if (toggleBtn instanceof HTMLElement) {
+      const next = row.dataset.disponible !== 'true';
+      const prev = !next;
+      paintDisponibilidad(row, next);
+      toggleBtn.setAttribute('disabled', 'true');
+
+      try {
+        await updatePlato(id, { disponible: next });
+      } catch (err) {
+        paintDisponibilidad(row, prev);
+        alert(err instanceof Error ? err.message : 'Error al actualizar');
+      } finally {
+        toggleBtn.removeAttribute('disabled');
+      }
+      return;
+    }
+
+    const editBtn = target.closest('[data-edit-precio]');
+    if (editBtn instanceof HTMLElement) {
+      const actual = editBtn.dataset.precioActual ?? '0';
+      const raw = window.prompt('Nuevo precio', actual);
+      if (raw === null) return;
+
+      const precio = Number(String(raw).replace(',', '.').trim());
+      if (!Number.isFinite(precio) || precio < 0) {
+        alert('Ingresá un precio válido (número ≥ 0).');
+        return;
+      }
+
+      editBtn.setAttribute('disabled', 'true');
+      try {
+        await updatePlato(id, { precio });
+        const precioEl = row.querySelector('[data-precio]');
+        if (precioEl) precioEl.textContent = precio.toFixed(2);
+        editBtn.dataset.precioActual = String(precio);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Error al actualizar');
+      } finally {
+        editBtn.removeAttribute('disabled');
+      }
+    }
+  });
+</script>

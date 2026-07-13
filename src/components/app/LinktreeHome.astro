@@ -1,0 +1,105 @@
+---
+interface Props {
+  nombre: string;
+  logoText: string;
+  logoLetter: string;
+  tagline: string;
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    logoClass: string;
+    displayClass: string;
+    borderColor: string;
+    textColor: string;
+  };
+  showWifi?: boolean;
+  showDividir?: boolean;
+}
+
+const {
+  nombre,
+  logoText,
+  logoLetter,
+  tagline,
+  estilos,
+  showWifi = false,
+  showDividir = false,
+} = Astro.props;
+
+const navItems = [
+  { id: 'menu', label: 'IL MENÚ' },
+  { id: 'nosotros', label: 'NOSOTROS' },
+  { id: 'ubicacion', label: 'UBICACIÓN Y HORARIOS' },
+];
+
+if (showWifi) navItems.push({ id: 'wifi', label: 'WI‑FI' });
+if (showDividir) navItems.push({ id: 'dividir', label: 'DIVIDIR CUENTA' });
+---
+
+<div
+  class="linktree-home flex min-h-dvh flex-col px-6 pb-12 pt-14 transition-all duration-300"
+  data-linktree-home
+>
+  <header class="flex flex-col items-center text-center">
+    <div
+      class={`relative flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-full ${estilos.displayClass}`}
+      aria-hidden="true"
+    >
+      <span
+        class="absolute inset-0 rounded-full opacity-80 [background:var(--logo-ring)]"
+        style="--logo-ring: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.2))"
+      >
+      </span>
+      <span
+        class={`relative flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-white/10 bg-black/20 text-2xl font-semibold shadow-inner backdrop-blur-md ${estilos.textColor}`}
+      >
+        {logoLetter}
+      </span>
+    </div>
+
+    <h1
+      class={`mt-7 whitespace-pre-line text-center text-[1.85rem] font-semibold leading-[1.1] ${estilos.logoClass} ${estilos.displayClass}`}
+    >
+      {logoText}
+    </h1>
+
+    <p
+      class={`mt-3 max-w-[17rem] text-[0.78rem] leading-relaxed tracking-[0.04em] ${estilos.mutedColor}`}
+    >
+      {tagline}
+    </p>
+  </header>
+
+  <nav class="mt-12 flex flex-1 flex-col gap-3.5" aria-label={`Navegación ${nombre}`}>
+    {
+      navItems.map((item) => (
+        <button type="button" data-open-section={item.id} class="btn-premium">
+          <span class="btn-premium__inner">
+            <span class="btn-premium__shine" aria-hidden="true" />
+            {item.label}
+          </span>
+        </button>
+      ))
+    }
+  </nav>
+
+  <footer class={`mt-12 text-center text-[10px] tracking-[0.28em] uppercase ${estilos.softColor}`}>
+    Powered by CRX
+  </footer>
+</div>
+
+<style>
+  :global([data-theme='sanza']) .linktree-home [aria-hidden='true'] > span:first-child {
+    background: linear-gradient(
+      135deg,
+      rgba(196, 165, 116, 0.85),
+      rgba(255, 252, 245, 0.35) 45%,
+      rgba(196, 165, 116, 0.55)
+    ) !important;
+  }
+
+  :global([data-theme='sanza']) .linktree-home [aria-hidden='true'] > span:last-child {
+    border-color: rgba(196, 165, 116, 0.35);
+    background: rgba(255, 252, 245, 0.55);
+  }
+</style>

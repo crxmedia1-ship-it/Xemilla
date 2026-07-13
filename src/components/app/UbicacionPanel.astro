@@ -1,0 +1,68 @@
+---
+interface Props {
+  direccion: string;
+  ciudad: string;
+  telefono: string;
+  mapaLabel: string;
+  mapaUrl: string;
+  horarios: Array<{ dia: string; horas: string }>;
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const { direccion, ciudad, telefono, mapaLabel, mapaUrl, horarios, estilos } = Astro.props;
+---
+
+<div class="px-5 py-8">
+  <div>
+    <p class={`text-[0.58rem] font-semibold tracking-[0.28em] uppercase ${estilos.softColor}`}>
+      Dirección
+    </p>
+    <p class={`mt-2 text-xl leading-snug ${estilos.displayClass} ${estilos.textColor}`}>
+      {direccion}
+    </p>
+    <p class={`mt-1 text-sm ${estilos.mutedColor}`}>{ciudad}</p>
+  </div>
+
+  <a href={mapaUrl} target="_blank" rel="noopener noreferrer" class="btn-premium mt-6 block">
+    <span class="btn-premium__inner">
+      <span class="btn-premium__shine" aria-hidden="true"></span>
+      {mapaLabel}
+    </span>
+  </a>
+
+  <div class={`mt-10 border-t border-white/10 pt-8 ${estilos.borderColor}`}>
+    <p class={`text-[0.58rem] font-semibold tracking-[0.28em] uppercase ${estilos.softColor}`}>
+      Horarios
+    </p>
+    <ul class="mt-4 space-y-3.5">
+      {
+        horarios.map((h) => (
+          <li class="flex items-baseline justify-between gap-4">
+            <span class={`text-sm ${estilos.mutedColor}`}>{h.dia}</span>
+            <span class={`text-sm font-medium tabular-nums tracking-wide ${estilos.textColor}`}>
+              {h.horas}
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <div class={`mt-10 border-t border-white/10 pt-8 ${estilos.borderColor}`}>
+    <p class={`text-[0.58rem] font-semibold tracking-[0.28em] uppercase ${estilos.softColor}`}>
+      Contacto
+    </p>
+    <a
+      href={`tel:${telefono.replace(/\s/g, '')}`}
+      class={`mt-3 inline-block text-base tracking-wide transition-opacity duration-300 hover:opacity-70 ${estilos.textColor}`}
+    >
+      {telefono}
+    </a>
+  </div>
+</div>

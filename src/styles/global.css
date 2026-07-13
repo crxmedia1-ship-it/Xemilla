@@ -1,0 +1,313 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #f3eee6;
+  --color-cream-elevated: #faf7f2;
+  --color-sanza-ink: #1c1917;
+  --color-sanza-muted: #78716c;
+  --color-sanza-soft: #a8a29e;
+  --color-sanza-line: #d6d0c6;
+  --color-sanza-gold: #c4a574;
+  --color-sanza-gold-soft: #e8d5b5;
+  --color-bs-ember: #9f1239;
+  --color-bs-ember-soft: #881337;
+
+  --font-blacksushi: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-blacksushi-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-sanza: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sanza-display: "Cormorant Garamond", ui-serif, Georgia, serif;
+}
+
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* ─── Atmosphere backgrounds ─── */
+.atmosphere {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.atmosphere__base,
+.atmosphere__texture,
+.atmosphere__glow {
+  position: absolute;
+  inset: 0;
+}
+
+.theme-blacksushi .atmosphere__base {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(159, 18, 57, 0.22), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(40, 40, 48, 0.9), transparent 50%),
+    #09090b;
+}
+
+.theme-blacksushi .atmosphere__texture {
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M36 2 L70 36 L36 70 L2 36 Z'/%3E%3Cpath d='M36 14 L58 36 L36 58 L14 36 Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 75%);
+}
+
+.theme-blacksushi .atmosphere__glow {
+  background:
+    linear-gradient(180deg, transparent 40%, rgba(9, 9, 11, 0.85) 100%),
+    radial-gradient(circle at 20% 80%, rgba(159, 18, 57, 0.12), transparent 35%);
+}
+
+.theme-sanza .atmosphere__base {
+  background:
+    radial-gradient(ellipse 90% 50% at 10% 0%, rgba(232, 213, 181, 0.55), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 95% 85%, rgba(214, 200, 175, 0.4), transparent 50%),
+    #f3eee6;
+}
+
+.theme-sanza .atmosphere__texture {
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  mix-blend-mode: multiply;
+}
+
+.theme-sanza .atmosphere__glow {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(255, 252, 245, 0.65), transparent 40%),
+    linear-gradient(180deg, transparent 55%, rgba(228, 218, 200, 0.45) 100%);
+}
+
+.theme-crx .atmosphere__base {
+  background: #09090b;
+}
+
+/* ─── Premium Linktree buttons ─── */
+.btn-premium {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 9999px;
+  padding: 1px;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 200ms ease,
+    filter 200ms ease;
+}
+
+.btn-premium:active {
+  transform: scale(0.95);
+}
+
+.btn-premium__inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 9999px;
+  padding: 0.95rem 1.25rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.btn-premium__shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.28) 45%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  transition: transform 650ms ease;
+}
+
+.btn-premium:hover .btn-premium__shine,
+.btn-premium:focus-visible .btn-premium__shine {
+  transform: translateX(120%);
+}
+
+.theme-blacksushi .btn-premium {
+  background: linear-gradient(
+    135deg,
+    rgba(159, 18, 57, 0.95),
+    rgba(63, 63, 70, 0.9) 40%,
+    rgba(24, 24, 27, 0.95) 70%,
+    rgba(159, 18, 57, 0.55)
+  );
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(159, 18, 57, 0.15);
+}
+
+.theme-blacksushi .btn-premium__inner {
+  background: linear-gradient(180deg, rgba(24, 24, 27, 0.92), rgba(9, 9, 11, 0.96));
+  color: #fff;
+}
+
+.theme-sanza .btn-premium {
+  background: linear-gradient(
+    135deg,
+    rgba(232, 213, 181, 0.95),
+    rgba(196, 165, 116, 0.85) 35%,
+    rgba(255, 252, 245, 0.9) 65%,
+    rgba(196, 165, 116, 0.7)
+  );
+  box-shadow:
+    0 12px 28px rgba(98, 80, 50, 0.08),
+    0 0 0 1px rgba(196, 165, 116, 0.2);
+}
+
+.theme-sanza .btn-premium__inner {
+  background: linear-gradient(180deg, rgba(250, 247, 242, 0.92), rgba(243, 238, 230, 0.96));
+  color: #1c1917;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(160, 130, 80, 0.12);
+}
+
+/* ─── Glass panels ─── */
+.glass-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.theme-sanza .glass-panel {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 252, 245, 0.42);
+  box-shadow:
+    0 18px 40px rgba(80, 60, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.glass-field {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.95rem 1rem;
+  outline: none;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    background 200ms ease;
+}
+
+.glass-field:focus {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+.theme-sanza .glass-field {
+  border-color: rgba(28, 25, 23, 0.1);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.theme-sanza .glass-field:focus {
+  border-color: rgba(196, 165, 116, 0.55);
+  box-shadow: 0 0 0 3px rgba(196, 165, 116, 0.15);
+}
+
+.glass-btn {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.9rem;
+  padding: 0.95rem 1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition:
+    transform 200ms ease,
+    background 200ms ease,
+    opacity 200ms ease;
+}
+
+.glass-btn:active {
+  transform: scale(0.95);
+}
+
+.theme-blacksushi .glass-btn {
+  background: linear-gradient(180deg, #fff, #e4e4e7);
+  color: #09090b;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.theme-sanza .glass-btn {
+  background: linear-gradient(180deg, #1c1917, #292524);
+  color: #f3eee6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Menu leader dots ─── */
+.menu-leader {
+  flex: 1;
+  min-width: 1.25rem;
+  margin: 0 0.55rem;
+  border-bottom: 1px dashed currentColor;
+  opacity: 0.22;
+  transform: translateY(-0.35rem);
+}
+
+/* ─── Panels fullscreen ─── */
+[data-section] {
+  transition:
+    transform 300ms ease-out,
+    opacity 300ms ease-out;
+}
+
+[data-section][data-open='false'] {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(100%);
+}
+
+[data-section][data-open='true'] {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.theme-blacksushi [data-section] {
+  background:
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(159, 18, 57, 0.12), transparent 50%),
+    #09090b;
+}
+
+.theme-sanza [data-section] {
+  background:
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(232, 213, 181, 0.5), transparent 50%),
+    #f3eee6;
+}

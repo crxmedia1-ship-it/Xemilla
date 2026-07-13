@@ -1,0 +1,36 @@
+---
+interface Props {
+  texto: string;
+  highlights: string[];
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const { texto, highlights, estilos } = Astro.props;
+---
+
+<div class="px-5 py-8">
+  <p class={`text-[1.05rem] leading-[1.75] ${estilos.displayClass} ${estilos.textColor}`}>
+    {texto}
+  </p>
+
+  <ul class="mt-10 space-y-4">
+    {
+      highlights.map((item) => (
+        <li class={`flex gap-3 border-t pt-4 ${estilos.borderColor}`}>
+          <span class={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-40`} aria-hidden="true" />
+          <span class={`text-sm leading-relaxed ${estilos.mutedColor}`}>{item}</span>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class={`mt-12 text-center text-[10px] tracking-[0.28em] uppercase ${estilos.softColor}`}>
+    Una mesa. Una historia.
+  </p>
+</div>

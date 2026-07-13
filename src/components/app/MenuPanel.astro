@@ -1,0 +1,154 @@
+---
+interface Props {
+  categorias: Array<{
+    id: string;
+    nombre: string;
+    platos: Array<{
+      nombre: string;
+      descripcion: string;
+      precio: string;
+    }>;
+  }>;
+  estilos: {
+    panelColor: string;
+    borderColor: string;
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    priceColor: string;
+    chipIdle: string;
+    chipActive: string;
+    buttonGhost: string;
+    displayClass: string;
+  };
+}
+
+const { categorias, estilos } = Astro.props;
+---
+
+<div class="menu-panel pb-10" data-menu-panel>
+  <div class="sticky top-0 z-10 border-b border-white/10 bg-transparent backdrop-blur-xl">
+    <nav
+      class="overflow-x-auto whitespace-nowrap scrollbar-none px-4 py-3.5"
+      aria-label="Categorías del menú"
+      data-menu-cats
+    >
+      <div class="inline-flex gap-2">
+        {
+          categorias.map((cat, index) => (
+            <button
+              type="button"
+              data-cat-btn={cat.id}
+              class={`rounded-full border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase transition-all duration-200 active:scale-95 ${
+                index === 0 ? estilos.chipActive : estilos.chipIdle
+              }`}
+            >
+              {cat.nombre}
+            </button>
+          ))
+        }
+      </div>
+    </nav>
+  </div>
+
+  <div class="space-y-11 px-5 pt-7">
+    {
+      categorias.map((cat) => (
+        <section id={`menu-cat-${cat.id}`} data-menu-cat={cat.id} class="scroll-mt-28">
+          <h3
+            class={`mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase ${estilos.mutedColor}`}
+          >
+            {cat.nombre}
+          </h3>
+
+          <ul class="space-y-5">
+            {cat.platos.map((plato) => (
+              <li class="group">
+                <div class="flex items-baseline gap-1">
+                  <h4
+                    class={`shrink max-w-[58%] text-[1.02rem] font-semibold leading-snug ${estilos.textColor} ${estilos.displayClass}`}
+                  >
+                    {plato.nombre}
+                  </h4>
+                  <span class="menu-leader" aria-hidden="true" />
+                  <span
+                    class={`shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide ${estilos.priceColor}`}
+                  >
+                    ${plato.precio}
+                  </span>
+                </div>
+
+                <p class={`mt-2 max-w-[92%] text-[0.8rem] leading-relaxed ${estilos.softColor}`}>
+                  {plato.descripcion}
+                </p>
+
+                <button
+                  type="button"
+                  class={`mt-3.5 rounded-full px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase transition-all duration-200 ${estilos.buttonGhost}`}
+                >
+                  Ver detalle
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </div>
+</div>
+
+<script>
+  function initMenuPanels() {
+    document.querySelectorAll('[data-menu-panel]').forEach((panel) => {
+      if (!(panel instanceof HTMLElement)) return;
+      if (panel.dataset.ready === 'true') return;
+      panel.dataset.ready = 'true';
+
+      const buttons = panel.querySelectorAll('[data-cat-btn]');
+      const sections = panel.querySelectorAll('[data-menu-cat]');
+      const chipActive = panel.closest('[data-restaurant-app]')?.getAttribute('data-chip-active') ?? '';
+      const chipIdle = panel.closest('[data-restaurant-app]')?.getAttribute('data-chip-idle') ?? '';
+
+      const setActive = (id: string) => {
+        buttons.forEach((btn) => {
+          if (!(btn instanceof HTMLElement)) return;
+          const active = btn.dataset.catBtn === id;
+          btn.className = `rounded-full border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase transition-all duration-200 active:scale-95 ${
+            active ? chipActive : chipIdle
+          }`;
+        });
+      };
+
+      buttons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!(btn instanceof HTMLElement)) return;
+          const id = btn.dataset.catBtn;
+          if (!id) return;
+          const target = panel.querySelector(`#menu-cat-${id}`);
+          target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setActive(id);
+        });
+      });
+
+      const scrollRoot = panel.closest('[data-section]')?.querySelector('.overflow-y-auto');
+      if (scrollRoot) {
+        scrollRoot.addEventListener(
+          'scroll',
+          () => {
+            let current = sections[0]?.getAttribute('data-menu-cat') ?? '';
+            sections.forEach((section) => {
+              if (!(section instanceof HTMLElement)) return;
+              const rect = section.getBoundingClientRect();
+              if (rect.top <= 140) current = section.dataset.menuCat ?? current;
+            });
+            if (current) setActive(current);
+          },
+          { passive: true },
+        );
+      }
+    });
+  }
+
+  initMenuPanels();
+  document.addEventListener('astro:page-load', initMenuPanels);
+</script>

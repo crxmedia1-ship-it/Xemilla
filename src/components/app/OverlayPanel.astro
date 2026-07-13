@@ -1,0 +1,52 @@
+---
+interface Props {
+  sectionId: string;
+  title: string;
+  estilos: {
+    textColor: string;
+    borderColor: string;
+    mutedColor: string;
+    displayClass: string;
+  };
+}
+
+const { sectionId, title, estilos } = Astro.props;
+---
+
+<section
+  id={`section-${sectionId}`}
+  data-section={sectionId}
+  data-open="false"
+  class={`panel-sheet pointer-events-none fixed inset-0 z-40 mx-auto flex max-w-md translate-y-full flex-col opacity-0 transition-all duration-300 ease-out ${estilos.textColor}`}
+  aria-hidden="true"
+>
+  <header
+    class={`sticky top-0 z-20 flex items-center justify-between border-b border-white/10 px-5 py-4 backdrop-blur-xl ${estilos.borderColor}`}
+  >
+    <h2 class={`text-[0.72rem] font-semibold tracking-[0.28em] uppercase ${estilos.displayClass}`}>
+      {title}
+    </h2>
+    <button
+      type="button"
+      data-close-section
+      class={`flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 shadow-inner backdrop-blur-md transition-all duration-200 active:scale-95 ${estilos.mutedColor}`}
+      aria-label="Cerrar"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.75"
+        stroke-linecap="round"
+        class="h-4 w-4"
+      >
+        <path d="M6 6l12 12M18 6L6 18"></path>
+      </svg>
+    </button>
+  </header>
+
+  <div class="flex-1 overflow-y-auto overscroll-contain">
+    <slot />
+  </div>
+</section>

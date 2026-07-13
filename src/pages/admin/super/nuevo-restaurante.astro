@@ -1,0 +1,160 @@
+---
+export const prerender = false;
+
+import Layout from '../../../layouts/Layout.astro';
+import {
+  requireSuperAdmin,
+  createRestauranteAsSuperAdmin,
+} from '../../../lib/superadmin.js';
+
+const gate = await requireSuperAdmin({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+if (!gate) {
+  return Astro.redirect('/admin/login');
+}
+
+let errorMsg = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const result = await createRestauranteAsSuperAdmin(gate.supabase, gate.user, {
+    userId: gate.user.id,
+    nombreComercial: String(form.get('nombre_comercial') ?? ''),
+    slug: String(form.get('slug') ?? ''),
+    whatsapp: String(form.get('whatsapp_num') ?? ''),
+  });
+
+  if (result.error) {
+    errorMsg = result.error;
+  } else if (result.restaurante) {
+    return Astro.redirect('/admin/super/dashboard');
+  }
+}
+---
+
+<Layout
+  title="Nuevo restaurante · Xemilla"
+  theme="crx"
+  themeColor="#09090b"
+  description="Registrar un nuevo local en Xemilla"
+>
+  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-16 pt-10 text-white">
+    <header>
+      <a
+        href="/admin/super/dashboard"
+        class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500 transition hover:text-zinc-300"
+      >
+        ← SuperAdmin
+      </a>
+      <h1 class="mt-4 font-blacksushi-display text-3xl font-semibold tracking-tight">
+        Nuevo restaurante
+      </h1>
+      <p class="mt-2 text-sm leading-relaxed text-zinc-400">
+        Registrá un cliente en la red Xemilla.
+      </p>
+    </header>
+
+    <form method="POST" class="glass-panel mt-8 space-y-4 p-5" novalidate>
+      <div class="space-y-1.5">
+        <label
+          for="nombre_comercial"
+          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
+        >
+          Nombre comercial
+        </label>
+        <input
+          id="nombre_comercial"
+          name="nombre_comercial"
+          type="text"
+          required
+          placeholder="Black Sushi"
+          class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label
+          for="slug"
+          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
+        >
+          Slug (URL)
+        </label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600"
+            >/</span
+          >
+          <input
+            id="slug"
+            name="slug"
+            type="text"
+            required
+            pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+            placeholder="blacksushi"
+            class="glass-field pl-6 font-blacksushi text-sm text-white placeholder:text-zinc-600"
+          />
+        </div>
+        <p class="text-[11px] leading-relaxed text-zinc-600">
+          Solo minúsculas, números y guiones. Quedará en xemilla.com/slug
+        </p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label
+          for="whatsapp_num"
+          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
+        >
+          WhatsApp
+        </label>
+        <input
+          id="whatsapp_num"
+          name="whatsapp_num"
+          type="tel"
+          placeholder="56912345678"
+          class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
+        />
+      </div>
+
+      {
+        errorMsg && (
+          <p class="text-center text-xs leading-relaxed text-rose-400" role="alert">
+            {errorMsg}
+          </p>
+        )
+      }
+
+      <button type="submit" class="glass-btn mt-2 !bg-white !text-zinc-950">
+        Crear restaurante
+      </button>
+    </form>
+  </main>
+</Layout>
+
+<script>
+  const slugInput = document.getElementById('slug');
+  const nombreInput = document.getElementById('nombre_comercial');
+
+  function toSlug(value) {
+    return String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  let slugTouched = false;
+  slugInput?.addEventListener('input', () => {
+    slugTouched = true;
+  });
+
+  nombreInput?.addEventListener('input', () => {
+    if (slugTouched || !(slugInput instanceof HTMLInputElement)) return;
+    slugInput.value = toSlug(nombreInput instanceof HTMLInputElement ? nombreInput.value : '');
+  });
+</script>

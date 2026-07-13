@@ -1,0 +1,55 @@
+---
+import Layout from '../layouts/Layout.astro';
+import RestaurantApp from '../components/app/RestaurantApp.astro';
+import { getRestauranteBySlug, listRestauranteSlugs } from '../lib/restaurantes.js';
+
+export async function getStaticPaths() {
+  const slugs = await listRestauranteSlugs();
+
+  // Si aún no hay credenciales / datos, prerender rutas de prueba conocidas.
+  const paths = slugs.length > 0 ? slugs : ['sanza', 'blacksushi'];
+
+  return paths.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const restaurante = await getRestauranteBySlug(slug ?? '');
+
+if (!restaurante) {
+  Astro.response.status = 404;
+}
+
+const theme = (slug === 'sanza' || slug === 'blacksushi' ? slug : 'crx') as
+  | 'blacksushi'
+  | 'sanza'
+  | 'crx';
+---
+
+{
+  !restaurante ? (
+    <Layout title="No encontrado · CRX" theme="crx" themeColor="#09090b">
+      <main class="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center text-white">
+        <p class="text-[0.62rem] font-semibold uppercase tracking-[0.35em] text-neutral-500">CRX</p>
+        <h1 class="mt-4 font-blacksushi-display text-3xl font-semibold tracking-tight">404</h1>
+        <p class="mt-3 text-sm leading-relaxed text-neutral-400">
+          Este restaurante no existe en la red CRX.
+        </p>
+        <a
+          href="/"
+          class="mt-8 inline-flex rounded-full border border-white/15 bg-white/5 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white shadow-inner backdrop-blur-xl transition-transform duration-200 active:scale-95"
+        >
+          Volver al inicio
+        </a>
+      </main>
+    </Layout>
+  ) : (
+    <Layout
+      title={restaurante.nombre}
+      description={`${restaurante.nombre} · ${restaurante.tagline}`}
+      theme={theme}
+      themeColor={theme === 'sanza' ? '#f3eee6' : '#09090b'}
+    >
+      <RestaurantApp restaurante={restaurante} />
+    </Layout>
+  )
+}

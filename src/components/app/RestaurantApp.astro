@@ -1,0 +1,145 @@
+---
+import LinktreeHome from './LinktreeHome.astro';
+import OverlayPanel from './OverlayPanel.astro';
+import MenuPanel from './MenuPanel.astro';
+import NosotrosPanel from './NosotrosPanel.astro';
+import UbicacionPanel from './UbicacionPanel.astro';
+import WifiGadget from '../gadgets/WifiGadget.astro';
+import DividirCuenta from '../gadgets/DividirCuenta.astro';
+
+interface Props {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  restaurante: any;
+}
+
+const { restaurante } = Astro.props;
+const { estilos } = restaurante;
+---
+
+<div
+  class={`restaurant-app relative mx-auto min-h-dvh max-w-md overflow-hidden ${estilos.textColor} ${estilos.fontClass}`}
+  data-restaurant-app
+  data-chip-active={estilos.chipActive}
+  data-chip-idle={estilos.chipIdle}
+>
+  <LinktreeHome
+    nombre={restaurante.nombre}
+    logoText={restaurante.logoText}
+    logoLetter={restaurante.logoLetter}
+    tagline={restaurante.tagline}
+    estilos={estilos}
+    showWifi={restaurante.gadgets.wifi}
+    showDividir={restaurante.gadgets.dividirCuenta}
+  />
+
+  <OverlayPanel sectionId="menu" title="IL MENÚ" estilos={estilos}>
+    <MenuPanel categorias={restaurante.menu.categorias} estilos={estilos} />
+  </OverlayPanel>
+
+  <OverlayPanel sectionId="nosotros" title={restaurante.nosotros.titulo} estilos={estilos}>
+    <NosotrosPanel
+      texto={restaurante.nosotros.texto}
+      highlights={restaurante.nosotros.highlights}
+      estilos={estilos}
+    />
+  </OverlayPanel>
+
+  <OverlayPanel sectionId="ubicacion" title={restaurante.ubicacion.titulo} estilos={estilos}>
+    <UbicacionPanel
+      direccion={restaurante.ubicacion.direccion}
+      ciudad={restaurante.ubicacion.ciudad}
+      telefono={restaurante.ubicacion.telefono}
+      mapaLabel={restaurante.ubicacion.mapaLabel}
+      mapaUrl={restaurante.ubicacion.mapaUrl}
+      horarios={restaurante.ubicacion.horarios}
+      estilos={estilos}
+    />
+  </OverlayPanel>
+
+  {
+    restaurante.gadgets.wifi && (
+      <OverlayPanel sectionId="wifi" title="WI‑FI" estilos={estilos}>
+        <div class="px-5 py-8">
+          <WifiGadget
+            ssid={restaurante.wifi.ssid}
+            password={restaurante.wifi.password}
+            textColor={estilos.textColor}
+            mutedColor={estilos.mutedColor}
+          />
+        </div>
+      </OverlayPanel>
+    )
+  }
+
+  {
+    restaurante.gadgets.dividirCuenta && (
+      <OverlayPanel sectionId="dividir" title="DIVIDIR CUENTA" estilos={estilos}>
+        <div class="px-5 py-8">
+          <DividirCuenta
+            textColor={estilos.textColor}
+            mutedColor={estilos.mutedColor}
+            accentText={estilos.accentText}
+          />
+        </div>
+      </OverlayPanel>
+    )
+  }
+</div>
+
+<script>
+  const OPEN_CLASSES = ['translate-y-0', 'opacity-100', 'pointer-events-auto'];
+  const CLOSED_CLASSES = ['translate-y-full', 'opacity-0', 'pointer-events-none'];
+
+  function setPanelOpen(panel: HTMLElement, open: boolean) {
+    panel.dataset.open = open ? 'true' : 'false';
+    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    panel.classList.remove(...(open ? CLOSED_CLASSES : OPEN_CLASSES));
+    panel.classList.add(...(open ? OPEN_CLASSES : CLOSED_CLASSES));
+  }
+
+  function openSection(app: HTMLElement, id: string) {
+    const home = app.querySelector('[data-linktree-home]');
+    const panel = app.querySelector(`[data-section="${id}"]`);
+    if (!(panel instanceof HTMLElement)) return;
+
+    app.querySelectorAll('[data-section]').forEach((el) => {
+      if (el instanceof HTMLElement) setPanelOpen(el, false);
+    });
+
+    setPanelOpen(panel, true);
+    home?.classList.add('scale-[0.98]', 'opacity-40');
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  function closeSections(app: HTMLElement) {
+    const home = app.querySelector('[data-linktree-home]');
+    app.querySelectorAll('[data-section]').forEach((el) => {
+      if (el instanceof HTMLElement) setPanelOpen(el, false);
+    });
+    home?.classList.remove('scale-[0.98]', 'opacity-40');
+    document.documentElement.style.overflow = '';
+  }
+
+  function initRestaurantApps() {
+    document.querySelectorAll('[data-restaurant-app]').forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (root.dataset.navReady === 'true') return;
+      root.dataset.navReady = 'true';
+
+      root.querySelectorAll('[data-open-section]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!(btn instanceof HTMLElement)) return;
+          const id = btn.dataset.openSection;
+          if (id) openSection(root, id);
+        });
+      });
+
+      root.querySelectorAll('[data-close-section]').forEach((btn) => {
+        btn.addEventListener('click', () => closeSections(root));
+      });
+    });
+  }
+
+  initRestaurantApps();
+  document.addEventListener('astro:page-load', initRestaurantApps);
+</script>
