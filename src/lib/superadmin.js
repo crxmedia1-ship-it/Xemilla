@@ -23,10 +23,13 @@ export async function requireSuperAdmin(ctx) {
 
 /**
  * Lista global de restaurantes (panel maestro).
+ * Usa service role si está disponible para no depender de RLS de dueño.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ email?: string | null } | null} [user]
  */
-export async function listAllRestaurantes(supabase) {
-  const { data, error } = await supabase
+export async function listAllRestaurantes(supabase, user = null) {
+  const client = user ? getSuperAdminWriteClient(supabase, user) : supabase;
+  const { data, error } = await client
     .from('restaurantes')
     .select(
       'id, nombre_comercial, slug, whatsapp_num, gadget_wifi, gadget_dividir_cuenta, created_at',

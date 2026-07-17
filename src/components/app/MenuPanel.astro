@@ -1,14 +1,26 @@
 ---
+interface Plato {
+  id?: number;
+  nombre: string;
+  descripcion: string;
+  precio: string;
+  imagenUrl?: string | null;
+  destacado?: boolean;
+  categoriaId?: string;
+  categoriaNombre?: string;
+}
+
 interface Props {
   categorias: Array<{
     id: string;
     nombre: string;
-    platos: Array<{
-      nombre: string;
-      descripcion: string;
-      precio: string;
-    }>;
+    platos: Plato[];
+    bgType?: string;
+    bgValor?: string;
   }>;
+  destacados?: Plato[];
+  /** Fondo global del menú (fallback) */
+  fondoGlobal?: { tipo?: string; valor?: string };
   estilos: {
     panelColor: string;
     borderColor: string;
@@ -23,25 +35,140 @@ interface Props {
   };
 }
 
-const { categorias, estilos } = Astro.props;
+const { categorias, destacados = [], fondoGlobal = { tipo: 'color', valor: '' }, estilos } = Astro.props;
+
+function hasMedia(url: string | null | undefined) {
+  return Boolean(url && String(url).trim());
+}
+
+function isVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
+}
+
+const CHIP_BASE =
+  'border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase active:scale-95';
+const CHIP_ACTIVE =
+  'border-[color-mix(in_srgb,var(--color-primario)_65%,transparent)] bg-[var(--color-primario)] text-white shadow-inner';
+const CHIP_IDLE =
+  'border-white/15 bg-white/5 text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)] backdrop-blur-md';
+
+const globalBgType = fondoGlobal.tipo || 'color';
+const globalBgValor = fondoGlobal.valor || '';
 ---
 
-<div class="menu-panel pb-10" data-menu-panel>
-  <div class="sticky top-0 z-10 border-b border-white/10 bg-transparent backdrop-blur-xl">
+<div
+  class="menu-panel relative z-10 min-h-full overflow-hidden bg-transparent pb-10 text-[color:var(--color-texto)] font-[family-name:var(--fuente-principal)]"
+  data-menu-panel
+  data-menu-bg-global-type={globalBgType}
+  data-menu-bg-global-valor={globalBgValor}
+>
+  {/* Capas de fondo dinámico por categoría — morph fluido + fallback global */}
+  <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true" data-menu-bg-root>
+    <div
+      class="menu-bg-layer absolute inset-0 opacity-100 transition-opacity duration-700 ease-in-out will-change-[opacity]"
+      data-menu-bg-layer="global"
+      data-active="true"
+    >
+      {
+        globalBgType === 'image' && globalBgValor ? (
+          <>
+            <div
+              class="absolute inset-0 bg-cover bg-center transition-[background-image] duration-700 ease-in-out"
+              style={`background-image:url("${globalBgValor.replace(/"/g, '\\"')}")`}
+            />
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
+          </>
+        ) : globalBgType === 'video' && globalBgValor ? (
+          <>
+            <video
+              class="absolute inset-0 h-full w-full object-cover"
+              src={globalBgValor}
+              autoplay
+              muted
+              loop
+              playsinline
+            />
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
+          </>
+        ) : globalBgValor && globalBgType === 'color' ? (
+          <div
+            class="absolute inset-0 transition-colors duration-700 ease-in-out"
+            style={`background-color:${globalBgValor}`}
+          />
+        ) : (
+          <div class="absolute inset-0 bg-[var(--color-fondo)] transition-colors duration-700 ease-in-out" />
+        )
+      }
+    </div>
+
+    {
+      categorias.map((cat) => {
+        const tipo = (cat.bgType || 'color').toLowerCase();
+        const valor = (cat.bgValor || '').trim();
+        if (!valor || (tipo !== 'image' && tipo !== 'video' && tipo !== 'color')) return null;
+        return (
+          <div
+            class="menu-bg-layer absolute inset-0 opacity-0 transition-opacity duration-700 ease-in-out will-change-[opacity]"
+            data-menu-bg-layer={cat.id}
+            data-active="false"
+          >
+            {tipo === 'image' ? (
+              <>
+                <div
+                  class="absolute inset-0 bg-cover bg-center"
+                  style={`background-image:url("${valor.replace(/"/g, '\\"')}")`}
+                />
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
+              </>
+            ) : tipo === 'video' ? (
+              <>
+                <video
+                  class="absolute inset-0 h-full w-full object-cover"
+                  src={valor}
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                />
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
+              </>
+            ) : (
+              <div
+                class="absolute inset-0 transition-colors duration-700 ease-in-out"
+                style={`background-color:${valor}`}
+              />
+            )}
+          </div>
+        );
+      })
+    }
+  </div>
+
+  <div class="relative z-10">
+  <div class="sticky top-0 z-20 border-b border-white/10 bg-[color-mix(in_srgb,var(--color-fondo)_72%,transparent)] backdrop-blur-md">
     <nav
       class="overflow-x-auto whitespace-nowrap scrollbar-none px-4 py-3.5"
       aria-label="Categorías del menú"
       data-menu-cats
     >
       <div class="inline-flex gap-2">
+        <button
+          type="button"
+          data-cat-btn="all"
+          data-cat-filter="all"
+          class={`menu-chip ${CHIP_BASE} ${CHIP_ACTIVE}`}
+        >
+          Todos
+        </button>
         {
-          categorias.map((cat, index) => (
+          categorias.map((cat) => (
             <button
               type="button"
               data-cat-btn={cat.id}
-              class={`rounded-full border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase transition-all duration-200 active:scale-95 ${
-                index === 0 ? estilos.chipActive : estilos.chipIdle
-              }`}
+              data-cat-filter={cat.id}
+              data-cat-bg-type={cat.bgType || ''}
+              data-cat-bg-valor={cat.bgValor || ''}
+              class={`menu-chip ${CHIP_BASE} ${CHIP_IDLE}`}
             >
               {cat.nombre}
             </button>
@@ -51,100 +178,552 @@ const { categorias, estilos } = Astro.props;
     </nav>
   </div>
 
-  <div class="space-y-11 px-5 pt-7">
+  {
+    destacados.length > 0 && (
+      <section
+        class="border-b border-white/8 pb-6 pt-6"
+        data-destacados
+        aria-label="Sugerencias del Chef"
+      >
+        <h3 class="mb-4 px-5 font-[family-name:var(--fuente-display)] text-[0.78rem] font-semibold tracking-[0.22em] uppercase text-[color:color-mix(in_srgb,var(--color-texto)_70%,transparent)]">
+          Sugerencias del Chef
+        </h3>
+        <div
+          class="flex gap-4 overflow-x-auto px-5 pb-1 scrollbar-none snap-x snap-mandatory scroll-smooth [-webkit-overflow-scrolling:touch]"
+          data-destacados-track
+          aria-roledescription="carrusel"
+        >
+          {destacados.map((plato) => {
+            const mediaUrl = plato.imagenUrl?.trim() || '';
+            const video = hasMedia(mediaUrl) && isVideoUrl(mediaUrl);
+            const catId = plato.categoriaId || '';
+            const catName = plato.categoriaNombre || 'Menú';
+            return (
+              <button
+                type="button"
+                class="menu-featured menu-card snap-center shrink-0 w-[85vw] max-w-[350px] border border-white/10 bg-white/[0.04] text-left active:scale-[0.98]"
+                data-reveal
+                data-goto-plato={plato.id}
+                data-goto-cat={catId}
+                aria-label={`Ir a ${plato.nombre} en ${catName}`}
+              >
+                <div class="menu-media relative mb-3.5 w-full overflow-hidden bg-black/40 aspect-[16/10]">
+                  {hasMedia(mediaUrl) ? (
+                    video ? (
+                      <span class="flex size-full items-center justify-center text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                        Video
+                      </span>
+                    ) : (
+                      <img
+                        src={mediaUrl}
+                        alt=""
+                        data-reveal-media
+                        class="size-full object-cover will-change-transform"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )
+                  ) : (
+                    <span class="flex size-full items-center justify-center text-[0.55rem] uppercase tracking-[0.18em] text-zinc-600">
+                      Sin media
+                    </span>
+                  )}
+                  <span class="chef-cat-badge absolute left-2.5 top-2.5 max-w-[70%] truncate rounded-md border border-white/15 bg-black/45 px-2 py-1 text-[0.52rem] font-semibold uppercase tracking-[0.14em] text-white/90 backdrop-blur-md">
+                    {catName}
+                  </span>
+                </div>
+                <h4 class="line-clamp-2 text-[1.05rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                  {plato.nombre}
+                </h4>
+                <p class="mt-1.5 text-[1.05rem] font-semibold tabular-nums text-[color:var(--color-texto)] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                  ${plato.precio}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    )
+  }
+
+  <div class="menu-list px-5 pt-7" data-menu-list>
     {
       categorias.map((cat) => (
-        <section id={`menu-cat-${cat.id}`} data-menu-cat={cat.id} class="scroll-mt-28">
-          <h3
-            class={`mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase ${estilos.mutedColor}`}
-          >
+        <section
+          id={`menu-cat-${cat.id}`}
+          data-menu-cat={cat.id}
+          data-cat-bg-type={cat.bgType || ''}
+          data-cat-bg-valor={cat.bgValor || ''}
+          class="menu-cat-section scroll-mt-28"
+        >
+          <h3 class="mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]">
             {cat.nombre}
           </h3>
 
-          <ul class="space-y-5">
-            {cat.platos.map((plato) => (
-              <li class="group">
-                <div class="flex items-baseline gap-1">
-                  <h4
-                    class={`shrink max-w-[58%] text-[1.02rem] font-semibold leading-snug ${estilos.textColor} ${estilos.displayClass}`}
-                  >
-                    {plato.nombre}
-                  </h4>
-                  <span class="menu-leader" aria-hidden="true" />
-                  <span
-                    class={`shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide ${estilos.priceColor}`}
-                  >
-                    ${plato.precio}
-                  </span>
-                </div>
-
-                <p class={`mt-2 max-w-[92%] text-[0.8rem] leading-relaxed ${estilos.softColor}`}>
-                  {plato.descripcion}
-                </p>
-
-                <button
-                  type="button"
-                  class={`mt-3.5 rounded-full px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase transition-all duration-200 ${estilos.buttonGhost}`}
+          <ul class="menu-items">
+            {cat.platos.map((plato) => {
+              const mediaUrl = plato.imagenUrl?.trim() || '';
+              return (
+                <li
+                  id={`plato-${plato.id}`}
+                  class="menu-plato-item group scroll-mt-32"
+                  data-reveal
+                  data-plato-id={plato.id}
                 >
-                  Ver detalle
-                </button>
-              </li>
-            ))}
+                  <div class="flex items-baseline gap-1">
+                    <h4 class="shrink max-w-[58%] text-[1.02rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                      {plato.nombre}
+                    </h4>
+                    <span class="menu-leader" aria-hidden="true" />
+                    <span class="shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide text-[color:var(--color-texto)] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                      ${plato.precio}
+                    </span>
+                  </div>
+
+                  {plato.descripcion && (
+                    <p class="mt-2 max-w-[92%] text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_50%,transparent)]">
+                      {plato.descripcion}
+                    </p>
+                  )}
+
+                  {hasMedia(mediaUrl) && (
+                    <button
+                      type="button"
+                      data-open-detalle
+                      data-media-url={mediaUrl}
+                      data-media-title={plato.nombre}
+                      data-plato-id={plato.id}
+                      data-plato-nombre={plato.nombre}
+                      class="menu-btn mt-3 border border-white/15 bg-white/5 px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase text-[color:var(--color-texto)] shadow-inner backdrop-blur-md active:scale-95"
+                    >
+                      Ver detalle
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))
     }
   </div>
+  </div>
 </div>
 
+<style>
+  .menu-chip {
+    border-radius: var(--radius-chip, 9999px);
+    transition: transform var(--motion-spring, 220ms ease), background-color 200ms ease,
+      border-color 200ms ease, color 200ms ease;
+  }
+
+  .menu-card,
+  .menu-media,
+  .menu-btn {
+    border-radius: var(--radius-card, 1rem);
+  }
+
+  .menu-media {
+    border-radius: var(--radius-media, 0.875rem);
+  }
+
+  .menu-btn {
+    border-radius: var(--radius-button, 9999px);
+    transition: transform var(--motion-spring, 220ms ease), opacity 200ms ease;
+  }
+
+  .menu-featured {
+    padding: var(--pad-card, 1rem);
+    transition: transform var(--motion-spring, 220ms ease);
+  }
+
+  .menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-section, 2.25rem);
+  }
+
+  .menu-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-item, 1.25rem);
+  }
+
+  .menu-cat-section.is-hidden,
+  [data-destacados].is-hidden {
+    display: none;
+  }
+
+  .menu-plato-item {
+    border-radius: var(--radius-card, 0.75rem);
+    padding: 0.35rem 0.4rem;
+    margin-inline: -0.4rem;
+    transition:
+      box-shadow 400ms ease,
+      background-color 400ms ease,
+      transform 400ms ease;
+  }
+
+  .menu-plato-item.is-focus-plato {
+    background: color-mix(in srgb, var(--color-primario) 12%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-primario) 55%, transparent),
+      0 0 24px color-mix(in srgb, var(--color-primario) 22%, transparent);
+    transform: scale(1.015);
+  }
+
+  /* Scroll reveal — GPU-friendly (opacity + transform only) */
+  [data-reveal] {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+    transition:
+      opacity var(--motion-reveal, 520ms cubic-bezier(0.22, 1, 0.36, 1)),
+      transform var(--motion-reveal, 520ms cubic-bezier(0.22, 1, 0.36, 1));
+  }
+
+  [data-reveal].is-inview {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  [data-reveal-media] {
+    opacity: 0;
+    transform: scale(0.95);
+    transform-origin: center;
+    transition:
+      opacity var(--motion-reveal, 620ms cubic-bezier(0.22, 1, 0.36, 1)),
+      transform var(--motion-reveal, 620ms cubic-bezier(0.22, 1, 0.36, 1));
+  }
+
+  [data-reveal].is-inview [data-reveal-media] {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal],
+    [data-reveal-media],
+    .menu-chip,
+    .menu-featured,
+    .menu-btn,
+    .menu-plato-item {
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style>
+
 <script>
+  const CHIP_BASE =
+    'menu-chip border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase active:scale-95';
+  const CHIP_ACTIVE =
+    'border-[color-mix(in_srgb,var(--color-primario)_65%,transparent)] bg-[var(--color-primario)] text-white shadow-inner';
+  const CHIP_IDLE =
+    'border-white/15 bg-white/5 text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)] backdrop-blur-md';
+
+  const AUTOPLAY_MS = 4000;
+  const HIGHLIGHT_MS = 1100;
+
+  /**
+   * @param {HTMLElement} track
+   */
+  function initDestacadosAutoplay(track) {
+    if (track.dataset.autoplayReady === 'true') return;
+    const cards = Array.from(track.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement,
+    );
+    if (cards.length < 2) return;
+    track.dataset.autoplayReady = 'true';
+
+    let index = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const nearestIndex = () => {
+      const mid = track.scrollLeft + track.clientWidth / 2;
+      let best = 0;
+      let bestDist = Infinity;
+      cards.forEach((card, i) => {
+        const center = card.offsetLeft + card.offsetWidth / 2;
+        const dist = Math.abs(center - mid);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      });
+      return best;
+    };
+
+    const goTo = (i: number) => {
+      index = ((i % cards.length) + cards.length) % cards.length;
+      const card = cards[index];
+      if (!card) return;
+      const left = card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2;
+      track.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    };
+
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+
+    const start = () => {
+      stop();
+      timer = setInterval(() => {
+        if (document.hidden) return;
+        goTo(index + 1);
+      }, AUTOPLAY_MS);
+    };
+
+    const resetFromUser = () => {
+      stop();
+      if (resumeTimer) clearTimeout(resumeTimer);
+      index = nearestIndex();
+      resumeTimer = setTimeout(() => {
+        index = nearestIndex();
+        start();
+      }, 700);
+    };
+
+    track.addEventListener('pointerdown', resetFromUser);
+    track.addEventListener('touchstart', resetFromUser, { passive: true });
+    track.addEventListener('wheel', resetFromUser, { passive: true });
+
+    let scrollDebounce: ReturnType<typeof setTimeout> | null = null;
+    track.addEventListener(
+      'scroll',
+      () => {
+        if (scrollDebounce) clearTimeout(scrollDebounce);
+        scrollDebounce = setTimeout(() => {
+          index = nearestIndex();
+        }, 100);
+      },
+      { passive: true },
+    );
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop();
+      else start();
+    });
+
+    start();
+  }
+
+  /**
+   * @param {HTMLElement} panel
+   * @param {Element | null} scrollRoot
+   */
+  function initScrollReveal(panel, scrollRoot) {
+    const items = panel.querySelectorAll('[data-reveal]');
+    if (!items.length) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      items.forEach((el) => el.classList.add('is-inview'));
+      return;
+    }
+
+    const rootEl = scrollRoot instanceof Element ? scrollRoot : null;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add('is-inview');
+          io.unobserve(entry.target);
+        }
+      },
+      {
+        root: rootEl,
+        rootMargin: '0px 0px -8% 0px',
+        threshold: 0.12,
+      },
+    );
+
+    items.forEach((el) => io.observe(el));
+  }
+
+  /**
+   * @param {HTMLElement} target
+   */
+  function pulsePlatoFocus(target) {
+    target.classList.add('is-inview');
+    target.classList.remove('is-focus-plato');
+    void target.offsetWidth;
+    target.classList.add('is-focus-plato');
+    window.setTimeout(() => {
+      target.classList.remove('is-focus-plato');
+    }, HIGHLIGHT_MS);
+  }
+
   function initMenuPanels() {
     document.querySelectorAll('[data-menu-panel]').forEach((panel) => {
       if (!(panel instanceof HTMLElement)) return;
       if (panel.dataset.ready === 'true') return;
       panel.dataset.ready = 'true';
 
-      const buttons = panel.querySelectorAll('[data-cat-btn]');
+      const buttons = panel.querySelectorAll('[data-cat-filter]');
       const sections = panel.querySelectorAll('[data-menu-cat]');
-      const chipActive = panel.closest('[data-restaurant-app]')?.getAttribute('data-chip-active') ?? '';
-      const chipIdle = panel.closest('[data-restaurant-app]')?.getAttribute('data-chip-idle') ?? '';
+      const destacados = panel.querySelector('[data-destacados]');
+      const track = panel.querySelector('[data-destacados-track]');
+      const sectionEl = panel.closest('[data-section]');
+      const scrollRoot =
+        sectionEl?.querySelector('.overflow-y-auto') ?? null;
 
-      const setActive = (id: string) => {
+      // Anclar capas de fondo al sheet (no al scroll) para el fade por categoría
+      const bgRoot = panel.querySelector('[data-menu-bg-root]');
+      if (
+        bgRoot instanceof HTMLElement &&
+        sectionEl instanceof HTMLElement &&
+        bgRoot.parentElement !== sectionEl
+      ) {
+        sectionEl.insertBefore(bgRoot, sectionEl.firstChild);
+        bgRoot.classList.add('absolute', 'inset-0', 'z-0');
+      }
+
+      const paintChips = (activeId: string) => {
         buttons.forEach((btn) => {
           if (!(btn instanceof HTMLElement)) return;
-          const active = btn.dataset.catBtn === id;
-          btn.className = `rounded-full border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase transition-all duration-200 active:scale-95 ${
-            active ? chipActive : chipIdle
-          }`;
+          const active = btn.dataset.catFilter === activeId;
+          btn.className = `${CHIP_BASE} ${active ? CHIP_ACTIVE : CHIP_IDLE}`;
+        });
+      };
+
+      /**
+       * @param {string} layerId
+       */
+      const setMenuBg = (layerId: string) => {
+        const scope = sectionEl instanceof HTMLElement ? sectionEl : panel;
+        const layers = scope.querySelectorAll('[data-menu-bg-layer]');
+        let matched = false;
+        layers.forEach((layer) => {
+          if (!(layer instanceof HTMLElement)) return;
+          const id = layer.dataset.menuBgLayer || '';
+          const on = id === layerId;
+          if (on) matched = true;
+          layer.style.opacity = on ? '1' : '0';
+          layer.dataset.active = on ? 'true' : 'false';
+        });
+        if (!matched) {
+          const global = scope.querySelector('[data-menu-bg-layer="global"]');
+          if (global instanceof HTMLElement) {
+            global.style.opacity = '1';
+            global.dataset.active = 'true';
+          }
+        }
+      };
+
+      /**
+       * @param {string} id
+       */
+      const resolveBgLayer = (id: string) => {
+        if (id === 'all') return 'global';
+        const section = panel.querySelector(`[data-menu-cat="${CSS.escape(id)}"]`);
+        if (!(section instanceof HTMLElement)) return 'global';
+        const tipo = (section.dataset.catBgType || '').toLowerCase();
+        const valor = (section.dataset.catBgValor || '').trim();
+        if (valor && (tipo === 'image' || tipo === 'video' || tipo === 'color')) {
+          return id;
+        }
+        return 'global';
+      };
+
+      const filterByCategory = (id: string) => {
+        const showAll = id === 'all';
+        sections.forEach((section) => {
+          if (!(section instanceof HTMLElement)) return;
+          const match = showAll || section.dataset.menuCat === id;
+          section.classList.toggle('is-hidden', !match);
+          section.setAttribute('aria-hidden', match ? 'false' : 'true');
+        });
+        if (destacados instanceof HTMLElement) {
+          destacados.classList.toggle('is-hidden', !showAll);
+        }
+        paintChips(id);
+        setMenuBg(resolveBgLayer(id));
+
+        const activeChip = panel.querySelector(`[data-cat-filter="${id}"]`);
+        if (activeChip instanceof HTMLElement) {
+          activeChip.scrollIntoView({
+            behavior: 'smooth',
+            inline: 'center',
+            block: 'nearest',
+          });
+        }
+      };
+
+      // Al scrollear con "Todos", cambia el fondo según la categoría visible
+      if (typeof IntersectionObserver !== 'undefined' && scrollRoot) {
+        const catIo = new IntersectionObserver(
+          (entries) => {
+            const allChip = panel.querySelector('[data-cat-filter="all"]');
+            const allActive =
+              allChip instanceof HTMLElement &&
+              allChip.className.includes('bg-[var(--color-primario)]');
+            if (!allActive) return;
+            const visible = entries
+              .filter((e) => e.isIntersecting)
+              .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+            if (!visible || !(visible.target instanceof HTMLElement)) return;
+            const catId = visible.target.dataset.menuCat || '';
+            if (catId) setMenuBg(resolveBgLayer(catId));
+          },
+          {
+            root: scrollRoot instanceof Element ? scrollRoot : null,
+            threshold: [0.25, 0.45, 0.6],
+            rootMargin: '-15% 0px -45% 0px',
+          },
+        );
+        sections.forEach((section) => catIo.observe(section));
+      }
+
+      /**
+       * @param {string} platoId
+       * @param {string} catId
+       */
+      const goToPlato = (platoId, catId) => {
+        if (!platoId) return;
+        const filterId = catId || 'all';
+        filterByCategory(filterId);
+
+        const target = panel.querySelector(`#plato-${CSS.escape(platoId)}`);
+        if (!(target instanceof HTMLElement)) return;
+
+        // Dejar que el layout aplique el filtro antes de scrollear
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            pulsePlatoFocus(target);
+          });
         });
       };
 
       buttons.forEach((btn) => {
         btn.addEventListener('click', () => {
           if (!(btn instanceof HTMLElement)) return;
-          const id = btn.dataset.catBtn;
+          const id = btn.dataset.catFilter;
           if (!id) return;
-          const target = panel.querySelector(`#menu-cat-${id}`);
-          target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          setActive(id);
+          filterByCategory(id);
+
+          if (scrollRoot instanceof HTMLElement) {
+            scrollRoot.scrollTo({ top: 0, behavior: 'smooth' });
+          }
         });
       });
 
-      const scrollRoot = panel.closest('[data-section]')?.querySelector('.overflow-y-auto');
-      if (scrollRoot) {
-        scrollRoot.addEventListener(
-          'scroll',
-          () => {
-            let current = sections[0]?.getAttribute('data-menu-cat') ?? '';
-            sections.forEach((section) => {
-              if (!(section instanceof HTMLElement)) return;
-              const rect = section.getBoundingClientRect();
-              if (rect.top <= 140) current = section.dataset.menuCat ?? current;
-            });
-            if (current) setActive(current);
-          },
-          { passive: true },
-        );
+      panel.querySelectorAll('[data-goto-plato]').forEach((card) => {
+        card.addEventListener('click', () => {
+          if (!(card instanceof HTMLElement)) return;
+          const platoId = card.dataset.gotoPlato || '';
+          const catId = card.dataset.gotoCat || '';
+          goToPlato(platoId, catId);
+        });
+      });
+
+      filterByCategory('all');
+      initScrollReveal(panel, scrollRoot);
+
+      if (track instanceof HTMLElement) {
+        initDestacadosAutoplay(track);
       }
     });
   }

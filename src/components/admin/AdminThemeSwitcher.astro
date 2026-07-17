@@ -1,0 +1,101 @@
+---
+/**
+ * Selector discreto de temas del panel admin (Orgánico / Onyx / Alabastro).
+ * Persistencia: localStorage `xemilla-admin-theme`.
+ */
+import {
+  ADMIN_THEME_IDS,
+  ADMIN_THEME_META,
+  ADMIN_THEME_KEY,
+} from '../../config/admin-themes.js';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<div
+  class:list={['admin-theme-switcher', className]}
+  role="radiogroup"
+  aria-label="Tema visual del panel"
+  data-admin-theme-switcher
+>
+  {
+    ADMIN_THEME_IDS.map((id) => (
+      <button
+        type="button"
+        role="radio"
+        data-theme-id={id}
+        aria-checked="false"
+        aria-label={ADMIN_THEME_META[id].label}
+        title={ADMIN_THEME_META[id].label}
+        class="admin-theme-switcher__btn"
+      >
+        <span
+          class="admin-theme-switcher__swatch"
+          style={`background:${ADMIN_THEME_META[id].swatch}`}
+          aria-hidden="true"
+        />
+      </button>
+    ))
+  }
+</div>
+
+<script define:vars={{ ADMIN_THEME_KEY, ADMIN_THEME_IDS }}>
+  /**
+   * @param {string} theme
+   */
+  function applyAdminTheme(theme) {
+    const id = ADMIN_THEME_IDS.includes(theme) ? theme : 'onyx';
+    const root = document.documentElement;
+    root.classList.add('admin-panel');
+    root.setAttribute('data-theme', id);
+    try {
+      localStorage.setItem(ADMIN_THEME_KEY, id);
+    } catch {
+      /* ignore */
+    }
+    const meta = document.getElementById('meta-theme-color');
+    if (meta) {
+      meta.setAttribute(
+        'content',
+        id === 'organico' ? '#f0ebe3' : id === 'alabastro' ? '#ffffff' : '#0a0a0b',
+      );
+    }
+    document.querySelectorAll('[data-admin-theme-switcher]').forEach((group) => {
+      group.querySelectorAll('[data-theme-id]').forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const on = btn.dataset.themeId === id;
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+    });
+  }
+
+  function readStoredTheme() {
+    try {
+      return localStorage.getItem(ADMIN_THEME_KEY) || 'onyx';
+    } catch {
+      return 'onyx';
+    }
+  }
+
+  function initAdminThemeSwitcher() {
+    applyAdminTheme(readStoredTheme());
+    document.querySelectorAll('[data-admin-theme-switcher]').forEach((group) => {
+      if (!(group instanceof HTMLElement)) return;
+      if (group.dataset.ready === 'true') return;
+      group.dataset.ready = 'true';
+      group.querySelectorAll('[data-theme-id]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!(btn instanceof HTMLElement)) return;
+          applyAdminTheme(btn.dataset.themeId || 'onyx');
+        });
+      });
+    });
+  }
+
+  initAdminThemeSwitcher();
+  document.addEventListener('astro:page-load', initAdminThemeSwitcher);
+</script>

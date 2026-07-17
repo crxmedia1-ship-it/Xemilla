@@ -40,6 +40,174 @@ COMMENT ON COLUMN public.restaurantes.gadget_wifi IS
 COMMENT ON COLUMN public.restaurantes.gadget_dividir_cuenta IS
   'Activa el gadget Dividir cuenta en la experiencia móvil pública.';
 
+-- Módulos Lego (gadgets + configs + estilos avanzados)
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS gadget_reservas BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS gadget_llamar_mesero BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS config_reservas JSONB,
+  ADD COLUMN IF NOT EXISTS config_wifi JSONB,
+  ADD COLUMN IF NOT EXISTS custom_css TEXT;
+
+COMMENT ON COLUMN public.restaurantes.gadget_reservas IS
+  'Activa el módulo Reservas (CTA flotante / panel).';
+COMMENT ON COLUMN public.restaurantes.gadget_llamar_mesero IS
+  'Activa el gadget Llamar mesero.';
+COMMENT ON COLUMN public.restaurantes.config_reservas IS
+  'JSON: { "url": "https://…", "label": "Reservar mesa" }.';
+COMMENT ON COLUMN public.restaurantes.config_wifi IS
+  'JSON: { "ssid": "…", "password": "…" }.';
+COMMENT ON COLUMN public.restaurantes.custom_css IS
+  'CSS scoped por restaurante (inyectado en la WebApp pública).';
+
+-- Gadgets: columnas planas canónicas (+ aliases legacy sincronizados en API)
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS gadget_wifi_ssid TEXT,
+  ADD COLUMN IF NOT EXISTS gadget_wifi_clave TEXT,
+  ADD COLUMN IF NOT EXISTS gadget_mesero BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS gadget_cuenta BOOLEAN NOT NULL DEFAULT FALSE;
+
+COMMENT ON COLUMN public.restaurantes.gadget_wifi_ssid IS
+  'SSID de la red Wi‑Fi de invitados (plano).';
+COMMENT ON COLUMN public.restaurantes.gadget_wifi_clave IS
+  'Clave de la red Wi‑Fi de invitados (plano).';
+COMMENT ON COLUMN public.restaurantes.gadget_mesero IS
+  'Activa el gadget Llamar mesero (canónico; alias de gadget_llamar_mesero).';
+COMMENT ON COLUMN public.restaurantes.gadget_cuenta IS
+  'Activa Pedir/Dividir cuenta (canónico; alias de gadget_dividir_cuenta).';
+
+-- Boutique / merch
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS gadget_boutique BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS config_boutique JSONB;
+
+COMMENT ON COLUMN public.restaurantes.gadget_boutique IS
+  'Activa el bloque Carrd Boutique / Merchandise en la WebApp pública.';
+COMMENT ON COLUMN public.restaurantes.config_boutique IS
+  'JSON: { "productos": [{ "id", "nombre", "precio", "imagen_url", "activo" }] }.';
+
+-- Backfill desde columnas legacy / JSON
+UPDATE public.restaurantes
+SET gadget_mesero = TRUE
+WHERE gadget_llamar_mesero IS TRUE AND gadget_mesero IS NOT TRUE;
+
+UPDATE public.restaurantes
+SET gadget_cuenta = TRUE
+WHERE gadget_dividir_cuenta IS TRUE AND gadget_cuenta IS NOT TRUE;
+
+UPDATE public.restaurantes
+SET gadget_wifi_ssid = NULLIF(TRIM(config_wifi->>'ssid'), '')
+WHERE (gadget_wifi_ssid IS NULL OR TRIM(gadget_wifi_ssid) = '')
+  AND config_wifi ? 'ssid';
+
+UPDATE public.restaurantes
+SET gadget_wifi_clave = NULLIF(TRIM(config_wifi->>'password'), '')
+WHERE (gadget_wifi_clave IS NULL OR TRIM(gadget_wifi_clave) = '')
+  AND config_wifi ? 'password';
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS logo_url TEXT,
+  ADD COLUMN IF NOT EXISTS eslogan TEXT,
+  ADD COLUMN IF NOT EXISTS secciones_fondo JSONB;
+
+COMMENT ON COLUMN public.restaurantes.logo_url IS
+  'URL del logo (Home). Si vacío, se usa inicial tipográfica.';
+COMMENT ON COLUMN public.restaurantes.eslogan IS
+  'Eslogan / tagline público del restaurante.';
+COMMENT ON COLUMN public.restaurantes.secciones_fondo IS
+  'JSON por sección: { home|nosotros|menu|ubicacion: { tipo: color|image|video, valor } }.';
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS nosotros_bloques JSONB,
+  ADD COLUMN IF NOT EXISTS redes_sociales JSONB;
+
+COMMENT ON COLUMN public.restaurantes.nosotros_bloques IS
+  'Array editorial: [{ titulo, texto, media_url, alineacion: alternada|inversa }].';
+COMMENT ON COLUMN public.restaurantes.redes_sociales IS
+  'Array de redes: [{ red: instagram|facebook|tiktok|tripadvisor, url }].';
+
+ALTER TABLE public.categorias
+  ADD COLUMN IF NOT EXISTS bg_type TEXT,
+  ADD COLUMN IF NOT EXISTS bg_valor TEXT;
+
+COMMENT ON COLUMN public.categorias.bg_type IS
+  'Fondo dinámico del menú al enfocar la categoría: color | image | video.';
+COMMENT ON COLUMN public.categorias.bg_valor IS
+  'HEX o URL de media para el fondo de la categoría.';
+
+-- Marca blanca (white-label). Nullable → la WebApp usa fallbacks Black Sushi.
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS color_primario TEXT,
+  ADD COLUMN IF NOT EXISTS color_fondo TEXT,
+  ADD COLUMN IF NOT EXISTS color_texto TEXT,
+  ADD COLUMN IF NOT EXISTS tipo_letra TEXT,
+  ADD COLUMN IF NOT EXISTS imagen_fondo TEXT;
+
+COMMENT ON COLUMN public.restaurantes.color_primario IS
+  'Acento de marca (hex/rgb). Chips activos, CTAs.';
+COMMENT ON COLUMN public.restaurantes.color_fondo IS
+  'Fondo de la WebApp móvil.';
+COMMENT ON COLUMN public.restaurantes.color_texto IS
+  'Color de texto principal.';
+COMMENT ON COLUMN public.restaurantes.tipo_letra IS
+  'Familia tipográfica CSS (ej: Syne, sans-serif).';
+COMMENT ON COLUMN public.restaurantes.imagen_fondo IS
+  'URL de imagen de atmósfera (Cloudinary u otra).';
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS estilo_adn TEXT;
+
+COMMENT ON COLUMN public.restaurantes.estilo_adn IS
+  'ADN de diseño: elegant | modern | retro (Design System Xemilla).';
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS menu_font TEXT;
+
+COMMENT ON COLUMN public.restaurantes.menu_font IS
+  'Tipografía del menú: elegant (Playfair) | modern (Space Grotesk) | urban (Oswald).';
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS share_image_url TEXT,
+  ADD COLUMN IF NOT EXISTS app_icon_url TEXT,
+  ADD COLUMN IF NOT EXISTS ui_estilo JSONB;
+
+COMMENT ON COLUMN public.restaurantes.share_image_url IS
+  'Imagen Open Graph / WhatsApp (og:image).';
+COMMENT ON COLUMN public.restaurantes.app_icon_url IS
+  'Icono PWA / apple-touch-icon para descarga a pantalla de inicio.';
+COMMENT ON COLUMN public.restaurantes.ui_estilo IS
+  'Tokens UI: { home: { titulo_size|logo_size|eslogan_size: 1-5, tracking, subtitulo_color }, nosotros|ubicacion: { color_fondo, color_titulo, color_cuerpo } }.';
+
+-- Contenido público (ubicación / horarios / nosotros) — editable sin tocar código.
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS direccion TEXT,
+  ADD COLUMN IF NOT EXISTS horarios TEXT,
+  ADD COLUMN IF NOT EXISTS instagram_url TEXT,
+  ADD COLUMN IF NOT EXISTS whatsapp_url TEXT,
+  ADD COLUMN IF NOT EXISTS coordenadas_maps TEXT,
+  ADD COLUMN IF NOT EXISTS nosotros_subtitulo TEXT,
+  ADD COLUMN IF NOT EXISTS nosotros_titulo TEXT,
+  ADD COLUMN IF NOT EXISTS nosotros_imagen TEXT,
+  ADD COLUMN IF NOT EXISTS nosotros_texto TEXT;
+
+COMMENT ON COLUMN public.restaurantes.direccion IS
+  'Dirección pública (ej: Chuao, Caracas. Venezuela.).';
+COMMENT ON COLUMN public.restaurantes.horarios IS
+  'Horarios multilínea Carrd (usar \\n entre líneas).';
+COMMENT ON COLUMN public.restaurantes.instagram_url IS
+  'URL completa de Instagram del restaurante.';
+COMMENT ON COLUMN public.restaurantes.whatsapp_url IS
+  'WhatsApp: número E.164 o URL wa.me / api.whatsapp.com.';
+COMMENT ON COLUMN public.restaurantes.coordenadas_maps IS
+  'URL de Google Maps (enlace o búsqueda).';
+COMMENT ON COLUMN public.restaurantes.nosotros_subtitulo IS
+  'Eyebrow editorial de la sección Nosotros.';
+COMMENT ON COLUMN public.restaurantes.nosotros_titulo IS
+  'Título editorial de la sección Nosotros.';
+COMMENT ON COLUMN public.restaurantes.nosotros_imagen IS
+  'URL de imagen del bloque Nosotros.';
+COMMENT ON COLUMN public.restaurantes.nosotros_texto IS
+  'Párrafo / copy de la sección Nosotros.';
+
 CREATE INDEX IF NOT EXISTS idx_restaurantes_user_id
   ON public.restaurantes (user_id);
 
@@ -78,6 +246,7 @@ CREATE TABLE IF NOT EXISTS public.platos (
   precio          NUMERIC(10, 2) NOT NULL CHECK (precio >= 0),
   imagen_url      TEXT,
   disponible      BOOLEAN NOT NULL DEFAULT TRUE,
+  destacado       BOOLEAN NOT NULL DEFAULT FALSE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -88,6 +257,12 @@ COMMENT ON COLUMN public.platos.disponible IS
   'Si es false, el plato puede ocultarse o marcarse como agotado en la UI.';
 COMMENT ON COLUMN public.platos.imagen_url IS
   'URL absoluta de imagen (p. ej. Cloudinary).';
+COMMENT ON COLUMN public.platos.destacado IS
+  'Marca el plato como destacado en menú / panel admin.';
+
+-- Migración segura si la tabla ya existía sin la columna
+ALTER TABLE public.platos
+  ADD COLUMN IF NOT EXISTS destacado BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_platos_restaurante_id
   ON public.platos (restaurante_id);
@@ -385,6 +560,104 @@ CREATE POLICY "categorias_all_superadmin"
   USING (public.is_superadmin())
   WITH CHECK (public.is_superadmin());
 
+-- -----------------------------------------------------------------------------
+-- Alertas de mesa (llamar mesero / pedir cuenta) — realtime admin
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.alertas_mesas (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  restaurante_id  UUID NOT NULL REFERENCES public.restaurantes (id) ON DELETE CASCADE,
+  mesa            TEXT NOT NULL,
+  tipo            TEXT NOT NULL CHECK (tipo IN ('mesero', 'cuenta')),
+  atendida        BOOLEAN NOT NULL DEFAULT FALSE,
+  atendida_at     TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.alertas_mesas
+  ADD COLUMN IF NOT EXISTS atendida_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS alertas_mesas_rest_atendida_idx
+  ON public.alertas_mesas (restaurante_id, atendida, created_at DESC);
+
+COMMENT ON TABLE public.alertas_mesas IS
+  'Solicitudes en vivo desde la WebApp (llamar mesero / pedir cuenta).';
+COMMENT ON COLUMN public.alertas_mesas.tipo IS
+  'mesero | cuenta';
+COMMENT ON COLUMN public.alertas_mesas.atendida_at IS
+  'Momento en que el staff marcó la alerta como atendida (KPI de respuesta).';
+
+-- Contador de vistas de platos (pre-cableado para analytics)
+CREATE TABLE IF NOT EXISTS public.plato_vistas (
+  id              BIGSERIAL PRIMARY KEY,
+  restaurante_id  UUID NOT NULL REFERENCES public.restaurantes (id) ON DELETE CASCADE,
+  plato_id        BIGINT REFERENCES public.platos (id) ON DELETE CASCADE,
+  plato_nombre    TEXT,
+  vistas          INTEGER NOT NULL DEFAULT 0,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT plato_vistas_unique UNIQUE (restaurante_id, plato_id)
+);
+
+ALTER TABLE public.plato_vistas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "plato_vistas_select_owner" ON public.plato_vistas;
+CREATE POLICY "plato_vistas_select_owner"
+  ON public.plato_vistas
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.is_superadmin()
+    OR restaurante_id IN (
+      SELECT id FROM public.restaurantes WHERE user_id = auth.uid()
+    )
+  );
+
+ALTER TABLE public.alertas_mesas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "alertas_mesas_insert_public" ON public.alertas_mesas;
+CREATE POLICY "alertas_mesas_insert_public"
+  ON public.alertas_mesas
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "alertas_mesas_select_owner" ON public.alertas_mesas;
+CREATE POLICY "alertas_mesas_select_owner"
+  ON public.alertas_mesas
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.is_superadmin()
+    OR restaurante_id IN (
+      SELECT id FROM public.restaurantes WHERE user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "alertas_mesas_update_owner" ON public.alertas_mesas;
+CREATE POLICY "alertas_mesas_update_owner"
+  ON public.alertas_mesas
+  FOR UPDATE
+  TO authenticated
+  USING (
+    public.is_superadmin()
+    OR restaurante_id IN (
+      SELECT id FROM public.restaurantes WHERE user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    public.is_superadmin()
+    OR restaurante_id IN (
+      SELECT id FROM public.restaurantes WHERE user_id = auth.uid()
+    )
+  );
+
+-- Realtime (ignorar error si ya está en la publication)
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.alertas_mesas;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- =============================================================================
 -- Notas de uso
 -- =============================================================================
@@ -394,4 +667,6 @@ CREATE POLICY "categorias_all_superadmin"
 -- 4. El Dashboard debe usar la sesión del propietario (authenticated).
 -- 5. SuperAdmin: cuenta con email = carlos@crx.com (o el de is_superadmin()).
 -- 6. Panel maestro: /admin/super/dashboard — env SUPERADMIN_EMAIL.
+-- 7. Fotos de platos: crear bucket Storage público llamado "platos".
+-- 8. Alertas mesa: habilitar Realtime en alertas_mesas (Dashboard → Database → Replication).
 -- =============================================================================

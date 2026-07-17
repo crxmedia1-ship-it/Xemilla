@@ -1,36 +1,97 @@
 ---
+import SectionAtmosphere from './SectionAtmosphere.astro';
+
 interface Props {
   sectionId: string;
   title: string;
+  fondoTipo?: string;
+  fondoValor?: string;
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+  };
   estilos: {
     textColor: string;
     borderColor: string;
     mutedColor: string;
     displayClass: string;
+    panelColor: string;
   };
 }
 
-const { sectionId, title, estilos } = Astro.props;
+const {
+  sectionId,
+  title,
+  fondoTipo = 'color',
+  fondoValor = '',
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const containerBg = (sectionColors.color_fondo || '').trim();
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+
+const hasAtmosphere =
+  !containerBg &&
+  (fondoTipo === 'image' || fondoTipo === 'video' || fondoTipo === 'color') &&
+  Boolean(String(fondoValor || '').trim());
+
+const sheetStyle = [
+  containerBg ? `background-color:${containerBg}` : '',
+  containerBg ? `--sec-fondo:${containerBg}` : '',
+  titleColor ? `--sec-titulo:${titleColor}` : '',
+  bodyColor ? `--sec-cuerpo:${bodyColor}` : '',
+  !containerBg && hasAtmosphere && fondoTipo === 'color' ? `background-color:${fondoValor}` : '',
+  !containerBg && hasAtmosphere && fondoTipo !== 'color'
+    ? 'background-color:var(--color-fondo)'
+    : '',
+]
+  .filter(Boolean)
+  .join('; ');
 ---
 
 <section
   id={`section-${sectionId}`}
   data-section={sectionId}
   data-open="false"
-  class={`panel-sheet pointer-events-none fixed inset-0 z-40 mx-auto flex max-w-md translate-y-full flex-col opacity-0 transition-all duration-300 ease-out ${estilos.textColor}`}
+  class:list={[
+    'panel-sheet pointer-events-none fixed inset-0 z-50 mx-auto flex max-w-md translate-y-full flex-col opacity-0 transition-all duration-300 ease-out will-change-transform',
+    !hasAtmosphere && !containerBg && estilos.panelColor,
+    estilos.textColor,
+  ]}
+  style={sheetStyle || undefined}
   aria-hidden="true"
 >
+  {!containerBg && <SectionAtmosphere tipo={fondoTipo} valor={fondoValor} />}
+
   <header
-    class={`sticky top-0 z-20 flex items-center justify-between border-b border-white/10 px-5 py-4 backdrop-blur-xl ${estilos.borderColor}`}
+    class:list={[
+      'sticky top-0 z-20 flex items-center justify-between border-b border-white/10 px-5 py-4 backdrop-blur-md',
+      !hasAtmosphere && !containerBg && estilos.panelColor,
+      estilos.borderColor,
+    ]}
+    style={
+      containerBg
+        ? `background-color:color-mix(in srgb, ${containerBg} 88%, transparent)`
+        : hasAtmosphere
+          ? 'background-color:color-mix(in srgb, var(--color-fondo) 78%, transparent)'
+          : undefined
+    }
   >
-    <h2 class={`text-[0.72rem] font-semibold tracking-[0.28em] uppercase ${estilos.displayClass}`}>
+    <h2
+      class={`relative z-10 text-[0.72rem] font-semibold tracking-[0.28em] uppercase ${estilos.displayClass}`}
+      style={titleColor ? `color:${titleColor}` : undefined}
+    >
       {title}
     </h2>
     <button
       type="button"
       data-close-section
-      class={`flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 shadow-inner backdrop-blur-md transition-all duration-200 active:scale-95 ${estilos.mutedColor}`}
+      class={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 shadow-inner backdrop-blur-md transition-all duration-200 active:scale-95 ${estilos.mutedColor}`}
       aria-label="Cerrar"
+      style={titleColor ? `color:${titleColor}` : undefined}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -46,7 +107,13 @@ const { sectionId, title, estilos } = Astro.props;
     </button>
   </header>
 
-  <div class="flex-1 overflow-y-auto overscroll-contain">
+  <div
+    class:list={[
+      'relative z-10 flex-1 overflow-y-auto overscroll-contain',
+      !hasAtmosphere && !containerBg && estilos.panelColor,
+    ]}
+    style={bodyColor ? `color:${bodyColor}` : undefined}
+  >
     <slot />
   </div>
 </section>

@@ -1,0 +1,28 @@
+---
+/**
+ * Isotipo Xemilla discreto para pie de paneles admin.
+ */
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+
+const SRC =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1784310548/Photoroom_20260717_132348_xrnil8.png';
+---
+
+<footer
+  class:list={['admin-xemilla-mark', className]}
+  aria-label="Xemilla"
+>
+  <img
+    src={SRC}
+    alt="Xemilla"
+    width="120"
+    height="40"
+    loading="lazy"
+    decoding="async"
+    class="admin-xemilla-mark__img"
+  />
+</footer>

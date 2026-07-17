@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from './lib/supabase/server.js';
 
 /**
  * Solo refresca sesión en rutas on-demand del panel.
- * Las páginas públicas siguen prerenderizadas y no necesitan cookies.
+ * Las páginas públicas (incl. /[slug] SSR) no necesitan cookies.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;

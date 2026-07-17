@@ -3,6 +3,7 @@ interface Props {
   nombre: string;
   logoText: string;
   logoLetter: string;
+  logoUrl?: string;
   tagline: string;
   estilos: {
     mutedColor: string;
@@ -14,35 +15,172 @@ interface Props {
   };
   showWifi?: boolean;
   showDividir?: boolean;
+  showLlamarMesero?: boolean;
+  showBoutique?: boolean;
+  /** Credenciales Wi‑Fi para subtítulo Carrd */
+  wifiSsid?: string;
+  wifiClave?: string;
+  /** CTA Carrd de reservas (enlace externo / WhatsApp) */
+  reservasCta?: { label: string; href: string } | null;
+  homeUi?: {
+    titulo_size?: number | string;
+    logo_size?: number | string;
+    eslogan_size?: number | string;
+    tracking?: string;
+    subtitulo_color?: string;
+  };
 }
 
 const {
   nombre,
   logoText,
   logoLetter,
+  logoUrl = '',
   tagline,
   estilos,
   showWifi = false,
   showDividir = false,
+  showLlamarMesero = false,
+  showBoutique = false,
+  wifiSsid = '',
+  wifiClave = '',
+  reservasCta = null,
+  homeUi = {},
 } = Astro.props;
 
-const navItems = [
-  { id: 'menu', label: 'IL MENÚ' },
-  { id: 'nosotros', label: 'NOSOTROS' },
-  { id: 'ubicacion', label: 'UBICACIÓN Y HORARIOS' },
+/**
+ * Subtítulos estilo Carrd bajo cada enlace tipográfico.
+ * @param {string} id
+ * @param {string} fallbackTagline
+ */
+function navSubtitle(id: string, fallbackTagline: string) {
+  if (id === 'wifi') {
+    const ssid = String(wifiSsid || '').trim();
+    const clave = String(wifiClave || '').trim();
+    if (ssid || clave) {
+      const parts = [];
+      if (ssid) parts.push(`SSID: ${ssid}`);
+      if (clave) parts.push(`CLAVE: ${clave}`);
+      return parts.join('  ·  ');
+    }
+    return 'GUEST NETWORK';
+  }
+  const map: Record<string, string> = {
+    menu: 'SAVOR ASIAN DELIGHTS',
+    nosotros: 'NUESTRA FILOSOFÍA',
+    ubicacion: 'CONTACTO · MAPS · HORARIOS',
+    dividir: 'SPLIT THE BILL',
+    mesero: 'CALL YOUR SERVER',
+    boutique: 'EXPLORA NUESTRA TIENDA OFICIAL',
+  };
+  if (id === 'menu' && fallbackTagline?.trim()) {
+    return fallbackTagline.trim().toUpperCase();
+  }
+  return map[id] || '';
+}
+
+type NavItem = {
+  id: string;
+  label: string;
+  subtitle: string;
+  kind: 'section' | 'reservas' | 'boutique';
+  href?: string;
+  /** Solo activo con mesa asignada (QR de mesa) */
+  requiresMesa?: boolean;
+};
+
+const primaryNav: NavItem[] = [
+  {
+    id: 'menu',
+    label: 'EL MENÚ',
+    subtitle: navSubtitle('menu', tagline),
+    kind: 'section',
+  },
+  {
+    id: 'nosotros',
+    label: 'NOSOTROS',
+    subtitle: navSubtitle('nosotros', tagline),
+    kind: 'section',
+  },
 ];
 
-if (showWifi) navItems.push({ id: 'wifi', label: 'WI‑FI' });
-if (showDividir) navItems.push({ id: 'dividir', label: 'DIVIDIR CUENTA' });
+/** UBICACIÓN fija; gadgets condicionales debajo */
+const trailingNav: NavItem[] = [
+  {
+    id: 'ubicacion',
+    label: 'UBICACIÓN Y HORARIOS',
+    subtitle: navSubtitle('ubicacion', tagline),
+    kind: 'section',
+  },
+];
+
+if (showWifi) {
+  trailingNav.push({
+    id: 'wifi',
+    label: 'CONECTAR WI-FI',
+    subtitle: navSubtitle('wifi', tagline),
+    kind: 'section',
+  });
+}
+if (showLlamarMesero) {
+  trailingNav.push({
+    id: 'mesero',
+    label: 'LLAMAR MESERO',
+    subtitle: navSubtitle('mesero', tagline),
+    kind: 'section',
+    requiresMesa: true,
+  });
+}
+if (showDividir) {
+  trailingNav.push({
+    id: 'dividir',
+    label: 'PEDIR LA CUENTA / DIVIDIR CUENTA',
+    subtitle: navSubtitle('dividir', tagline),
+    kind: 'section',
+    requiresMesa: true,
+  });
+}
+if (showBoutique) {
+  trailingNav.push({
+    id: 'boutique',
+    label: 'BOUTIQUE / MERCHANDISE',
+    subtitle: navSubtitle('boutique', tagline),
+    kind: 'boutique',
+  });
+}
+
+const hasReservasCta = Boolean(reservasCta?.href);
+const reservasItem: NavItem | null = hasReservasCta
+  ? {
+      id: 'reservas',
+      label: (reservasCta?.label || 'PEDIR / RESERVAR').toUpperCase(),
+      subtitle: 'RESERVATIONS',
+      kind: 'reservas',
+      href: reservasCta?.href,
+    }
+  : null;
+
+/** Orden Carrd: principales → CTA reservas al centro → ubicación + gadgets */
+const navSequence: NavItem[] = [
+  ...primaryNav,
+  ...(reservasItem ? [reservasItem] : []),
+  ...trailingNav,
+];
 ---
 
 <div
-  class="linktree-home flex min-h-dvh flex-col px-6 pb-12 pt-14 transition-all duration-300"
+  class="linktree-home relative z-10 flex min-h-dvh flex-col px-6 pb-14 pt-14 transition-all duration-300"
   data-linktree-home
+  style={[
+    homeUi?.subtitulo_color ? `--home-subtitulo-color:${homeUi.subtitulo_color}` : '',
+  ]
+    .filter(Boolean)
+    .join(';')}
 >
   <header class="flex flex-col items-center text-center">
     <div
-      class={`relative flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-full ${estilos.displayClass}`}
+      class={`relative flex items-center justify-center rounded-full ${estilos.displayClass}`}
+      style="width:var(--home-logo-size, 5.25rem); height:var(--home-logo-size, 5.25rem)"
       aria-hidden="true"
     >
       <span
@@ -50,45 +188,199 @@ if (showDividir) navItems.push({ id: 'dividir', label: 'DIVIDIR CUENTA' });
         style="--logo-ring: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.2))"
       >
       </span>
-      <span
-        class={`relative flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-white/10 bg-black/20 text-2xl font-semibold shadow-inner backdrop-blur-md ${estilos.textColor}`}
-      >
-        {logoLetter}
-      </span>
+      {
+        logoUrl ? (
+          <img
+            src={logoUrl}
+            alt=""
+            class="relative rounded-full border border-white/10 object-cover shadow-inner"
+            style="width:calc(var(--home-logo-size, 5.25rem) - 0.4rem); height:calc(var(--home-logo-size, 5.25rem) - 0.4rem)"
+          />
+        ) : (
+          <span
+            class={`relative flex items-center justify-center rounded-full border border-white/10 bg-black/20 font-semibold shadow-inner backdrop-blur-md ${estilos.textColor}`}
+            style="width:calc(var(--home-logo-size, 5.25rem) - 0.4rem); height:calc(var(--home-logo-size, 5.25rem) - 0.4rem); font-size:calc(var(--home-logo-size, 5.25rem) * 0.32)"
+          >
+            {logoLetter}
+          </span>
+        )
+      }
     </div>
 
     <h1
-      class={`mt-7 whitespace-pre-line text-center text-[1.85rem] font-semibold leading-[1.1] ${estilos.logoClass} ${estilos.displayClass}`}
+      class={`mt-7 whitespace-pre-line text-center font-medium leading-[1.1] uppercase font-[family-name:var(--fuente-principal)] ${estilos.textColor}`}
+      style="font-size:var(--home-titulo-size, 1.875rem); letter-spacing:var(--home-tracking, 0.28em)"
     >
       {logoText}
     </h1>
 
-    <p
-      class={`mt-3 max-w-[17rem] text-[0.78rem] leading-relaxed tracking-[0.04em] ${estilos.mutedColor}`}
-    >
-      {tagline}
-    </p>
+    {
+      tagline && (
+        <p
+          class="mt-3 max-w-[17rem] font-medium uppercase leading-relaxed tracking-[0.22em]"
+          style="color:var(--home-subtitulo-color, var(--color-primario)); font-size:var(--home-eslogan-size, 0.72rem)"
+        >
+          {tagline}
+        </p>
+      )
+    }
   </header>
 
-  <nav class="mt-12 flex flex-1 flex-col gap-3.5" aria-label={`Navegación ${nombre}`}>
+  <nav
+    class="mt-10 flex flex-1 flex-col items-center justify-center gap-1"
+    aria-label={`Navegación ${nombre}`}
+  >
     {
-      navItems.map((item) => (
-        <button type="button" data-open-section={item.id} class="btn-premium">
-          <span class="btn-premium__inner">
-            <span class="btn-premium__shine" aria-hidden="true" />
-            {item.label}
-          </span>
-        </button>
-      ))
+      navSequence.map((item) => {
+        const titleClass =
+          'font-[family-name:var(--fuente-principal)] font-medium uppercase leading-[1.15] text-center text-[color:var(--color-texto)]';
+        const titleStyle =
+          item.id === 'dividir'
+            ? 'font-size:calc(var(--home-titulo-size, 1.5rem) * 0.78); letter-spacing:var(--home-tracking, 0.22em)'
+            : 'font-size:var(--home-titulo-size, 1.5rem); letter-spacing:var(--home-tracking, 0.28em)';
+        const subClass =
+          'mt-3 max-w-[18rem] text-center text-[10px] font-medium uppercase tracking-[0.22em]';
+        const subStyle = 'color:var(--home-subtitulo-color, var(--color-primario))';
+
+        if (item.kind === 'reservas' && item.href) {
+          return (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-reservas-home-cta
+              class="group carrd-nav-link carrd-nav-link--reservas flex w-full max-w-[20rem] cursor-pointer flex-col items-center justify-center border border-[color:var(--home-subtitulo-color,var(--color-primario))] px-6 py-6 transition-all duration-300 hover:scale-[1.02] hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--color-primario)]"
+            >
+              <span class={titleClass} style={titleStyle}>
+                {item.label}
+              </span>
+              {item.subtitle && (
+                <span class={subClass} style={subStyle}>
+                  {item.subtitle}
+                </span>
+              )}
+            </a>
+          );
+        }
+
+        if (item.kind === 'boutique') {
+          return (
+            <button
+              type="button"
+              data-open-boutique
+              class="group carrd-nav-link flex w-full max-w-[20rem] cursor-pointer flex-col items-center justify-center bg-transparent py-6 transition-all duration-300 hover:scale-[1.02] hover:opacity-80 focus-visible:opacity-80 focus-visible:outline-none"
+            >
+              <span class={titleClass} style={titleStyle}>
+                {item.label}
+              </span>
+              {item.subtitle && (
+                <span class={subClass} style={subStyle}>
+                  {item.subtitle}
+                </span>
+              )}
+            </button>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            data-open-section={item.id}
+            data-requires-mesa={item.requiresMesa ? 'true' : undefined}
+            aria-disabled={item.requiresMesa ? 'true' : undefined}
+            class:list={[
+              'group carrd-nav-link flex w-full max-w-[20rem] cursor-pointer flex-col items-center justify-center bg-transparent py-6 transition-all duration-300 hover:scale-[1.02] hover:opacity-80 focus-visible:opacity-80 focus-visible:outline-none',
+              item.requiresMesa && 'carrd-nav-link--mesa-gated is-mesa-locked',
+            ]}
+          >
+            <span class={titleClass} style={titleStyle}>
+              {item.label}
+            </span>
+            {item.subtitle && (
+              <span class={subClass} style={subStyle} data-carrd-subtitle>
+                {item.subtitle}
+              </span>
+            )}
+            {item.requiresMesa && (
+              <span
+                class="carrd-mesa-lock mt-3 flex max-w-[16rem] items-center justify-center gap-1.5 text-center text-[9px] font-medium uppercase leading-relaxed tracking-[0.18em] opacity-70"
+                style="color:var(--home-subtitulo-color, var(--color-primario))"
+                data-mesa-lock-hint
+                hidden
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  class="size-3 shrink-0"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+                  <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
+                </svg>
+                Disponible únicamente escaneando el código QR en tu mesa
+              </span>
+            )}
+          </button>
+        );
+      })
     }
   </nav>
 
-  <footer class={`mt-12 text-center text-[10px] tracking-[0.28em] uppercase ${estilos.softColor}`}>
+  <footer
+    class={`mt-10 text-center text-[10px] tracking-[0.28em] uppercase ${estilos.softColor}`}
+  >
     Powered by CRX
   </footer>
 </div>
 
 <style>
+  .carrd-nav-link {
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .carrd-nav-link--reservas {
+    background: transparent;
+    margin-block: 0.35rem;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked:hover {
+    opacity: 0.4;
+    transform: none !important;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-carrd-subtitle] {
+    display: none;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-mesa-lock-hint] {
+    display: inline-flex !important;
+  }
+
+  .carrd-nav-link--mesa-gated:not(.is-mesa-locked) [data-mesa-lock-hint] {
+    display: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carrd-nav-link {
+      transition: none !important;
+    }
+    .carrd-nav-link:hover {
+      transform: none !important;
+    }
+  }
+
   :global([data-theme='sanza']) .linktree-home [aria-hidden='true'] > span:first-child {
     background: linear-gradient(
       135deg,
@@ -103,3 +395,36 @@ if (showDividir) navItems.push({ id: 'dividir', label: 'DIVIDIR CUENTA' });
     background: rgba(255, 252, 245, 0.55);
   }
 </style>
+
+<script>
+  import { syncMesaSession } from '../../lib/mesa-session.js';
+
+  /**
+   * Persiste ?mesa= y bloquea Carrd de mesero/cuenta si no hay mesa.
+   */
+  function applyMesaGate() {
+    const mesa = syncMesaSession();
+    const unlocked = Boolean(mesa);
+
+    document.querySelectorAll('[data-requires-mesa="true"]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.classList.toggle('is-mesa-locked', !unlocked);
+      el.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
+      if (unlocked) {
+        el.removeAttribute('tabindex');
+      } else {
+        el.setAttribute('tabindex', '-1');
+      }
+    });
+
+    document.documentElement.dataset.mesaAsignada = unlocked ? 'true' : 'false';
+    if (mesa) {
+      document.documentElement.dataset.mesa = mesa;
+    } else {
+      delete document.documentElement.dataset.mesa;
+    }
+  }
+
+  applyMesaGate();
+  document.addEventListener('astro:page-load', applyMesaGate);
+</script>

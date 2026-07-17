@@ -1,15 +1,16 @@
 import { isSuperAdminUser } from '../../config/superadmin.js';
+import { uploadPlatoImage } from '../../lib/platos-admin.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
 
 export const prerender = false;
 
 /**
- * Actualiza disponibilidad y/o precio de un plato.
- * - Dueño: JWT + RLS
- * - SuperAdmin: service role (si hay key) o policies RLS de súper admin
+ * Actualiza campos de un plato.
+ * Acepta JSON o multipart/form-data (para subir imagen).
  *
- * Body JSON: { id: number, disponible?: boolean, precio?: number }
+ * JSON: { id, nombre?, descripcion?, precio?, disponible?, destacado?, imagen_url? }
+ * FormData: id + imagen (File) y/o mismos campos de texto
  */
 export async function POST({ request, cookies }) {
   const supabase = createSupabaseServerClient({ request, cookies });
@@ -20,91 +21,145 @@ export async function POST({ request, cookies }) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'No autenticado' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: 'No autenticado' }, 401);
   }
 
-  let body;
+  const contentType = request.headers.get('content-type') || '';
+  /** @type {Record<string, unknown>} */
+  let raw = {};
+  /** @type {File | null} */
+  let imagenFile = null;
+
   try {
-    body = await request.json();
+    if (contentType.includes('multipart/form-data')) {
+      const form = await request.formData();
+      raw = {
+        id: form.get('id'),
+        nombre: form.get('nombre'),
+        descripcion: form.get('descripcion'),
+        precio: form.get('precio'),
+        disponible: form.get('disponible'),
+        destacado: form.get('destacado'),
+        imagen_url: form.get('imagen_url'),
+        restaurante_id: form.get('restaurante_id'),
+      };
+      const file = form.get('imagen');
+      if (file instanceof File && file.size > 0) imagenFile = file;
+    } else {
+      raw = await request.json();
+    }
   } catch {
-    return new Response(JSON.stringify({ error: 'JSON inválido' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: 'Cuerpo de petición inválido' }, 400);
   }
 
-  const id = Number(body?.id);
+  const id = Number(raw.id);
   if (!Number.isFinite(id) || id <= 0) {
-    return new Response(JSON.stringify({ error: 'id de plato requerido' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: 'id de plato requerido' }, 400);
   }
+
+  const writeClient = getSuperAdminWriteClient(supabase, user);
 
   /** @type {Record<string, unknown>} */
   const patch = {};
 
-  if (typeof body.disponible === 'boolean') {
-    patch.disponible = body.disponible;
+  if (typeof raw.nombre === 'string') {
+    const nombre = raw.nombre.trim();
+    if (!nombre) return json({ error: 'El nombre no puede estar vacío' }, 400);
+    patch.nombre = nombre;
   }
 
-  if (body.precio !== undefined && body.precio !== null) {
-    const precio = Number(body.precio);
+  if (typeof raw.descripcion === 'string') {
+    patch.descripcion = raw.descripcion.trim() || null;
+  }
+
+  if (raw.precio !== undefined && raw.precio !== null && raw.precio !== '') {
+    const precio = Number(String(raw.precio).replace(',', '.'));
     if (!Number.isFinite(precio) || precio < 0) {
-      return new Response(JSON.stringify({ error: 'precio inválido' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'precio inválido' }, 400);
     }
     patch.precio = precio;
   }
 
-  if (Object.keys(patch).length === 0) {
-    return new Response(
-      JSON.stringify({ error: 'Enviá disponible y/o precio para actualizar' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+  if (typeof raw.disponible === 'boolean') {
+    patch.disponible = raw.disponible;
+  } else if (raw.disponible === 'true' || raw.disponible === 'false') {
+    patch.disponible = raw.disponible === 'true';
   }
 
-  const writeClient = getSuperAdminWriteClient(supabase, user);
+  if (typeof raw.destacado === 'boolean') {
+    patch.destacado = raw.destacado;
+  } else if (raw.destacado === 'true' || raw.destacado === 'false') {
+    patch.destacado = raw.destacado === 'true';
+  }
+
+  if (typeof raw.imagen_url === 'string') {
+    const url = raw.imagen_url.trim();
+    if (!url || url.toLowerCase() === 'no') {
+      patch.imagen_url = null;
+    } else if (/^https?:\/\//i.test(url)) {
+      patch.imagen_url = url;
+    } else {
+      return json({ error: 'URL de imagen inválida' }, 400);
+    }
+  }
+
+  if (imagenFile) {
+    let restauranteId = String(raw.restaurante_id ?? '').trim();
+    if (!restauranteId) {
+      const { data: platoRow } = await writeClient
+        .from('platos')
+        .select('restaurante_id')
+        .eq('id', id)
+        .maybeSingle();
+      restauranteId = platoRow?.restaurante_id ?? '';
+    }
+    if (!restauranteId) {
+      return json({ error: 'No se pudo resolver restaurante_id para la imagen' }, 400);
+    }
+
+    const uploaded = await uploadPlatoImage(writeClient, restauranteId, imagenFile);
+    if (uploaded.error && !uploaded.url) {
+      return json({ error: uploaded.error }, 400);
+    }
+    if (uploaded.url) patch.imagen_url = uploaded.url;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return json({ error: 'No hay campos para actualizar' }, 400);
+  }
 
   const { data, error } = await writeClient
     .from('platos')
     .update(patch)
     .eq('id', id)
-    .select('id, nombre, precio, disponible')
+    .select('id, nombre, descripcion, precio, disponible, destacado, imagen_url')
     .maybeSingle();
 
   if (error) {
     console.error('[api/update-plato]', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: error.message }, 400);
   }
 
   if (!data) {
-    return new Response(
-      JSON.stringify({
-        error: isSuperAdminUser(user)
-          ? 'Plato no encontrado. Si el error persiste, configurá SUPABASE_SERVICE_ROLE_KEY o aplicá las policies de SuperAdmin en SQL.'
-          : 'Plato no encontrado o sin permiso',
-      }),
+    return json(
       {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
+        error: isSuperAdminUser(user)
+          ? 'Plato no encontrado. Revisá RLS / service role.'
+          : 'Plato no encontrado o sin permiso',
       },
+      404,
     );
   }
 
-  return new Response(JSON.stringify({ ok: true, plato: data }), {
-    status: 200,
+  return json({
+    ok: true,
+    plato: { ...data, precio: Number(data.precio) },
+  });
+}
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
     headers: { 'Content-Type': 'application/json' },
   });
 }

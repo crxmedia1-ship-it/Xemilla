@@ -1,0 +1,332 @@
+---
+/**
+ * Panel de Métricas y Analíticas — KPIs de servicio + placeholder de menú.
+ */
+interface Props {
+  /** Snapshot precalculado (lib/metrics.js) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metrics: any;
+  /** Título contextual */
+  title?: string;
+  subtitle?: string;
+  /** Modo red (SuperAdmin global) */
+  network?: boolean;
+}
+
+const {
+  metrics,
+  title = 'Métricas y Analíticas',
+  subtitle = 'Rendimiento operativo en tiempo casi real',
+  network = false,
+} = Astro.props;
+
+const m = metrics || {};
+const volumen = m.volumen || { hoy: {}, semana: {} };
+const hoy = volumen.hoy || { total: 0, mesero: 0, cuenta: 0 };
+const semana = volumen.semana || { total: 0, mesero: 0, cuenta: 0 };
+const mesas = Array.isArray(m.mesasActivas) ? m.mesasActivas : [];
+const platos = Array.isArray(m.platosMasVistos) ? m.platosMasVistos : [];
+const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
+---
+
+<section class="admin-metrics" data-admin-metrics>
+  <header class="mb-8">
+    <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+      {network ? 'Red Xemilla' : 'Operación en sala'}
+    </p>
+    <h2 class="mt-2 font-blacksushi-display text-2xl font-semibold tracking-tight lg:text-3xl">
+      {title}
+    </h2>
+    <p class="mt-2 max-w-xl text-sm leading-relaxed text-zinc-500">
+      {subtitle}
+    </p>
+  </header>
+
+  <!-- KPI strip -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <article class="metrics-kpi glass-panel p-5">
+      <p class="metrics-kpi__label">Tiempo promedio de respuesta</p>
+      <p class="metrics-kpi__value mt-3 tabular-nums">
+        {m.tiempoPromedioLabel || '—'}
+      </p>
+      <p class="mt-2 text-xs text-zinc-500">
+        Desde alerta hasta “atendida”
+      </p>
+    </article>
+
+    <article class="metrics-kpi glass-panel p-5">
+      <p class="metrics-kpi__label">Volumen hoy</p>
+      <p class="metrics-kpi__value mt-3 tabular-nums">{hoy.total ?? 0}</p>
+      <p class="mt-2 text-xs text-zinc-500">
+        {hoy.mesero ?? 0} mesero · {hoy.cuenta ?? 0} cuenta
+      </p>
+    </article>
+
+    <article class="metrics-kpi glass-panel p-5">
+      <p class="metrics-kpi__label">Volumen 7 días</p>
+      <p class="metrics-kpi__value mt-3 tabular-nums">{semana.total ?? 0}</p>
+      <p class="mt-2 text-xs text-zinc-500">
+        {semana.mesero ?? 0} mesero · {semana.cuenta ?? 0} cuenta
+      </p>
+    </article>
+
+    <article class="metrics-kpi glass-panel p-5">
+      <p class="metrics-kpi__label">Pendientes ahora</p>
+      <p class="metrics-kpi__value mt-3 tabular-nums">{m.pendientes ?? 0}</p>
+      <p class="mt-2 text-xs text-zinc-500">
+        {m.totalAlertas ?? 0} alertas en la ventana
+      </p>
+    </article>
+  </div>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <!-- Ranking mesas -->
+    <article class="glass-panel p-6">
+      <div class="flex items-end justify-between gap-3">
+        <div>
+          <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            Ranking
+          </p>
+          <h3 class="mt-1.5 text-lg font-semibold tracking-tight">
+            Mesas más activas
+          </h3>
+        </div>
+        <p class="text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Top 5
+        </p>
+      </div>
+
+      {
+        mesas.length === 0 ? (
+          <p class="mt-8 text-sm text-zinc-500">
+            Aún no hay alertas registradas. Cuando los comensales usen el QR de mesa,
+            verás el ranking aquí.
+          </p>
+        ) : (
+          <ul class="mt-6 space-y-4">
+            {mesas.map((row, i) => (
+              <li>
+                <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                  <span class="text-sm font-medium tracking-tight">
+                    <span class="mr-2 text-xs tabular-nums text-zinc-500">{i + 1}.</span>
+                    Mesa {row.mesa}
+                  </span>
+                  <span class="text-xs tabular-nums text-zinc-500">{row.total} alertas</span>
+                </div>
+                <div class="metrics-bar">
+                  <span class="metrics-bar__fill" style={`width:${row.pct}%`} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </article>
+
+    <!-- Volumen por tipo -->
+    <article class="glass-panel p-6">
+      <div class="flex items-end justify-between gap-3">
+        <div>
+          <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            Mix de servicio
+          </p>
+          <h3 class="mt-1.5 text-lg font-semibold tracking-tight">
+            Solicitudes · 7 días
+          </h3>
+        </div>
+      </div>
+
+      <ul class="mt-8 space-y-5">
+        <li>
+          <div class="mb-1.5 flex items-baseline justify-between gap-3">
+            <span class="text-sm font-medium tracking-tight">Llamar mesero</span>
+            <span class="text-xs tabular-nums text-zinc-500">{semana.mesero ?? 0}</span>
+          </div>
+          <div class="metrics-bar">
+            <span
+              class="metrics-bar__fill metrics-bar__fill--mesero"
+              style={`width:${Math.round(((semana.mesero || 0) / weekMax) * 100)}%`}
+            />
+          </div>
+        </li>
+        <li>
+          <div class="mb-1.5 flex items-baseline justify-between gap-3">
+            <span class="text-sm font-medium tracking-tight">Pedir la cuenta</span>
+            <span class="text-xs tabular-nums text-zinc-500">{semana.cuenta ?? 0}</span>
+          </div>
+          <div class="metrics-bar">
+            <span
+              class="metrics-bar__fill metrics-bar__fill--cuenta"
+              style={`width:${Math.round(((semana.cuenta || 0) / weekMax) * 100)}%`}
+            />
+          </div>
+        </li>
+      </ul>
+
+      <div class="mt-8 grid grid-cols-2 gap-3 border-t border-white/8 pt-5">
+        <div>
+          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">Hoy · mesero</p>
+          <p class="mt-1 text-xl font-semibold tabular-nums">{hoy.mesero ?? 0}</p>
+        </div>
+        <div>
+          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">Hoy · cuenta</p>
+          <p class="mt-1 text-xl font-semibold tabular-nums">{hoy.cuenta ?? 0}</p>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Platos más vistos (pre-cableado) -->
+  <article class="glass-panel mt-6 p-6">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+          Interés del menú
+        </p>
+        <h3 class="mt-1.5 text-lg font-semibold tracking-tight">
+          Platos más vistos
+        </h3>
+        <p class="mt-1.5 max-w-lg text-sm text-zinc-500">
+          Contador de clics en “Ver” del menú público. Estructura lista; se poblará al
+          registrar eventos de visualización.
+        </p>
+      </div>
+      <span class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        Pre-cableado
+      </span>
+    </div>
+
+    {
+      platos.length === 0 ? (
+        <div class="metrics-placeholder mt-8">
+          <div class="metrics-placeholder__bars" aria-hidden="true">
+            <span style="width:78%" />
+            <span style="width:62%" />
+            <span style="width:48%" />
+            <span style="width:35%" />
+            <span style="width:22%" />
+          </div>
+          <p class="mt-5 text-center text-sm text-zinc-500">
+            Sin datos de vistas todavía. Cuando el frontend registre los clics en VER,
+            aparecerán aquí los platos más consultados.
+          </p>
+        </div>
+      ) : (
+        <ul class="mt-6 space-y-4">
+          {platos.map((row, i) => (
+            <li>
+              <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                <span class="text-sm font-medium tracking-tight">
+                  <span class="mr-2 text-xs tabular-nums text-zinc-500">{i + 1}.</span>
+                  {row.nombre}
+                </span>
+                <span class="text-xs tabular-nums text-zinc-500">{row.vistas} vistas</span>
+              </div>
+              <div class="metrics-bar">
+                <span class="metrics-bar__fill metrics-bar__fill--vistas" style={`width:${row.pct}%`} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </article>
+</section>
+
+<style>
+  .metrics-kpi__label {
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-soft, #71717a);
+  }
+
+  .metrics-kpi__value {
+    font-size: 1.85rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--text-primary, #fafafa);
+  }
+
+  .metrics-bar {
+    height: 0.35rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+  }
+
+  .metrics-bar__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-acento, #6b2d3c);
+    transition:
+      width 500ms ease-out,
+      background-color 500ms ease-in-out;
+    min-width: 0.25rem;
+  }
+
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill {
+    background: #10b981;
+  }
+
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--mesero {
+    background: #34d399;
+  }
+
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--cuenta {
+    background: #a7f3d0;
+  }
+
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--vistas {
+    background: #ffffff;
+  }
+
+  html.admin-panel[data-theme='organico'] .metrics-bar__fill--mesero {
+    background: #6b2d3c;
+  }
+
+  html.admin-panel[data-theme='organico'] .metrics-bar__fill--cuenta {
+    background: color-mix(in srgb, #6b2d3c 55%, #c4a574);
+  }
+
+  html.admin-panel[data-theme='organico'] .metrics-bar__fill--vistas {
+    background: #8a7c74;
+  }
+
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill {
+    background: #18181b;
+  }
+
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--mesero {
+    background: #27272a;
+  }
+
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--cuenta {
+    background: #52525b;
+  }
+
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--vistas {
+    background: #a1a1aa;
+  }
+
+  .metrics-placeholder__bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    opacity: 0.35;
+  }
+
+  .metrics-placeholder__bars > span {
+    display: block;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: var(--color-acento, #6b2d3c);
+  }
+
+  html.admin-panel[data-theme='onyx'] .metrics-placeholder__bars > span {
+    background: #10b981;
+  }
+</style>

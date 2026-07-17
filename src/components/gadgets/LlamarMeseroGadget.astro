@@ -1,0 +1,56 @@
+---
+/**
+ * Gadget: llamar al mesero (alerta tipo mesero).
+ * Requiere mesa en sessionStorage (anti-troll).
+ */
+const { restauranteId = '', enabled = true } = Astro.props;
+---
+
+{
+  enabled ? (
+    <div
+      class="space-y-4"
+      data-mesa-alerta
+      data-alerta-tipo="mesero"
+      data-restaurante-id={restauranteId}
+    >
+      <p class="text-sm text-white/55 leading-relaxed">
+        Avisa al equipo sin salir de la mesa. Solo funciona si entraste por el QR de tu mesa.
+      </p>
+      <div
+        class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/80"
+        data-mesa-display
+      >
+        Sin mesa asignada
+      </div>
+      <input type="hidden" data-mesa-input value="" />
+      <button
+        type="button"
+        data-mesa-enviar
+        disabled
+        class="w-full rounded-2xl bg-[var(--color-acento,#c9a84c)] px-4 py-3.5 text-sm font-semibold text-[var(--color-fondo,#0a0a0a)] transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Llamar mesero
+      </button>
+      <p class="text-xs text-white/40 hidden" data-mesa-status></p>
+    </div>
+  ) : (
+    <p class="text-sm text-white/50">Este servicio no está disponible.</p>
+  )
+}
+
+<script>
+  import { initAllMesaAlertas } from '../../lib/mesa-alerta-client.js';
+
+  function boot() {
+    initAllMesaAlertas('[data-mesa-alerta][data-alerta-tipo="mesero"]', {
+      defaultLabel: 'Llamar mesero',
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
+</script>

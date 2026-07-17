@@ -1,55 +1,53 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { restaurantes } from '../config/restaurantes.js';
-
-const lista = Object.values(restaurantes);
 ---
 
-<Layout title="CRX Restaurantes" theme="crx" themeColor="#09090b" description="SaaS multi-inquilino CRX">
-  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-12 pt-14 text-white">
+<Layout
+  title="Xemilla · Menús digitales CRX"
+  theme="crx"
+  themeColor="#09090b"
+  description="Xemilla — menús digitales de marca blanca para restaurantes"
+>
+  <main class="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-12 pt-16 text-white">
     <header class="text-center">
-      <p class="text-[0.62rem] font-semibold uppercase tracking-[0.35em] text-zinc-500">
-        Multi-inquilino
+      <p class="text-[0.62rem] font-semibold uppercase tracking-[0.4em] text-zinc-500">
+        Software CRX
       </p>
-      <h1 class="mt-3 font-blacksushi-display text-4xl font-semibold tracking-tight">CRX</h1>
-      <p class="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-zinc-400">
-        Experiencia web móvil por marca. Entra a un restaurante de prueba.
+      <h1 class="mt-5 font-blacksushi-display text-[2.75rem] font-semibold leading-none tracking-tight">
+        Xemilla
+      </h1>
+      <p class="mx-auto mt-5 max-w-[18rem] text-[0.9rem] leading-relaxed text-zinc-400">
+        Menús digitales de marca blanca. Cada restaurante vive en su propia experiencia, aislada
+        y lista para el comensal.
       </p>
     </header>
 
-    <ul class="mt-12 space-y-3.5">
-      {
-        lista.map((r) => (
-          <li>
-            <a href={`/${r.slug}`} class="btn-premium block">
-              <span class="btn-premium__inner !bg-zinc-950/90 !text-white">
-                <span class="btn-premium__shine" aria-hidden="true" />
-                <span class="flex flex-col items-center gap-1">
-                  <span class="tracking-[0.28em]">{r.nombre}</span>
-                  <span class="text-[10px] font-medium tracking-normal text-zinc-500 normal-case">
-                    /{r.slug}
-                  </span>
-                </span>
-              </span>
-            </a>
+    <section class="mt-14 space-y-8" aria-label="Presentación">
+      <div class="rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-5 py-6">
+        <ul class="space-y-4 text-left text-sm leading-relaxed text-zinc-400">
+          <li class="flex gap-3">
+            <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-500" aria-hidden="true" />
+            Identidad visual exclusiva por local
           </li>
-        ))
-      }
-    </ul>
+          <li class="flex gap-3">
+            <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-500" aria-hidden="true" />
+            Menú, gadgets y media en una sola webapp móvil
+          </li>
+          <li class="flex gap-3">
+            <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-500" aria-hidden="true" />
+            Acceso solo por el enlace o QR de cada restaurante
+          </li>
+        </ul>
+      </div>
 
-    <footer class="mt-auto pt-12 text-center text-[10px] tracking-[0.28em] uppercase text-zinc-600">
+      <p class="text-center text-[0.78rem] leading-relaxed text-zinc-500">
+        Si llegaste aquí buscando un menú, pedí el enlace al establecimiento. No hay directorio
+        público de locales.
+      </p>
+    </section>
+
+    <footer class="mt-16 text-center text-[10px] uppercase tracking-[0.28em] text-zinc-600">
       Powered by CRX
     </footer>
   </main>
 </Layout>
-
-<style>
-  .btn-premium {
-    background: linear-gradient(
-      135deg,
-      rgba(159, 18, 57, 0.7),
-      rgba(63, 63, 70, 0.85) 45%,
-      rgba(24, 24, 27, 0.95)
-    );
-  }
-</style>

@@ -1,0 +1,61 @@
+---
+/**
+ * Atmósfera de sección: color | image | video + overlay elegante.
+ */
+interface Props {
+  tipo?: string;
+  valor?: string;
+  /** Capa oscura sobre media (default true para image/video) */
+  overlay?: boolean;
+  class?: string;
+}
+
+const {
+  tipo = 'color',
+  valor = '',
+  overlay = true,
+  class: className = '',
+} = Astro.props;
+
+const kind = String(tipo || 'color').toLowerCase();
+const value = String(valor || '').trim();
+const isImage = kind === 'image' && Boolean(value);
+const isVideo = kind === 'video' && Boolean(value);
+const isColor = kind === 'color' && Boolean(value);
+const showMedia = isImage || isVideo;
+---
+
+{
+  (showMedia || isColor) && (
+    <div
+      class={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${className}`}
+      aria-hidden="true"
+      data-section-atmosphere
+      data-fondo-tipo={kind}
+    >
+      {isColor && <div class="absolute inset-0" style={`background-color:${value}`} />}
+
+      {isImage && (
+        <div
+          class="absolute inset-0 bg-cover bg-center"
+          style={`background-image:url("${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`}
+        />
+      )}
+
+      {isVideo && (
+        <video
+          autoplay
+          muted
+          loop
+          playsinline
+          class="absolute inset-0 z-0 h-full w-full object-cover"
+          src={value}
+        />
+      )}
+
+      {showMedia && overlay && (
+        <div class="absolute inset-0 z-[1] bg-black/60 backdrop-blur-[1px]" />
+      )}
+    </div>
+  )
+}

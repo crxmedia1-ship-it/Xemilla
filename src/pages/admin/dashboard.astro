@@ -2,259 +2,3865 @@
 export const prerender = false;
 
 import Layout from '../../layouts/Layout.astro';
+import AdminThemeSwitcher from '../../components/admin/AdminThemeSwitcher.astro';
+import AdminXemillaMark from '../../components/admin/AdminXemillaMark.astro';
+import AdminMetricsPanel from '../../components/admin/AdminMetricsPanel.astro';
 import { getAdminDashboardData } from '../../lib/admin.js';
+import { fetchMetricsSnapshot, emptyMetricsSnapshot } from '../../lib/metrics.js';
+import { createSupabaseServerClient } from '../../lib/supabase/server.js';
+import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
+import { parseBoutiqueConfig } from '../../lib/boutique.js';
 
-const restauranteId = Astro.url.searchParams.get('restaurante');
+const restauranteId =
+  Astro.url.searchParams.get('restaurante') ||
+  Astro.url.searchParams.get('id') ||
+  null;
+const restauranteSlug = Astro.url.searchParams.get('slug') || null;
 
 const session = await getAdminDashboardData(
   { request: Astro.request, cookies: Astro.cookies },
-  { restauranteId },
+  { restauranteId, slug: restauranteSlug },
 );
 
 if (!session) {
   return Astro.redirect('/admin/login');
 }
 
-// Solo SuperAdmin puede abrir un menú ajeno vía ?restaurante=
-if (restauranteId && !session.isSuperAdmin) {
+if ((restauranteId || restauranteSlug) && !session.isSuperAdmin) {
   return Astro.redirect('/admin/dashboard');
 }
 
-// SuperAdmin sin local seleccionado → panel maestro
-if (session.isSuperAdmin && !restauranteId) {
+if (session.isSuperAdmin && !restauranteId && !restauranteSlug) {
   return Astro.redirect('/admin/super/dashboard');
 }
 
-const { restaurante, platos, managingAsSuperAdmin, isSuperAdmin } = session;
+const { restaurante, platos, categorias = [], managingAsSuperAdmin, isSuperAdmin, user } = session;
 const nombre = restaurante?.nombre_comercial ?? 'Sin restaurante';
+const logoUrl = String(restaurante?.logo_url || '').trim();
+const restId = restaurante?.id ?? '';
+const categoriasJson = JSON.stringify(categorias);
+
+const metricsClient = isSuperAdmin
+  ? getSuperAdminWriteClient(
+      createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies }),
+      user,
+    )
+  : createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+
+const metrics = restId
+  ? await fetchMetricsSnapshot(metricsClient, { restauranteId: restId, days: 30 })
+  : emptyMetricsSnapshot();
+
+function parseConfig(value) {
+  if (!value) return {};
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    return {};
+  }
+}
+
+const configWifi = parseConfig(restaurante?.config_wifi);
+const configReservas = parseConfig(restaurante?.config_reservas);
+const boutiqueConfig = parseBoutiqueConfig(restaurante?.config_boutique);
+const seccionesFondo = parseConfig(restaurante?.secciones_fondo);
+const uiEstiloRaw = parseConfig(restaurante?.ui_estilo);
+
+function fondoSeccion(key, fallbackTipo = 'color', fallbackValor = '') {
+  const entry = seccionesFondo?.[key] || {};
+  return {
+    tipo: entry.tipo || entry.type || fallbackTipo,
+    valor: entry.valor || entry.value || entry.url || fallbackValor,
+  };
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** @type {Array<{ titulo: string, texto: string, media_url: string, alineacion: string }>} */
+let nosotrosBloques = parseJsonArray(restaurante?.nosotros_bloques)
+  .map((b) => ({
+    titulo: String(b?.titulo || '').trim(),
+    texto: String(b?.texto || b?.contenido || '').trim(),
+    media_url: String(b?.media_url || b?.imagen || '').trim(),
+    alineacion: String(b?.alineacion || 'alternada').toLowerCase() === 'inversa' ? 'inversa' : 'alternada',
+  }))
+  .filter((b) => b.titulo || b.texto || b.media_url);
+
+if (nosotrosBloques.length === 0 && (restaurante?.nosotros_titulo || restaurante?.nosotros_texto || restaurante?.nosotros_imagen)) {
+  nosotrosBloques = [
+    {
+      titulo: restaurante?.nosotros_titulo || 'Nosotros',
+      texto: restaurante?.nosotros_texto || '',
+      media_url: restaurante?.nosotros_imagen || '',
+      alineacion: 'alternada',
+    },
+  ];
+}
+
+if (nosotrosBloques.length === 0) {
+  nosotrosBloques = [{ titulo: '', texto: '', media_url: '', alineacion: 'alternada' }];
+}
+
+const redesRaw = parseJsonArray(restaurante?.redes_sociales);
+const redesMap = Object.fromEntries(
+  redesRaw
+    .filter((r) => r?.red && r?.url)
+    .map((r) => [String(r.red).toLowerCase(), String(r.url)]),
+);
+if (!redesMap.instagram && restaurante?.instagram_url) {
+  redesMap.instagram = restaurante.instagram_url;
+}
+
+const fondoHome = fondoSeccion(
+  'home',
+  restaurante?.imagen_fondo ? 'image' : 'color',
+  restaurante?.imagen_fondo || restaurante?.color_fondo || '#0a0a0a',
+);
+const fondoNosotros = fondoSeccion('nosotros', 'color', '');
+const fondoMenu = fondoSeccion('menu', 'color', '');
+const fondoUbicacion = fondoSeccion('ubicacion', 'color', '');
+
+const GLOBAL_FONT_OPTIONS = [
+  { id: '', label: 'Del ADN (automático)', value: '' },
+  {
+    id: 'playfair',
+    label: 'Playfair Display',
+    value: 'Playfair Display, ui-serif, Georgia, serif',
+  },
+  {
+    id: 'syne',
+    label: 'Syne',
+    value: 'Syne, ui-sans-serif, system-ui, sans-serif',
+  },
+  {
+    id: 'space-grotesk',
+    label: 'Space Grotesk',
+    value: 'Space Grotesk, ui-sans-serif, system-ui, sans-serif',
+  },
+  {
+    id: 'outfit',
+    label: 'Outfit',
+    value: 'Outfit, ui-sans-serif, system-ui, sans-serif',
+  },
+  {
+    id: 'oswald',
+    label: 'Oswald',
+    value: 'Oswald, ui-sans-serif, system-ui, sans-serif',
+  },
+];
+
+function matchTipoLetraOption(raw) {
+  const v = String(raw || '').trim().toLowerCase();
+  if (!v) return '';
+  if (v.includes('playfair')) return 'Playfair Display, ui-serif, Georgia, serif';
+  if (v.includes('syne')) return 'Syne, ui-sans-serif, system-ui, sans-serif';
+  if (v.includes('space')) return 'Space Grotesk, ui-sans-serif, system-ui, sans-serif';
+  if (v.includes('outfit')) return 'Outfit, ui-sans-serif, system-ui, sans-serif';
+  if (v.includes('oswald')) return 'Oswald, ui-sans-serif, system-ui, sans-serif';
+  const exact = GLOBAL_FONT_OPTIONS.find((o) => o.value.toLowerCase() === v);
+  return exact ? exact.value : '';
+}
+
+const marca = {
+  color_primario: restaurante?.color_primario || '#9f1239',
+  color_fondo: restaurante?.color_fondo || '#0a0a0a',
+  color_texto: restaurante?.color_texto || '#ffffff',
+  estilo_adn: restaurante?.estilo_adn || 'elegant',
+  tipo_letra: matchTipoLetraOption(restaurante?.tipo_letra),
+  logo_url: restaurante?.logo_url || '',
+  eslogan: restaurante?.eslogan || '',
+  share_image_url: restaurante?.share_image_url || '',
+  app_icon_url: restaurante?.app_icon_url || '',
+  home_titulo_size: (() => {
+    const v = uiEstiloRaw?.home?.titulo_size;
+    const n = Number(v);
+    if (n >= 1 && n <= 5) return n;
+    if (v === 'text-xl' || v === 'text-lg') return 2;
+    if (v === 'text-4xl') return 4;
+    if (v === 'text-5xl') return 5;
+    return 3;
+  })(),
+  home_logo_size: (() => {
+    const n = Number(uiEstiloRaw?.home?.logo_size);
+    return n >= 1 && n <= 5 ? n : 3;
+  })(),
+  home_eslogan_size: (() => {
+    const n = Number(uiEstiloRaw?.home?.eslogan_size);
+    return n >= 1 && n <= 5 ? n : 3;
+  })(),
+  home_tracking: [
+    'tracking-normal',
+    'tracking-wider',
+    'tracking-widest',
+    'tracking-[0.3em]',
+  ].includes(uiEstiloRaw?.home?.tracking)
+    ? uiEstiloRaw.home.tracking
+    : 'tracking-[0.3em]',
+  home_subtitulo_color:
+    uiEstiloRaw?.home?.subtitulo_color ||
+    restaurante?.color_primario ||
+    '#9f1239',
+  nosotros_color_fondo: uiEstiloRaw?.nosotros?.color_fondo || '',
+  nosotros_color_titulo: uiEstiloRaw?.nosotros?.color_titulo || '',
+  nosotros_color_cuerpo: uiEstiloRaw?.nosotros?.color_cuerpo || '',
+  ubicacion_color_fondo: uiEstiloRaw?.ubicacion?.color_fondo || '',
+  ubicacion_color_titulo: uiEstiloRaw?.ubicacion?.color_titulo || '',
+  ubicacion_color_cuerpo: uiEstiloRaw?.ubicacion?.color_cuerpo || '',
+  custom_css: restaurante?.custom_css || '',
+  fondo_home_tipo: fondoHome.tipo,
+  fondo_home_valor: fondoHome.valor,
+  fondo_nosotros_tipo: fondoNosotros.tipo,
+  fondo_nosotros_valor: fondoNosotros.valor,
+  fondo_menu_tipo: fondoMenu.tipo,
+  fondo_menu_valor: fondoMenu.valor,
+  menu_font: ['elegant', 'modern', 'urban'].includes(
+    String(restaurante?.menu_font || '').toLowerCase(),
+  )
+    ? String(restaurante.menu_font).toLowerCase()
+    : 'elegant',
+  fondo_ubicacion_tipo: fondoUbicacion.tipo,
+  fondo_ubicacion_valor: fondoUbicacion.valor,
+  nosotros_bloques: nosotrosBloques,
+  direccion: restaurante?.direccion || '',
+  coordenadas_maps: restaurante?.coordenadas_maps || '',
+  redes_instagram: redesMap.instagram || '',
+  redes_facebook: redesMap.facebook || '',
+  redes_tiktok: redesMap.tiktok || '',
+  redes_tripadvisor: redesMap.tripadvisor || '',
+  whatsapp_url:
+    restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
+  horarios: restaurante?.horarios || '',
+  gadget_wifi: Boolean(restaurante?.gadget_wifi),
+  gadget_mesero: Boolean(
+    restaurante?.gadget_mesero || restaurante?.gadget_llamar_mesero,
+  ),
+  gadget_cuenta: Boolean(
+    restaurante?.gadget_cuenta || restaurante?.gadget_dividir_cuenta,
+  ),
+  gadget_dividir_cuenta: Boolean(
+    restaurante?.gadget_cuenta || restaurante?.gadget_dividir_cuenta,
+  ),
+  gadget_reservas: Boolean(restaurante?.gadget_reservas),
+  gadget_llamar_mesero: Boolean(
+    restaurante?.gadget_mesero || restaurante?.gadget_llamar_mesero,
+  ),
+  wifi_ssid:
+    restaurante?.gadget_wifi_ssid || configWifi.ssid || '',
+  wifi_password:
+    restaurante?.gadget_wifi_clave || configWifi.password || '',
+  gadget_boutique: Boolean(restaurante?.gadget_boutique),
+  boutique_productos: boutiqueConfig.productos,
+  reservas_label: configReservas.label || configReservas.boton_texto || 'PEDIR / RESERVAR',
+  reservas_destino_tipo:
+    configReservas.destino_tipo === 'whatsapp' || configReservas.tipo === 'whatsapp'
+      ? 'whatsapp'
+      : 'enlace',
+  reservas_destino_valor:
+    configReservas.destino_valor ||
+    configReservas.url ||
+    configReservas.href ||
+    '',
+};
+
+const fieldClass =
+  'w-full rounded-xl border border-white/10 bg-black/35 px-3.5 py-3 text-sm text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-white/25 focus:ring-2 focus:ring-white/10';
+const labelClass = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
+
+const sampleBulk = isSuperAdmin
+  ? `Categoría | Nombre | Descripción | Precio | Destacado | Imagen
+Entradas | Edamame | Salteado con sal marina | 6.50 | SI | https://res.cloudinary.com/demo/image/upload/sample.jpg
+Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudinary.com/demo/image/upload/sample.jpg`
+  : '';
 ---
 
 <Layout
-  title={`${nombre} · Panel`}
+  title={`${nombre} · Menú`}
   theme="crx"
   themeColor="#09090b"
-  description="Panel de administración del menú"
+  description="Gestión masiva del menú"
+  adminPanel={true}
 >
-  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-16 pt-10 text-white">
-    <header class="flex items-start justify-between gap-4">
-      <div>
+  <main class="mx-auto min-h-dvh w-full max-w-7xl px-6 pb-24 pt-8 lg:px-10">
+    <header class="flex flex-wrap items-end justify-between gap-6 border-b border-white/8 pb-8">
+      <div class="admin-brand-lockup">
         {
-          managingAsSuperAdmin ? (
-            <a
-              href="/admin/super/dashboard"
-              class="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-zinc-500 transition hover:text-zinc-300"
-            >
-              ← SuperAdmin
-            </a>
-          ) : (
-            <p class="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-zinc-500">
-              {isSuperAdmin ? 'Modo SuperAdmin' : 'Panel Xemilla'}
-            </p>
-          )
+          logoUrl ? (
+            <img
+              src={logoUrl}
+              alt=""
+              width="52"
+              height="52"
+              class="admin-brand-logo"
+              loading="eager"
+              decoding="async"
+            />
+          ) : null
         }
-        <h1 class="mt-2 font-blacksushi-display text-3xl font-semibold tracking-tight">
-          {nombre}
-        </h1>
-        <p class="mt-1.5 text-sm text-zinc-400">
-          {platos.length} plato{platos.length === 1 ? '' : 's'} en el menú
+        <div class="min-w-0">
           {
-            managingAsSuperAdmin && restaurante?.slug && (
-              <span class="text-zinc-600"> · /{restaurante.slug}</span>
+            managingAsSuperAdmin || isSuperAdmin ? (
+              <a
+                href="/admin/super/dashboard"
+                class="inline-flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500 transition hover:text-zinc-300"
+              >
+                <span aria-hidden="true">←</span>
+                SuperAdmin
+              </a>
+            ) : (
+              <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+                Panel Xemilla
+              </p>
             )
           }
-        </p>
+          <h1 class="mt-3 font-blacksushi-display text-4xl font-semibold tracking-tight lg:text-5xl">
+            {nombre}
+          </h1>
+          <p class="mt-2 text-sm text-zinc-500">
+            <span id="platos-count">{platos.length}</span> platos · edición en vivo
+          </p>
+        </div>
       </div>
-      {
-        managingAsSuperAdmin ? null : (
-          <form method="POST" action="/api/admin-logout">
-            <button
-              type="submit"
-              class="rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:bg-white/10 hover:text-white"
-            >
-              Salir
-            </button>
-          </form>
-        )
-      }
+
+      <div class="flex flex-wrap items-center gap-3">
+        <AdminThemeSwitcher />
+        <form method="POST" action="/api/admin-logout">
+          <button
+            type="submit"
+            class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition hover:border-white/20 hover:text-zinc-300"
+          >
+            Salir
+          </button>
+        </form>
+      </div>
     </header>
 
     {
       !restaurante ? (
-        <div class="glass-panel mt-10 p-5 text-center">
-          <p class="text-sm leading-relaxed text-zinc-400">
-            {isSuperAdmin
-              ? 'Restaurante no encontrado. Volvé al panel maestro.'
-              : 'Tu usuario no tiene un restaurante vinculado. Contactá a CRX para asociar la cuenta.'}
-          </p>
-          {isSuperAdmin && (
-            <a
-              href="/admin/super/dashboard"
-              class="mt-4 inline-flex text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white underline-offset-4 hover:underline"
-            >
-              Ir al SuperAdmin
-            </a>
-          )}
-        </div>
-      ) : platos.length === 0 ? (
-        <div class="glass-panel mt-10 p-5 text-center">
-          <p class="text-sm leading-relaxed text-zinc-400">Todavía no hay platos en el menú.</p>
+        <div class="glass-panel mt-12 max-w-xl p-8 text-center">
+          <p class="text-sm text-zinc-400">Restaurante no encontrado.</p>
         </div>
       ) : (
-        <ul class="mt-8 space-y-2.5" id="platos-list" data-platos>
-          {platos.map((plato) => (
-            <li
-              class="glass-panel flex items-center gap-3 px-4 py-3.5"
-              data-plato-id={plato.id}
-              data-disponible={plato.disponible ? 'true' : 'false'}
+        <div
+          class="mx-auto mt-10 max-w-7xl"
+          data-restaurante-id={restId}
+          id="dashboard-root"
+          data-categorias={categoriasJson}
+        >
+          <nav
+            class="mb-8 flex flex-wrap gap-2 border-b border-white/8 pb-4"
+            role="tablist"
+            aria-label="Secciones del panel"
+          >
+            <button
+              type="button"
+              role="tab"
+              id="tab-menu"
+              data-dashboard-tab="menu"
+              aria-selected="true"
+              aria-controls="panel-menu"
+              class="dashboard-tab inline-flex items-center rounded-xl border border-white/15 bg-white px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 ease-out"
             >
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium tracking-tight text-white">{plato.nombre}</p>
-                <p class="mt-0.5 text-xs text-zinc-500">
-                  $<span data-precio>{plato.precio.toFixed(2)}</span>
-                  <span class="mx-1.5 text-zinc-700">·</span>
-                  <span
-                    data-estado
-                    class={plato.disponible ? 'text-emerald-400/90' : 'text-amber-400/90'}
+              Menú
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="tab-metricas"
+              data-dashboard-tab="metricas"
+              aria-selected="false"
+              aria-controls="panel-metricas"
+              class="dashboard-tab inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition-all duration-200 ease-out hover:border-white/20 hover:text-zinc-200"
+            >
+              Métricas
+            </button>
+            {
+              isSuperAdmin ? (
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-marca"
+                  data-dashboard-tab="marca"
+                  aria-selected="false"
+                  aria-controls="panel-marca"
+                  class="dashboard-tab inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition-all duration-200 ease-out hover:border-white/20 hover:text-zinc-200"
+                >
+                  Identidad de Marca
+                </button>
+              ) : null
+            }
+          </nav>
+
+          <div id="panel-menu" role="tabpanel" aria-labelledby="tab-menu" data-tab-panel="menu" class="admin-fade-in-up">
+          {
+            isSuperAdmin && (
+              <div class="mb-6 space-y-3">
+                <div class="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    id="bulk-toggle"
+                    aria-expanded="false"
+                    aria-controls="bulk-panel"
+                    class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white"
                   >
-                    {plato.disponible ? 'Disponible' : 'Agotado'}
-                  </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                      <path d="M12 16V4"></path>
+                      <path d="M8 8l4-4 4 4"></path>
+                      <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
+                    </svg>
+                    Carga Masiva (CSV / Texto)
+                    <svg id="bulk-toggle-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform duration-300" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6"></path>
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="nuevo-plato-open"
+                    class="admin-action-btn inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 hover:bg-zinc-100 active:scale-95"
+                  >
+                    <span aria-hidden="true">+</span>
+                    Nuevo Plato
+                  </button>
+                </div>
+
+                <section
+                  id="bulk-panel"
+                  class="bulk-panel glass-panel overflow-hidden"
+                  data-open="false"
+                  aria-hidden="true"
+                >
+                  <div class="bulk-panel__inner p-6 lg:p-7">
+                    <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+                      Bulk Upload
+                    </p>
+                    <h2 class="mt-2 font-blacksushi-display text-2xl font-semibold tracking-tight">
+                      Cargador Masivo de Menú
+                    </h2>
+                    <p class="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
+                      Pegá filas con Categoría, Nombre, Descripción, Precio, Destacado e Imagen.
+                    </p>
+                    <p class="mt-3 max-w-2xl rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-3 text-xs leading-relaxed text-zinc-500">
+                      Tip multimedia: en la columna
+                      <span class="font-medium text-zinc-300">Imagen</span>
+                      podés pegar URLs de Cloudinary (foto, GIF o video).
+                    </p>
+
+                    <label for="bulk-text" class="sr-only">Texto del menú</label>
+                    <textarea
+                      id="bulk-text"
+                      rows="12"
+                      spellcheck="false"
+                      placeholder={sampleBulk}
+                      class="mt-5 min-h-[16rem] w-full resize-y rounded-2xl border border-white/10 bg-black/35 px-4 py-4 font-mono text-[12px] leading-relaxed text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                    ></textarea>
+
+                    <p id="bulk-feedback" class="mt-3 hidden text-xs leading-relaxed" role="status"></p>
+
+                    <button
+                      type="button"
+                      id="bulk-submit"
+                      data-restaurante-id={restId}
+                      class="admin-action-btn mt-4 inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
+                    >
+                      Procesar e Insertar Menú Completo
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )
+          }
+
+          <section class="min-w-0">
+            <div class="mb-4">
+              <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+                Menú activo
+              </p>
+              <h2 class="mt-1 font-blacksushi-display text-2xl font-semibold tracking-tight">
+                Platos cargados
+              </h2>
+            </div>
+
+            <div
+              id="platos-toolbar"
+              class:list={['mb-3 flex flex-wrap items-center gap-3', platos.length === 0 && 'hidden']}
+            >
+              <div class="relative min-w-[16rem] flex-1">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M20 20l-3.5-3.5"></path>
+                  </svg>
+                </span>
+                <input
+                  id="platos-search"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Buscar por nombre o categoría..."
+                  class="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                />
+              </div>
+              <p id="search-meta" class="text-xs text-zinc-600">{platos.length} visibles</p>
+            </div>
+
+            <div
+              id="platos-empty"
+              class:list={['glass-panel p-10 text-center', platos.length > 0 && 'hidden']}
+            >
+              <p class="text-sm text-zinc-500">
+                {isSuperAdmin
+                  ? 'Todavía no hay platos. Usá “Nuevo Plato” o la carga masiva.'
+                  : 'Todavía no hay platos en este menú.'}
+              </p>
+            </div>
+
+            <div id="platos-no-results" class="glass-panel mb-3 hidden p-6 text-center text-sm text-zinc-500">
+              No hay coincidencias para esa búsqueda.
+            </div>
+
+            <div
+              id="platos-table-wrap"
+              class:list={['glass-panel overflow-hidden', platos.length === 0 && 'hidden']}
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-[860px] border-collapse text-sm">
+                  <thead>
+                    <tr class="border-b border-white/8 text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+                      <th class="px-4 py-3 text-left font-semibold">Plato</th>
+                      <th class="w-[9rem] px-3 py-3 text-center font-semibold">Categoría</th>
+                      <th class="w-[7.5rem] px-3 py-3 text-right font-semibold">Precio</th>
+                      <th class="w-[6.5rem] px-3 py-3 text-center font-semibold">Destacado</th>
+                      <th class="w-[6.5rem] px-3 py-3 text-center font-semibold">Disponible</th>
+                      <th class="w-[8.5rem] px-4 py-3 text-right font-semibold">Media</th>
+                    </tr>
+                  </thead>
+                  <tbody id="platos-tbody">
+                    {
+                      platos.map((plato) => (
+                        <tr
+                          class="border-b border-white/[0.05] transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-neutral-800/50"
+                          data-plato-id={plato.id}
+                          data-disponible={plato.disponible ? 'true' : 'false'}
+                          data-destacado={plato.destacado ? 'true' : 'false'}
+                          data-imagen={plato.imagen_url || ''}
+                          data-nombre={plato.nombre}
+                          data-search={`${plato.nombre} ${plato.categoria_nombre} ${plato.descripcion || ''}`.toLowerCase()}
+                        >
+                          <td class="px-4 py-3 text-left">
+                            <div class="flex flex-col gap-1">
+                              <input
+                                type="text"
+                                value={plato.nombre}
+                                data-field="nombre"
+                                data-original={plato.nombre}
+                                class="field-inline w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15"
+                                aria-label="Nombre del plato"
+                              />
+                              <button
+                                type="button"
+                                data-edit-descripcion
+                                data-descripcion={plato.descripcion || ''}
+                                class="group max-w-[24rem] rounded-md px-1.5 py-0.5 text-left transition hover:bg-white/[0.04]"
+                                title="Editar descripción"
+                              >
+                                <span
+                                  data-descripcion-preview
+                                  class:list={[
+                                    'line-clamp-2 text-xs leading-snug transition group-hover:text-zinc-300',
+                                    plato.descripcion ? 'text-zinc-500' : 'text-zinc-700 italic',
+                                  ]}
+                                >
+                                  {plato.descripcion || 'Sin descripción · clic para editar'}
+                                </span>
+                              </button>
+                              <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
+                            </div>
+                          </td>
+                          <td class="px-3 py-3.5 text-center text-xs text-zinc-400" data-categoria>
+                            {plato.categoria_nombre}
+                          </td>
+                          <td class="px-3 py-3.5 text-right">
+                            <div class="inline-flex items-center justify-end gap-1">
+                              <span class="text-xs text-zinc-600">$</span>
+                              <input
+                                type="number"
+                                inputmode="decimal"
+                                min="0"
+                                step="0.01"
+                                value={plato.precio.toFixed(2)}
+                                data-field="precio"
+                                data-original={plato.precio.toFixed(2)}
+                                class="field-inline precio-input w-[5.25rem] rounded-lg border border-transparent bg-white/[0.04] px-2 py-1.5 text-right text-sm tabular-nums text-zinc-100 outline-none transition focus:border-white/20 focus:bg-black/50"
+                                aria-label={`Precio de ${plato.nombre}`}
+                              />
+                            </div>
+                          </td>
+                          <td class="px-3 py-3.5 text-center">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={plato.destacado}
+                              data-toggle-destacado
+                              title="Destacado"
+                              class:list={['ios-toggle', plato.destacado && 'is-on']}
+                            >
+                              <span class="ios-toggle__knob" aria-hidden="true" />
+                            </button>
+                          </td>
+                          <td class="px-3 py-3.5 text-center">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={plato.disponible}
+                              data-toggle-disponible
+                              title={plato.disponible ? 'Disponible' : 'Agotado'}
+                              class:list={['ios-toggle', plato.disponible && 'is-on']}
+                            >
+                              <span class="ios-toggle__knob" aria-hidden="true" />
+                            </button>
+                          </td>
+                          <td class="px-4 py-3.5 text-right">
+                            <div class="inline-flex items-center justify-end gap-1.5" data-media-actions>
+                              {
+                                plato.imagen_url ? (
+                                  <button
+                                    type="button"
+                                    data-ver-plato
+                                    class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white"
+                                  >
+                                    Ver
+                                  </button>
+                                ) : (
+                                  <label class="relative inline-flex cursor-pointer items-center">
+                                    <input
+                                      type="file"
+                                      accept="image/*,video/*,image/gif"
+                                      data-upload-media
+                                      class="sr-only"
+                                    />
+                                    <span
+                                      data-upload-label
+                                      class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white"
+                                    >
+                                      Subir
+                                    </span>
+                                  </label>
+                                )
+                              }
+                              <button
+                                type="button"
+                                data-delete
+                                class="rounded-lg p-1.5 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400"
+                                aria-label={`Eliminar ${plato.nombre}`}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                                  <path d="M4 7h16"></path>
+                                  <path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"></path>
+                                  <path d="M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12"></path>
+                                  <path d="M10 11v6M14 11v6"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+          </div>
+
+          <div
+            id="panel-metricas"
+            role="tabpanel"
+            aria-labelledby="tab-metricas"
+            data-tab-panel="metricas"
+            hidden
+          >
+            <AdminMetricsPanel
+              metrics={metrics}
+              title="Métricas y Analíticas"
+              subtitle={`Rendimiento de ${nombre} · alertas de mesa y vista previa de interés del menú`}
+            />
+          </div>
+
+          {
+            isSuperAdmin && (
+          <div
+            id="panel-marca"
+            role="tabpanel"
+            aria-labelledby="tab-marca"
+            data-tab-panel="marca"
+            hidden
+          >
+            <form id="marca-form" class="space-y-6" novalidate>
+              <div class="mb-2">
+                <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+                  Configuración atómica · SuperAdmin
+                </p>
+                <h2 class="mt-1 font-blacksushi-display text-2xl font-semibold tracking-tight">
+                  Identidad de Marca
+                </h2>
+                <p class="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
+                  Sub-secciones aisladas: Home, Nosotros, Menú, Horarios &amp; Ubicación, Reservas y Gadgets.
+                  Solo visible para el dueño de la plataforma.
                 </p>
               </div>
 
-              <button
-                type="button"
-                class="edit-precio shrink-0 rounded-lg px-2 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300"
-                data-edit-precio
-                data-precio-actual={plato.precio}
-              >
-                Editar precio
-              </button>
+              <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+                <nav
+                  class="flex shrink-0 gap-2 overflow-x-auto lg:w-52 lg:flex-col lg:overflow-visible"
+                  role="tablist"
+                  aria-label="Subsecciones de identidad"
+                  id="marca-subnav"
+                >
+                  {
+                    [
+                      { id: 'home', label: 'Home / Core' },
+                      { id: 'nosotros', label: 'Nosotros' },
+                      { id: 'menu', label: 'Menú' },
+                      { id: 'ubicacion', label: 'Horarios & Ubicación' },
+                      { id: 'reservas', label: 'Reservas' },
+                      { id: 'gadgets', label: 'Gadgets' },
+                    ].map((tab, i) => (
+                      <button
+                        type="button"
+                        role="tab"
+                        data-marca-subtab={tab.id}
+                        aria-selected={i === 0 ? 'true' : 'false'}
+                        class:list={[
+                          'marca-subtab whitespace-nowrap rounded-xl border px-3.5 py-2.5 text-left text-[0.58rem] font-semibold uppercase tracking-[0.14em] transition',
+                          i === 0
+                            ? 'border-white/15 bg-white text-zinc-950'
+                            : 'border-white/10 bg-white/[0.04] text-zinc-400 hover:border-white/20 hover:text-zinc-200',
+                        ]}
+                      >
+                        {tab.label}
+                      </button>
+                    ))
+                  }
+                </nav>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={plato.disponible}
-                aria-label={`Disponibilidad de ${plato.nombre}`}
-                class:list={[
-                  'toggle relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
-                  plato.disponible ? 'bg-emerald-500/80' : 'bg-zinc-700',
-                ]}
-                data-toggle-disponible
-              >
-                <span
-                  class:list={[
-                    'absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform duration-200',
-                    plato.disponible ? 'translate-x-5' : 'translate-x-0.5',
-                  ]}
-                  data-toggle-knob
-                  aria-hidden="true"
-                />
-              </button>
-            </li>
-          ))}
-        </ul>
+                <div class="min-w-0 flex-1 space-y-4">
+                  {/* —— HOME / CORE —— */}
+                  <div data-marca-panel="home" class="glass-panel space-y-5 p-6 lg:p-7">
+                    <div>
+                      <p class={labelClass}>Home / Core</p>
+                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
+                        Identidad global
+                      </h3>
+                    </div>
+
+                    <div class="flex flex-col gap-5">
+                      {/* Fila 1: Logo 2/3 + Eslogan 1/3 */}
+                      <div class="flex flex-col gap-5 md:flex-row">
+                        <label class="block w-full space-y-2 md:w-2/3">
+                          <span class={labelClass}>URL del logo</span>
+                          <input
+                            type="url"
+                            id="marca-logo-url"
+                            name="logo_url"
+                            value={marca.logo_url}
+                            placeholder="https://…"
+                            class={fieldClass}
+                          />
+                        </label>
+                        <label class="block w-full space-y-2 md:w-1/3">
+                          <span class={labelClass}>Eslogan principal</span>
+                          <input
+                            type="text"
+                            id="marca-eslogan"
+                            name="eslogan"
+                            value={marca.eslogan}
+                            placeholder="Cocina contemporánea"
+                            class={fieldClass}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Fila 2: ADN + Tipografía global */}
+                      <div class="grid gap-5 md:grid-cols-2">
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Estilo ADN</span>
+                          <select id="marca-estilo-adn" name="estilo_adn" class={fieldClass}>
+                            <option value="elegant" selected={marca.estilo_adn === 'elegant'}>Elegant</option>
+                            <option value="modern" selected={marca.estilo_adn === 'modern'}>Modern</option>
+                            <option value="retro" selected={marca.estilo_adn === 'retro'}>Retro</option>
+                          </select>
+                        </label>
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Tipografía Global</span>
+                          <select id="marca-tipo-letra" name="tipo_letra" class={fieldClass}>
+                            {
+                              GLOBAL_FONT_OPTIONS.map((opt) => (
+                                <option value={opt.value} selected={marca.tipo_letra === opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))
+                            }
+                          </select>
+                        </label>
+                      </div>
+
+                      {/* Fila 3: Colores 50/50 */}
+                      <div class="grid gap-5 md:grid-cols-2">
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Color primario</span>
+                          <div class="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/35 p-2">
+                            <input
+                              type="color"
+                              id="marca-color-primario-picker"
+                              value={marca.color_primario}
+                              class="h-10 w-12 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent"
+                            />
+                            <input
+                              type="text"
+                              id="marca-color-primario"
+                              name="color_primario"
+                              value={marca.color_primario}
+                              placeholder="#9f1239"
+                              spellcheck="false"
+                              class="glass-field min-w-0 flex-1 border-0 bg-transparent px-1 py-2 font-mono text-sm uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                            />
+                          </div>
+                        </label>
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Color de texto</span>
+                          <div class="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/35 p-2">
+                            <input
+                              type="color"
+                              id="marca-color-texto-picker"
+                              value={marca.color_texto}
+                              class="h-10 w-12 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent"
+                            />
+                            <input
+                              type="text"
+                              id="marca-color-texto"
+                              name="color_texto"
+                              value={marca.color_texto}
+                              placeholder="#ffffff"
+                              spellcheck="false"
+                              class="glass-field min-w-0 flex-1 border-0 bg-transparent px-1 py-2 font-mono text-sm uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                            />
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Fila 4: Fondo home */}
+                      <div class="grid gap-5 md:grid-cols-2">
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Tipo de fondo (Home)</span>
+                          <select
+                            id="marca-fondo-home-tipo"
+                            name="fondo_home_tipo"
+                            data-fondo-tipo="home"
+                            class={fieldClass}
+                          >
+                            <option value="color" selected={marca.fondo_home_tipo === 'color'}>Color</option>
+                            <option value="image" selected={marca.fondo_home_tipo === 'image'}>Imagen</option>
+                            <option value="video" selected={marca.fondo_home_tipo === 'video'}>Video</option>
+                          </select>
+                        </label>
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Valor del fondo (HEX o URL)</span>
+                          <input
+                            type="text"
+                            id="marca-fondo-home-valor"
+                            name="fondo_home_valor"
+                            value={marca.fondo_home_valor}
+                            placeholder="#0a0a0a o https://…"
+                            class={fieldClass}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Escalas tipográficas Home */}
+                      <div class="border-t border-white/8 pt-5">
+                        <p class={`${labelClass} mb-4`}>Escalas del Home</p>
+                        <div class="grid gap-6 md:grid-cols-3">
+                          <label class="block space-y-3">
+                            <div class="flex items-end justify-between gap-2">
+                              <span class={labelClass}>Tamaño del título</span>
+                              <span
+                                class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400"
+                                data-scale-label
+                                data-for="marca-home-titulo-size"
+                              >
+                                {['', 'XS', 'SM', 'MD', 'LG', 'XL'][marca.home_titulo_size] || 'MD'}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              id="marca-home-titulo-size"
+                              name="home_titulo_size"
+                              min="1"
+                              max="5"
+                              step="1"
+                              value={marca.home_titulo_size}
+                              class="marca-scale-slider w-full"
+                              data-scale-slider
+                            />
+                            <div class="flex justify-between text-[0.5rem] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                              <span>XS</span><span>SM</span><span>MD</span><span>LG</span><span>XL</span>
+                            </div>
+                          </label>
+
+                          <label class="block space-y-3">
+                            <div class="flex items-end justify-between gap-2">
+                              <span class={labelClass}>Tamaño del logo</span>
+                              <span
+                                class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400"
+                                data-scale-label
+                                data-for="marca-home-logo-size"
+                              >
+                                {['', 'XS', 'SM', 'MD', 'LG', 'XL'][marca.home_logo_size] || 'MD'}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              id="marca-home-logo-size"
+                              name="home_logo_size"
+                              min="1"
+                              max="5"
+                              step="1"
+                              value={marca.home_logo_size}
+                              class="marca-scale-slider w-full"
+                              data-scale-slider
+                            />
+                            <div class="flex justify-between text-[0.5rem] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                              <span>XS</span><span>SM</span><span>MD</span><span>LG</span><span>XL</span>
+                            </div>
+                          </label>
+
+                          <label class="block space-y-3">
+                            <div class="flex items-end justify-between gap-2">
+                              <span class={labelClass}>Tamaño del eslogan</span>
+                              <span
+                                class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400"
+                                data-scale-label
+                                data-for="marca-home-eslogan-size"
+                              >
+                                {['', 'XS', 'SM', 'MD', 'LG', 'XL'][marca.home_eslogan_size] || 'MD'}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              id="marca-home-eslogan-size"
+                              name="home_eslogan_size"
+                              min="1"
+                              max="5"
+                              step="1"
+                              value={marca.home_eslogan_size}
+                              class="marca-scale-slider w-full"
+                              data-scale-slider
+                            />
+                            <div class="flex justify-between text-[0.5rem] font-medium uppercase tracking-[0.12em] text-zinc-600">
+                              <span>XS</span><span>SM</span><span>MD</span><span>LG</span><span>XL</span>
+                            </div>
+                          </label>
+                        </div>
+
+                        <div class="mt-5 grid gap-5 md:grid-cols-2">
+                          <label class="block space-y-2">
+                            <span class={labelClass}>Espaciado de letras</span>
+                            <select id="marca-home-tracking" name="home_tracking" class={fieldClass}>
+                              <option value="tracking-normal" selected={marca.home_tracking === 'tracking-normal'}>Compacto</option>
+                              <option value="tracking-wider" selected={marca.home_tracking === 'tracking-wider'}>Amplio</option>
+                              <option value="tracking-widest" selected={marca.home_tracking === 'tracking-widest'}>Muy amplio</option>
+                              <option value="tracking-[0.3em]" selected={marca.home_tracking === 'tracking-[0.3em]'}>Editorial</option>
+                            </select>
+                          </label>
+                          <label class="block space-y-2">
+                            <span class={labelClass}>Color de subtítulos</span>
+                            <div class="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/35 p-2">
+                              <input
+                                type="color"
+                                id="marca-home-subtitulo-color-picker"
+                                value={marca.home_subtitulo_color || '#9f1239'}
+                                class="h-10 w-12 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent"
+                              />
+                              <input
+                                type="text"
+                                id="marca-home-subtitulo-color"
+                                name="home_subtitulo_color"
+                                value={marca.home_subtitulo_color}
+                                placeholder="#9f1239"
+                                spellcheck="false"
+                                class="glass-field min-w-0 flex-1 border-0 bg-transparent px-1 py-2 font-mono text-sm uppercase tracking-wide text-zinc-300 outline-none placeholder:text-zinc-600"
+                              />
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Atmosfera compartido */}
+                      <div class="border-t border-white/8 pt-5">
+                        <p class={`${labelClass} mb-1`}>Atmósfera de Compartido y Descarga</p>
+                        <p class="mb-4 text-sm text-zinc-500">
+                          Metadatos para WhatsApp / redes y el icono al añadir la WebApp al inicio.
+                        </p>
+                        <div class="grid gap-5 md:grid-cols-2">
+                          <label class="block space-y-2">
+                            <span class={labelClass}>URL de Imagen para Compartir</span>
+                            <input
+                              type="url"
+                              id="marca-share-image-url"
+                              name="share_image_url"
+                              value={marca.share_image_url}
+                              placeholder="https://… (og:image / WhatsApp)"
+                              class={fieldClass}
+                            />
+                          </label>
+                          <label class="block space-y-2">
+                            <span class={labelClass}>URL del Icono de la Aplicación</span>
+                            <input
+                              type="url"
+                              id="marca-app-icon-url"
+                              name="app_icon_url"
+                              value={marca.app_icon_url}
+                              placeholder="https://… (PWA / apple-touch-icon)"
+                              class={fieldClass}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* CSS avanzado */}
+                      <label class="block space-y-2">
+                        <span class={labelClass}>CSS avanzado global</span>
+                        <textarea
+                          id="marca-custom-css"
+                          name="custom_css"
+                          rows="7"
+                          spellcheck="false"
+                          placeholder={'.restaurant-app {\n  /* tokens y overrides scoped */\n}'}
+                          class={`${fieldClass} font-mono text-[12px] leading-relaxed`}
+                        >{marca.custom_css}</textarea>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* —— NOSOTROS —— */}
+                  <div data-marca-panel="nosotros" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
+                    <div>
+                      <p class={labelClass}>Sección Nosotros</p>
+                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
+                        Bloques editoriales
+                      </h3>
+                      <p class="mt-2 text-sm leading-relaxed text-zinc-500">
+                        Cada bloque combina título, texto, media y alineación. Se guardan en
+                        <span class="font-mono text-zinc-400"> nosotros_bloques</span>.
+                      </p>
+                    </div>
+
+                    <div class="grid gap-5 lg:grid-cols-2">
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Tipo de fondo (sección)</span>
+                        <select id="marca-fondo-nosotros-tipo" name="fondo_nosotros_tipo" class={fieldClass}>
+                          <option value="color" selected={marca.fondo_nosotros_tipo === 'color'}>Color</option>
+                          <option value="image" selected={marca.fondo_nosotros_tipo === 'image'}>Imagen</option>
+                          <option value="video" selected={marca.fondo_nosotros_tipo === 'video'}>Video</option>
+                        </select>
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Valor del fondo</span>
+                        <input type="text" id="marca-fondo-nosotros-valor" name="fondo_nosotros_valor" value={marca.fondo_nosotros_valor} placeholder="#0a0a0a o https://…" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Color de Fondo del Contenedor</span>
+                        <input type="text" id="marca-nosotros-color-fondo" name="nosotros_color_fondo" value={marca.nosotros_color_fondo} placeholder="#0a0a0a (opcional)" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Color de Texto de los Títulos</span>
+                        <input type="text" id="marca-nosotros-color-titulo" name="nosotros_color_titulo" value={marca.nosotros_color_titulo} placeholder="#ffffff" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Color del Texto del Cuerpo</span>
+                        <input type="text" id="marca-nosotros-color-cuerpo" name="nosotros_color_cuerpo" value={marca.nosotros_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
+                      </label>
+                    </div>
+
+                    <div id="nosotros-bloques-list" class="space-y-4">
+                      {
+                        marca.nosotros_bloques.map((bloque, index) => (
+                          <div
+                            class="nosotros-bloque rounded-xl border border-white/10 bg-black/25 p-4 space-y-4"
+                            data-nosotros-bloque
+                          >
+                            <div class="flex items-center justify-between gap-3">
+                              <p class={`${labelClass} !text-zinc-400`}>Bloque {index + 1}</p>
+                              <button
+                                type="button"
+                                class="rounded-lg px-2.5 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-rose-300/80 transition hover:bg-rose-500/10 hover:text-rose-200"
+                                data-remove-bloque
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                            <div class="grid gap-4 lg:grid-cols-2">
+                              <label class="block space-y-2 lg:col-span-2">
+                                <span class={labelClass}>Título</span>
+                                <input type="text" data-bloque-titulo value={bloque.titulo} class={fieldClass} />
+                              </label>
+                              <label class="block space-y-2 lg:col-span-2">
+                                <span class={labelClass}>Texto</span>
+                                <textarea data-bloque-texto rows="4" class={fieldClass}>{bloque.texto}</textarea>
+                              </label>
+                              <label class="block space-y-2 lg:col-span-2">
+                                <span class={labelClass}>URL de media (imagen o video)</span>
+                                <input type="url" data-bloque-media value={bloque.media_url} placeholder="https://…" class={fieldClass} />
+                              </label>
+                              <label class="block space-y-2 lg:col-span-2">
+                                <span class={labelClass}>Alineación</span>
+                                <select data-bloque-alineacion class={fieldClass}>
+                                  <option value="alternada" selected={bloque.alineacion !== 'inversa'}>
+                                    Alternada
+                                  </option>
+                                  <option value="inversa" selected={bloque.alineacion === 'inversa'}>
+                                    Inversa
+                                  </option>
+                                </select>
+                              </label>
+                            </div>
+                          </div>
+                        ))
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      id="nosotros-add-bloque"
+                      class="inline-flex items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-3 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition hover:border-white/25 hover:text-zinc-200"
+                    >
+                      + Añadir bloque
+                    </button>
+                  </div>
+
+                  {/* —— SECCIÓN MENÚ —— */}
+                  <div data-marca-panel="menu" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
+                    <div>
+                      <p class={labelClass}>Menú</p>
+                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
+                        Menú
+                      </h3>
+                    </div>
+
+                    <div class="grid gap-5 lg:grid-cols-2">
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Fondo global · tipo</span>
+                        <select id="marca-fondo-menu-tipo" name="fondo_menu_tipo" class={fieldClass}>
+                          <option value="color" selected={marca.fondo_menu_tipo === 'color'}>Color</option>
+                          <option value="image" selected={marca.fondo_menu_tipo === 'image'}>Imagen</option>
+                          <option value="video" selected={marca.fondo_menu_tipo === 'video'}>Video</option>
+                        </select>
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Fondo global · valor</span>
+                        <input type="text" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} placeholder="#0a0a0a o https://…" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Estilo de Tipografía del Menú</span>
+                        <select id="marca-menu-font" name="menu_font" class={fieldClass}>
+                          <option value="elegant" selected={marca.menu_font === 'elegant'}>
+                            Elegante / Alta Cocina
+                          </option>
+                          <option value="modern" selected={marca.menu_font === 'modern'}>
+                            Moderna / Minimalista
+                          </option>
+                          <option value="urban" selected={marca.menu_font === 'urban'}>
+                            Urbana / Street Food
+                          </option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <div class="border-t border-white/8 pt-5 space-y-4">
+                      <p class={labelClass}>Fondos por categoría</p>
+                      {
+                        categorias.length === 0 ? (
+                          <p class="text-sm text-zinc-500">Aún no hay categorías en el menú.</p>
+                        ) : (
+                          <div class="space-y-3" id="categorias-fondos-list">
+                            {categorias.map((cat) => (
+                              <div
+                                class="grid gap-3 rounded-xl border border-white/10 bg-black/25 p-4 sm:grid-cols-[1fr_8rem_1fr] sm:items-end"
+                                data-cat-fondo
+                                data-cat-id={cat.id}
+                              >
+                                <div class="min-w-0">
+                                  <p class="truncate text-sm font-medium text-zinc-200">{cat.nombre}</p>
+                                  <p class="mt-0.5 font-mono text-[0.65rem] text-zinc-600">#{cat.id}</p>
+                                </div>
+                                <label class="block space-y-1.5">
+                                  <span class={labelClass}>Tipo</span>
+                                  <select data-cat-bg-type class={fieldClass}>
+                                    <option value="color" selected={(cat.bg_type || 'color') === 'color'}>Color</option>
+                                    <option value="image" selected={cat.bg_type === 'image'}>Imagen</option>
+                                    <option value="video" selected={cat.bg_type === 'video'}>Video</option>
+                                  </select>
+                                </label>
+                                <label class="block space-y-1.5">
+                                  <span class={labelClass}>Valor</span>
+                                  <input
+                                    type="text"
+                                    data-cat-bg-valor
+                                    value={cat.bg_valor || ''}
+                                    placeholder="Heredar global o HEX/URL"
+                                    class={fieldClass}
+                                  />
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      }
+                    </div>
+                  </div>
+
+                  {/* —— HORARIOS & UBICACIÓN —— */}
+                  <div data-marca-panel="ubicacion" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
+                    <div>
+                      <p class={labelClass}>Horarios &amp; Ubicación</p>
+                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
+                        Datos públicos y redes
+                      </h3>
+                    </div>
+
+                    <div class="grid gap-5 lg:grid-cols-2">
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Fondo Ubicación · tipo</span>
+                        <select id="marca-fondo-ubicacion-tipo" name="fondo_ubicacion_tipo" class={fieldClass}>
+                          <option value="color" selected={marca.fondo_ubicacion_tipo === 'color'}>Color</option>
+                          <option value="image" selected={marca.fondo_ubicacion_tipo === 'image'}>Imagen</option>
+                          <option value="video" selected={marca.fondo_ubicacion_tipo === 'video'}>Video</option>
+                        </select>
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Fondo Ubicación · valor</span>
+                        <input type="text" id="marca-fondo-ubicacion-valor" name="fondo_ubicacion_valor" value={marca.fondo_ubicacion_valor} class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Color de Fondo del Contenedor</span>
+                        <input type="text" id="marca-ubicacion-color-fondo" name="ubicacion_color_fondo" value={marca.ubicacion_color_fondo} placeholder="#0a0a0a (opcional)" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Color de Texto de los Títulos</span>
+                        <input type="text" id="marca-ubicacion-color-titulo" name="ubicacion_color_titulo" value={marca.ubicacion_color_titulo} placeholder="#ffffff" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Color del Texto del Cuerpo</span>
+                        <input type="text" id="marca-ubicacion-color-cuerpo" name="ubicacion_color_cuerpo" value={marca.ubicacion_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Dirección</span>
+                        <input type="text" id="marca-direccion" name="direccion" value={marca.direccion} class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Coordenadas Google Maps</span>
+                        <input type="url" id="marca-coordenadas" name="coordenadas_maps" value={marca.coordenadas_maps} placeholder="https://maps.google.com/…" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Horarios (una línea por franja)</span>
+                        <textarea id="marca-horarios" name="horarios" rows="4" spellcheck="false" placeholder={'Lunes a Viernes: 12:00 – 22:00\nSábado: 12:00 – 23:00'} class={`${fieldClass} font-mono text-[13px]`}>{marca.horarios}</textarea>
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>WhatsApp</span>
+                        <input type="text" id="marca-whatsapp" name="whatsapp_url" value={marca.whatsapp_url} placeholder="+58…" class={fieldClass} />
+                      </label>
+                    </div>
+
+                    <div class="border-t border-white/8 pt-5 space-y-4">
+                      <div>
+                        <p class={labelClass}>Redes Sociales Activas</p>
+                        <p class="mt-1.5 text-sm text-zinc-500">
+                          Array dinámico (<span class="font-mono text-zinc-400">redes_sociales</span>). Solo
+                          las URLs con valor se muestran en la WebApp con su logo.
+                        </p>
+                      </div>
+                      <div class="grid gap-5 lg:grid-cols-2">
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Instagram</span>
+                          <input type="url" id="marca-redes-instagram" name="redes_instagram" value={marca.redes_instagram} placeholder="https://instagram.com/…" class={fieldClass} />
+                        </label>
+                        <label class="block space-y-2">
+                          <span class={labelClass}>Facebook</span>
+                          <input type="url" id="marca-redes-facebook" name="redes_facebook" value={marca.redes_facebook} placeholder="https://facebook.com/…" class={fieldClass} />
+                        </label>
+                        <label class="block space-y-2">
+                          <span class={labelClass}>TikTok</span>
+                          <input type="url" id="marca-redes-tiktok" name="redes_tiktok" value={marca.redes_tiktok} placeholder="https://tiktok.com/@…" class={fieldClass} />
+                        </label>
+                        <label class="block space-y-2">
+                          <span class={labelClass}>TripAdvisor</span>
+                          <input type="url" id="marca-redes-tripadvisor" name="redes_tripadvisor" value={marca.redes_tripadvisor} placeholder="https://tripadvisor.com/…" class={fieldClass} />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* —— RESERVAS —— */}
+                  <div data-marca-panel="reservas" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
+                    <div>
+                      <p class={labelClass}>Sección Reservas</p>
+                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">CTA Carrd en Home</h3>
+                    </div>
+
+                    <label class="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5">
+                      <span class="text-sm text-zinc-200">Activar botón de Reservas en Home</span>
+                      <input type="checkbox" id="marca-gadget-reservas" name="gadget_reservas" checked={marca.gadget_reservas} class="peer sr-only" data-marca-gadget role="switch" />
+                      <span class:list={['ios-toggle', 'pointer-events-none', marca.gadget_reservas && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-reservas" aria-hidden="true">
+                        <span class="ios-toggle__knob"></span>
+                      </span>
+                    </label>
+
+                    <div class="grid gap-5 lg:grid-cols-2">
+                      <label class="block space-y-2 lg:col-span-2">
+                        <span class={labelClass}>Texto del botón principal</span>
+                        <input type="text" id="marca-reservas-label" name="reservas_label" value={marca.reservas_label} placeholder="PEDIR / RESERVAR" class={fieldClass} />
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>Tipo de destino</span>
+                        <select id="marca-reservas-destino-tipo" name="reservas_destino_tipo" class={fieldClass}>
+                          <option value="whatsapp" selected={marca.reservas_destino_tipo === 'whatsapp'}>WhatsApp</option>
+                          <option value="enlace" selected={marca.reservas_destino_tipo === 'enlace'}>Enlace externo</option>
+                        </select>
+                      </label>
+                      <label class="block space-y-2">
+                        <span class={labelClass}>URL o número de teléfono</span>
+                        <input type="text" id="marca-reservas-destino-valor" name="reservas_destino_valor" value={marca.reservas_destino_valor} placeholder="+58414… o https://…" class={fieldClass} />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* —— GADGETS —— */}
+                  <div
+                    data-marca-panel="gadgets"
+                    class="glass-panel space-y-5 p-6 lg:p-7"
+                    style={`--gadget-accent: ${marca.color_primario || '#9f1239'}`}
+                    hidden
+                  >
+                    <div>
+                      <p class={labelClass}>Gadgets / Herramientas</p>
+                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
+                        Catálogo de módulos
+                      </h3>
+                      <p class="mt-2 max-w-xl text-sm leading-relaxed text-zinc-500">
+                        Activa solo lo que necesitas en mesa. Cada módulo despliega su configuración al
+                        encenderlo.
+                      </p>
+                    </div>
+
+                    <div class="gadget-catalog grid gap-4 sm:grid-cols-2">
+                      {/* Wi‑Fi */}
+                      <article
+                        class:list={[
+                          'gadget-card group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-4 opacity-60 transition-all duration-300',
+                          marca.gadget_wifi && 'gadget-card--on is-active',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="wifi"
+                      >
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex min-w-0 items-start gap-3">
+                            <span
+                              class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300 transition-colors duration-300"
+                              aria-hidden="true"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5a8.5 8.5 0 0 1 14 0M8.5 15.5a4.5 4.5 0 0 1 7 0M12 19h.01" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0 pt-0.5">
+                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Wi‑Fi invitados</h4>
+                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
+                                Muestra red y clave en la WebApp.
+                              </p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Wi‑Fi">
+                            <input
+                              type="checkbox"
+                              id="marca-gadget-wifi"
+                              name="gadget_wifi"
+                              checked={marca.gadget_wifi}
+                              class="peer sr-only"
+                              data-marca-gadget
+                              data-gadget-switch
+                              role="switch"
+                              aria-checked={marca.gadget_wifi ? 'true' : 'false'}
+                            />
+                            <span
+                              class:list={['ios-toggle', 'pointer-events-none', marca.gadget_wifi && 'is-on']}
+                              data-marca-toggle-ui
+                              data-for="marca-gadget-wifi"
+                              aria-hidden="true"
+                            >
+                              <span class="ios-toggle__knob"></span>
+                            </span>
+                          </label>
+                        </div>
+
+                        <div
+                          class:list={['gadget-card__config', marca.gadget_wifi && 'is-open']}
+                          data-gadget-config
+                          aria-hidden={marca.gadget_wifi ? 'false' : 'true'}
+                        >
+                          <div class="gadget-card__config-inner grid gap-3 pt-4">
+                            <label class="block space-y-1.5">
+                              <span class={labelClass}>Wi‑Fi · SSID</span>
+                              <input
+                                type="text"
+                                id="marca-wifi-ssid"
+                                name="gadget_wifi_ssid"
+                                value={marca.wifi_ssid}
+                                placeholder="Nombre de la red"
+                                class={fieldClass}
+                              />
+                            </label>
+                            <label class="block space-y-1.5">
+                              <span class={labelClass}>Wi‑Fi · Clave</span>
+                              <input
+                                type="text"
+                                id="marca-wifi-password"
+                                name="gadget_wifi_clave"
+                                value={marca.wifi_password}
+                                placeholder="Contraseña"
+                                class={fieldClass}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </article>
+
+                      {/* Llamar mesero */}
+                      <article
+                        class:list={[
+                          'gadget-card group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-4 opacity-60 transition-all duration-300',
+                          marca.gadget_mesero && 'gadget-card--on is-active',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="mesero"
+                      >
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex min-w-0 items-start gap-3">
+                            <span
+                              class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300 transition-colors duration-300"
+                              aria-hidden="true"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v3m0 0a6 6 0 0 1 6 6v1.5a3 3 0 0 0 1.5 2.6L21 17H3l1.5-1.4A3 3 0 0 0 6 13.5V12a6 6 0 0 1 6-6zm-3.5 14a3.5 3.5 0 0 0 7 0" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0 pt-0.5">
+                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Llamar mesero</h4>
+                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
+                                Botón de asistencia desde la mesa.
+                              </p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Llamar mesero">
+                            <input
+                              type="checkbox"
+                              id="marca-gadget-mesero"
+                              name="gadget_mesero"
+                              checked={marca.gadget_mesero}
+                              class="peer sr-only"
+                              data-marca-gadget
+                              data-gadget-switch
+                              role="switch"
+                              aria-checked={marca.gadget_mesero ? 'true' : 'false'}
+                            />
+                            <span
+                              class:list={[
+                                'ios-toggle',
+                                'pointer-events-none',
+                                marca.gadget_mesero && 'is-on',
+                              ]}
+                              data-marca-toggle-ui
+                              data-for="marca-gadget-mesero"
+                              aria-hidden="true"
+                            >
+                              <span class="ios-toggle__knob"></span>
+                            </span>
+                          </label>
+                        </div>
+                      </article>
+
+                      {/* Dividir / pedir cuenta */}
+                      <article
+                        class:list={[
+                          'gadget-card group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-4 opacity-60 transition-all duration-300',
+                          marca.gadget_cuenta && 'gadget-card--on is-active',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="dividir"
+                      >
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex min-w-0 items-start gap-3">
+                            <span
+                              class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300 transition-colors duration-300"
+                              aria-hidden="true"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h.01M16 17h.01M7 17 17 7M9.5 7a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm8 10a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0 pt-0.5">
+                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Pedir / Dividir cuenta</h4>
+                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
+                                Calculadora rápida para compartir el total.
+                              </p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Pedir / Dividir cuenta">
+                            <input
+                              type="checkbox"
+                              id="marca-gadget-dividir"
+                              name="gadget_cuenta"
+                              checked={marca.gadget_cuenta}
+                              class="peer sr-only"
+                              data-marca-gadget
+                              data-gadget-switch
+                              role="switch"
+                              aria-checked={marca.gadget_cuenta ? 'true' : 'false'}
+                            />
+                            <span
+                              class:list={[
+                                'ios-toggle',
+                                'pointer-events-none',
+                                marca.gadget_cuenta && 'is-on',
+                              ]}
+                              data-marca-toggle-ui
+                              data-for="marca-gadget-dividir"
+                              aria-hidden="true"
+                            >
+                              <span class="ios-toggle__knob"></span>
+                            </span>
+                          </label>
+                        </div>
+                      </article>
+
+                      {/* Boutique / Tienda Playera */}
+                      <article
+                        class:list={[
+                          'gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/25 p-4 transition-all duration-300',
+                          marca.gadget_boutique && 'gadget-card--on is-active',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="boutique"
+                      >
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex min-w-0 items-start gap-3">
+                            <span
+                              class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/[0.03] text-zinc-400 transition-colors duration-300 [[data-gadget-card].gadget-card--on_&]:text-[color:var(--gadget-accent,#c9a84c)]"
+                              aria-hidden="true"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 8.5 6 5h12l1.5 3.5M4.5 8.5V19a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V8.5M4.5 8.5h15M9.5 12.5h5" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0 pt-0.5">
+                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">
+                                Boutique / Tienda Playera
+                              </h4>
+                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
+                                Bloque Carrd + modal con merch destacado (gorras, camisas, termos…).
+                              </p>
+                            </div>
+                          </div>
+                          <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                            <input
+                              type="checkbox"
+                              id="marca-gadget-boutique"
+                              name="gadget_boutique"
+                              checked={marca.gadget_boutique}
+                              class="peer sr-only"
+                              data-marca-gadget
+                              role="switch"
+                              aria-checked={marca.gadget_boutique ? 'true' : 'false'}
+                            />
+                            <span
+                              class:list={[
+                                'ios-toggle',
+                                'pointer-events-none',
+                                marca.gadget_boutique && 'is-on',
+                              ]}
+                              data-marca-toggle-ui
+                              data-for="marca-gadget-boutique"
+                              aria-hidden="true"
+                            >
+                              <span class="ios-toggle__knob"></span>
+                            </span>
+                          </label>
+                        </div>
+
+                        <div
+                          class:list={['gadget-card__config', marca.gadget_boutique && 'is-open']}
+                          data-gadget-config
+                          aria-hidden={marca.gadget_boutique ? 'false' : 'true'}
+                        >
+                          <div class="gadget-card__config-inner space-y-3 pt-4">
+                            <p class={labelClass}>Productos destacados</p>
+                            <p class="text-[11px] leading-relaxed text-zinc-600">
+                              Activa solo lo que quieras mostrar en el modal público. Precio en moneda local.
+                            </p>
+                            {
+                              marca.boutique_productos.map((prod, idx) => (
+                                <div
+                                  class="rounded-xl border border-white/8 bg-black/30 p-3 space-y-2.5"
+                                  data-boutique-row
+                                >
+                                  <div class="flex items-center justify-between gap-3">
+                                    <label class="flex items-center gap-2 text-xs text-zinc-300">
+                                      <input
+                                        type="checkbox"
+                                        data-boutique-activo
+                                        checked={prod.activo}
+                                        class="size-3.5 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-emerald-500/40"
+                                      />
+                                      <span class="font-medium tracking-tight">Visible</span>
+                                    </label>
+                                    <input type="hidden" data-boutique-id value={prod.id} />
+                                    <span class="text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+                                      #{idx + 1}
+                                    </span>
+                                  </div>
+                                  <div class="grid gap-2 sm:grid-cols-2">
+                                    <input
+                                      type="text"
+                                      data-boutique-nombre
+                                      value={prod.nombre}
+                                      placeholder="Nombre"
+                                      class={fieldClass}
+                                    />
+                                    <input
+                                      type="number"
+                                      data-boutique-precio
+                                      value={prod.precio}
+                                      min="0"
+                                      step="0.01"
+                                      inputmode="decimal"
+                                      placeholder="Precio"
+                                      class={fieldClass}
+                                    />
+                                  </div>
+                                  <input
+                                    type="url"
+                                    data-boutique-imagen
+                                    value={prod.imagen_url || ''}
+                                    placeholder="URL imagen (opcional)"
+                                    class={fieldClass}
+                                  />
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-3 pb-2">
+                    <button type="submit" id="marca-save" class="admin-action-btn inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95 disabled:opacity-50">
+                      Guardar Configuración de Marca
+                    </button>
+                    <p id="marca-feedback" class="hidden text-xs text-zinc-500" role="status"></p>
+                  </div>
+                </div>
+              </div>
+            </form>
+
+          </div>
+            )
+          }
+        </div>
       )
     }
+
+    <AdminXemillaMark />
+
+    <div
+      id="mesa-alertas-stack"
+      class="pointer-events-none fixed right-4 top-4 z-[90] flex w-[min(92vw,22rem)] flex-col gap-3"
+      aria-live="assertive"
+      aria-relevant="additions"
+    ></div>
+
+    <audio
+      id="mesa-alerta-chime"
+      preload="auto"
+      src="https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg"
+    ></audio>
+
+    <div
+      id="crx-toast"
+      class="crx-toast pointer-events-none fixed bottom-6 left-1/2 z-[80] max-w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-white/12 bg-zinc-950/95 px-5 py-3.5 text-center shadow-2xl shadow-black/50 backdrop-blur-xl"
+      data-open="false"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <p id="crx-toast-msg" class="text-sm font-medium tracking-wide text-zinc-100"></p>
+    </div>
   </main>
+
+  {/* Modal media */}
+  <div
+    id="plato-modal"
+    class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="plato-modal-title"
+    data-open="false"
+    aria-hidden="true"
+  >
+    <div
+      data-modal-card
+      class="modal-card glass-panel relative w-full max-w-2xl overflow-hidden p-0 shadow-2xl"
+    >
+      <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
+        <h3 id="plato-modal-title" class="truncate font-blacksushi-display text-xl font-semibold">
+          Plato
+        </h3>
+        <button
+          type="button"
+          id="plato-modal-close"
+          class="rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <div id="modal-preview" class="hidden">
+        <div class="relative aspect-[4/3] overflow-hidden bg-zinc-950">
+          <img
+            id="plato-modal-img"
+            src=""
+            alt=""
+            class="absolute inset-0 size-full object-cover object-center"
+          />
+          <video
+            id="plato-modal-video"
+            class="absolute inset-0 hidden size-full object-contain object-center"
+            controls
+            playsinline
+          ></video>
+          <div
+            id="modal-replace-busy"
+            class="absolute inset-0 hidden items-center justify-center bg-black/55 backdrop-blur-[2px]"
+          >
+            <p class="rounded-full border border-white/15 bg-black/60 px-4 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white">
+              Subiendo…
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/8 px-5 py-3.5">
+          <p class="text-xs text-zinc-500">Reemplazá la media sin salir del preview.</p>
+          <label class="relative inline-flex cursor-pointer items-center">
+            <input
+              id="modal-replace-file"
+              type="file"
+              accept="image/*,video/*,image/gif"
+              class="sr-only"
+            />
+            <span
+              id="modal-replace-label"
+              class="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.06] px-3.5 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-200 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/25 hover:bg-neutral-800/50 hover:text-white"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                <path d="M12 16V4"></path>
+                <path d="M8 8l4-4 4 4"></path>
+                <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
+              </svg>
+              Cambiar archivo
+            </span>
+          </label>
+        </div>
+        <p id="modal-replace-error" class="hidden px-5 pb-3 text-xs text-rose-400" role="alert"></p>
+      </div>
+
+      <div id="modal-attach" class="hidden space-y-4 px-5 py-5">
+        <p class="text-sm leading-relaxed text-zinc-400">
+          Este plato no tiene media. Pegá una URL de Cloudinary o subí un archivo.
+        </p>
+        <div class="space-y-1.5">
+          <label for="modal-url" class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            URL Cloudinary
+          </label>
+          <input
+            id="modal-url"
+            type="url"
+            placeholder="https://res.cloudinary.com/..."
+            class="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-white/25"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label for="modal-file" class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            O archivo local
+          </label>
+          <input
+            id="modal-file"
+            type="file"
+            accept="image/*,video/mp4,video/webm,image/gif"
+            class="block w-full text-xs text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-[0.58rem] file:font-semibold file:uppercase file:tracking-[0.14em] file:text-white"
+          />
+        </div>
+        <p id="modal-attach-error" class="hidden text-xs text-rose-400" role="alert"></p>
+        <button
+          type="button"
+          id="modal-attach-save"
+          class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95"
+        >
+          Guardar media
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Modal descripción */}
+  <div
+    id="desc-modal"
+    class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="desc-modal-title"
+    data-open="false"
+    aria-hidden="true"
+  >
+    <div data-modal-card class="modal-card glass-panel relative w-full max-w-lg overflow-hidden p-0 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
+        <div class="min-w-0">
+          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            Descripción
+          </p>
+          <h3 id="desc-modal-title" class="mt-1 truncate font-blacksushi-display text-xl font-semibold">
+            Plato
+          </h3>
+        </div>
+        <button
+          type="button"
+          id="desc-modal-close"
+          class="rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div class="space-y-4 px-5 py-5">
+        <label for="desc-modal-text" class="sr-only">Descripción del plato</label>
+        <textarea
+          id="desc-modal-text"
+          rows="7"
+          placeholder="Escribí la descripción completa del plato…"
+          class="w-full resize-y rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm leading-relaxed text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+        ></textarea>
+        <p id="desc-modal-error" class="hidden text-xs text-rose-400" role="alert"></p>
+        <button
+          type="button"
+          id="desc-modal-save"
+          class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95"
+        >
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Modal Nuevo Plato — exclusivo SuperAdmin (no render en admin de restaurante) */}
+  {
+    isSuperAdmin && (
+      <div
+        id="nuevo-plato-modal"
+        class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nuevo-plato-title"
+        data-open="false"
+        aria-hidden="true"
+      >
+    <div
+      data-modal-card
+      class="modal-card glass-panel relative w-full max-w-lg overflow-hidden p-0 shadow-2xl"
+    >
+      <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
+        <div class="min-w-0">
+          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            SuperAdmin
+          </p>
+          <h3 id="nuevo-plato-title" class="mt-1 font-blacksushi-display text-xl font-semibold">
+            Nuevo plato
+          </h3>
+        </div>
+        <button
+          type="button"
+          id="nuevo-plato-close"
+          class="rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <form id="nuevo-plato-form" class="space-y-4 px-5 py-5">
+        <div>
+          <label for="np-categoria" class="mb-1.5 block text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Categoría
+          </label>
+          <input
+            id="np-categoria"
+            name="categoria"
+            list="np-categorias-list"
+            autocomplete="off"
+            placeholder="Ej. Entradas"
+            class="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+          />
+          <datalist id="np-categorias-list"></datalist>
+        </div>
+
+        <div>
+          <label for="np-nombre" class="mb-1.5 block text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Nombre
+          </label>
+          <input
+            id="np-nombre"
+            name="nombre"
+            required
+            autocomplete="off"
+            placeholder="Nombre del plato"
+            class="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+          />
+        </div>
+
+        <div>
+          <label for="np-descripcion" class="mb-1.5 block text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Descripción
+          </label>
+          <textarea
+            id="np-descripcion"
+            name="descripcion"
+            rows="3"
+            placeholder="Descripción breve…"
+            class="w-full resize-y rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm leading-relaxed text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="np-precio" class="mb-1.5 block text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Precio
+            </label>
+            <input
+              id="np-precio"
+              name="precio"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              required
+              placeholder="0.00"
+              class="precio-input w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm tabular-nums text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+            />
+          </div>
+          <div class="flex flex-col justify-end pb-1">
+            <div class="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5">
+              <span class="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Destacado
+              </span>
+              <button
+                type="button"
+                id="np-destacado"
+                role="switch"
+                aria-checked="false"
+                class="ios-toggle"
+                title="Destacado"
+              >
+                <span class="ios-toggle__knob" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label for="np-imagen" class="mb-1.5 block text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Imagen / video
+          </label>
+          <input
+            id="np-imagen"
+            name="imagen"
+            type="file"
+            accept="image/*,video/*,image/gif"
+            class="block w-full text-xs text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-[0.55rem] file:font-semibold file:uppercase file:tracking-[0.14em] file:text-zinc-200 hover:file:bg-white/15"
+          />
+          <p class="mt-1.5 text-[11px] text-zinc-600">Opcional · se sube a Cloudinary</p>
+        </div>
+
+        <p id="nuevo-plato-error" class="hidden text-xs text-rose-400" role="alert"></p>
+
+        <button
+          type="submit"
+          id="nuevo-plato-submit"
+          class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
+        >
+          Crear plato
+        </button>
+      </form>
+    </div>
+  </div>
+    )
+  }
 </Layout>
 
+<style>
+  .precio-input::-webkit-outer-spin-button,
+  .precio-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .precio-input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .field-inline.is-saved {
+    box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.45);
+    background: rgba(16, 185, 129, 0.08);
+  }
+  .field-inline.is-error {
+    box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.5);
+    background: rgba(244, 63, 94, 0.08);
+  }
+
+  /* iOS-style toggle */
+  .ios-toggle {
+    position: relative;
+    display: inline-block;
+    width: 2.75rem;
+    height: 1.55rem;
+    border-radius: 9999px;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    background: #3f3f46;
+    transition: all 200ms ease-out;
+    vertical-align: middle;
+  }
+  .ios-toggle.is-on {
+    background: #10b981; /* emerald-500 */
+  }
+  .ios-toggle__knob {
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    transition: all 200ms ease-out;
+    transform: translateX(0);
+  }
+  .ios-toggle.is-on .ios-toggle__knob {
+    transform: translateX(1.2rem);
+  }
+  .ios-toggle:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.35);
+    outline-offset: 2px;
+  }
+
+  .marca-scale-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+    cursor: pointer;
+  }
+  .marca-scale-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 9999px;
+    background: #fff;
+    border: 0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
+  .marca-scale-slider::-moz-range-thumb {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 9999px;
+    background: #fff;
+    border: 0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Catálogo de gadgets (Lego modules) */
+  .gadget-card.is-active,
+  .gadget-card.gadget-card--on {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 45%, transparent);
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--gadget-accent, #9f1239) 14%, transparent),
+        rgba(0, 0, 0, 0.28) 55%
+      );
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--gadget-accent, #9f1239) 22%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--gadget-accent, #9f1239) 18%, transparent);
+  }
+
+  .gadget-card.is-active .gadget-card__icon,
+  .gadget-card.gadget-card--on .gadget-card__icon {
+    border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 40%, transparent);
+    background: color-mix(in srgb, var(--gadget-accent, #9f1239) 16%, transparent);
+    color: color-mix(in srgb, var(--gadget-accent, #9f1239) 75%, white);
+  }
+
+  .gadget-card__config {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 240ms ease;
+  }
+
+  .gadget-card__config.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  .gadget-card__config-inner {
+    overflow: hidden;
+    min-height: 0;
+    border-top: 1px solid transparent;
+    transition: border-color 240ms ease;
+  }
+
+  .gadget-card__config.is-open .gadget-card__config-inner {
+    border-top-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 22%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gadget-card,
+    .gadget-card__config,
+    .gadget-card__config-inner,
+    .gadget-card__icon {
+      transition: none !important;
+    }
+  }
+
+  /* Modal overlay + card transitions */
+  .modal-overlay {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 220ms ease,
+      visibility 220ms ease;
+  }
+  .modal-overlay[data-open='true'] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  .modal-card {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease;
+  }
+  .modal-overlay[data-open='true'] .modal-card {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  /* Bulk panel collapse */
+  .bulk-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      grid-template-rows 340ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 280ms ease,
+      visibility 280ms ease;
+  }
+  .bulk-panel[data-open='true'] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+  }
+  .bulk-panel__inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .crx-toast {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    visibility: hidden;
+    transition:
+      opacity 280ms ease,
+      transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 280ms ease;
+  }
+  .crx-toast[data-open='true'] {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    visibility: visible;
+  }
+
+  .dashboard-tab[aria-selected='true'] {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: #fff;
+    color: #09090b;
+  }
+  .dashboard-tab[aria-selected='false'] {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+  }
+
+  .marca-subtab[aria-selected='true'] {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: #fff;
+    color: #09090b;
+  }
+  .marca-subtab[aria-selected='false'] {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+  }
+
+  .mesa-alerta-card {
+    pointer-events: auto;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    background: color-mix(in srgb, #10b981 18%, var(--bg-card, #161618));
+    box-shadow: 0 12px 40px rgba(16, 185, 129, 0.18);
+    animation: mesa-alerta-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes mesa-alerta-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35);
+      border-color: rgba(16, 185, 129, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+      border-color: rgba(52, 211, 153, 0.75);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mesa-alerta-card {
+      animation: none;
+    }
+  }
+</style>
+
 <script>
-  /**
-   * @param {number} id
-   * @param {{ disponible?: boolean, precio?: number }} patch
-   */
+  const root = document.getElementById('dashboard-root');
+  const restauranteId = root?.dataset.restauranteId || '';
+  const bulkText = document.getElementById('bulk-text');
+  const bulkSubmit = document.getElementById('bulk-submit');
+  const bulkFeedback = document.getElementById('bulk-feedback');
+  const tbody = document.getElementById('platos-tbody');
+  const emptyEl = document.getElementById('platos-empty');
+  const tableWrap = document.getElementById('platos-table-wrap');
+  const toolbar = document.getElementById('platos-toolbar');
+  const noResults = document.getElementById('platos-no-results');
+  const countEl = document.getElementById('platos-count');
+  const searchInput = document.getElementById('platos-search');
+  const searchMeta = document.getElementById('search-meta');
+
+  const modal = document.getElementById('plato-modal');
+  const modalTitle = document.getElementById('plato-modal-title');
+  const modalClose = document.getElementById('plato-modal-close');
+  const modalPreview = document.getElementById('modal-preview');
+  const modalAttach = document.getElementById('modal-attach');
+  const modalImg = document.getElementById('plato-modal-img');
+  const modalVideo = document.getElementById('plato-modal-video');
+  const modalUrl = document.getElementById('modal-url');
+  const modalFile = document.getElementById('modal-file');
+  const modalAttachSave = document.getElementById('modal-attach-save');
+  const modalAttachError = document.getElementById('modal-attach-error');
+  const modalReplaceFile = document.getElementById('modal-replace-file');
+  const modalReplaceLabel = document.getElementById('modal-replace-label');
+  const modalReplaceBusy = document.getElementById('modal-replace-busy');
+  const modalReplaceError = document.getElementById('modal-replace-error');
+
+  const descModal = document.getElementById('desc-modal');
+  const descModalTitle = document.getElementById('desc-modal-title');
+  const descModalText = document.getElementById('desc-modal-text');
+  const descModalClose = document.getElementById('desc-modal-close');
+  const descModalSave = document.getElementById('desc-modal-save');
+  const descModalError = document.getElementById('desc-modal-error');
+
+  const bulkToggle = document.getElementById('bulk-toggle');
+  const bulkPanel = document.getElementById('bulk-panel');
+  const bulkChevron = document.getElementById('bulk-toggle-chevron');
+
+  const nuevoModal = document.getElementById('nuevo-plato-modal');
+  const nuevoOpen = document.getElementById('nuevo-plato-open');
+  const nuevoClose = document.getElementById('nuevo-plato-close');
+  const nuevoForm = document.getElementById('nuevo-plato-form');
+  const nuevoSubmit = document.getElementById('nuevo-plato-submit');
+  const nuevoError = document.getElementById('nuevo-plato-error');
+  const npDestacado = document.getElementById('np-destacado');
+  const npCategoriasList = document.getElementById('np-categorias-list');
+
+  /** @type {{ id: number, nombre: string }[]} */
+  let categoriasCache = [];
+  try {
+    categoriasCache = JSON.parse(root?.dataset.categorias || '[]');
+  } catch {
+    categoriasCache = [];
+  }
+
+  /** @type {HTMLElement | null} */
+  let activeMediaRow = null;
+  /** @type {HTMLElement | null} */
+  let activeDescRow = null;
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+  }
+
+  function setFeedback(message, ok) {
+    if (!bulkFeedback) return;
+    bulkFeedback.textContent = message;
+    bulkFeedback.classList.remove('hidden', 'text-rose-400', 'text-emerald-400');
+    bulkFeedback.classList.add(ok ? 'text-emerald-400' : 'text-rose-400');
+  }
+
+  function allRows() {
+    return [...(tbody?.querySelectorAll('tr[data-plato-id]') ?? [])];
+  }
+
+  function refreshSearchIndex(row) {
+    if (!(row instanceof HTMLElement)) return;
+    const nombre = row.querySelector('[data-field="nombre"]');
+    const descBtn = row.querySelector('[data-edit-descripcion]');
+    const cat = row.querySelector('[data-categoria]');
+    const n = nombre instanceof HTMLInputElement ? nombre.value : '';
+    const d =
+      descBtn instanceof HTMLElement ? descBtn.dataset.descripcion || '' : '';
+    const c = cat?.textContent || '';
+    row.dataset.search = `${n} ${c} ${d}`.toLowerCase();
+    row.dataset.nombre = n;
+  }
+
+  function refreshCount() {
+    const rows = allRows();
+    const n = rows.length;
+    if (countEl) countEl.textContent = String(n);
+    emptyEl?.classList.toggle('hidden', n > 0);
+    tableWrap?.classList.toggle('hidden', n === 0);
+    toolbar?.classList.toggle('hidden', n === 0);
+    applySearchFilter();
+  }
+
+  function applySearchFilter() {
+    const q = (searchInput instanceof HTMLInputElement ? searchInput.value : '').trim().toLowerCase();
+    const rows = allRows();
+    let visible = 0;
+    for (const row of rows) {
+      if (!(row instanceof HTMLElement)) continue;
+      const match = !q || (row.dataset.search || '').includes(q);
+      row.classList.toggle('hidden', !match);
+      if (match) visible += 1;
+    }
+    if (searchMeta) searchMeta.textContent = q ? `${visible} de ${rows.length}` : `${rows.length} visibles`;
+    const hasRows = rows.length > 0;
+    noResults?.classList.toggle('hidden', !(hasRows && visible === 0));
+    tableWrap?.classList.toggle('hidden', !hasRows || visible === 0);
+  }
+
+  searchInput?.addEventListener('input', applySearchFilter);
+
+  function isVideoUrl(url) {
+    return /\.(mp4|webm|ogg)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
+  }
+
+  function paintToggle(btn, on) {
+    btn.setAttribute('aria-checked', String(on));
+    btn.classList.toggle('is-on', on);
+  }
+
   async function updatePlato(id, patch) {
     const res = await fetch('/api/update-plato', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...patch }),
     });
-
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(json.error || 'No se pudo actualizar el plato.');
-    }
+    if (!res.ok) throw new Error(json.error || 'No se pudo actualizar.');
+    return json;
+  }
+
+  async function deletePlato(id) {
+    const res = await fetch('/api/delete-plato', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'No se pudo eliminar.');
     return json;
   }
 
   /**
-   * @param {HTMLElement} row
-   * @param {boolean} disponible
+   * @param {HTMLInputElement} input
    */
-  function paintDisponibilidad(row, disponible) {
-    row.dataset.disponible = disponible ? 'true' : 'false';
-
-    const estado = row.querySelector('[data-estado]');
-    if (estado) {
-      estado.textContent = disponible ? 'Disponible' : 'Agotado';
-      estado.classList.toggle('text-emerald-400/90', disponible);
-      estado.classList.toggle('text-amber-400/90', !disponible);
-    }
-
-    const toggle = row.querySelector('[data-toggle-disponible]');
-    const knob = row.querySelector('[data-toggle-knob]');
-    if (toggle instanceof HTMLElement) {
-      toggle.setAttribute('aria-checked', String(disponible));
-      toggle.classList.toggle('bg-emerald-500/80', disponible);
-      toggle.classList.toggle('bg-zinc-700', !disponible);
-    }
-    if (knob instanceof HTMLElement) {
-      knob.classList.toggle('translate-x-5', disponible);
-      knob.classList.toggle('translate-x-0.5', !disponible);
-    }
-  }
-
-  document.getElementById('platos-list')?.addEventListener('click', async (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-
-    const row = target.closest('[data-plato-id]');
+  async function saveField(input) {
+    const field = input.dataset.field;
+    if (!field) return;
+    const row = input.closest('tr[data-plato-id]');
     if (!(row instanceof HTMLElement)) return;
-
     const id = Number(row.dataset.platoId);
     if (!Number.isFinite(id)) return;
 
-    const toggleBtn = target.closest('[data-toggle-disponible]');
-    if (toggleBtn instanceof HTMLElement) {
-      const next = row.dataset.disponible !== 'true';
-      const prev = !next;
-      paintDisponibilidad(row, next);
-      toggleBtn.setAttribute('disabled', 'true');
+    const original = input.dataset.original ?? '';
+    let value = input.value;
+    /** @type {Record<string, unknown>} */
+    const patch = {};
 
-      try {
-        await updatePlato(id, { disponible: next });
-      } catch (err) {
-        paintDisponibilidad(row, prev);
-        alert(err instanceof Error ? err.message : 'Error al actualizar');
-      } finally {
-        toggleBtn.removeAttribute('disabled');
+    if (field === 'precio') {
+      let precio = Number(String(value).replace(',', '.'));
+      if (!Number.isFinite(precio) || precio < 0) precio = 0;
+      value = precio.toFixed(2);
+      input.value = value;
+      if (value === Number(original).toFixed(2)) return;
+      patch.precio = precio;
+    } else if (field === 'nombre') {
+      value = value.trim();
+      if (!value) {
+        input.value = original;
+        return;
+      }
+      if (value === original) return;
+      patch.nombre = value;
+    } else {
+      return;
+    }
+
+    input.classList.remove('is-saved', 'is-error');
+    input.disabled = true;
+    const savedHint = row.querySelector('[data-field-saved]');
+
+    try {
+      await updatePlato(id, patch);
+      input.dataset.original = value;
+      input.classList.add('is-saved');
+      refreshSearchIndex(row);
+      if (savedHint instanceof HTMLElement) {
+        savedHint.style.opacity = '1';
+        window.setTimeout(() => {
+          savedHint.style.opacity = '0';
+          input.classList.remove('is-saved');
+        }, 900);
+      } else {
+        window.setTimeout(() => input.classList.remove('is-saved'), 900);
+      }
+    } catch (err) {
+      if (field === 'precio') input.value = Number(original).toFixed(2);
+      else input.value = original;
+      input.classList.add('is-error');
+      window.setTimeout(() => input.classList.remove('is-error'), 1100);
+      alert(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      input.disabled = false;
+    }
+  }
+
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let modalCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let descCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let nuevoCloseTimer = null;
+
+  /**
+   * @param {HTMLElement | null} overlay
+   */
+  function openOverlay(overlay) {
+    if (!(overlay instanceof HTMLElement)) return;
+    overlay.setAttribute('aria-hidden', 'false');
+    void overlay.offsetWidth;
+    requestAnimationFrame(() => {
+      overlay.dataset.open = 'true';
+    });
+  }
+
+  /**
+   * @param {HTMLElement | null} overlay
+   * @param {() => void} [after]
+   * @param {{ timerRef: 'modal' | 'desc' | 'nuevo' }} opts
+   */
+  function closeOverlay(overlay, after, opts) {
+    if (!(overlay instanceof HTMLElement)) return;
+    if (overlay.dataset.open !== 'true') return;
+    overlay.dataset.open = 'false';
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const clearExisting = () => {
+      if (opts.timerRef === 'modal' && modalCloseTimer) {
+        clearTimeout(modalCloseTimer);
+        modalCloseTimer = null;
+      }
+      if (opts.timerRef === 'desc' && descCloseTimer) {
+        clearTimeout(descCloseTimer);
+        descCloseTimer = null;
+      }
+      if (opts.timerRef === 'nuevo' && nuevoCloseTimer) {
+        clearTimeout(nuevoCloseTimer);
+        nuevoCloseTimer = null;
+      }
+    };
+    clearExisting();
+
+    const timer = setTimeout(() => {
+      after?.();
+      if (opts.timerRef === 'modal') modalCloseTimer = null;
+      else if (opts.timerRef === 'desc') descCloseTimer = null;
+      else nuevoCloseTimer = null;
+    }, 220);
+
+    if (opts.timerRef === 'modal') modalCloseTimer = timer;
+    else if (opts.timerRef === 'desc') descCloseTimer = timer;
+    else nuevoCloseTimer = timer;
+  }
+
+  function showModalShell() {
+    if (modalCloseTimer) {
+      clearTimeout(modalCloseTimer);
+      modalCloseTimer = null;
+    }
+    openOverlay(modal);
+  }
+
+  function renderPreviewMedia(url, title) {
+    if (modalImg instanceof HTMLImageElement) {
+      modalImg.classList.add('hidden');
+      modalImg.removeAttribute('src');
+    }
+    if (modalVideo instanceof HTMLVideoElement) {
+      modalVideo.classList.add('hidden');
+      modalVideo.removeAttribute('src');
+      modalVideo.pause();
+    }
+
+    if (isVideoUrl(url) && modalVideo instanceof HTMLVideoElement) {
+      modalVideo.src = url;
+      modalVideo.classList.remove('hidden');
+    } else if (modalImg instanceof HTMLImageElement) {
+      modalImg.src = url;
+      modalImg.alt = title || 'Plato';
+      modalImg.classList.remove('hidden');
+    }
+  }
+
+  const REPLACE_LABEL_HTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+      <path d="M12 16V4"></path>
+      <path d="M8 8l4-4 4 4"></path>
+      <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
+    </svg>
+    Cambiar archivo
+  `;
+
+  function openPreviewModal(row) {
+    activeMediaRow = row;
+    const url = row.dataset.imagen || '';
+    const title = row.dataset.nombre || 'Plato';
+    if (modalTitle) modalTitle.textContent = title;
+    modalAttach?.classList.add('hidden');
+    modalPreview?.classList.remove('hidden');
+    modalReplaceError?.classList.add('hidden');
+    if (modalReplaceError) modalReplaceError.textContent = '';
+    if (modalReplaceFile instanceof HTMLInputElement) {
+      modalReplaceFile.value = '';
+      modalReplaceFile.disabled = false;
+    }
+    modalReplaceBusy?.classList.add('hidden');
+    modalReplaceBusy?.classList.remove('flex');
+    if (modalReplaceLabel) modalReplaceLabel.innerHTML = REPLACE_LABEL_HTML;
+
+    renderPreviewMedia(url, title);
+    showModalShell();
+  }
+
+  modalReplaceFile?.addEventListener('change', async () => {
+    if (!(activeMediaRow instanceof HTMLElement)) return;
+    if (!(modalReplaceFile instanceof HTMLInputElement)) return;
+
+    const file = modalReplaceFile.files?.[0];
+    if (!file) return;
+
+    const row = activeMediaRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    modalReplaceError?.classList.add('hidden');
+    if (modalReplaceError) modalReplaceError.textContent = '';
+    modalReplaceBusy?.classList.remove('hidden');
+    modalReplaceBusy?.classList.add('flex');
+    modalReplaceFile.disabled = true;
+    if (modalReplaceLabel) modalReplaceLabel.textContent = 'Subiendo…';
+
+    try {
+      const fd = new FormData();
+      fd.set('file', file);
+      fd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
+
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+      const uploadJson = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok) {
+        throw new Error(uploadJson.error || 'No se pudo subir a Cloudinary');
+      }
+
+      const url = uploadJson.url;
+      if (!url) throw new Error('Cloudinary no devolvió URL');
+
+      await updatePlato(id, { imagen_url: url });
+      setRowMediaUrl(row, url);
+      renderPreviewMedia(url, row.dataset.nombre || 'Plato');
+    } catch (err) {
+      if (modalReplaceError) {
+        modalReplaceError.textContent =
+          err instanceof Error ? err.message : 'Error al reemplazar media';
+        modalReplaceError.classList.remove('hidden');
+      }
+    } finally {
+      modalReplaceBusy?.classList.add('hidden');
+      modalReplaceBusy?.classList.remove('flex');
+      modalReplaceFile.disabled = false;
+      modalReplaceFile.value = '';
+      if (modalReplaceLabel) modalReplaceLabel.innerHTML = REPLACE_LABEL_HTML;
+    }
+  });
+
+  function openAttachModal(row) {
+    activeMediaRow = row;
+    if (modalTitle) modalTitle.textContent = row.dataset.nombre || 'Agregar media';
+    modalPreview?.classList.add('hidden');
+    modalAttach?.classList.remove('hidden');
+    if (modalUrl instanceof HTMLInputElement) modalUrl.value = '';
+    if (modalFile instanceof HTMLInputElement) modalFile.value = '';
+    modalAttachError?.classList.add('hidden');
+    if (modalAttachError) modalAttachError.textContent = '';
+    showModalShell();
+  }
+
+  function closeModal() {
+    closeOverlay(
+      modal,
+      () => {
+        activeMediaRow = null;
+        if (modalVideo instanceof HTMLVideoElement) {
+          modalVideo.pause();
+          modalVideo.removeAttribute('src');
+        }
+        if (modalImg instanceof HTMLImageElement) {
+          modalImg.removeAttribute('src');
+          modalImg.classList.add('hidden');
+        }
+        modalPreview?.classList.add('hidden');
+        modalAttach?.classList.add('hidden');
+        modalReplaceBusy?.classList.add('hidden');
+        modalReplaceBusy?.classList.remove('flex');
+        if (modalReplaceFile instanceof HTMLInputElement) modalReplaceFile.value = '';
+      },
+      { timerRef: 'modal' },
+    );
+  }
+
+  function openDescModal(row) {
+    activeDescRow = row;
+    const nombreEl = row.querySelector('[data-field="nombre"]');
+    const nombre =
+      nombreEl instanceof HTMLInputElement
+        ? nombreEl.value
+        : row.dataset.nombre || 'Plato';
+    const btn = row.querySelector('[data-edit-descripcion]');
+    const current =
+      btn instanceof HTMLElement ? btn.dataset.descripcion || '' : '';
+
+    if (descModalTitle) descModalTitle.textContent = nombre;
+    if (descModalText instanceof HTMLTextAreaElement) {
+      descModalText.value = current;
+    }
+    descModalError?.classList.add('hidden');
+    if (descModalError) descModalError.textContent = '';
+    if (descCloseTimer) {
+      clearTimeout(descCloseTimer);
+      descCloseTimer = null;
+    }
+    openOverlay(descModal);
+    requestAnimationFrame(() => {
+      if (descModalText instanceof HTMLTextAreaElement) descModalText.focus();
+    });
+  }
+
+  function closeDescModal() {
+    closeOverlay(
+      descModal,
+      () => {
+        activeDescRow = null;
+      },
+      { timerRef: 'desc' },
+    );
+  }
+
+  modalClose?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+  descModalClose?.addEventListener('click', closeDescModal);
+  descModal?.addEventListener('click', (e) => {
+    if (e.target === descModal) closeDescModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (descModal?.dataset.open === 'true') closeDescModal();
+    else if (modal?.dataset.open === 'true') closeModal();
+  });
+
+  descModalSave?.addEventListener('click', async () => {
+    if (!(activeDescRow instanceof HTMLElement)) return;
+    const row = activeDescRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    const value =
+      descModalText instanceof HTMLTextAreaElement
+        ? descModalText.value.trim()
+        : '';
+    const btn = row.querySelector('[data-edit-descripcion]');
+    const preview = row.querySelector('[data-descripcion-preview]');
+    const prev =
+      btn instanceof HTMLElement ? btn.dataset.descripcion || '' : '';
+
+    if (value === prev) {
+      closeDescModal();
+      return;
+    }
+
+    descModalError?.classList.add('hidden');
+    if (descModalSave instanceof HTMLButtonElement) {
+      descModalSave.disabled = true;
+      descModalSave.textContent = 'Guardando…';
+    }
+
+    try {
+      await updatePlato(id, { descripcion: value });
+      if (btn instanceof HTMLElement) btn.dataset.descripcion = value;
+      if (preview instanceof HTMLElement) {
+        preview.textContent = value || 'Sin descripción · clic para editar';
+        preview.classList.toggle('text-zinc-500', Boolean(value));
+        preview.classList.toggle('text-zinc-700', !value);
+        preview.classList.toggle('italic', !value);
+      }
+      refreshSearchIndex(row);
+      const savedHint = row.querySelector('[data-field-saved]');
+      if (savedHint instanceof HTMLElement) {
+        savedHint.style.opacity = '1';
+        window.setTimeout(() => {
+          savedHint.style.opacity = '0';
+        }, 900);
+      }
+      closeDescModal();
+    } catch (err) {
+      if (descModalError) {
+        descModalError.textContent =
+          err instanceof Error ? err.message : 'Error al guardar';
+        descModalError.classList.remove('hidden');
+      }
+    } finally {
+      if (descModalSave instanceof HTMLButtonElement) {
+        descModalSave.disabled = false;
+        descModalSave.textContent = 'Guardar';
+      }
+    }
+  });
+
+  document.getElementById('modal-attach-save')?.addEventListener('click', async () => {
+    if (!(activeMediaRow instanceof HTMLElement)) return;
+    const row = activeMediaRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    const url = modalUrl instanceof HTMLInputElement ? modalUrl.value.trim() : '';
+    const file = modalFile instanceof HTMLInputElement ? modalFile.files?.[0] : null;
+    modalAttachError?.classList.add('hidden');
+    const saveBtn = document.getElementById('modal-attach-save');
+    if (saveBtn instanceof HTMLButtonElement) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando…';
+    }
+
+    try {
+      let imagenUrl = '';
+      if (file) {
+        const fd = new FormData();
+        fd.set('id', String(id));
+        fd.set('restaurante_id', restauranteId);
+        fd.set('imagen', file);
+        const res = await fetch('/api/update-plato', { method: 'POST', body: fd });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'No se pudo subir el archivo.');
+        imagenUrl = json.plato?.imagen_url || '';
+      } else if (url) {
+        const json = await updatePlato(id, { imagen_url: url });
+        imagenUrl = json.plato?.imagen_url || url;
+      } else {
+        throw new Error('Pegá una URL o elegí un archivo.');
+      }
+
+      row.dataset.imagen = imagenUrl;
+      const btn = row.querySelector('[data-ver-plato]');
+      if (btn) btn.textContent = 'Ver';
+      closeModal();
+      if (imagenUrl) openPreviewModal(row);
+    } catch (err) {
+      if (modalAttachError) {
+        modalAttachError.textContent = err instanceof Error ? err.message : 'Error';
+        modalAttachError.classList.remove('hidden');
+      }
+    } finally {
+      if (saveBtn instanceof HTMLButtonElement) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar media';
+      }
+    }
+  });
+
+  function buildRow(plato) {
+    const tr = document.createElement('tr');
+    tr.className =
+      'border-b border-white/[0.05] transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-neutral-800/50';
+    tr.dataset.platoId = String(plato.id);
+    tr.dataset.disponible = plato.disponible ? 'true' : 'false';
+    tr.dataset.destacado = plato.destacado ? 'true' : 'false';
+    tr.dataset.imagen = plato.imagen_url || '';
+    tr.dataset.nombre = plato.nombre;
+    tr.dataset.search =
+      `${plato.nombre} ${plato.categoria_nombre || ''} ${plato.descripcion || ''}`.toLowerCase();
+    const precio = Number(plato.precio).toFixed(2);
+
+    tr.innerHTML = `
+      <td class="px-4 py-3 text-left">
+        <div class="flex flex-col gap-1">
+          <input type="text" value="${escapeHtml(plato.nombre)}" data-field="nombre" data-original="${escapeHtml(plato.nombre)}"
+            class="field-inline w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15" />
+          <button type="button" data-edit-descripcion data-descripcion="${escapeHtml(plato.descripcion || '')}"
+            class="group max-w-[24rem] rounded-md px-1.5 py-0.5 text-left transition hover:bg-white/[0.04]" title="Editar descripción">
+            <span data-descripcion-preview class="line-clamp-2 text-xs leading-snug transition group-hover:text-zinc-300 ${plato.descripcion ? 'text-zinc-500' : 'text-zinc-700 italic'}">${escapeHtml(plato.descripcion || 'Sin descripción · clic para editar')}</span>
+          </button>
+          <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
+        </div>
+      </td>
+      <td class="px-3 py-3.5 text-center text-xs text-zinc-400" data-categoria>${escapeHtml(plato.categoria_nombre || '—')}</td>
+      <td class="px-3 py-3.5 text-right">
+        <div class="inline-flex items-center justify-end gap-1">
+          <span class="text-xs text-zinc-600">$</span>
+          <input type="number" inputmode="decimal" min="0" step="0.01" value="${precio}" data-field="precio" data-original="${precio}"
+            class="field-inline precio-input w-[5.25rem] rounded-lg border border-transparent bg-white/[0.04] px-2 py-1.5 text-right text-sm tabular-nums text-zinc-100 outline-none transition focus:border-white/20 focus:bg-black/50" />
+        </div>
+      </td>
+      <td class="px-3 py-3.5 text-center">
+        <button type="button" role="switch" aria-checked="${Boolean(plato.destacado)}" data-toggle-destacado title="Destacado" class="ios-toggle ${plato.destacado ? 'is-on' : ''}">
+          <span class="ios-toggle__knob" aria-hidden="true"></span>
+        </button>
+      </td>
+      <td class="px-3 py-3.5 text-center">
+        <button type="button" role="switch" aria-checked="${Boolean(plato.disponible)}" data-toggle-disponible title="Disponible" class="ios-toggle ${plato.disponible ? 'is-on' : ''}">
+          <span class="ios-toggle__knob" aria-hidden="true"></span>
+        </button>
+      </td>
+      <td class="px-4 py-3.5 text-right">
+        <div class="inline-flex items-center justify-end gap-1.5" data-media-actions>
+          ${
+            plato.imagen_url
+              ? `<button type="button" data-ver-plato class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white">Ver</button>`
+              : `<label class="relative inline-flex cursor-pointer items-center">
+                  <input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" />
+                  <span data-upload-label class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white">Subir</span>
+                </label>`
+          }
+          <button type="button" data-delete class="rounded-lg p-1.5 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400" aria-label="Eliminar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16"></path><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"></path><path d="M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12"></path><path d="M10 11v6M14 11v6"></path></svg>
+          </button>
+        </div>
+      </td>
+    `;
+    return tr;
+  }
+
+  bulkSubmit?.addEventListener('click', async () => {
+    if (!(bulkSubmit instanceof HTMLButtonElement)) return;
+    const text = bulkText instanceof HTMLTextAreaElement ? bulkText.value : '';
+    bulkSubmit.disabled = true;
+    bulkSubmit.textContent = 'Procesando…';
+    setFeedback('Insertando menú…', true);
+    try {
+      const res = await fetch('/api/bulk-insert-platos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurante_id: restauranteId, text }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo insertar el menú.');
+      for (const plato of json.platos ?? []) tbody?.prepend(buildRow(plato));
+      refreshCount();
+      setFeedback(`Listo: ${json.count} plato(s) insertados.`, true);
+      if (bulkText instanceof HTMLTextAreaElement) bulkText.value = '';
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : 'Error al insertar', false);
+    } finally {
+      bulkSubmit.disabled = false;
+      bulkSubmit.textContent = 'Procesar e Insertar Menú Completo';
+    }
+  });
+
+  // ── Bulk panel toggle ──
+  bulkToggle?.addEventListener('click', () => {
+    if (!(bulkPanel instanceof HTMLElement)) return;
+    const open = bulkPanel.dataset.open !== 'true';
+    bulkPanel.dataset.open = open ? 'true' : 'false';
+    bulkPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    bulkToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    bulkChevron?.classList.toggle('rotate-180', open);
+  });
+
+  // ── Nuevo plato modal ──
+  function fillCategoriasDatalist() {
+    if (!(npCategoriasList instanceof HTMLDataListElement)) return;
+    npCategoriasList.innerHTML = '';
+    for (const cat of categoriasCache) {
+      const opt = document.createElement('option');
+      opt.value = cat.nombre;
+      npCategoriasList.appendChild(opt);
+    }
+  }
+
+  function openNuevoPlatoModal() {
+    fillCategoriasDatalist();
+    if (nuevoForm instanceof HTMLFormElement) nuevoForm.reset();
+    if (npDestacado instanceof HTMLElement) {
+      npDestacado.setAttribute('aria-checked', 'false');
+      npDestacado.classList.remove('is-on');
+    }
+    nuevoError?.classList.add('hidden');
+    if (nuevoError) nuevoError.textContent = '';
+    if (nuevoCloseTimer) {
+      clearTimeout(nuevoCloseTimer);
+      nuevoCloseTimer = null;
+    }
+    openOverlay(nuevoModal);
+    requestAnimationFrame(() => {
+      document.getElementById('np-nombre')?.focus();
+    });
+  }
+
+  function closeNuevoPlatoModal() {
+    closeOverlay(nuevoModal, undefined, { timerRef: 'nuevo' });
+  }
+
+  npDestacado?.addEventListener('click', () => {
+    if (!(npDestacado instanceof HTMLElement)) return;
+    const next = npDestacado.getAttribute('aria-checked') !== 'true';
+    paintToggle(npDestacado, next);
+  });
+
+  nuevoOpen?.addEventListener('click', openNuevoPlatoModal);
+  nuevoClose?.addEventListener('click', closeNuevoPlatoModal);
+  nuevoModal?.addEventListener('click', (e) => {
+    if (e.target === nuevoModal) closeNuevoPlatoModal();
+  });
+
+  nuevoForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!(nuevoForm instanceof HTMLFormElement)) return;
+    if (!(nuevoSubmit instanceof HTMLButtonElement)) return;
+
+    const fd = new FormData(nuevoForm);
+    const nombre = String(fd.get('nombre') || '').trim();
+    const descripcion = String(fd.get('descripcion') || '').trim();
+    const categoria = String(fd.get('categoria') || '').trim();
+    const precio = Number(String(fd.get('precio') || '').replace(',', '.'));
+    const destacado =
+      npDestacado instanceof HTMLElement &&
+      npDestacado.getAttribute('aria-checked') === 'true';
+    const fileInput = document.getElementById('np-imagen');
+    const file =
+      fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+
+    nuevoError?.classList.add('hidden');
+    if (!nombre) {
+      if (nuevoError) {
+        nuevoError.textContent = 'El nombre es obligatorio.';
+        nuevoError.classList.remove('hidden');
+      }
+      return;
+    }
+    if (!Number.isFinite(precio) || precio < 0) {
+      if (nuevoError) {
+        nuevoError.textContent = 'Precio inválido.';
+        nuevoError.classList.remove('hidden');
       }
       return;
     }
 
-    const editBtn = target.closest('[data-edit-precio]');
-    if (editBtn instanceof HTMLElement) {
-      const actual = editBtn.dataset.precioActual ?? '0';
-      const raw = window.prompt('Nuevo precio', actual);
-      if (raw === null) return;
+    nuevoSubmit.disabled = true;
+    nuevoSubmit.textContent = 'Creando…';
 
-      const precio = Number(String(raw).replace(',', '.').trim());
-      if (!Number.isFinite(precio) || precio < 0) {
-        alert('Ingresá un precio válido (número ≥ 0).');
-        return;
+    try {
+      let imagenUrl = null;
+      if (file) {
+        nuevoSubmit.textContent = 'Subiendo media…';
+        const uploadFd = new FormData();
+        uploadFd.set('file', file);
+        uploadFd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFd,
+        });
+        const uploadJson = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok) {
+          throw new Error(uploadJson.error || 'No se pudo subir la media');
+        }
+        imagenUrl = uploadJson.url || null;
       }
 
-      editBtn.setAttribute('disabled', 'true');
+      nuevoSubmit.textContent = 'Guardando…';
+      const res = await fetch('/api/create-plato', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id: restauranteId,
+          nombre,
+          descripcion: descripcion || null,
+          precio,
+          destacado,
+          categoria: categoria || undefined,
+          imagen_url: imagenUrl,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo crear el plato');
+
+      const plato = json.plato;
+      if (plato) {
+        tbody?.prepend(buildRow(plato));
+        refreshCount();
+        if (
+          plato.categoria_nombre &&
+          !categoriasCache.some(
+            (c) =>
+              c.nombre.toLowerCase() ===
+              String(plato.categoria_nombre).toLowerCase(),
+          )
+        ) {
+          categoriasCache.push({
+            id: plato.categoria_id,
+            nombre: plato.categoria_nombre,
+          });
+        }
+      }
+      closeNuevoPlatoModal();
+    } catch (err) {
+      if (nuevoError) {
+        nuevoError.textContent =
+          err instanceof Error ? err.message : 'Error al crear';
+        nuevoError.classList.remove('hidden');
+      }
+    } finally {
+      nuevoSubmit.disabled = false;
+      nuevoSubmit.textContent = 'Crear plato';
+    }
+  });
+
+  tbody?.addEventListener('keydown', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches('[data-field]')) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      target.blur();
+    }
+  });
+
+  tbody?.addEventListener('focusout', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches('[data-field]')) return;
+    void saveField(target);
+  });
+
+  /**
+   * @param {HTMLElement} row
+   * @param {string} url
+   */
+  function setRowMediaUrl(row, url) {
+    row.dataset.imagen = url;
+    const actions = row.querySelector('[data-media-actions]');
+    if (!(actions instanceof HTMLElement)) return;
+
+    const deleteBtn = actions.querySelector('[data-delete]');
+    const label = actions.querySelector('label');
+    label?.remove();
+
+    if (!actions.querySelector('[data-ver-plato]')) {
+      const ver = document.createElement('button');
+      ver.type = 'button';
+      ver.dataset.verPlato = '';
+      ver.setAttribute('data-ver-plato', '');
+      ver.className =
+        'rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white';
+      ver.textContent = 'Ver';
+      if (deleteBtn) actions.insertBefore(ver, deleteBtn);
+      else actions.appendChild(ver);
+    }
+  }
+
+  tbody?.addEventListener('change', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches('[data-upload-media]')) return;
+
+    const row = target.closest('tr[data-plato-id]');
+    if (!(row instanceof HTMLElement)) return;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    const file = target.files?.[0];
+    if (!file) return;
+
+    const label = row.querySelector('[data-upload-label]');
+    const prevText = label?.textContent || 'Subir';
+    if (label) label.textContent = 'Subiendo…';
+    target.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.set('file', file);
+      fd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
+
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+      const uploadJson = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok) {
+        throw new Error(uploadJson.error || 'No se pudo subir a Cloudinary');
+      }
+
+      const url = uploadJson.url;
+      if (!url) throw new Error('Cloudinary no devolvió URL');
+
+      await updatePlato(id, { imagen_url: url });
+      setRowMediaUrl(row, url);
+    } catch (err) {
+      if (label) label.textContent = prevText;
+      alert(err instanceof Error ? err.message : 'Error al subir media');
+      target.value = '';
+      target.disabled = false;
+    }
+  });
+
+  tbody?.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const row = target.closest('tr[data-plato-id]');
+    if (!(row instanceof HTMLElement)) return;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    if (target.closest('[data-ver-plato]')) {
+      if (row.dataset.imagen) openPreviewModal(row);
+      return;
+    }
+
+    if (target.closest('[data-edit-descripcion]')) {
+      openDescModal(row);
+      return;
+    }
+
+    if (target.closest('[data-delete]')) {
+      if (
+        !window.confirm(
+          '¿Estás seguro de que deseas eliminar este plato por completo?',
+        )
+      ) {
+        return;
+      }
       try {
-        await updatePlato(id, { precio });
-        const precioEl = row.querySelector('[data-precio]');
-        if (precioEl) precioEl.textContent = precio.toFixed(2);
-        editBtn.dataset.precioActual = String(precio);
+        await deletePlato(id);
+        row.remove();
+        refreshCount();
       } catch (err) {
+        alert(err instanceof Error ? err.message : 'Error al eliminar');
+      }
+      return;
+    }
+
+    const toggleDisp = target.closest('[data-toggle-disponible]');
+    if (toggleDisp instanceof HTMLElement) {
+      const next = row.dataset.disponible !== 'true';
+      const prev = !next;
+      row.dataset.disponible = next ? 'true' : 'false';
+      paintToggle(toggleDisp, next);
+      try {
+        // Boolean explícito → columna platos.disponible (menú público filtra eq true)
+        await updatePlato(id, { disponible: Boolean(next) });
+      } catch (err) {
+        row.dataset.disponible = prev ? 'true' : 'false';
+        paintToggle(toggleDisp, prev);
         alert(err instanceof Error ? err.message : 'Error al actualizar');
-      } finally {
-        editBtn.removeAttribute('disabled');
+      }
+      return;
+    }
+
+    const toggleDest = target.closest('[data-toggle-destacado]');
+    if (toggleDest instanceof HTMLElement) {
+      const next = row.dataset.destacado !== 'true';
+      const prev = !next;
+      row.dataset.destacado = next ? 'true' : 'false';
+      paintToggle(toggleDest, next);
+      try {
+        await updatePlato(id, { destacado: next });
+      } catch (err) {
+        row.dataset.destacado = prev ? 'true' : 'false';
+        paintToggle(toggleDest, prev);
+        alert(err instanceof Error ? err.message : 'Error al actualizar');
       }
     }
   });
+
+  // ── Tabs Menú / Identidad de Marca ──
+  const tabButtons = document.querySelectorAll('[data-dashboard-tab]');
+  const tabPanels = document.querySelectorAll('[data-tab-panel]');
+
+  /**
+   * @param {HTMLElement} el
+   */
+  function playFadeInUp(el) {
+    el.classList.remove('admin-fade-in-up');
+    // Force reflow so the animation can re-trigger
+    void el.offsetWidth;
+    el.classList.add('admin-fade-in-up');
+  }
+
+  /**
+   * @param {string} id
+   */
+  function setDashboardTab(id) {
+    tabButtons.forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      const active = btn.dataset.dashboardTab === id;
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    tabPanels.forEach((panel) => {
+      if (!(panel instanceof HTMLElement)) return;
+      const active = panel.dataset.tabPanel === id;
+      panel.hidden = !active;
+      if (active) playFadeInUp(panel);
+    });
+  }
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!(btn instanceof HTMLElement)) return;
+      const id = btn.dataset.dashboardTab || 'menu';
+      setDashboardTab(id);
+    });
+  });
+
+  // ── Toast premium ──
+  const toastEl = document.getElementById('crx-toast');
+  const toastMsg = document.getElementById('crx-toast-msg');
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let toastTimer = null;
+
+  /**
+   * @param {string} message
+   * @param {'ok' | 'error'} [tone]
+   */
+  function showToast(message, tone = 'ok') {
+    if (!(toastEl instanceof HTMLElement) || !(toastMsg instanceof HTMLElement)) return;
+    toastMsg.textContent = message;
+    toastEl.dataset.tone = tone;
+    toastEl.dataset.open = 'true';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.dataset.open = 'false';
+    }, 3200);
+  }
+
+  // ── Identidad de marca ──
+  const marcaForm = document.getElementById('marca-form');
+  const marcaSave = document.getElementById('marca-save');
+  const marcaFeedback = document.getElementById('marca-feedback');
+
+  /**
+   * @param {string} pickerId
+   * @param {string} textId
+   */
+  function wireColorPair(pickerId, textId) {
+    const picker = document.getElementById(pickerId);
+    const text = document.getElementById(textId);
+    if (!(picker instanceof HTMLInputElement) || !(text instanceof HTMLInputElement)) return;
+
+    picker.addEventListener('input', () => {
+      text.value = picker.value;
+    });
+    text.addEventListener('input', () => {
+      const v = text.value.trim();
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) {
+        picker.value =
+          v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v;
+      }
+    });
+  }
+
+  wireColorPair('marca-color-primario-picker', 'marca-color-primario');
+  wireColorPair('marca-color-texto-picker', 'marca-color-texto');
+  wireColorPair('marca-home-subtitulo-color-picker', 'marca-home-subtitulo-color');
+
+  const SCALE_LABELS = ['', 'XS', 'SM', 'MD', 'LG', 'XL'];
+  document.querySelectorAll('[data-scale-slider]').forEach((slider) => {
+    if (!(slider instanceof HTMLInputElement)) return;
+    const label = document.querySelector(`[data-scale-label][data-for="${slider.id}"]`);
+    const sync = () => {
+      const n = Number(slider.value) || 3;
+      if (label instanceof HTMLElement) label.textContent = SCALE_LABELS[n] || 'MD';
+    };
+    slider.addEventListener('input', sync);
+    sync();
+  });
+
+  // Sub-tabs Identidad de Marca
+  const marcaSubtabs = document.querySelectorAll('[data-marca-subtab]');
+  const marcaPanels = document.querySelectorAll('[data-marca-panel]');
+
+  /**
+   * @param {string} id
+   */
+  function setMarcaSubtab(id) {
+    marcaSubtabs.forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      const active = btn.dataset.marcaSubtab === id;
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    marcaPanels.forEach((panel) => {
+      if (!(panel instanceof HTMLElement)) return;
+      const active = panel.dataset.marcaPanel === id;
+      panel.hidden = !active;
+      if (active) playFadeInUp(panel);
+    });
+  }
+
+  marcaSubtabs.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!(btn instanceof HTMLElement)) return;
+      setMarcaSubtab(btn.dataset.marcaSubtab || 'home');
+    });
+  });
+
+  // Bloques editoriales Nosotros (add / remove)
+  const bloquesList = document.getElementById('nosotros-bloques-list');
+  const addBloqueBtn = document.getElementById('nosotros-add-bloque');
+  const fieldClassJs =
+    'w-full rounded-xl border border-white/10 bg-black/35 px-3.5 py-3 text-sm text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-white/25 focus:ring-2 focus:ring-white/10';
+  const labelClassJs = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
+
+  function renumberBloques() {
+    if (!(bloquesList instanceof HTMLElement)) return;
+    bloquesList.querySelectorAll('[data-nosotros-bloque]').forEach((el, i) => {
+      const title = el.querySelector('p');
+      if (title instanceof HTMLElement) {
+        title.textContent = `Bloque ${i + 1}`;
+      }
+    });
+  }
+
+  function createBloqueEl(index = 1) {
+    const wrap = document.createElement('div');
+    wrap.className =
+      'nosotros-bloque rounded-xl border border-white/10 bg-black/25 p-4 space-y-4';
+    wrap.dataset.nosotrosBloque = '';
+    wrap.innerHTML = `
+      <div class="flex items-center justify-between gap-3">
+        <p class="${labelClassJs} !text-zinc-400">Bloque ${index}</p>
+        <button type="button" class="rounded-lg px-2.5 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-rose-300/80 transition hover:bg-rose-500/10 hover:text-rose-200" data-remove-bloque>Quitar</button>
+      </div>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <label class="block space-y-2 lg:col-span-2">
+          <span class="${labelClassJs}">Título</span>
+          <input type="text" data-bloque-titulo class="${fieldClassJs}" />
+        </label>
+        <label class="block space-y-2 lg:col-span-2">
+          <span class="${labelClassJs}">Texto</span>
+          <textarea data-bloque-texto rows="4" class="${fieldClassJs}"></textarea>
+        </label>
+        <label class="block space-y-2 lg:col-span-2">
+          <span class="${labelClassJs}">URL de media (imagen o video)</span>
+          <input type="url" data-bloque-media placeholder="https://…" class="${fieldClassJs}" />
+        </label>
+        <label class="block space-y-2 lg:col-span-2">
+          <span class="${labelClassJs}">Alineación</span>
+          <select data-bloque-alineacion class="${fieldClassJs}">
+            <option value="alternada" selected>Alternada</option>
+            <option value="inversa">Inversa</option>
+          </select>
+        </label>
+      </div>
+    `;
+    return wrap;
+  }
+
+  function collectNosotrosBloques() {
+    if (!(bloquesList instanceof HTMLElement)) return [];
+    return Array.from(bloquesList.querySelectorAll('[data-nosotros-bloque]'))
+      .map((el) => {
+        const titulo =
+          /** @type {HTMLInputElement | null} */ (el.querySelector('[data-bloque-titulo]'))
+            ?.value || '';
+        const texto =
+          /** @type {HTMLTextAreaElement | null} */ (el.querySelector('[data-bloque-texto]'))
+            ?.value || '';
+        const media_url =
+          /** @type {HTMLInputElement | null} */ (el.querySelector('[data-bloque-media]'))
+            ?.value || '';
+        const alineacion =
+          /** @type {HTMLSelectElement | null} */ (el.querySelector('[data-bloque-alineacion]'))
+            ?.value || 'alternada';
+        return {
+          titulo: titulo.trim(),
+          texto: texto.trim(),
+          media_url: media_url.trim(),
+          alineacion: alineacion === 'inversa' ? 'inversa' : 'alternada',
+        };
+      })
+      .filter((b) => b.titulo || b.texto || b.media_url);
+  }
+
+  function collectCategoriasFondos() {
+    return Array.from(document.querySelectorAll('[data-cat-fondo]'))
+      .map((el) => {
+        if (!(el instanceof HTMLElement)) return null;
+        const id = el.dataset.catId;
+        const bg_type =
+          /** @type {HTMLSelectElement | null} */ (el.querySelector('[data-cat-bg-type]'))
+            ?.value || 'color';
+        const bg_valor =
+          /** @type {HTMLInputElement | null} */ (el.querySelector('[data-cat-bg-valor]'))
+            ?.value || '';
+        return { id, bg_type, bg_valor: bg_valor.trim() };
+      })
+      .filter(Boolean);
+  }
+
+  function collectBoutiqueProductos() {
+    return Array.from(document.querySelectorAll('[data-boutique-row]')).map((row, index) => {
+      if (!(row instanceof HTMLElement)) {
+        return { id: `item-${index + 1}`, nombre: 'Producto', precio: 0, imagen_url: '', activo: false };
+      }
+      const id =
+        /** @type {HTMLInputElement | null} */ (row.querySelector('[data-boutique-id]'))?.value ||
+        `item-${index + 1}`;
+      const nombre =
+        /** @type {HTMLInputElement | null} */ (row.querySelector('[data-boutique-nombre]'))
+          ?.value || 'Producto';
+      const precioRaw = Number(
+        /** @type {HTMLInputElement | null} */ (row.querySelector('[data-boutique-precio]'))
+          ?.value || 0,
+      );
+      const imagen_url =
+        /** @type {HTMLInputElement | null} */ (row.querySelector('[data-boutique-imagen]'))
+          ?.value || '';
+      const activo = Boolean(
+        /** @type {HTMLInputElement | null} */ (row.querySelector('[data-boutique-activo]'))
+          ?.checked,
+      );
+      return {
+        id,
+        nombre,
+        precio: Number.isFinite(precioRaw) ? precioRaw : 0,
+        imagen_url,
+        activo,
+      };
+    });
+  }
+
+  addBloqueBtn?.addEventListener('click', () => {
+    if (!(bloquesList instanceof HTMLElement)) return;
+    const n = bloquesList.querySelectorAll('[data-nosotros-bloque]').length + 1;
+    bloquesList.appendChild(createBloqueEl(n));
+  });
+
+  bloquesList?.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const btn = target.closest('[data-remove-bloque]');
+    if (!btn) return;
+    const card = btn.closest('[data-nosotros-bloque]');
+    if (!(card instanceof HTMLElement) || !(bloquesList instanceof HTMLElement)) return;
+    if (bloquesList.querySelectorAll('[data-nosotros-bloque]').length <= 1) {
+      card.querySelectorAll('input, textarea').forEach((input) => {
+        if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+          input.value = '';
+        }
+      });
+      const sel = card.querySelector('[data-bloque-alineacion]');
+      if (sel instanceof HTMLSelectElement) sel.value = 'alternada';
+      return;
+    }
+    card.remove();
+    renumberBloques();
+  });
+
+  // Sync visual ios-toggle + estado de tarjetas gadget
+  document.querySelectorAll('[data-marca-gadget]').forEach((input) => {
+    if (!(input instanceof HTMLInputElement)) return;
+    const ui = document.querySelector(`[data-marca-toggle-ui][data-for="${input.id}"]`);
+    const card = input.closest('[data-gadget-card]');
+    const config = card?.querySelector('[data-gadget-config]');
+
+    const sync = () => {
+      const on = input.checked;
+      if (ui instanceof HTMLElement) ui.classList.toggle('is-on', on);
+      input.setAttribute('aria-checked', on ? 'true' : 'false');
+
+      if (card instanceof HTMLElement) {
+        card.classList.toggle('gadget-card--on', on);
+        card.classList.toggle('is-active', on);
+      }
+
+      if (config instanceof HTMLElement) {
+        config.classList.toggle('is-open', on);
+        config.setAttribute('aria-hidden', on ? 'false' : 'true');
+      }
+    };
+
+    input.addEventListener('change', sync);
+    sync();
+  });
+
+  // Mantener --gadget-accent alineado con el color primario del form
+  const colorPrimarioInput = document.getElementById('marca-color-primario');
+  const gadgetsPanel = document.querySelector('[data-marca-panel="gadgets"]');
+  const syncGadgetAccent = () => {
+    if (!(gadgetsPanel instanceof HTMLElement)) return;
+    if (!(colorPrimarioInput instanceof HTMLInputElement)) return;
+    const v = colorPrimarioInput.value.trim();
+    if (v) gadgetsPanel.style.setProperty('--gadget-accent', v);
+  };
+  colorPrimarioInput?.addEventListener('input', syncGadgetAccent);
+  syncGadgetAccent();
+
+  marcaForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!(marcaSave instanceof HTMLButtonElement)) return;
+    if (!restauranteId) {
+      showToast('Restaurante no disponible', 'error');
+      return;
+    }
+
+    const val = (id) => {
+      const el = document.getElementById(id);
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+        return el.value;
+      }
+      return '';
+    };
+
+    const checked = (id) => {
+      const el = document.getElementById(id);
+      return el instanceof HTMLInputElement ? el.checked : false;
+    };
+
+    marcaSave.disabled = true;
+    marcaSave.textContent = 'Guardando…';
+    if (marcaFeedback) {
+      marcaFeedback.classList.add('hidden');
+      marcaFeedback.textContent = '';
+    }
+
+    try {
+      const res = await fetch('/api/update-marca', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id: restauranteId,
+          logo_url: val('marca-logo-url'),
+          eslogan: val('marca-eslogan'),
+          color_primario: val('marca-color-primario'),
+          color_texto: val('marca-color-texto'),
+          color_fondo: val('marca-fondo-home-valor'),
+          estilo_adn: val('marca-estilo-adn'),
+          tipo_letra: val('marca-tipo-letra'),
+          custom_css: val('marca-custom-css'),
+          share_image_url: val('marca-share-image-url'),
+          app_icon_url: val('marca-app-icon-url'),
+          home_titulo_size: val('marca-home-titulo-size'),
+          home_logo_size: val('marca-home-logo-size'),
+          home_eslogan_size: val('marca-home-eslogan-size'),
+          home_tracking: val('marca-home-tracking'),
+          home_subtitulo_color: val('marca-home-subtitulo-color'),
+          nosotros_color_fondo: val('marca-nosotros-color-fondo'),
+          nosotros_color_titulo: val('marca-nosotros-color-titulo'),
+          nosotros_color_cuerpo: val('marca-nosotros-color-cuerpo'),
+          ubicacion_color_fondo: val('marca-ubicacion-color-fondo'),
+          ubicacion_color_titulo: val('marca-ubicacion-color-titulo'),
+          ubicacion_color_cuerpo: val('marca-ubicacion-color-cuerpo'),
+          fondo_home_tipo: val('marca-fondo-home-tipo'),
+          fondo_home_valor: val('marca-fondo-home-valor'),
+          fondo_nosotros_tipo: val('marca-fondo-nosotros-tipo'),
+          fondo_nosotros_valor: val('marca-fondo-nosotros-valor'),
+          fondo_menu_tipo: val('marca-fondo-menu-tipo'),
+          fondo_menu_valor: val('marca-fondo-menu-valor'),
+          menu_font: val('marca-menu-font'),
+          fondo_ubicacion_tipo: val('marca-fondo-ubicacion-tipo'),
+          fondo_ubicacion_valor: val('marca-fondo-ubicacion-valor'),
+          nosotros_bloques: collectNosotrosBloques(),
+          direccion: val('marca-direccion'),
+          coordenadas_maps: val('marca-coordenadas'),
+          redes_instagram: val('marca-redes-instagram'),
+          redes_facebook: val('marca-redes-facebook'),
+          redes_tiktok: val('marca-redes-tiktok'),
+          redes_tripadvisor: val('marca-redes-tripadvisor'),
+          instagram_url: val('marca-redes-instagram'),
+          whatsapp_url: val('marca-whatsapp'),
+          horarios: val('marca-horarios'),
+          categorias_fondos: collectCategoriasFondos(),
+          gadget_reservas: checked('marca-gadget-reservas'),
+          reservas_label: val('marca-reservas-label'),
+          reservas_destino_tipo: val('marca-reservas-destino-tipo'),
+          reservas_destino_valor: val('marca-reservas-destino-valor'),
+          gadget_wifi: checked('marca-gadget-wifi'),
+          gadget_mesero: checked('marca-gadget-mesero'),
+          gadget_cuenta: checked('marca-gadget-dividir'),
+          gadget_dividir_cuenta: checked('marca-gadget-dividir'),
+          gadget_llamar_mesero: checked('marca-gadget-mesero'),
+          gadget_wifi_ssid: val('marca-wifi-ssid'),
+          gadget_wifi_clave: val('marca-wifi-password'),
+          wifi_ssid: val('marca-wifi-ssid'),
+          wifi_password: val('marca-wifi-password'),
+          gadget_boutique: checked('marca-gadget-boutique'),
+          boutique_productos: collectBoutiqueProductos(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo guardar la identidad');
+
+      showToast(
+        json.message || '¡Identidad de marca actualizada con éxito!',
+        'ok',
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar';
+      if (marcaFeedback) {
+        marcaFeedback.textContent = msg;
+        marcaFeedback.classList.remove('hidden');
+        marcaFeedback.classList.add('text-rose-400');
+      }
+      showToast(msg, 'error');
+    } finally {
+      marcaSave.disabled = false;
+      marcaSave.textContent = 'Guardar Configuración de Marca';
+    }
+  });
+</script>
+
+<script>
+  import { createSupabaseBrowserClient } from '../../lib/supabase/browser.js';
+
+  const dashRoot = document.getElementById('dashboard-root');
+  const restId = dashRoot?.dataset.restauranteId || '';
+  const stack = document.getElementById('mesa-alertas-stack');
+  const chimeEl = document.getElementById('mesa-alerta-chime');
+
+  if (restId && stack instanceof HTMLElement) {
+    const supabase = createSupabaseBrowserClient();
+
+    /**
+     * @param {string} mesa
+     * @param {string} tipo
+     */
+    function alertaCopy(mesa, tipo) {
+      if (tipo === 'cuenta') return `Mesa ${mesa} solicita la cuenta`;
+      return `Mesa ${mesa} llama al mesero`;
+    }
+
+    let chimeCtx = null;
+
+    function playChime() {
+      if (chimeEl instanceof HTMLAudioElement) {
+        chimeEl.currentTime = 0;
+        void chimeEl.play().catch(() => {
+          try {
+            const AC = window.AudioContext || /** @type {any} */ (window).webkitAudioContext;
+            if (!AC) return;
+            if (!chimeCtx || chimeCtx.state === 'closed') {
+              chimeCtx = new AC();
+            }
+            const ctx = chimeCtx;
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(880, ctx.currentTime);
+            o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.35);
+            g.gain.setValueAtTime(0.0001, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(ctx.currentTime + 0.6);
+          } catch {
+            /* ignore */
+          }
+        });
+      }
+    }
+
+    /**
+     * @param {{ id: string, mesa: string, tipo: string }} alerta
+     */
+    function showAlertaCard(alerta) {
+      const card = document.createElement('article');
+      card.className =
+        'mesa-alerta-card rounded-2xl border px-4 py-3.5 text-left shadow-lg backdrop-blur-md';
+      card.dataset.alertaId = alerta.id;
+
+      const label = document.createElement('p');
+      label.className =
+        'text-[0.55rem] font-semibold uppercase tracking-[0.22em] text-emerald-300/90';
+      label.textContent = 'Nueva solicitud';
+
+      const msg = document.createElement('p');
+      msg.className = 'mt-1.5 text-sm font-medium tracking-tight text-zinc-100';
+      msg.textContent = alertaCopy(alerta.mesa, alerta.tipo);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className =
+        'mt-3 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-3.5 py-2 text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-white transition hover:opacity-90 active:scale-95';
+      btn.textContent = 'Marcar como atendido';
+
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = '…';
+        try {
+          const res = await fetch('/api/alerta-atendida', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alerta_id: alerta.id }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json.error || 'Error');
+          card.style.opacity = '0';
+          card.style.transform = 'translateX(12px)';
+          setTimeout(() => card.remove(), 280);
+        } catch {
+          btn.disabled = false;
+          btn.textContent = 'Reintentar';
+        }
+      });
+
+      card.append(label, msg, btn);
+      stack.prepend(card);
+      playChime();
+    }
+
+    // Alertas pendientes al cargar
+    void supabase
+      .from('alertas_mesas')
+      .select('id, mesa, tipo, atendida, created_at')
+      .eq('restaurante_id', restId)
+      .eq('atendida', false)
+      .order('created_at', { ascending: false })
+      .limit(8)
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn('[alertas_mesas]', error.message);
+          return;
+        }
+        (data || []).forEach((row) => {
+          showAlertaCard({
+            id: row.id,
+            mesa: row.mesa,
+            tipo: row.tipo,
+          });
+        });
+      });
+
+    const channel = supabase
+      .channel(`alertas-mesas-${restId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'alertas_mesas',
+          filter: `restaurante_id=eq.${restId}`,
+        },
+        (payload) => {
+          const row = payload.new;
+          if (!row || row.atendida) return;
+          showAlertaCard({
+            id: row.id,
+            mesa: row.mesa,
+            tipo: row.tipo,
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'alertas_mesas',
+          filter: `restaurante_id=eq.${restId}`,
+        },
+        (payload) => {
+          const row = payload.new;
+          if (!row?.atendida || !row.id) return;
+          const card = stack.querySelector(`[data-alerta-id="${row.id}"]`);
+          card?.remove();
+        },
+      )
+      .subscribe();
+
+    let alertasTornDown = false;
+    function teardownAlertasRealtime() {
+      if (alertasTornDown) return;
+      alertasTornDown = true;
+      void supabase.removeChannel(channel);
+      if (chimeCtx && chimeCtx.state !== 'closed') {
+        void chimeCtx.close().catch(() => {});
+        chimeCtx = null;
+      }
+    }
+    window.addEventListener('pagehide', teardownAlertasRealtime);
+    window.addEventListener('beforeunload', teardownAlertasRealtime);
+  }
 </script>

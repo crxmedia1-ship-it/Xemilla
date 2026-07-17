@@ -1,16 +1,12 @@
 ---
+export const prerender = false;
+
 import Layout from '../layouts/Layout.astro';
 import RestaurantApp from '../components/app/RestaurantApp.astro';
-import { getRestauranteBySlug, listRestauranteSlugs } from '../lib/restaurantes.js';
-
-export async function getStaticPaths() {
-  const slugs = await listRestauranteSlugs();
-
-  // Si aún no hay credenciales / datos, prerender rutas de prueba conocidas.
-  const paths = slugs.length > 0 ? slugs : ['sanza', 'blacksushi'];
-
-  return paths.map((slug) => ({ params: { slug } }));
-}
+import { getRestauranteBySlug } from '../lib/restaurantes.js';
+import { normalizeBrandSlug } from '../config/brand.js';
+import { DEFAULT_THEME } from '../lib/theme.js';
+import { designThemes, DEFAULT_DESIGN_DNA } from '../config/themes.js';
 
 const { slug } = Astro.params;
 const restaurante = await getRestauranteBySlug(slug ?? '');
@@ -19,10 +15,25 @@ if (!restaurante) {
   Astro.response.status = 404;
 }
 
-const theme = (slug === 'sanza' || slug === 'blacksushi' ? slug : 'crx') as
+const brandKey = normalizeBrandSlug(slug ?? '');
+const layoutTheme = (brandKey === 'sanza' || brandKey === 'blacksushi' ? brandKey : 'crx') as
   | 'blacksushi'
   | 'sanza'
   | 'crx';
+
+const brandTheme = restaurante?.theme ?? DEFAULT_THEME;
+const dna =
+  brandTheme.design ??
+  designThemes[(brandTheme.designDnaId as keyof typeof designThemes) || DEFAULT_DESIGN_DNA] ??
+  designThemes[DEFAULT_DESIGN_DNA];
+
+const ogImage =
+  restaurante?.shareImageUrl ||
+  restaurante?.logoUrl ||
+  '';
+const appIcon = restaurante?.appIconUrl || restaurante?.logoUrl || '';
+const siteOrigin = Astro.url.origin;
+const ogUrl = restaurante ? `${siteOrigin}/${restaurante.slug}` : '';
 ---
 
 {
@@ -31,23 +42,23 @@ const theme = (slug === 'sanza' || slug === 'blacksushi' ? slug : 'crx') as
       <main class="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center text-white">
         <p class="text-[0.62rem] font-semibold uppercase tracking-[0.35em] text-neutral-500">CRX</p>
         <h1 class="mt-4 font-blacksushi-display text-3xl font-semibold tracking-tight">404</h1>
-        <p class="mt-3 text-sm leading-relaxed text-neutral-400">
-          Este restaurante no existe en la red CRX.
+        <p class="mt-3 max-w-[18rem] text-sm leading-relaxed text-neutral-400">
+          Este menú no está disponible. Revisá el enlace con el restaurante.
         </p>
-        <a
-          href="/"
-          class="mt-8 inline-flex rounded-full border border-white/15 bg-white/5 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white shadow-inner backdrop-blur-xl transition-transform duration-200 active:scale-95"
-        >
-          Volver al inicio
-        </a>
+        <p class="mt-10 text-[10px] uppercase tracking-[0.28em] text-zinc-600">Acceso restringido</p>
       </main>
     </Layout>
   ) : (
     <Layout
       title={restaurante.nombre}
       description={`${restaurante.nombre} · ${restaurante.tagline}`}
-      theme={theme}
-      themeColor={theme === 'sanza' ? '#f3eee6' : '#09090b'}
+      theme={layoutTheme}
+      themeColor={brandTheme.colorFondo}
+      fontHref={brandTheme.googleFontsHref || dna.fonts.googleHref}
+      customCss={restaurante.customCss || ''}
+      ogImage={ogImage}
+      appIcon={appIcon}
+      ogUrl={ogUrl}
     >
       <RestaurantApp restaurante={restaurante} />
     </Layout>

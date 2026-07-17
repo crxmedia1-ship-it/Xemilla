@@ -2,7 +2,11 @@
 export const prerender = false;
 
 import Layout from '../../../layouts/Layout.astro';
-import { requireSuperAdmin, listAllRestaurantes } from '../../../lib/superadmin.js';
+import AdminThemeSwitcher from '../../../components/admin/AdminThemeSwitcher.astro';
+import AdminXemillaMark from '../../../components/admin/AdminXemillaMark.astro';
+import AdminMetricsPanel from '../../../components/admin/AdminMetricsPanel.astro';
+import { requireSuperAdmin, listAllRestaurantes, getSuperAdminWriteClient } from '../../../lib/superadmin.js';
+import { fetchMetricsSnapshot } from '../../../lib/metrics.js';
 
 const gate = await requireSuperAdmin({
   request: Astro.request,
@@ -13,7 +17,9 @@ if (!gate) {
   return Astro.redirect('/admin/login');
 }
 
-const restaurantes = await listAllRestaurantes(gate.supabase);
+const restaurantes = await listAllRestaurantes(gate.supabase, gate.user);
+const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
+const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
 ---
 
 <Layout
@@ -21,90 +27,154 @@ const restaurantes = await listAllRestaurantes(gate.supabase);
   theme="crx"
   themeColor="#09090b"
   description="Panel maestro de restaurantes Xemilla"
+  adminPanel={true}
 >
-  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-16 pt-10 text-white">
-    <header class="flex items-start justify-between gap-4">
-      <div>
-        <p class="text-[0.58rem] font-semibold uppercase tracking-[0.32em] text-zinc-500">
-          Súper Administrador
-        </p>
-        <h1 class="mt-2 font-blacksushi-display text-3xl font-semibold tracking-tight">
-          Xemilla
-        </h1>
-        <p class="mt-1.5 text-sm text-zinc-400">
-          {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red
-        </p>
-      </div>
-      <form method="POST" action="/api/admin-logout">
-        <button
-          type="submit"
-          class="rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:bg-white/10 hover:text-white"
-        >
-          Salir
-        </button>
-      </form>
-    </header>
-
-    <a
-      href="/admin/super/nuevo-restaurante"
-      class="glass-btn mt-8 !bg-white !text-zinc-950"
-    >
-      Nuevo restaurante
-    </a>
-
-    {
-      restaurantes.length === 0 ? (
-        <div class="glass-panel mt-8 p-5 text-center">
-          <p class="text-sm leading-relaxed text-zinc-400">
-            Todavía no hay locales registrados. Creá el primero.
+  <main class="mx-auto min-h-dvh w-full max-w-7xl px-6 pb-20 pt-10 lg:px-10">
+    <header class="flex flex-wrap items-end justify-between gap-6">
+      <div class="admin-brand-lockup admin-brand-lockup--xemilla">
+        <img
+          src="https://res.cloudinary.com/dgphys1xd/image/upload/v1784310548/Photoroom_20260717_132348_xrnil8.png"
+          alt="Xemilla"
+          width="200"
+          height="88"
+          class="admin-xemilla-hero-logo"
+          loading="eager"
+          decoding="async"
+        />
+        <div>
+          <p class="text-[0.62rem] font-semibold uppercase tracking-[0.32em] text-zinc-500">
+            Súper Administrador
+          </p>
+          <h1 class="mt-2 font-blacksushi-display text-4xl font-semibold tracking-tight lg:text-5xl">
+            Xemilla
+          </h1>
+          <p class="mt-2 text-sm text-zinc-400">
+            {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red · vista escritorio
           </p>
         </div>
-      ) : (
-        <ul class="mt-6 space-y-3">
-          {restaurantes.map((r) => (
-            <li class="glass-panel px-4 py-4">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium tracking-tight text-white">
-                    {r.nombre_comercial}
-                  </p>
-                  <p class="mt-0.5 text-xs text-zinc-500">/{r.slug}</p>
-                </div>
-              </div>
+      </div>
 
-              <div class="mt-3 flex flex-wrap gap-1.5">
-                <span
-                  class:list={[
-                    'rounded-md px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.12em]',
-                    r.gadget_wifi
-                      ? 'bg-emerald-500/15 text-emerald-400'
-                      : 'bg-white/5 text-zinc-600',
-                  ]}
-                >
-                  WiFi {r.gadget_wifi ? 'on' : 'off'}
-                </span>
-                <span
-                  class:list={[
-                    'rounded-md px-2 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.12em]',
-                    r.gadget_dividir_cuenta
-                      ? 'bg-emerald-500/15 text-emerald-400'
-                      : 'bg-white/5 text-zinc-600',
-                  ]}
-                >
-                  Dividir {r.gadget_dividir_cuenta ? 'on' : 'off'}
-                </span>
-              </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <AdminThemeSwitcher />
+        <a
+          href="/admin/super/nuevo-restaurante"
+          class="admin-action-btn inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 active:scale-95 hover:bg-zinc-100"
+        >
+          Nuevo restaurante
+        </a>
+        <form method="POST" action="/api/admin-logout">
+          <button
+            type="submit"
+            class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition hover:border-white/20 hover:text-zinc-300"
+          >
+            Salir
+          </button>
+        </form>
+      </div>
+    </header>
 
-              <a
-                href={`/admin/dashboard?restaurante=${r.id}`}
-                class="mt-4 flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white/15 active:scale-[0.98]"
-              >
-                Gestionar Menú
-              </a>
-            </li>
-          ))}
-        </ul>
-      )
-    }
+    <nav
+      class="mt-10 flex flex-wrap gap-2 border-b border-white/8 pb-4"
+      role="tablist"
+      aria-label="Secciones SuperAdmin"
+    >
+      <button
+        type="button"
+        role="tab"
+        data-super-tab="locales"
+        aria-selected="true"
+        class="dashboard-tab inline-flex items-center rounded-xl border border-white/15 bg-white px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 ease-out"
+      >
+        Locales
+      </button>
+      <button
+        type="button"
+        role="tab"
+        data-super-tab="metricas"
+        aria-selected="false"
+        class="dashboard-tab inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition-all duration-200 ease-out hover:border-white/20 hover:text-zinc-200"
+      >
+        Métricas
+      </button>
+    </nav>
+
+    <div data-super-panel="locales" class="admin-fade-in-up">
+      {
+        restaurantes.length === 0 ? (
+          <div class="glass-panel mt-12 max-w-xl p-8 text-center">
+            <p class="text-sm leading-relaxed text-zinc-400">
+              Todavía no hay locales registrados. Creá el primero.
+            </p>
+          </div>
+        ) : (
+          <ul class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {restaurantes.map((r) => (
+              <li class="glass-panel flex min-h-[11rem] flex-col justify-between gap-8 p-6 transition-all duration-300 ease-out transform will-change-transform hover:-translate-y-1 hover:scale-[1.01] hover:shadow-lg hover:border-white/20">
+                <h2 class="font-blacksushi-display text-2xl font-semibold leading-tight tracking-tight text-white">
+                  {r.nombre_comercial}
+                </h2>
+
+                <a
+                  href={`/admin/dashboard?restaurante=${encodeURIComponent(r.id)}`}
+                  class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl border border-white/12 bg-white/[0.08] px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-white transition-all duration-200 hover:opacity-90 hover:border-white/25 hover:bg-white/[0.14] active:scale-95"
+                >
+                  Gestionar Restaurante
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+
+    <div data-super-panel="metricas" class="mt-10" hidden>
+      <AdminMetricsPanel
+        metrics={networkMetrics}
+        network={true}
+        title="Métricas de la red"
+        subtitle="Agregado de alertas de mesa en todos los locales · últimos 30 días"
+      />
+    </div>
+
+    <AdminXemillaMark />
   </main>
 </Layout>
+
+<script>
+  function initSuperTabs() {
+    const tabs = document.querySelectorAll('[data-super-tab]');
+    const panels = document.querySelectorAll('[data-super-panel]');
+    if (!tabs.length) return;
+
+    /**
+     * @param {string} id
+     */
+    function setTab(id) {
+      tabs.forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const on = btn.dataset.superTab === id;
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      panels.forEach((panel) => {
+        if (!(panel instanceof HTMLElement)) return;
+        const on = panel.dataset.superPanel === id;
+        panel.hidden = !on;
+        if (on) {
+          panel.classList.remove('admin-fade-in-up');
+          void panel.offsetWidth;
+          panel.classList.add('admin-fade-in-up');
+        }
+      });
+    }
+
+    tabs.forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      if (btn.dataset.bound === 'true') return;
+      btn.dataset.bound = 'true';
+      btn.addEventListener('click', () => setTab(btn.dataset.superTab || 'locales'));
+    });
+  }
+
+  initSuperTabs();
+  document.addEventListener('astro:page-load', initSuperTabs);
+</script>

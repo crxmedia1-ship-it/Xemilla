@@ -4,8 +4,12 @@ import OverlayPanel from './OverlayPanel.astro';
 import MenuPanel from './MenuPanel.astro';
 import NosotrosPanel from './NosotrosPanel.astro';
 import UbicacionPanel from './UbicacionPanel.astro';
+import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
 import DividirCuenta from '../gadgets/DividirCuenta.astro';
+import LlamarMeseroGadget from '../gadgets/LlamarMeseroGadget.astro';
+import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
+import { themeToCssVars, DEFAULT_THEME } from '../../lib/theme.js';
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,55 +18,138 @@ interface Props {
 
 const { restaurante } = Astro.props;
 const { estilos } = restaurante;
+const theme = restaurante.theme ?? DEFAULT_THEME;
+const cssVars = [themeToCssVars(theme), restaurante.uiCssVars || ''].filter(Boolean).join('; ');
+const gadgets = restaurante.gadgets ?? {};
+const uiEstilo = restaurante.uiEstilo ?? {};
+const showWifi = Boolean(gadgets.wifi);
+const showDividir = Boolean(gadgets.dividirCuenta);
+const showReservas = Boolean(gadgets.reservas);
+const showLlamarMesero = Boolean(gadgets.llamarMesero);
+const showBoutique = Boolean(gadgets.boutique);
+const boutiqueProductos = Array.isArray(restaurante.boutique?.productos)
+  ? restaurante.boutique.productos
+  : [];
+
+const fondos = restaurante.seccionesFondo ?? {};
+const fondoHome = fondos.home ?? { tipo: 'color', valor: theme.colorFondo };
+const fondoNosotros = fondos.nosotros ?? { tipo: 'color', valor: '' };
+const fondoMenu = fondos.menu ?? { tipo: 'color', valor: '' };
+const fondoUbicacion = fondos.ubicacion ?? { tipo: 'color', valor: '' };
+
+const reservas = restaurante.reservas ?? {};
+const reservasCta =
+  showReservas && reservas.href
+    ? { label: reservas.label || 'PEDIR / RESERVAR', href: reservas.href }
+    : null;
 ---
 
 <div
-  class={`restaurant-app relative mx-auto min-h-dvh max-w-md overflow-hidden ${estilos.textColor} ${estilos.fontClass}`}
+  class="restaurant-app relative z-10 mx-auto min-h-dvh max-w-md overflow-hidden bg-[var(--color-fondo)] text-[color:var(--color-texto)] font-[family-name:var(--fuente-principal)]"
   data-restaurant-app
-  data-chip-active={estilos.chipActive}
-  data-chip-idle={estilos.chipIdle}
+  data-restaurante-id={restaurante.id || ''}
+  data-design={theme.designDnaId || 'elegant'}
+  style={cssVars}
 >
-  <LinktreeHome
-    nombre={restaurante.nombre}
-    logoText={restaurante.logoText}
-    logoLetter={restaurante.logoLetter}
-    tagline={restaurante.tagline}
+  <SectionAtmosphere tipo={fondoHome.tipo} valor={fondoHome.valor} />
+
+  {
+    !fondoHome.valor && (
+      <div
+        class="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-40"
+        aria-hidden="true"
+        data-parallax-root
+      >
+        <div
+          class="absolute inset-[-10%] bg-[radial-gradient(ellipse_at_30%_0%,color-mix(in_srgb,var(--color-primario)_28%,transparent),transparent_55%)] will-change-transform"
+          data-parallax-layer
+          style="transform: translate3d(0,0,0)"
+        />
+      </div>
+    )
+  }
+
+  <div class="relative z-10 flex min-h-dvh flex-col">
+    <LinktreeHome
+      nombre={restaurante.nombre}
+      logoText={restaurante.logoText}
+      logoLetter={restaurante.logoLetter}
+      logoUrl={restaurante.logoUrl || ''}
+      tagline={restaurante.tagline}
+      estilos={estilos}
+      showWifi={showWifi}
+      showDividir={showDividir}
+      showLlamarMesero={showLlamarMesero}
+      showBoutique={showBoutique}
+      wifiSsid={restaurante.wifi?.ssid || ''}
+      wifiClave={restaurante.wifi?.password || ''}
+      reservasCta={reservasCta}
+      homeUi={uiEstilo.home}
+    />
+
+    <OverlayPanel
+      sectionId="menu"
+      title="IL MENÚ"
+      estilos={{ ...estilos, panelColor: 'bg-transparent' }}
+    >
+      <MenuPanel
+        categorias={restaurante.menu.categorias}
+        destacados={restaurante.menu.destacados ?? []}
+        fondoGlobal={fondoMenu}
+        estilos={estilos}
+      />
+    </OverlayPanel>
+
+  <OverlayPanel
+    sectionId="nosotros"
+    title={restaurante.nosotros.titulo}
+    fondoTipo={fondoNosotros.tipo}
+    fondoValor={fondoNosotros.valor}
+    sectionColors={uiEstilo.nosotros}
     estilos={estilos}
-    showWifi={restaurante.gadgets.wifi}
-    showDividir={restaurante.gadgets.dividirCuenta}
-  />
-
-  <OverlayPanel sectionId="menu" title="IL MENÚ" estilos={estilos}>
-    <MenuPanel categorias={restaurante.menu.categorias} estilos={estilos} />
-  </OverlayPanel>
-
-  <OverlayPanel sectionId="nosotros" title={restaurante.nosotros.titulo} estilos={estilos}>
+  >
     <NosotrosPanel
+      bloques={restaurante.nosotros.bloques ?? []}
       texto={restaurante.nosotros.texto}
       highlights={restaurante.nosotros.highlights}
+      designDnaId={theme.designDnaId || 'elegant'}
+      sectionColors={uiEstilo.nosotros}
       estilos={estilos}
     />
   </OverlayPanel>
 
-  <OverlayPanel sectionId="ubicacion" title={restaurante.ubicacion.titulo} estilos={estilos}>
+  <OverlayPanel
+    sectionId="ubicacion"
+    title={restaurante.ubicacion.titulo}
+    fondoTipo={fondoUbicacion.tipo}
+    fondoValor={fondoUbicacion.valor}
+    sectionColors={uiEstilo.ubicacion}
+    estilos={estilos}
+  >
     <UbicacionPanel
       direccion={restaurante.ubicacion.direccion}
       ciudad={restaurante.ubicacion.ciudad}
       telefono={restaurante.ubicacion.telefono}
+      email={restaurante.ubicacion.email || ''}
+      instagram={restaurante.ubicacion.instagram || ''}
+      whatsapp={restaurante.ubicacion.whatsapp || restaurante.whatsapp || ''}
+      redes={restaurante.ubicacion.redes || []}
       mapaLabel={restaurante.ubicacion.mapaLabel}
       mapaUrl={restaurante.ubicacion.mapaUrl}
       horarios={restaurante.ubicacion.horarios}
+      horariosRows={restaurante.ubicacion.horariosRows}
+      sectionColors={uiEstilo.ubicacion}
       estilos={estilos}
     />
   </OverlayPanel>
 
   {
-    restaurante.gadgets.wifi && (
-      <OverlayPanel sectionId="wifi" title="WI‑FI" estilos={estilos}>
+    showWifi && (
+      <OverlayPanel sectionId="wifi" title="CONECTAR WI-FI" estilos={estilos}>
         <div class="px-5 py-8">
           <WifiGadget
-            ssid={restaurante.wifi.ssid}
-            password={restaurante.wifi.password}
+            ssid={restaurante.wifi?.ssid || ''}
+            password={restaurante.wifi?.password || ''}
             textColor={estilos.textColor}
             mutedColor={estilos.mutedColor}
           />
@@ -72,10 +159,11 @@ const { estilos } = restaurante;
   }
 
   {
-    restaurante.gadgets.dividirCuenta && (
-      <OverlayPanel sectionId="dividir" title="DIVIDIR CUENTA" estilos={estilos}>
+    showDividir && (
+      <OverlayPanel sectionId="dividir" title="PEDIR / DIVIDIR CUENTA" estilos={estilos}>
         <div class="px-5 py-8">
           <DividirCuenta
+            restauranteId={restaurante.id || ''}
             textColor={estilos.textColor}
             mutedColor={estilos.mutedColor}
             accentText={estilos.accentText}
@@ -84,11 +172,123 @@ const { estilos } = restaurante;
       </OverlayPanel>
     )
   }
+
+  {
+    showLlamarMesero && (
+      <OverlayPanel sectionId="mesero" title="LLAMAR MESERO" estilos={estilos}>
+        <div class="px-5 py-8">
+          <LlamarMeseroGadget
+            restauranteId={restaurante.id || ''}
+            whatsapp={restaurante.whatsapp || restaurante.ubicacion?.whatsapp || ''}
+            nombreRestaurante={restaurante.nombre}
+            textColor={estilos.textColor}
+            mutedColor={estilos.mutedColor}
+          />
+        </div>
+      </OverlayPanel>
+    )
+  }
+
+  {
+    showBoutique && (
+      <BoutiqueGadget
+        productos={boutiqueProductos}
+        textColor={estilos.textColor}
+        mutedColor={estilos.mutedColor}
+        displayClass={estilos.displayClass}
+      />
+    )
+  }
+
+  {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
+  <div
+    class="detalle-modal pointer-events-none fixed inset-0 z-[90] mx-auto flex max-w-md items-center justify-center opacity-0 transition-all duration-300 ease-out"
+    data-detalle-modal
+    aria-hidden="true"
+  >
+    <button
+      type="button"
+      class="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity duration-300"
+      data-detalle-backdrop
+      aria-label="Cerrar detalle"
+    ></button>
+
+    <div
+      class="detalle-modal__card relative z-10 mx-4 w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="detalle-modal-title"
+    >
+      <div class="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
+        <h3
+          id="detalle-modal-title"
+          class={`truncate pr-3 text-[0.68rem] font-semibold tracking-[0.22em] uppercase ${estilos.displayClass} text-[color:var(--color-texto)]`}
+          data-detalle-title
+        >
+          Plato
+        </h3>
+        <button
+          type="button"
+          data-detalle-close
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-zinc-400 transition-all duration-200 active:scale-95 hover:text-white"
+          aria-label="Cerrar"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            class="h-3.5 w-3.5"
+          >
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="relative aspect-[4/3] overflow-hidden bg-black/50">
+        <img
+          data-detalle-img
+          src=""
+          alt=""
+          class="absolute inset-0 hidden size-full object-cover object-center"
+        />
+        <video
+          data-detalle-video
+          class="absolute inset-0 hidden size-full object-contain object-center"
+          controls
+          playsinline
+        ></video>
+      </div>
+    </div>
+  </div>
+  </div>
 </div>
 
+<style>
+  .detalle-modal.is-open {
+    pointer-events: auto;
+    opacity: 1;
+  }
+  .detalle-modal.is-open .detalle-modal__card {
+    transform: scale(1);
+    opacity: 1;
+  }
+</style>
+
 <script>
+  import { syncMesaSession, hasValidMesaSession, getStoredMesa } from '../../lib/mesa-session.js';
+
   const OPEN_CLASSES = ['translate-y-0', 'opacity-100', 'pointer-events-auto'];
   const CLOSED_CLASSES = ['translate-y-full', 'opacity-0', 'pointer-events-none'];
+  const MESA_GATED_SECTIONS = new Set(['mesero', 'dividir']);
+
+  // Persist ?mesa= ASAP (también si el hub aún no montó el gate)
+  syncMesaSession();
+
+  function isVideoUrl(url: string) {
+    return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
+  }
 
   function setPanelOpen(panel: HTMLElement, open: boolean) {
     panel.dataset.open = open ? 'true' : 'false';
@@ -98,6 +298,10 @@ const { estilos } = restaurante;
   }
 
   function openSection(app: HTMLElement, id: string) {
+    if (MESA_GATED_SECTIONS.has(id) && !hasValidMesaSession()) {
+      return;
+    }
+
     const home = app.querySelector('[data-linktree-home]');
     const panel = app.querySelector(`[data-section="${id}"]`);
     if (!(panel instanceof HTMLElement)) return;
@@ -109,6 +313,18 @@ const { estilos } = restaurante;
     setPanelOpen(panel, true);
     home?.classList.add('scale-[0.98]', 'opacity-40');
     document.documentElement.style.overflow = 'hidden';
+
+    if (id === 'wifi') {
+      document.dispatchEvent(new CustomEvent('xemilla:wifi-open'));
+    }
+
+    if (MESA_GATED_SECTIONS.has(id)) {
+      document.dispatchEvent(
+        new CustomEvent('xemilla:mesa-panel-open', {
+          detail: { section: id, mesa: getStoredMesa() },
+        }),
+      );
+    }
   }
 
   function closeSections(app: HTMLElement) {
@@ -118,6 +334,100 @@ const { estilos } = restaurante;
     });
     home?.classList.remove('scale-[0.98]', 'opacity-40');
     document.documentElement.style.overflow = '';
+  }
+
+  function clearDetalleMedia(app: HTMLElement) {
+    const imgEl = app.querySelector('[data-detalle-img]');
+    const videoEl = app.querySelector('[data-detalle-video]');
+    if (imgEl instanceof HTMLImageElement) {
+      imgEl.classList.add('hidden');
+      imgEl.removeAttribute('src');
+      imgEl.alt = '';
+    }
+    if (videoEl instanceof HTMLVideoElement) {
+      videoEl.pause();
+      videoEl.classList.add('hidden');
+      videoEl.removeAttribute('src');
+      videoEl.load();
+    }
+  }
+
+  function closeDetalle(app: HTMLElement) {
+    const modal = app.querySelector('[data-detalle-modal]');
+    if (!(modal instanceof HTMLElement)) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    clearDetalleMedia(app);
+  }
+
+  function openBoutique(app: HTMLElement) {
+    const modal = app.querySelector('[data-boutique-modal]');
+    if (!(modal instanceof HTMLElement)) return;
+    closeDetalle(app);
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  function closeBoutique(app: HTMLElement) {
+    const modal = app.querySelector('[data-boutique-modal]');
+    if (!(modal instanceof HTMLElement)) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    // Solo liberar scroll si no hay panel de sección abierto
+    const anySectionOpen = Array.from(app.querySelectorAll('[data-section]')).some(
+      (el) => el instanceof HTMLElement && el.dataset.open === 'true',
+    );
+    if (!anySectionOpen) {
+      document.documentElement.style.overflow = '';
+    }
+  }
+
+  function openDetalle(
+    app: HTMLElement,
+    url: string,
+    title: string,
+    platoId?: string,
+    platoNombre?: string,
+  ) {
+    const modal = app.querySelector('[data-detalle-modal]');
+    const titleEl = app.querySelector('[data-detalle-title]');
+    const imgEl = app.querySelector('[data-detalle-img]');
+    const videoEl = app.querySelector('[data-detalle-video]');
+    if (!(modal instanceof HTMLElement) || !url) return;
+
+    clearDetalleMedia(app);
+    if (titleEl) titleEl.textContent = title || 'Plato';
+
+    if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
+      videoEl.src = url;
+      videoEl.classList.remove('hidden');
+    } else if (imgEl instanceof HTMLImageElement) {
+      imgEl.src = url;
+      imgEl.alt = title || 'Plato';
+      imgEl.classList.remove('hidden');
+    }
+
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    // Analytics en background — no await, no bloquea UX
+    const restauranteId = app.dataset.restauranteId || '';
+    const idNum = Number(platoId);
+    if (restauranteId && Number.isFinite(idNum) && idNum > 0) {
+      void fetch('/api/registro-vista', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id: restauranteId,
+          plato_id: idNum,
+          plato_nombre: platoNombre || title || '',
+        }),
+        keepalive: true,
+      }).catch(() => {
+        /* silencioso */
+      });
+    }
   }
 
   function initRestaurantApps() {
@@ -134,9 +444,72 @@ const { estilos } = restaurante;
         });
       });
 
-      root.querySelectorAll('[data-close-section]').forEach((btn) => {
-        btn.addEventListener('click', () => closeSections(root));
+      root.querySelectorAll('[data-open-boutique]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          openBoutique(root);
+        });
       });
+
+      root.querySelectorAll('[data-close-section]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          closeDetalle(root);
+          closeBoutique(root);
+          closeSections(root);
+        });
+      });
+
+      root.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+
+        const detalleBtn = target.closest('[data-open-detalle]');
+        if (detalleBtn instanceof HTMLElement) {
+          const url = detalleBtn.dataset.mediaUrl?.trim() || '';
+          const title = detalleBtn.dataset.mediaTitle || 'Plato';
+          const platoId = detalleBtn.dataset.platoId || '';
+          const platoNombre = detalleBtn.dataset.platoNombre || title;
+          if (url) openDetalle(root, url, title, platoId, platoNombre);
+          return;
+        }
+
+        if (
+          target.closest('[data-detalle-close]') ||
+          target.closest('[data-detalle-backdrop]')
+        ) {
+          closeDetalle(root);
+          return;
+        }
+
+        if (
+          target.closest('[data-boutique-close]') ||
+          target.closest('[data-boutique-backdrop]')
+        ) {
+          closeBoutique(root);
+        }
+      });
+
+      // Parallax ligero: solo transform3d en el scroll del panel de menú
+      const parallaxLayer = root.querySelector('[data-parallax-layer]');
+      const menuScroll = root
+        .querySelector('[data-section="menu"]')
+        ?.querySelector('.overflow-y-auto');
+
+      if (
+        parallaxLayer instanceof HTMLElement &&
+        menuScroll instanceof HTMLElement
+      ) {
+        let ticking = false;
+        const onScroll = () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            const y = menuScroll.scrollTop * 0.22;
+            parallaxLayer.style.transform = `translate3d(0, ${y}px, 0)`;
+            ticking = false;
+          });
+        };
+        menuScroll.addEventListener('scroll', onScroll, { passive: true });
+      }
     });
   }
 

@@ -1,0 +1,135 @@
+---
+/**
+ * Modal boutique: grilla minimalista de merch destacado.
+ */
+interface Producto {
+  id?: string;
+  nombre: string;
+  precio: number | string;
+  imagen_url?: string;
+  activo?: boolean;
+}
+
+interface Props {
+  productos?: Producto[];
+  textColor?: string;
+  mutedColor?: string;
+  displayClass?: string;
+}
+
+const {
+  productos = [],
+  textColor = 'text-white',
+  mutedColor = 'text-zinc-400',
+  displayClass = '',
+} = Astro.props;
+
+function formatPrecio(value: number | string) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value ?? '');
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+---
+
+<div
+  class="boutique-modal pointer-events-none fixed inset-0 z-[92] mx-auto flex max-w-md items-end justify-center opacity-0 transition-all duration-300 ease-out sm:items-center"
+  data-boutique-modal
+  aria-hidden="true"
+>
+  <button
+    type="button"
+    class="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity duration-300"
+    data-boutique-backdrop
+    aria-label="Cerrar boutique"
+  ></button>
+
+  <div
+    class="boutique-modal__card relative z-10 mx-3 mb-[max(1rem,env(safe-area-inset-bottom))] max-h-[min(88dvh,40rem)] w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out sm:mb-0"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="boutique-modal-title"
+  >
+    <div class="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
+      <div class="min-w-0">
+        <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.22em] ${mutedColor}`}>
+          Merchandise
+        </p>
+        <h3
+          id="boutique-modal-title"
+          class={`mt-1 truncate text-[0.72rem] font-semibold uppercase tracking-[0.2em] ${displayClass} ${textColor}`}
+        >
+          Boutique
+        </h3>
+      </div>
+      <button
+        type="button"
+        data-boutique-close
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-zinc-400 transition-all duration-200 hover:text-white active:scale-95"
+        aria-label="Cerrar"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4">
+          <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="overflow-y-auto overscroll-contain px-4 py-4" style="max-height:calc(min(88dvh,40rem) - 4.25rem)">
+      {
+        productos.length === 0 ? (
+          <p class={`px-2 py-10 text-center text-sm leading-relaxed ${mutedColor}`}>
+            Pronto habrá productos disponibles en la boutique.
+          </p>
+        ) : (
+          <ul class="grid grid-cols-2 gap-3">
+            {productos.map((prod) => {
+              const letter = (prod.nombre || 'P').trim().charAt(0).toUpperCase();
+              const img = String(prod.imagen_url || '').trim();
+              return (
+                <li class="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                  <div class="relative aspect-square overflow-hidden bg-white/[0.04]">
+                    {img ? (
+                      <img
+                        src={img}
+                        alt={prod.nombre}
+                        class="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div
+                        class={`flex h-full w-full items-center justify-center text-3xl font-semibold tracking-tight ${textColor} opacity-40`}
+                        aria-hidden="true"
+                      >
+                        {letter}
+                      </div>
+                    )}
+                  </div>
+                  <div class="space-y-0.5 px-3 py-2.5">
+                    <p class={`truncate text-sm font-medium tracking-tight ${textColor}`}>
+                      {prod.nombre}
+                    </p>
+                    <p class={`text-xs tabular-nums ${mutedColor}`}>
+                      ${formatPrecio(prod.precio)}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      }
+    </div>
+  </div>
+</div>
+
+<style>
+  .boutique-modal.is-open {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .boutique-modal.is-open .boutique-modal__card {
+    opacity: 1;
+    transform: scale(1);
+  }
+</style>

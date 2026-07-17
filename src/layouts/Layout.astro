@@ -1,11 +1,24 @@
 ---
 import '../styles/global.css';
+import '../styles/admin-themes.css';
 
 interface Props {
   title: string;
   description?: string;
   theme?: 'blacksushi' | 'sanza' | 'crx';
   themeColor?: string;
+  /** Google Fonts stylesheet del ADN de diseño (override). */
+  fontHref?: string;
+  /** CSS personalizado del restaurante (inyectado en <head>). */
+  customCss?: string;
+  /** Open Graph / WhatsApp share image */
+  ogImage?: string;
+  /** Favicon / PWA / apple-touch-icon */
+  appIcon?: string;
+  /** Absolute page URL for og:url */
+  ogUrl?: string;
+  /** Activa shell de temas del panel admin (Orgánico / Onyx / Alabastro). */
+  adminPanel?: boolean;
 }
 
 const {
@@ -13,30 +26,87 @@ const {
   description = 'Experiencia móvil CRX',
   theme = 'crx',
   themeColor = '#09090b',
+  fontHref: fontHrefProp,
+  customCss = '',
+  ogImage = '',
+  appIcon = '',
+  ogUrl = '',
+  adminPanel = false,
 } = Astro.props;
 
 const fontHref =
-  theme === 'sanza'
+  fontHrefProp ||
+  (theme === 'sanza'
     ? 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'
     : theme === 'blacksushi'
       ? 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@500;600;700;800&display=swap'
-      : 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&display=swap';
+      : 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&display=swap');
+
+const safeCustomCss = typeof customCss === 'string' ? customCss : '';
+const iconHref = appIcon?.trim() || '/favicon.svg';
+const shareImage = ogImage?.trim() || '';
+const initialThemeColor = adminPanel ? '#0a0a0b' : themeColor;
 ---
 
 <!doctype html>
-<html lang="es" data-theme={theme}>
+<html
+  lang="es"
+  data-theme={adminPanel ? 'onyx' : theme}
+  class:list={[adminPanel && 'admin-panel transition-colors duration-500 ease-in-out']}
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href={iconHref} />
+    <link rel="apple-touch-icon" href={iconHref} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href={fontHref} rel="stylesheet" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content={themeColor} />
+    <meta name="theme-color" content={initialThemeColor} id="meta-theme-color" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {ogUrl ? <meta property="og:url" content={ogUrl} /> : null}
+    {shareImage ? <meta property="og:image" content={shareImage} /> : null}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {shareImage ? <meta name="twitter:image" content={shareImage} /> : null}
     <title>{title}</title>
+    {
+      adminPanel && (
+        <script is:inline>
+          (function () {
+            try {
+              var key = 'xemilla-admin-theme';
+              var stored = localStorage.getItem(key) || 'onyx';
+              if (stored !== 'organico' && stored !== 'onyx' && stored !== 'alabastro') {
+                stored = 'onyx';
+              }
+              document.documentElement.classList.add('admin-panel');
+              document.documentElement.setAttribute('data-theme', stored);
+              var meta = document.getElementById('meta-theme-color');
+              if (meta) {
+                meta.setAttribute(
+                  'content',
+                  stored === 'organico' ? '#f0ebe3' : stored === 'alabastro' ? '#ffffff' : '#0a0a0b',
+                );
+              }
+            } catch (e) {}
+          })();
+        </script>
+      )
+    }
+    {safeCustomCss ? <style set:html={safeCustomCss} /> : null}
   </head>
-  <body class={`relative min-h-dvh antialiased theme-body theme-${theme}`}>
+  <body
+    class:list={[
+      'relative min-h-dvh antialiased theme-body',
+      `theme-${theme}`,
+      adminPanel && 'admin-panel-body transition-colors duration-500 ease-in-out',
+    ]}
+  >
     <div class="atmosphere" aria-hidden="true">
       <div class="atmosphere__base"></div>
       <div class="atmosphere__texture"></div>

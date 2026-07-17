@@ -1,4 +1,7 @@
 ---
+/**
+ * Wi‑Fi invitados: QR WIFI:S:…;T:WPA;P:…;; + copia de clave + toast.
+ */
 interface Props {
   ssid: string;
   password: string;
@@ -12,61 +15,64 @@ const {
   textColor = 'text-white',
   mutedColor = 'text-zinc-400',
 } = Astro.props;
+
+function escapeWifiField(value: string) {
+  return String(value || '').replace(/([\\;,:"])/g, '\\$1');
+}
+
+const wifiPayload = `WIFI:S:${escapeWifiField(ssid)};T:WPA;P:${escapeWifiField(password)};;`;
+const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(wifiPayload)}`;
 ---
 
-<section class="wifi-gadget glass-panel" data-ssid={ssid} data-password={password}>
+<section
+  class="wifi-gadget glass-panel"
+  data-wifi-gadget
+  data-ssid={ssid}
+  data-password={password}
+  data-wifi-payload={wifiPayload}
+>
   <div class="relative px-5 pb-6 pt-6">
-    <div
-      class="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/10 blur-3xl"
-      aria-hidden="true"
-    >
-    </div>
+    <p class={`text-[0.62rem] font-semibold uppercase tracking-[0.28em] ${mutedColor}`}>
+      Wi‑Fi invitados
+    </p>
+    <h2 class={`mt-2 text-xl font-semibold tracking-tight ${textColor}`}>Conéctate</h2>
+    <p class={`mt-1.5 text-sm leading-relaxed ${mutedColor}`}>
+      Escanea el código con la cámara para unirte a la red.
+    </p>
 
-    <div class="relative flex items-start justify-between gap-3">
-      <div>
-        <p class={`text-[0.62rem] font-semibold uppercase tracking-[0.28em] ${mutedColor}`}>
-          Wi‑Fi invitados
-        </p>
-        <h2 class={`mt-2 text-xl font-semibold tracking-tight ${textColor}`}>Conéctate</h2>
-      </div>
+    <div class="mt-6 flex flex-col items-center">
       <div
-        class={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-inner ${mutedColor}`}
-        aria-hidden="true"
+        class="rounded-2xl border border-white/15 bg-white p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="h-5 w-5"
-        >
-          <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-          <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-          <circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"></circle>
-        </svg>
+        <img
+          src={qrSrc}
+          alt={`Código QR Wi‑Fi ${ssid}`}
+          width="220"
+          height="220"
+          class="size-[11.5rem] rounded-lg"
+          data-wifi-qr
+          loading="eager"
+          decoding="async"
+        />
       </div>
+      <p class={`mt-3 text-center text-[0.58rem] font-semibold uppercase tracking-[0.2em] ${mutedColor}`}>
+        Escanea para conectar
+      </p>
     </div>
 
     <dl class="relative mt-6 space-y-3">
       <div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 shadow-inner backdrop-blur-md">
         <dt class={`text-[0.58rem] font-semibold uppercase tracking-[0.24em] ${mutedColor}`}>Red</dt>
         <dd class={`mt-1 truncate text-sm font-medium tracking-wide ${textColor}`} data-wifi-ssid>
-          {ssid}
+          {ssid || '—'}
         </dd>
       </div>
       <div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 shadow-inner backdrop-blur-md">
         <dt class={`text-[0.58rem] font-semibold uppercase tracking-[0.24em] ${mutedColor}`}>
           Clave
         </dt>
-        <dd
-          class={`mt-1 font-mono text-sm tracking-[0.14em] ${textColor}`}
-          data-wifi-password
-        >
-          {password}
+        <dd class={`mt-1 font-mono text-sm tracking-[0.14em] ${textColor}`} data-wifi-password>
+          {password || '—'}
         </dd>
       </div>
     </dl>
@@ -78,31 +84,81 @@ const {
 </section>
 
 <script>
+  /**
+   * @param {string} message
+   */
+  function showWifiToast(message) {
+    let toast = document.querySelector('[data-wifi-toast]');
+    if (!(toast instanceof HTMLElement)) {
+      toast = document.createElement('div');
+      toast.setAttribute('data-wifi-toast', '');
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-live', 'polite');
+      toast.className =
+        'pointer-events-none fixed left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[100] max-w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl border border-white/15 bg-zinc-950/92 px-4 py-3 text-center text-[0.72rem] font-medium tracking-wide text-white opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-300 translate-y-[-6px]';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translate(-50%, 0)';
+    clearTimeout(/** @type {any} */ (toast)._timer);
+    /** @type {any} */ (toast)._timer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translate(-50%, -6px)';
+    }, 2800);
+  }
+
+  /**
+   * @param {HTMLElement} gadget
+   */
+  async function copyWifiPassword(gadget) {
+    const password = gadget.dataset.password ?? '';
+    const label = gadget.querySelector('[data-wifi-copy-label]');
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      if (label) label.textContent = '¡Copiada!';
+      showWifiToast('¡Contraseña copiada al portapapeles!');
+      setTimeout(() => {
+        if (label) label.textContent = 'Copiar Clave';
+      }, 1800);
+    } catch {
+      if (label) label.textContent = 'No se pudo copiar';
+      setTimeout(() => {
+        if (label) label.textContent = 'Copiar Clave';
+      }, 1800);
+    }
+  }
+
+  /**
+   * @param {HTMLElement} gadget
+   */
+  function runWifiOpenActions(gadget) {
+    if (gadget.dataset.autoRan === 'true') return;
+    gadget.dataset.autoRan = 'true';
+    copyWifiPassword(gadget);
+  }
+
   function initWifiGadgets() {
-    document.querySelectorAll('.wifi-gadget').forEach((gadget) => {
+    document.querySelectorAll('[data-wifi-gadget]').forEach((gadget) => {
       if (!(gadget instanceof HTMLElement)) return;
       if (gadget.dataset.ready === 'true') return;
       gadget.dataset.ready = 'true';
 
       const btn = gadget.querySelector('[data-wifi-copy]');
-      const label = gadget.querySelector('[data-wifi-copy-label]');
-      const password = gadget.dataset.password ?? '';
-
-      btn?.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(password);
-          if (label) label.textContent = '¡Copiada!';
-          setTimeout(() => {
-            if (label) label.textContent = 'Copiar Clave';
-          }, 1800);
-        } catch {
-          if (label) label.textContent = 'No se pudo copiar';
-          setTimeout(() => {
-            if (label) label.textContent = 'Copiar Clave';
-          }, 1800);
-        }
-      });
+      btn?.addEventListener('click', () => copyWifiPassword(gadget));
     });
+
+    if (document.documentElement.dataset.wifiOpenBound !== 'true') {
+      document.documentElement.dataset.wifiOpenBound = 'true';
+      document.addEventListener('xemilla:wifi-open', () => {
+        document.querySelectorAll('[data-wifi-gadget]').forEach((gadget) => {
+          if (!(gadget instanceof HTMLElement)) return;
+          gadget.dataset.autoRan = 'false';
+          runWifiOpenActions(gadget);
+        });
+      });
+    }
   }
 
   initWifiGadgets();
