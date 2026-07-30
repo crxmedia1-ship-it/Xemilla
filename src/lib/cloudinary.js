@@ -96,3 +96,58 @@ export function optimizedPublicUrl(result) {
   }
   return secure;
 }
+
+/**
+ * Cloud name desde CLOUDINARY_URL (o fallback del proyecto).
+ * @returns {string}
+ */
+export function getCloudinaryCloudName() {
+  const parsed = parseCloudinaryUrl(resolveCloudinaryUrl());
+  return parsed?.cloud_name || 'dgphys1xd';
+}
+
+/**
+ * Normaliza URLs de media (logo, OG, etc.).
+ * - Vacío → `null`
+ * - `http(s)://…` → se deja igual
+ * - `//…` o dominio Cloudinary sin protocolo → antepone `https:`
+ * - Rutas parciales (`ge/upload/…`, `upload/…`, public_id) → base Cloudinary
+ *
+ * @param {unknown} pathOrUrl
+ * @returns {string | null}
+ */
+export function resolveMediaUrl(pathOrUrl) {
+  const raw = String(pathOrUrl ?? '').trim();
+  if (!raw || raw === 'null' || raw === 'undefined') return null;
+
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith('//')) return `https:${raw}`;
+
+  // Dominio Cloudinary / CDN sin protocolo
+  if (
+    /^(res\.cloudinary\.com\/|[\w.-]+\.cloudinary\.com\/)/i.test(raw) ||
+    /^[\w.-]+\.(cloudfront\.net|amazonaws\.com)\//i.test(raw)
+  ) {
+    return `https://${raw}`;
+  }
+
+  const cloud = getCloudinaryCloudName();
+  const base = `https://res.cloudinary.com/${cloud}/image/upload/`;
+  let path = raw.replace(/^\//, '');
+
+  if (/^image\/upload\//i.test(path)) {
+    return `https://res.cloudinary.com/${cloud}/${path}`;
+  }
+  if (/^upload\//i.test(path)) {
+    return `https://res.cloudinary.com/${cloud}/image/${path}`;
+  }
+
+  // Prefijo truncado tipo "ge/upload/..." → tomar desde "upload/"
+  const uploadIdx = path.toLowerCase().indexOf('upload/');
+  if (uploadIdx >= 0) {
+    path = path.slice(uploadIdx + 'upload/'.length);
+  }
+
+  if (!path) return null;
+  return `${base}${path}`;
+}

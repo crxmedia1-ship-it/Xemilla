@@ -3,7 +3,7 @@ export const prerender = false;
 
 import Layout from '../../layouts/Layout.astro';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
-import { isSuperAdminUser } from '../../config/superadmin.js';
+import { getAdminPostLoginPath } from '../../config/superadmin.js';
 
 const supabase = createSupabaseServerClient({
   request: Astro.request,
@@ -15,9 +15,7 @@ const {
 } = await supabase.auth.getUser();
 
 if (user) {
-  return Astro.redirect(
-    isSuperAdminUser(user) ? '/admin/super/dashboard' : '/admin/dashboard',
-  );
+  return Astro.redirect(getAdminPostLoginPath(user));
 }
 ---
 
@@ -117,6 +115,7 @@ if (user) {
 
 <script>
   import { createSupabaseBrowserClient } from '../../lib/supabase/browser.js';
+  import { getAdminPostLoginPath } from '../../config/superadmin.js';
 
   const form = document.getElementById('login-form');
   const submitBtn = document.getElementById('login-submit');
@@ -136,7 +135,10 @@ if (user) {
     const email = String(formData.get('email') ?? '').trim();
     const password = String(formData.get('password') ?? '');
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
       errorEl.textContent = error.message || 'No pudimos iniciar sesión.';
@@ -146,6 +148,6 @@ if (user) {
       return;
     }
 
-    window.location.href = '/admin/dashboard';
+    window.location.href = getAdminPostLoginPath(data.user);
   });
 </script>

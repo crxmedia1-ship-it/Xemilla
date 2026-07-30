@@ -7,9 +7,49 @@ import { getRestauranteBySlug } from '../lib/restaurantes.js';
 import { normalizeBrandSlug } from '../config/brand.js';
 import { DEFAULT_THEME } from '../lib/theme.js';
 import { designThemes, DEFAULT_DESIGN_DNA } from '../config/themes.js';
+import {
+  sanitizeTheme,
+  normalizeUbicacionTheme,
+  DEFAULT_UBICACION_THEME,
+} from '../lib/layout-themes.js';
+
+// SSR 100% dinámico: sin caché de edge/CDN al cambiar temas desde Admin
+Astro.response.headers.set(
+  'Cache-Control',
+  'private, no-store, no-cache, must-revalidate, max-age=0',
+);
+Astro.response.headers.set('CDN-Cache-Control', 'no-store');
+Astro.response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+Astro.response.headers.set('Pragma', 'no-cache');
 
 const { slug } = Astro.params;
-const restaurante = await getRestauranteBySlug(slug ?? '');
+const restauranteRaw = await getRestauranteBySlug(slug ?? '');
+
+const homeThemeRawDb = restauranteRaw?.home_theme ?? null;
+const sanitizedHomeTheme = sanitizeTheme(homeThemeRawDb);
+const ubicacionThemeResolved = normalizeUbicacionTheme(
+  restauranteRaw?.ubicacion_theme ?? DEFAULT_UBICACION_THEME,
+);
+
+console.log('🔥 [SUPABASE READ]', {
+  raw_db: homeThemeRawDb,
+  sanitized: sanitizeTheme(homeThemeRawDb),
+});
+
+/**
+ * Home y Ubicación son plantillas independientes.
+ * home_theme se deja RAW; el sanitize controla solo el componente montado.
+ */
+const restaurante = restauranteRaw
+  ? {
+      ...restauranteRaw,
+      home_theme: homeThemeRawDb,
+      homeTheme: sanitizedHomeTheme,
+      ubicacionTheme: ubicacionThemeResolved,
+      ubicacion_theme:
+        restauranteRaw.ubicacion_theme ?? ubicacionThemeResolved,
+    }
+  : null;
 
 if (!restaurante) {
   Astro.response.status = 404;
@@ -27,10 +67,7 @@ const dna =
   designThemes[(brandTheme.designDnaId as keyof typeof designThemes) || DEFAULT_DESIGN_DNA] ??
   designThemes[DEFAULT_DESIGN_DNA];
 
-const ogImage =
-  restaurante?.shareImageUrl ||
-  restaurante?.logoUrl ||
-  '';
+const ogImage = restaurante?.shareImageUrl || restaurante?.logoUrl || '';
 const appIcon = restaurante?.appIconUrl || restaurante?.logoUrl || '';
 const siteOrigin = Astro.url.origin;
 const ogUrl = restaurante ? `${siteOrigin}/${restaurante.slug}` : '';
@@ -55,12 +92,16 @@ const ogUrl = restaurante ? `${siteOrigin}/${restaurante.slug}` : '';
       theme={layoutTheme}
       themeColor={brandTheme.colorFondo}
       fontHref={brandTheme.googleFontsHref || dna.fonts.googleHref}
-      customCss={restaurante.customCss || ''}
+      customCss=""
       ogImage={ogImage}
       appIcon={appIcon}
       ogUrl={ogUrl}
     >
-      <RestaurantApp restaurante={restaurante} />
+      <RestaurantApp
+        restaurante={restaurante}
+        homeTheme={sanitizedHomeTheme}
+        ubicacionTheme={ubicacionThemeResolved}
+      />
     </Layout>
   )
 }

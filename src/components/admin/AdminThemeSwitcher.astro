@@ -1,13 +1,11 @@
 ---
 /**
- * Selector discreto de temas del panel admin (Orgánico / Onyx / Alabastro).
- * Persistencia: localStorage `xemilla-admin-theme`.
+ * Toggle Sol / Luna del panel admin.
+ * Persistencia: localStorage `xemilla-admin-theme` → dark | light
+ * dark  = Observatorio Cósmico
+ * light = La Habitación del Tiempo
  */
-import {
-  ADMIN_THEME_IDS,
-  ADMIN_THEME_META,
-  ADMIN_THEME_KEY,
-} from '../../config/admin-themes.js';
+import { ADMIN_THEME_KEY } from '../../config/admin-themes.js';
 
 interface Props {
   class?: string;
@@ -16,41 +14,37 @@ interface Props {
 const { class: className = '' } = Astro.props;
 ---
 
-<div
-  class:list={['admin-theme-switcher', className]}
-  role="radiogroup"
-  aria-label="Tema visual del panel"
-  data-admin-theme-switcher
+<button
+  type="button"
+  class:list={['admin-mode-toggle', className]}
+  data-admin-mode-toggle
+  aria-label="Cambiar modo claro u oscuro"
+  title="Tema del panel"
 >
-  {
-    ADMIN_THEME_IDS.map((id) => (
-      <button
-        type="button"
-        role="radio"
-        data-theme-id={id}
-        aria-checked="false"
-        aria-label={ADMIN_THEME_META[id].label}
-        title={ADMIN_THEME_META[id].label}
-        class="admin-theme-switcher__btn"
-      >
-        <span
-          class="admin-theme-switcher__swatch"
-          style={`background:${ADMIN_THEME_META[id].swatch}`}
-          aria-hidden="true"
-        />
-      </button>
-    ))
-  }
-</div>
+  <span class="admin-mode-toggle__icon admin-mode-toggle__icon--sun" aria-hidden="true">☀️</span>
+  <span class="admin-mode-toggle__icon admin-mode-toggle__icon--moon" aria-hidden="true">🌙</span>
+</button>
 
-<script define:vars={{ ADMIN_THEME_KEY, ADMIN_THEME_IDS }}>
+<script define:vars={{ ADMIN_THEME_KEY }}>
   /**
    * @param {string} theme
    */
   function applyAdminTheme(theme) {
-    const id = ADMIN_THEME_IDS.includes(theme) ? theme : 'onyx';
+    const id =
+      theme === 'light' ||
+      theme === 'claro' ||
+      theme === 'alabastro' ||
+      theme === 'organico' ||
+      theme === 'organic' ||
+      theme === 'cristalino' ||
+      theme === 'habitacion' ||
+      theme === 'habitacion-del-tiempo'
+        ? 'light'
+        : 'dark';
     const root = document.documentElement;
-    root.classList.add('admin-panel');
+    root.classList.add('admin-panel', 'transition-colors', 'duration-500');
+    root.classList.toggle('dark', id === 'dark');
+    root.classList.toggle('light', id === 'light');
     root.setAttribute('data-theme', id);
     try {
       localStorage.setItem(ADMIN_THEME_KEY, id);
@@ -59,43 +53,54 @@ const { class: className = '' } = Astro.props;
     }
     const meta = document.getElementById('meta-theme-color');
     if (meta) {
-      meta.setAttribute(
-        'content',
-        id === 'organico' ? '#f0ebe3' : id === 'alabastro' ? '#ffffff' : '#0a0a0b',
-      );
+      meta.setAttribute('content', id === 'light' ? '#f8fafc' : '#030712');
     }
-    document.querySelectorAll('[data-admin-theme-switcher]').forEach((group) => {
-      group.querySelectorAll('[data-theme-id]').forEach((btn) => {
-        if (!(btn instanceof HTMLElement)) return;
-        const on = btn.dataset.themeId === id;
-        btn.setAttribute('aria-checked', on ? 'true' : 'false');
-      });
+    document.querySelectorAll('[data-admin-mode-toggle]').forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      btn.setAttribute('aria-pressed', id === 'dark' ? 'true' : 'false');
+      btn.setAttribute(
+        'aria-label',
+        id === 'dark'
+          ? 'Cambiar a La Habitación del Tiempo'
+          : 'Cambiar a Observatorio Cósmico',
+      );
+      btn.title =
+        id === 'dark'
+          ? 'Observatorio Cósmico · tocar para Habitación del Tiempo'
+          : 'Habitación del Tiempo · tocar para Observatorio Cósmico';
     });
   }
 
   function readStoredTheme() {
     try {
-      return localStorage.getItem(ADMIN_THEME_KEY) || 'onyx';
+      return localStorage.getItem(ADMIN_THEME_KEY) || 'dark';
     } catch {
-      return 'onyx';
+      return 'dark';
     }
   }
 
-  function initAdminThemeSwitcher() {
+  function initAdminModeToggle() {
     applyAdminTheme(readStoredTheme());
-    document.querySelectorAll('[data-admin-theme-switcher]').forEach((group) => {
-      if (!(group instanceof HTMLElement)) return;
-      if (group.dataset.ready === 'true') return;
-      group.dataset.ready = 'true';
-      group.querySelectorAll('[data-theme-id]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          if (!(btn instanceof HTMLElement)) return;
-          applyAdminTheme(btn.dataset.themeId || 'onyx');
-        });
+    document.querySelectorAll('[data-admin-mode-toggle]').forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      if (btn.dataset.ready === 'true') return;
+      btn.dataset.ready = 'true';
+      btn.addEventListener('click', () => {
+        const current = readStoredTheme();
+        const next =
+          current === 'light' ||
+          current === 'alabastro' ||
+          current === 'organico' ||
+          current === 'claro' ||
+          current === 'cristalino'
+            ? 'dark'
+            : 'light';
+        applyAdminTheme(next);
       });
     });
   }
 
-  initAdminThemeSwitcher();
-  document.addEventListener('astro:page-load', initAdminThemeSwitcher);
+  initAdminModeToggle();
+  document.addEventListener('DOMContentLoaded', initAdminModeToggle);
+  document.addEventListener('astro:page-load', initAdminModeToggle);
 </script>

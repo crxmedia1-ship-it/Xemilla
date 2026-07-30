@@ -1,28 +1,65 @@
 import { isSuperAdminUser } from '../../config/superadmin.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
-import { buildSeccionesFondoFromBody, buildNosotrosBloquesFromBody, buildRedesSocialesFromBody, buildUiEstiloFromBody } from '../../lib/secciones-ui.js';
+import {
+  buildSeccionesFondoFromBody,
+  buildNosotrosBloquesFromBody,
+  buildRedesSocialesFromBody,
+  buildUiEstiloFromBody,
+  sanitizeCssAvanzado,
+} from '../../lib/secciones-ui.js';
 import { buildBoutiqueConfig } from '../../lib/boutique.js';
+import {
+  normalizeHomeTheme,
+  normalizeUbicacionTheme,
+} from '../../lib/layout-themes.js';
+import {
+  normalizeTypographyComboId,
+  resolveTypographyCombo,
+} from '../../config/typography-combos.js';
 
 export const prerender = false;
 
 const DNA_ALLOWED = new Set(['elegant', 'modern', 'retro']);
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+  'Access-Control-Max-Age': '86400',
+};
+
 /**
- * @param {unknown} value
+ * Preflight CORS (evita NetworkError en algunos proxies / extensiones).
  */
-function sanitizeCustomCss(value) {
-  if (typeof value !== 'string') return '';
-  return value
-    .replace(/<\/style/gi, '/* blocked */')
-    .replace(/<script/gi, '/* blocked */')
-    .trim();
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
 }
 
 /**
  * Actualiza identidad de marca unificada (sub-tabs atómicas).
+ * Todo el cuerpo va en try/catch para siempre devolver JSON válido.
  */
 export async function POST({ request, cookies }) {
+  try {
+    return await handleUpdateMarca({ request, cookies });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[api/update-marca] uncaught:', message, err);
+    return json(
+      { error: message || 'Error interno al guardar Identidad de Marca' },
+      500,
+    );
+  }
+}
+
+/**
+ * @param {{ request: Request, cookies: import('astro').AstroCookies }} ctx
+ */
+async function handleUpdateMarca({ request, cookies }) {
   const supabase = createSupabaseServerClient({ request, cookies });
 
   const {
@@ -64,22 +101,33 @@ export async function POST({ request, cookies }) {
   // Home / Core
   patch.logo_url = normalizeUrlOrText(raw.logo_url);
   patch.eslogan = normalizeText(raw.eslogan);
+  const nombreComercial = normalizeText(raw.nombre_comercial);
+  if (nombreComercial) {
+    patch.nombre_comercial = nombreComercial;
+  }
   patch.color_primario = normalizeColor(raw.color_primario);
-  patch.color_fondo = normalizeColor(raw.color_fondo) || normalizeColor(raw.fondo_home_valor);
+  patch.color_fondo =
+    normalizeColor(raw.color_fondo) || normalizeColor(raw.fondo_home_valor);
   patch.color_texto = normalizeColor(raw.color_texto);
-  patch.custom_css = sanitizeCustomCss(raw.custom_css) || null;
+  // css_avanzado (canónico en ui_estilo) ↔ columna legacy custom_css
+  patch.custom_css =
+    sanitizeCssAvanzado(raw.css_avanzado ?? raw.custom_css) || null;
 
   const dna = String(raw.estilo_adn ?? '')
     .trim()
     .toLowerCase();
+  // ADN legacy opcional (radios/motion); tipografía vive en combo
   if (dna && !DNA_ALLOWED.has(dna)) {
     return json({ error: 'estilo_adn inválido (elegant | modern | retro)' }, 400);
   }
-  patch.estilo_adn = dna || null;
+  patch.estilo_adn = dna && DNA_ALLOWED.has(dna) ? dna : 'elegant';
 
-  // Tipografía global (override del stack ADN)
-  const tipoLetraRaw = normalizeText(raw.tipo_letra);
-  patch.tipo_letra = tipoLetraRaw;
+  // Combinación tipográfica Pro → se guarda como id en tipo_letra
+  const tipografiaCombo = normalizeTypographyComboId(
+    raw.tipografia_combo ?? raw.tipo_letra ?? raw.estilo_adn,
+  );
+  const combo = resolveTypographyCombo(tipografiaCombo);
+  patch.tipo_letra = combo.id;
 
   // Tipografía del menú (títulos + precios)
   const menuFont = String(raw.menu_font ?? '')
@@ -98,11 +146,15 @@ export async function POST({ request, cookies }) {
   // Tokens tipográficos Home + colores por sección
   patch.ui_estilo = buildUiEstiloFromBody(raw);
 
+  // Plantillas de estructura (Layout Themes)
+  patch.home_theme = normalizeHomeTheme(raw.home_theme);
+  patch.ubicacion_theme = normalizeUbicacionTheme(raw.ubicacion_theme);
+
   // Fondos por sección (JSONB) + legacy imagen_fondo si home es image
   const seccionesFondo = buildSeccionesFondoFromBody(raw);
   patch.secciones_fondo = seccionesFondo;
 
-  const homeFondo = seccionesFondo.home;
+  const homeFondo = seccionesFondo?.home ?? { tipo: 'color', valor: '' };
   if (homeFondo.tipo === 'image' || homeFondo.tipo === 'video') {
     patch.imagen_fondo = homeFondo.valor || null;
   } else if (homeFondo.tipo === 'color' && homeFondo.valor) {
@@ -123,7 +175,9 @@ export async function POST({ request, cookies }) {
     patch.nosotros_subtitulo = normalizeText(raw.nosotros_subtitulo);
     patch.nosotros_titulo = normalizeText(raw.nosotros_titulo);
     patch.nosotros_imagen = normalizeUrlOrText(raw.nosotros_imagen);
-    patch.nosotros_texto = normalizeText(raw.nosotros_texto, { keepNewlines: true });
+    patch.nosotros_texto = normalizeText(raw.nosotros_texto, {
+      keepNewlines: true,
+    });
   }
 
   // Ubicación + redes
@@ -148,7 +202,9 @@ export async function POST({ request, cookies }) {
   // Reservas
   patch.gadget_reservas = toBool(raw.gadget_reservas);
   const reservasLabel =
-    normalizeText(raw.reservas_label) || normalizeText(raw.reservas_boton) || 'PEDIR / RESERVAR';
+    normalizeText(raw.reservas_label) ||
+    normalizeText(raw.reservas_boton) ||
+    'PEDIR / RESERVAR';
   const destinoTipo = String(raw.reservas_destino_tipo || 'enlace')
     .trim()
     .toLowerCase();
@@ -169,7 +225,9 @@ export async function POST({ request, cookies }) {
     raw.gadget_mesero !== undefined ? raw.gadget_mesero : raw.gadget_llamar_mesero,
   );
   const gadgetCuenta = toBool(
-    raw.gadget_cuenta !== undefined ? raw.gadget_cuenta : raw.gadget_dividir_cuenta,
+    raw.gadget_cuenta !== undefined
+      ? raw.gadget_cuenta
+      : raw.gadget_dividir_cuenta,
   );
 
   patch.gadget_wifi = gadgetWifi;
@@ -180,9 +238,7 @@ export async function POST({ request, cookies }) {
   patch.gadget_dividir_cuenta = gadgetCuenta;
 
   const wifiSsid =
-    normalizeText(raw.gadget_wifi_ssid) ||
-    normalizeText(raw.wifi_ssid) ||
-    '';
+    normalizeText(raw.gadget_wifi_ssid) || normalizeText(raw.wifi_ssid) || '';
   const wifiClave =
     normalizeText(raw.gadget_wifi_clave) ||
     normalizeText(raw.wifi_password) ||
@@ -213,6 +269,7 @@ export async function POST({ request, cookies }) {
     .select(
       [
         'id',
+        'nombre_comercial',
         'logo_url',
         'eslogan',
         'color_primario',
@@ -224,6 +281,8 @@ export async function POST({ request, cookies }) {
         'share_image_url',
         'app_icon_url',
         'ui_estilo',
+        'home_theme',
+        'ubicacion_theme',
         'imagen_fondo',
         'custom_css',
         'secciones_fondo',
@@ -258,7 +317,7 @@ export async function POST({ request, cookies }) {
   if (error) {
     // Si faltan columnas nuevas en Supabase, reintentar sin ellas (legacy)
     const missingNew =
-      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|config_boutique|column|schema cache/i.test(
+      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|config_boutique|home_theme|ubicacion_theme|column|schema cache/i.test(
         error.message || '',
       );
     if (missingNew) {
@@ -273,6 +332,8 @@ export async function POST({ request, cookies }) {
       delete legacyPatch.gadget_cuenta;
       delete legacyPatch.gadget_boutique;
       delete legacyPatch.config_boutique;
+      delete legacyPatch.home_theme;
+      delete legacyPatch.ubicacion_theme;
       const retry = await writeClient
         .from('restaurantes')
         .update(legacyPatch)
@@ -280,6 +341,7 @@ export async function POST({ request, cookies }) {
         .select(
           [
             'id',
+            'nombre_comercial',
             'logo_url',
             'eslogan',
             'color_primario',
@@ -357,7 +419,7 @@ export async function POST({ request, cookies }) {
  * @param {Record<string, unknown>} data
  */
 async function afterMarcaUpdate(writeClient, restauranteId, raw, data) {
-  // Fondos por categoría (tabla categorias)
+  // Fondos por categoría (tabla categorias) — nunca abortan el save de restaurantes
   /** @type {Array<{ id: number|string, bg_type?: string, bg_valor?: string }>} */
   let categoriasFondos = [];
   if (Array.isArray(raw.categorias_fondos)) {
@@ -370,30 +432,59 @@ async function afterMarcaUpdate(writeClient, restauranteId, raw, data) {
     }
   }
 
+  /** @type {string[]} */
+  const categoriaWarnings = [];
+
   for (const cat of categoriasFondos) {
-    const catId = Number(cat?.id);
-    if (!Number.isFinite(catId) || catId <= 0) continue;
-    const bgType = String(cat.bg_type || cat.bgType || 'color')
-      .trim()
-      .toLowerCase();
-    const bgValor = String(cat.bg_valor || cat.bgValor || '').trim();
-    const { error: catErr } = await writeClient
-      .from('categorias')
-      .update({
+    try {
+      const catId = Number(cat?.id);
+      if (!Number.isFinite(catId) || catId <= 0) continue;
+
+      const bgType = String(cat.bg_type || cat.bgType || 'color')
+        .trim()
+        .toLowerCase();
+      const bgValorRaw = cat.bg_valor ?? cat.bgValor;
+      const bgValor =
+        bgValorRaw == null || bgValorRaw === ''
+          ? ''
+          : String(bgValorRaw).trim();
+
+      /** @type {Record<string, unknown>} */
+      const catPatch = {
         bg_type: ['color', 'image', 'video'].includes(bgType) ? bgType : 'color',
-        bg_valor: bgValor || null,
-      })
-      .eq('id', catId)
-      .eq('restaurante_id', restauranteId);
-    if (catErr) {
-      console.error('[api/update-marca] categoria', catId, catErr.message);
+      };
+      // No incluir bg_valor si es null/vacío (columna puede no existir o no mapearse)
+      if (bgValor) {
+        catPatch.bg_valor = bgValor;
+      }
+
+      const { error: catErr } = await writeClient
+        .from('categorias')
+        .update(catPatch)
+        .eq('id', catId)
+        .eq('restaurante_id', restauranteId);
+
+      if (catErr) {
+        console.error('[api/update-marca] categoria', catId, catErr.message);
+        categoriaWarnings.push(`categoria ${catId}: ${catErr.message}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[api/update-marca] categoria update non-fatal:', msg);
+      categoriaWarnings.push(msg);
     }
   }
+
+  const savedFields = Object.keys(data || {}).filter((k) => k !== 'id');
 
   return json({
     ok: true,
     message: '¡Identidad de marca actualizada con éxito!',
     restaurante: data,
+    saved_fields: savedFields,
+    ...(categoriaWarnings.length > 0
+      ? { categoria_warnings: categoriaWarnings }
+      : {}),
   });
 }
 
@@ -438,9 +529,17 @@ function normalizeWhatsapp(value) {
   return digits ? `+${digits}` : v;
 }
 
+/**
+ * Respuesta JSON siempre válida + headers CORS.
+ * @param {Record<string, unknown>} body
+ * @param {number} [status=200]
+ */
 function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
+  return new Response(JSON.stringify(body ?? { error: 'Respuesta vacía' }), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...CORS_HEADERS,
+    },
   });
 }

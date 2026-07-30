@@ -175,7 +175,17 @@ COMMENT ON COLUMN public.restaurantes.share_image_url IS
 COMMENT ON COLUMN public.restaurantes.app_icon_url IS
   'Icono PWA / apple-touch-icon para descarga a pantalla de inicio.';
 COMMENT ON COLUMN public.restaurantes.ui_estilo IS
-  'Tokens UI: { home: { titulo_size|logo_size|eslogan_size: 1-5, tracking, subtitulo_color }, nosotros|ubicacion: { color_fondo, color_titulo, color_cuerpo } }.';
+  'Tokens UI JSONB. home: estilo_navegacion (frontal|hamburguesa|app_tabs), fondo_animacion (in|out|pan|float|glow|ninguna), overlay_estilo (puro|gradiente|vineta|oscuro|cinematico), sizes/offsets px, colores, css_avanzado.';
+
+-- Plantillas de estructura (Layout Themes)
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS home_theme TEXT NOT NULL DEFAULT 'editorial',
+  ADD COLUMN IF NOT EXISTS ubicacion_theme TEXT NOT NULL DEFAULT 'modal';
+
+COMMENT ON COLUMN public.restaurantes.home_theme IS
+  'Plantilla Home: editorial | hero | bento.';
+COMMENT ON COLUMN public.restaurantes.ubicacion_theme IS
+  'Plantilla Ubicación: modal | split.';
 
 -- Contenido público (ubicación / horarios / nosotros) — editable sin tocar código.
 ALTER TABLE public.restaurantes

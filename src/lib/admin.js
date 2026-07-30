@@ -1,5 +1,11 @@
-import { isSuperAdminUser } from '../config/superadmin.js';
+import {
+  getUserAdminRole,
+  getAssignedRestauranteId,
+  ADMIN_ROLE_OPERATIVO,
+  ADMIN_ROLE_SUPER,
+} from '../config/superadmin.js';
 import { createSupabaseServerClient } from './supabase/server.js';
+import { createSupabaseServiceClient } from './supabase/service.js';
 import { getSuperAdminWriteClient } from './superadmin.js';
 
 const RESTAURANTE_ADMIN_SELECT = [
@@ -44,6 +50,8 @@ const RESTAURANTE_ADMIN_SELECT = [
   'share_image_url',
   'app_icon_url',
   'ui_estilo',
+  'home_theme',
+  'ubicacion_theme',
 ].join(', ');
 
 /** SELECT mínimo si faltan columnas nuevas en Supabase. */
@@ -79,6 +87,9 @@ const RESTAURANTE_ADMIN_SELECT_BASE = [
   'secciones_fondo',
 ].join(', ');
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {{ id?: string | null, slug?: string | null, userId?: string | null }} filter
@@ -96,13 +107,17 @@ async function fetchRestauranteAdmin(client, filter) {
   const full = await run(RESTAURANTE_ADMIN_SELECT);
   if (!full.error) return full.data ?? null;
 
-  const missingColumn = /column|does not exist|schema cache/i.test(full.error.message || '');
+  const msg = full.error.message || '';
+  const missingColumn = /column|does not exist|schema cache/i.test(msg);
   if (!missingColumn) {
-    console.error('[admin] restaurante:', full.error.message);
+    // UUID inválido / filtro malo: no ensuciar logs como fallo duro
+    if (!/invalid input syntax|uuid/i.test(msg)) {
+      console.error('[admin] restaurante:', msg);
+    }
     return null;
   }
 
-  console.warn('[admin] columnas nuevas no disponibles; SELECT base.', full.error.message);
+  console.warn('[admin] columnas nuevas no disponibles; SELECT base.', msg);
   const base = await run(RESTAURANTE_ADMIN_SELECT_BASE);
   if (base.error) {
     console.error('[admin] restaurante (base):', base.error.message);
@@ -112,8 +127,30 @@ async function fetchRestauranteAdmin(client, filter) {
 }
 
 /**
+ * Resuelve el local del operativo: metadata (id o slug) → fallback `user_id`.
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {{ id: string }} user
+ * @param {string | null} assigned
+ */
+async function resolveOperativoRestaurante(client, user, assigned) {
+  const token = String(assigned || '').trim();
+  if (token) {
+    if (UUID_RE.test(token)) {
+      const byId = await fetchRestauranteAdmin(client, { id: token });
+      if (byId) return byId;
+    }
+    const bySlug = await fetchRestauranteAdmin(client, { slug: token });
+    if (bySlug) return bySlug;
+    // Token no-UUID: ya intentamos slug; si parecía UUID pero no hubo fila, no reintentar id
+  }
+  return fetchRestauranteAdmin(client, { userId: user.id });
+}
+
+/**
  * Valida la sesión y carga restaurante + platos del dashboard.
  * SuperAdmin puede pasar `restauranteId` o `slug` para gestionar cualquier local.
+ * Admin Operativo: ignora query URL y fuerza el `restaurante_id` de su metadata
+ * (o, si falta, el local con `user_id` = auth.uid()).
  *
  * @param {{ request: Request, cookies: import('astro').AstroCookies }} ctx
  * @param {{ restauranteId?: string | null, slug?: string | null }} [opts]
@@ -128,10 +165,17 @@ export async function getAdminDashboardData(ctx, opts = {}) {
 
   if (authError || !user) return null;
 
-  const isSuper = isSuperAdminUser(user);
+  const role = getUserAdminRole(user);
+  /** Strict SSR flag: false for Admin Operativo; true only for allowlist / role=superadmin. */
+  const isSuper = role === ADMIN_ROLE_SUPER;
+  const assignedRestauranteId = getAssignedRestauranteId(user);
   const restauranteId = opts.restauranteId?.trim() || null;
   const slug = opts.slug?.trim() || null;
   const writeClient = isSuper ? getSuperAdminWriteClient(supabase, user) : supabase;
+  /** Lectura operativa: service role si existe (metadata / user_id pueden no alinear con RLS). */
+  const operativoReadClient = !isSuper
+    ? createSupabaseServiceClient() ?? supabase
+    : supabase;
 
   /** @type {object | null} */
   let restaurante = null;
@@ -143,8 +187,15 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       slug: restauranteId ? null : slug,
     });
   } else if (!isSuper) {
-    restaurante = await fetchRestauranteAdmin(supabase, { userId: user.id });
+    // Operativo: ignorar ?restaurante= / ?slug=; siempre metadata (id|slug) → user_id
+    restaurante = await resolveOperativoRestaurante(
+      operativoReadClient,
+      user,
+      assignedRestauranteId,
+    );
   }
+
+  const managingAsSuperAdmin = Boolean(isSuper && (restauranteId || slug));
 
   if (!restaurante) {
     return {
@@ -153,11 +204,13 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       platos: [],
       categorias: [],
       isSuperAdmin: isSuper,
-      managingAsSuperAdmin: Boolean(isSuper && (restauranteId || slug)),
+      role,
+      assignedRestauranteId,
+      managingAsSuperAdmin,
     };
   }
 
-  const readClient = writeClient;
+  const readClient = isSuper ? writeClient : operativoReadClient;
 
   const [{ data: platos, error: platosError }, catResult] = await Promise.all([
     readClient
@@ -199,7 +252,9 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       platos: [],
       categorias: [],
       isSuperAdmin: isSuper,
-      managingAsSuperAdmin: Boolean(isSuper && (restauranteId || slug)),
+      role,
+      assignedRestauranteId,
+      managingAsSuperAdmin,
     };
   }
 
@@ -225,6 +280,8 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       bg_valor: c.bg_valor || '',
     })),
     isSuperAdmin: isSuper,
-    managingAsSuperAdmin: Boolean(isSuper && (restauranteId || slug)),
+    role: role || ADMIN_ROLE_OPERATIVO,
+    assignedRestauranteId,
+    managingAsSuperAdmin,
   };
 }

@@ -29,7 +29,7 @@ const platos = Array.isArray(m.platosMasVistos) ? m.platosMasVistos : [];
 const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
 ---
 
-<section class="admin-metrics" data-admin-metrics>
+<section class="admin-metrics solid-obstacle" data-admin-metrics>
   <header class="mb-8">
     <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
       {network ? 'Red Xemilla' : 'Operación en sala'}
@@ -44,7 +44,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
 
   <!-- KPI strip -->
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <article class="metrics-kpi glass-panel p-5">
+    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
       <p class="metrics-kpi__label">Tiempo promedio de respuesta</p>
       <p class="metrics-kpi__value mt-3 tabular-nums">
         {m.tiempoPromedioLabel || '—'}
@@ -54,7 +54,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
       </p>
     </article>
 
-    <article class="metrics-kpi glass-panel p-5">
+    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
       <p class="metrics-kpi__label">Volumen hoy</p>
       <p class="metrics-kpi__value mt-3 tabular-nums">{hoy.total ?? 0}</p>
       <p class="mt-2 text-xs text-zinc-500">
@@ -62,7 +62,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
       </p>
     </article>
 
-    <article class="metrics-kpi glass-panel p-5">
+    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
       <p class="metrics-kpi__label">Volumen 7 días</p>
       <p class="metrics-kpi__value mt-3 tabular-nums">{semana.total ?? 0}</p>
       <p class="mt-2 text-xs text-zinc-500">
@@ -70,7 +70,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
       </p>
     </article>
 
-    <article class="metrics-kpi glass-panel p-5">
+    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
       <p class="metrics-kpi__label">Pendientes ahora</p>
       <p class="metrics-kpi__value mt-3 tabular-nums">{m.pendientes ?? 0}</p>
       <p class="mt-2 text-xs text-zinc-500">
@@ -81,7 +81,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
 
   <div class="mt-6 grid gap-6 lg:grid-cols-2">
     <!-- Ranking mesas -->
-    <article class="glass-panel p-6">
+    <article class="glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-6">
       <div class="flex items-end justify-between gap-3">
         <div>
           <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
@@ -124,7 +124,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
     </article>
 
     <!-- Volumen por tipo -->
-    <article class="glass-panel p-6">
+    <article class="glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-6">
       <div class="flex items-end justify-between gap-3">
         <div>
           <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
@@ -177,7 +177,7 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
   </div>
 
   <!-- Platos más vistos (pre-cableado) -->
-  <article class="glass-panel mt-6 p-6">
+  <article class="glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl mt-6 p-6">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
@@ -268,19 +268,23 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
     min-width: 0.25rem;
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill {
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill,
+  html.admin-panel[data-theme='dark'] .metrics-bar__fill {
     background: #10b981;
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--mesero {
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--mesero,
+  html.admin-panel[data-theme='dark'] .metrics-bar__fill--mesero {
     background: #34d399;
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--cuenta {
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--cuenta,
+  html.admin-panel[data-theme='dark'] .metrics-bar__fill--cuenta {
     background: #a7f3d0;
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--vistas {
+  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--vistas,
+  html.admin-panel[data-theme='dark'] .metrics-bar__fill--vistas {
     background: #ffffff;
   }
 
@@ -296,19 +300,23 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
     background: #8a7c74;
   }
 
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill {
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill,
+  html.admin-panel[data-theme='light'] .metrics-bar__fill {
     background: #18181b;
   }
 
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--mesero {
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--mesero,
+  html.admin-panel[data-theme='light'] .metrics-bar__fill--mesero {
     background: #27272a;
   }
 
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--cuenta {
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--cuenta,
+  html.admin-panel[data-theme='light'] .metrics-bar__fill--cuenta {
     background: #52525b;
   }
 
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--vistas {
+  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--vistas,
+  html.admin-panel[data-theme='light'] .metrics-bar__fill--vistas {
     background: #a1a1aa;
   }
 
@@ -326,7 +334,8 @@ const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
     background: var(--color-acento, #6b2d3c);
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-placeholder__bars > span {
+  html.admin-panel[data-theme='onyx'] .metrics-placeholder__bars > span,
+  html.admin-panel[data-theme='dark'] .metrics-placeholder__bars > span {
     background: #10b981;
   }
 </style>

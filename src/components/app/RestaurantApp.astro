@@ -1,267 +1,633 @@
 ---
-import LinktreeHome from './LinktreeHome.astro';
 import OverlayPanel from './OverlayPanel.astro';
 import MenuPanel from './MenuPanel.astro';
 import NosotrosPanel from './NosotrosPanel.astro';
-import UbicacionPanel from './UbicacionPanel.astro';
 import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
 import DividirCuenta from '../gadgets/DividirCuenta.astro';
 import LlamarMeseroGadget from '../gadgets/LlamarMeseroGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
-import { themeToCssVars, DEFAULT_THEME } from '../../lib/theme.js';
+import HomeEditorial from '../themes/home/HomeEditorial.astro';
+import HomeHeroCards from '../themes/home/HomeHeroCards.astro';
+import HomeBentoGrid from '../themes/home/HomeBentoGrid.astro';
+import HomeMinimal from '../themes/home/HomeMinimal.astro';
+import UbicacionModal from '../themes/ubicacion/UbicacionModal.astro';
+import UbicacionSplitMap from '../themes/ubicacion/UbicacionSplitMap.astro';
+import { themeToCssVars, homeBackgroundCssVars, DEFAULT_THEME } from '../../lib/theme.js';
+import {
+  sanitizeTheme,
+  normalizeUbicacionTheme,
+} from '../../lib/layout-themes.js';
+import { resolveMediaUrl } from '../../lib/cloudinary.js';
+import { resolveSafeHomeProps } from '../../lib/home-safe-props.js';
+import {
+  scopeCssAvanzado,
+  normalizeEstiloNavegacion,
+  normalizeFondoAnimacion,
+  normalizeOverlayEstilo,
+} from '../../lib/secciones-ui.js';
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   restaurante: any;
+  /** Plantilla Home forzada desde [slug].astro (SSR) — solo estructura */
+  homeTheme?: string;
+  /** Plantilla Ubicación forzada desde [slug].astro (SSR) */
+  ubicacionTheme?: string;
 }
 
-const { restaurante } = Astro.props;
-const { estilos } = restaurante;
-const theme = restaurante.theme ?? DEFAULT_THEME;
-const cssVars = [themeToCssVars(theme), restaurante.uiCssVars || ''].filter(Boolean).join('; ');
-const gadgets = restaurante.gadgets ?? {};
-const uiEstilo = restaurante.uiEstilo ?? {};
-const showWifi = Boolean(gadgets.wifi);
-const showDividir = Boolean(gadgets.dividirCuenta);
-const showReservas = Boolean(gadgets.reservas);
-const showLlamarMesero = Boolean(gadgets.llamarMesero);
-const showBoutique = Boolean(gadgets.boutique);
-const boutiqueProductos = Array.isArray(restaurante.boutique?.productos)
+const { restaurante, homeTheme: homeThemeProp, ubicacionTheme: ubicacionThemeProp } = Astro.props;
+const theme = restaurante?.theme ?? DEFAULT_THEME;
+const gadgets = restaurante?.gadgets ?? {};
+const uiEstilo = restaurante?.uiEstilo ?? {};
+const showWifi = Boolean(gadgets?.wifi);
+const showDividir = Boolean(gadgets?.dividirCuenta);
+const showReservas = Boolean(gadgets?.reservas);
+const showLlamarMesero = Boolean(gadgets?.llamarMesero);
+const showBoutique = Boolean(gadgets?.boutique);
+const boutiqueProductos = Array.isArray(restaurante?.boutique?.productos)
   ? restaurante.boutique.productos
   : [];
 
-const fondos = restaurante.seccionesFondo ?? {};
-const fondoHome = fondos.home ?? { tipo: 'color', valor: theme.colorFondo };
-const fondoNosotros = fondos.nosotros ?? { tipo: 'color', valor: '' };
-const fondoMenu = fondos.menu ?? { tipo: 'color', valor: '' };
-const fondoUbicacion = fondos.ubicacion ?? { tipo: 'color', valor: '' };
+/** sanitizeTheme(restaurante.home_theme) — sin fallback agresivo a Bento */
+let homeTheme = sanitizeTheme(
+  homeThemeProp ?? restaurante?.home_theme ?? restaurante?.homeTheme ?? '',
+);
+const ubicacionTheme = normalizeUbicacionTheme(
+  ubicacionThemeProp ?? restaurante?.ubicacionTheme ?? restaurante?.ubicacion_theme,
+);
 
-const reservas = restaurante.reservas ?? {};
-const reservasCta =
-  showReservas && reservas.href
-    ? { label: reservas.label || 'PEDIR / RESERVAR', href: reservas.href }
-    : null;
+console.log('🔥 [SUPABASE READ]', {
+  raw_db: restaurante?.home_theme,
+  sanitized: sanitizeTheme(restaurante?.home_theme),
+});
+
+/** Fondos desde Identidad de Marca (independientes de home_theme) */
+const fondos = restaurante?.seccionesFondo ?? {};
+const fondoHome = fondos?.home ?? { tipo: 'color', valor: theme.colorFondo };
+const fondoNosotros = fondos?.nosotros ?? { tipo: 'color', valor: '' };
+const fondoMenu = fondos?.menu ?? { tipo: 'color', valor: '' };
+const fondoUbicacion = fondos?.ubicacion ?? { tipo: 'color', valor: '' };
+
+/** Atmósfera siempre tiene capa base (color) si falta media — shell es bg-transparent */
+const atmosphereTipo = String(fondoHome?.valor || '').trim()
+  ? String(fondoHome?.tipo || 'color')
+  : 'color';
+const atmosphereValor = String(fondoHome?.valor || '').trim() || theme.colorFondo;
+
+/** Overlay Home: estilo cinemático + opacidad (solo filtro oscuro / cinematico) */
+const homeOverlayOpacity =
+  uiEstilo?.home?.overlay_opacity ??
+  uiEstilo?.home?.overlayOpacity ??
+  40;
+const homeOverlayEstilo = normalizeOverlayEstilo(
+  uiEstilo?.home?.overlay_estilo ?? uiEstilo?.home?.overlayEstilo,
+);
+const homeFondoAnimacion = normalizeFondoAnimacion(
+  uiEstilo?.home?.fondo_animacion ?? uiEstilo?.home?.fondoAnimacion,
+);
+
+/** Navegación Home: frontal | hamburguesa | app_tabs (legacy fijo/oculto normalizados) */
+const estiloNavegacion = normalizeEstiloNavegacion(
+  uiEstilo?.home?.estilo_navegacion ??
+    uiEstilo?.home?.estiloNavegacion ??
+    uiEstilo?.home?.nav_style,
+);
+const isNavHamburguesa = estiloNavegacion === 'hamburguesa';
+const isNavAppTabs = estiloNavegacion === 'app_tabs';
+const hideCentralNav = isNavHamburguesa || isNavAppTabs;
+
+const menuColorCss =
+  uiEstilo?.home?.menu_color ||
+  uiEstilo?.home?.menuColor ||
+  '#ffffff';
+
+const cssVars = [
+  themeToCssVars(theme),
+  homeBackgroundCssVars(fondoHome, theme.colorFondo),
+  restaurante?.uiCssVars || '',
+]
+  .filter(Boolean)
+  .join('; ');
+
+const reservas = restaurante?.reservas ?? {};
+/** CTA visible con el switch ON (aunque falte href aún) */
+const reservasCta = showReservas
+  ? {
+      label: reservas?.label || 'PEDIR / RESERVAR',
+      href: reservas?.href || '#',
+      subtitulo: reservas?.subtitulo || reservas?.subtitle || 'EXPERIENCIA PREMIUM',
+      activo: true,
+    }
+  : null;
+
+/** Logo: logo_url | logo → siempre por resolveMediaUrl */
+let logoUrl = null;
+try {
+  logoUrl = resolveMediaUrl(
+    restaurante?.logo_url || restaurante?.logo || restaurante?.logoUrl || '',
+  );
+} catch (e) {
+  console.error('Error renderizando tema:', e);
+  logoUrl = null;
+}
+
+/** Props Home blindadas — nunca undefined sin fallback */
+let homeProps = {
+  ...resolveSafeHomeProps({
+    nombre: restaurante?.nombre || 'Restaurante',
+    logoText: restaurante?.logoText,
+    logoLetter: restaurante?.logoLetter,
+    logoUrl: logoUrl || null,
+    logo_url: logoUrl || null,
+    tagline: restaurante?.tagline || restaurante?.eslogan || '',
+    eslogan: restaurante?.eslogan || '',
+    slug: restaurante?.slug || '',
+    menu_link:
+      restaurante?.menu_link ||
+      (restaurante?.slug ? `/${restaurante.slug}/menu` : ''),
+    estilos: restaurante?.estilos,
+    showWifi,
+    showDividir,
+    showLlamarMesero,
+    showBoutique,
+    wifiSsid: restaurante?.wifi?.ssid || '',
+    wifiClave: restaurante?.wifi?.password || '',
+    reservasCta,
+    homeUi: uiEstilo?.home || {},
+  }),
+  /** Reservas CTA — visibles con switch ON (no dependen de href) */
+  showReservas,
+  reservas_activo: showReservas,
+  reservas_texto: reservas?.label || 'PEDIR / RESERVAR',
+  reservas_subtitulo:
+    reservas?.subtitulo || reservas?.subtitle || 'EXPERIENCIA PREMIUM',
+  reservas_link: reservas?.href || '#',
+  estiloNavegacion,
+  hideCentralNav,
+};
+
+const ubicacion = restaurante?.ubicacion ?? {};
+const ubicacionProps = {
+  direccion: ubicacion?.direccion || '',
+  ciudad: ubicacion?.ciudad || '',
+  telefono: ubicacion?.telefono || '',
+  email: ubicacion?.email || '',
+  instagram: ubicacion?.instagram || '',
+  whatsapp: ubicacion?.whatsapp || restaurante?.whatsapp || '',
+  redes: Array.isArray(ubicacion?.redes) ? ubicacion.redes : [],
+  mapaLabel: ubicacion?.mapaLabel || '',
+  mapaUrl: ubicacion?.mapaUrl || '',
+  horarios: ubicacion?.horarios || [],
+  horariosRows: ubicacion?.horariosRows || [],
+  sectionColors: uiEstilo?.ubicacion,
+  estilos: homeProps.estilos,
+};
+
+/** Si falla la resolución del tema, loguear y caer a bento solo por error real */
+try {
+  if (!homeProps?.nombre) {
+    throw new Error('homeProps.nombre vacío tras resolveSafeHomeProps');
+  }
+} catch (e) {
+  console.error('Error renderizando tema:', e);
+  homeTheme = 'bento';
+  homeProps = {
+    ...resolveSafeHomeProps({ nombre: 'Restaurante', estilos: restaurante?.estilos }),
+    showReservas,
+    reservas_activo: showReservas,
+    reservas_texto: 'PEDIR / RESERVAR',
+    reservas_subtitulo: 'EXPERIENCIA PREMIUM',
+    reservas_link: '#',
+    estiloNavegacion,
+    hideCentralNav,
+  };
+}
+
+const estilos = homeProps.estilos;
+const menu = restaurante?.menu ?? {};
+const nosotros = restaurante?.nosotros ?? {};
+
+/** CSS avanzado: ui_estilo.css_avanzado (canónico) ↔ columna custom_css */
+const cssAvanzadoScoped = scopeCssAvanzado(
+  uiEstilo?.css_avanzado ||
+    restaurante?.customCss ||
+    restaurante?.custom_css ||
+    '',
+);
 ---
 
+{cssAvanzadoScoped ? <style is:inline set:html={cssAvanzadoScoped} /> : null}
+
 <div
-  class="restaurant-app relative z-10 mx-auto min-h-dvh max-w-md overflow-hidden bg-[var(--color-fondo)] text-[color:var(--color-texto)] font-[family-name:var(--fuente-principal)]"
+  class="restaurant-app relative z-10 mx-auto min-h-dvh max-w-md bg-transparent text-[color:var(--color-text,var(--color-texto))] font-[family-name:var(--font-body,var(--fuente-principal))]"
   data-restaurant-app
-  data-restaurante-id={restaurante.id || ''}
-  data-design={theme.designDnaId || 'elegant'}
+  data-preview-live="true"
+  data-restaurante-id={restaurante?.id || ''}
+  data-design={theme?.designDnaId || 'elegant'}
+  data-home-theme={homeTheme}
+  data-ubicacion-theme={ubicacionTheme}
+  data-estilo-navegacion={estiloNavegacion}
+  data-fondo-home-tipo={fondoHome.tipo || 'color'}
   style={cssVars}
 >
-  <SectionAtmosphere tipo={fondoHome.tipo} valor={fondoHome.valor} />
-
-  {
-    !fondoHome.valor && (
-      <div
-        class="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-40"
-        aria-hidden="true"
-        data-parallax-root
-      >
-        <div
-          class="absolute inset-[-10%] bg-[radial-gradient(ellipse_at_30%_0%,color-mix(in_srgb,var(--color-primario)_28%,transparent),transparent_55%)] will-change-transform"
-          data-parallax-layer
-          style="transform: translate3d(0,0,0)"
-        />
-      </div>
-    )
-  }
-
-  <div class="relative z-10 flex min-h-dvh flex-col">
-    <LinktreeHome
-      nombre={restaurante.nombre}
-      logoText={restaurante.logoText}
-      logoLetter={restaurante.logoLetter}
-      logoUrl={restaurante.logoUrl || ''}
-      tagline={restaurante.tagline}
-      estilos={estilos}
-      showWifi={showWifi}
-      showDividir={showDividir}
-      showLlamarMesero={showLlamarMesero}
-      showBoutique={showBoutique}
-      wifiSsid={restaurante.wifi?.ssid || ''}
-      wifiClave={restaurante.wifi?.password || ''}
-      reservasCta={reservasCta}
-      homeUi={uiEstilo.home}
+  {/*
+    HOME stacking (decoupled):
+    - Atmosphere: fixed inset-0 z-[-1] pointer-events-none (SectionAtmosphere)
+    - Theme chrome: relative z-10 pointer-events-auto
+    Nav structure (hamburguesa / app_tabs) never mutates atmosphere.
+  */}
+  <div
+    class="relative flex min-h-dvh flex-col overflow-hidden bg-transparent"
+    data-home-shell
+    data-resolved-home-theme={homeTheme}
+  >
+    {/* Atmósfera centralizada — color | image | carrusel | video + overlays */}
+    <SectionAtmosphere
+      tipo={atmosphereTipo}
+      valor={atmosphereValor}
+      overlayOpacity={homeOverlayOpacity}
+      overlayEstilo={homeOverlayEstilo}
+      fondoAnimacion={homeFondoAnimacion}
+      fixed
     />
 
+    {
+      !String(fondoHome?.valor || '').trim() && (
+        <div
+          class="pointer-events-none fixed inset-0 z-[-1] overflow-hidden opacity-40"
+          aria-hidden="true"
+          data-parallax-root
+        >
+          <div
+            class="absolute inset-[-10%] bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-primary,var(--color-primario))_28%,transparent),transparent_55%)] will-change-transform"
+            data-parallax-layer
+            style="transform: translate3d(0,0,0)"
+          />
+        </div>
+      )
+    }
+
+    {/* Tema Home: solo estructura (logo / títulos / nav) */}
+    <div class="relative z-10 flex min-h-dvh flex-col bg-transparent pointer-events-auto">
+      {
+        (() => {
+          try {
+            if (homeTheme === 'editorial') {
+              return <HomeEditorial {...homeProps} />;
+            }
+            if (homeTheme === 'hero') {
+              return <HomeHeroCards {...homeProps} />;
+            }
+            if (homeTheme === 'minimal') {
+              return <HomeMinimal {...homeProps} />;
+            }
+            return <HomeBentoGrid {...homeProps} />;
+          } catch (e) {
+            console.error('Error renderizando tema:', e);
+            return <HomeBentoGrid {...homeProps} />;
+          }
+        })()
+      }
+    </div>
+  </div>
+
+  {
+    isNavHamburguesa ? (
+      <>
+        <button
+          type="button"
+          class="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-30 flex size-11 items-center justify-center text-2xl leading-none transition-all duration-500 ease-in-out hover:opacity-70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40 sm:right-6"
+          style={`color: ${menuColorCss}`}
+          aria-label="Abrir menú"
+          aria-expanded="false"
+          aria-controls="app-nav-overlay"
+          data-app-nav-burger
+        >
+          ☰
+        </button>
+
+        <div
+          id="app-nav-overlay"
+          class="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 px-6 opacity-0 backdrop-blur-2xl transition-all duration-500 ease-in-out"
+          data-app-nav-overlay
+          aria-hidden="true"
+        >
+          <button
+            type="button"
+            class="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-50 flex size-11 items-center justify-center text-2xl leading-none text-white/70 transition-all duration-500 ease-in-out hover:text-white sm:right-6"
+            aria-label="Cerrar menú"
+            data-app-nav-close
+          >
+            ✕
+          </button>
+
+          <nav
+            class="flex max-h-[min(85dvh,40rem)] w-full max-w-[22rem] flex-col items-center gap-2 overflow-y-auto overscroll-contain py-16 text-center"
+            aria-label="Navegación principal"
+            data-app-nav-panel
+          >
+            <button
+              type="button"
+              data-open-section="menu"
+              class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white focus-visible:tracking-[0.3em] focus-visible:text-white focus-visible:outline-none sm:text-4xl"
+            >
+              Menú
+            </button>
+            <button
+              type="button"
+              data-open-section="nosotros"
+              class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white focus-visible:tracking-[0.3em] focus-visible:text-white focus-visible:outline-none sm:text-4xl"
+            >
+              Nosotros
+            </button>
+            <button
+              type="button"
+              data-open-section="ubicacion"
+              class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white focus-visible:tracking-[0.3em] focus-visible:text-white focus-visible:outline-none sm:text-4xl"
+            >
+              Ubicación
+            </button>
+            {
+              showWifi ? (
+                <button
+                  type="button"
+                  data-open-section="wifi"
+                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
+                >
+                  Wi-Fi
+                </button>
+              ) : null
+            }
+            {
+              showLlamarMesero ? (
+                <button
+                  type="button"
+                  data-open-section="mesero"
+                  data-requires-mesa="true"
+                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
+                >
+                  Llamar mesero
+                </button>
+              ) : null
+            }
+            {
+              showDividir ? (
+                <button
+                  type="button"
+                  data-open-section="dividir"
+                  data-requires-mesa="true"
+                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
+                >
+                  Dividir cuenta
+                </button>
+              ) : null
+            }
+            {
+              showBoutique ? (
+                <button
+                  type="button"
+                  data-open-boutique
+                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
+                >
+                  Boutique
+                </button>
+              ) : null
+            }
+            {
+              showReservas && reservasCta ? (
+                <a
+                  href={reservasCta.href || '#'}
+                  target={reservasCta.href && reservasCta.href !== '#' ? '_blank' : undefined}
+                  rel={reservasCta.href && reservasCta.href !== '#' ? 'noopener noreferrer' : undefined}
+                  class="mt-6 w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
+                  data-reservas-home-cta
+                >
+                  {reservasCta.label || 'Pedir / Reservar'}
+                </a>
+              ) : null
+            }
+          </nav>
+        </div>
+      </>
+    ) : null
+  }
+
+  {
+    isNavAppTabs ? (
+      <nav
+        class="fixed bottom-0 left-1/2 z-40 flex w-full max-w-md -translate-x-1/2 items-stretch justify-around border-t border-white/10 bg-black/80 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl"
+        aria-label="Navegación inferior"
+        data-app-tabs
+      >
+        <button
+          type="button"
+          data-open-section="menu"
+          data-app-tab="menu"
+          class="app-tab flex flex-1 flex-col items-center gap-1 py-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-white/55 transition-colors duration-300 data-[active=true]:text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h10"></path>
+          </svg>
+          Menú
+        </button>
+        <button
+          type="button"
+          data-open-section="nosotros"
+          data-app-tab="nosotros"
+          class="app-tab flex flex-1 flex-col items-center gap-1 py-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-white/55 transition-colors duration-300 data-[active=true]:text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5" aria-hidden="true">
+            <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+            <path d="M4 20a8 8 0 0 1 16 0"></path>
+          </svg>
+          Nosotros
+        </button>
+        <button
+          type="button"
+          data-open-section="ubicacion"
+          data-app-tab="ubicacion"
+          class="app-tab flex flex-1 flex-col items-center gap-1 py-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-white/55 transition-colors duration-300 data-[active=true]:text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5" aria-hidden="true">
+            <path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z"></path>
+            <circle cx="12" cy="10" r="2.5"></circle>
+          </svg>
+          Ubicación
+        </button>
+      </nav>
+    ) : null
+  }
+
+  {/* Overlays / drawers: hermanos del Home, no hijos (z-index por encima del shell) */}
+  <div class="relative z-50" data-overlays-root>
     <OverlayPanel
       sectionId="menu"
       title="IL MENÚ"
       estilos={{ ...estilos, panelColor: 'bg-transparent' }}
     >
       <MenuPanel
-        categorias={restaurante.menu.categorias}
-        destacados={restaurante.menu.destacados ?? []}
+        categorias={menu?.categorias || []}
+        destacados={menu?.destacados ?? []}
         fondoGlobal={fondoMenu}
         estilos={estilos}
       />
     </OverlayPanel>
 
-  <OverlayPanel
-    sectionId="nosotros"
-    title={restaurante.nosotros.titulo}
-    fondoTipo={fondoNosotros.tipo}
-    fondoValor={fondoNosotros.valor}
-    sectionColors={uiEstilo.nosotros}
-    estilos={estilos}
-  >
-    <NosotrosPanel
-      bloques={restaurante.nosotros.bloques ?? []}
-      texto={restaurante.nosotros.texto}
-      highlights={restaurante.nosotros.highlights}
-      designDnaId={theme.designDnaId || 'elegant'}
-      sectionColors={uiEstilo.nosotros}
+    <OverlayPanel
+      sectionId="nosotros"
+      title={nosotros?.titulo || 'NOSOTROS'}
+      fondoTipo={fondoNosotros.tipo}
+      fondoValor={fondoNosotros.valor}
+      sectionColors={uiEstilo?.nosotros}
       estilos={estilos}
-    />
-  </OverlayPanel>
-
-  <OverlayPanel
-    sectionId="ubicacion"
-    title={restaurante.ubicacion.titulo}
-    fondoTipo={fondoUbicacion.tipo}
-    fondoValor={fondoUbicacion.valor}
-    sectionColors={uiEstilo.ubicacion}
-    estilos={estilos}
-  >
-    <UbicacionPanel
-      direccion={restaurante.ubicacion.direccion}
-      ciudad={restaurante.ubicacion.ciudad}
-      telefono={restaurante.ubicacion.telefono}
-      email={restaurante.ubicacion.email || ''}
-      instagram={restaurante.ubicacion.instagram || ''}
-      whatsapp={restaurante.ubicacion.whatsapp || restaurante.whatsapp || ''}
-      redes={restaurante.ubicacion.redes || []}
-      mapaLabel={restaurante.ubicacion.mapaLabel}
-      mapaUrl={restaurante.ubicacion.mapaUrl}
-      horarios={restaurante.ubicacion.horarios}
-      horariosRows={restaurante.ubicacion.horariosRows}
-      sectionColors={uiEstilo.ubicacion}
-      estilos={estilos}
-    />
-  </OverlayPanel>
-
-  {
-    showWifi && (
-      <OverlayPanel sectionId="wifi" title="CONECTAR WI-FI" estilos={estilos}>
-        <div class="px-5 py-8">
-          <WifiGadget
-            ssid={restaurante.wifi?.ssid || ''}
-            password={restaurante.wifi?.password || ''}
-            textColor={estilos.textColor}
-            mutedColor={estilos.mutedColor}
-          />
-        </div>
-      </OverlayPanel>
-    )
-  }
-
-  {
-    showDividir && (
-      <OverlayPanel sectionId="dividir" title="PEDIR / DIVIDIR CUENTA" estilos={estilos}>
-        <div class="px-5 py-8">
-          <DividirCuenta
-            restauranteId={restaurante.id || ''}
-            textColor={estilos.textColor}
-            mutedColor={estilos.mutedColor}
-            accentText={estilos.accentText}
-          />
-        </div>
-      </OverlayPanel>
-    )
-  }
-
-  {
-    showLlamarMesero && (
-      <OverlayPanel sectionId="mesero" title="LLAMAR MESERO" estilos={estilos}>
-        <div class="px-5 py-8">
-          <LlamarMeseroGadget
-            restauranteId={restaurante.id || ''}
-            whatsapp={restaurante.whatsapp || restaurante.ubicacion?.whatsapp || ''}
-            nombreRestaurante={restaurante.nombre}
-            textColor={estilos.textColor}
-            mutedColor={estilos.mutedColor}
-          />
-        </div>
-      </OverlayPanel>
-    )
-  }
-
-  {
-    showBoutique && (
-      <BoutiqueGadget
-        productos={boutiqueProductos}
-        textColor={estilos.textColor}
-        mutedColor={estilos.mutedColor}
-        displayClass={estilos.displayClass}
-      />
-    )
-  }
-
-  {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
-  <div
-    class="detalle-modal pointer-events-none fixed inset-0 z-[90] mx-auto flex max-w-md items-center justify-center opacity-0 transition-all duration-300 ease-out"
-    data-detalle-modal
-    aria-hidden="true"
-  >
-    <button
-      type="button"
-      class="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity duration-300"
-      data-detalle-backdrop
-      aria-label="Cerrar detalle"
-    ></button>
-
-    <div
-      class="detalle-modal__card relative z-10 mx-4 w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="detalle-modal-title"
     >
-      <div class="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
-        <h3
-          id="detalle-modal-title"
-          class={`truncate pr-3 text-[0.68rem] font-semibold tracking-[0.22em] uppercase ${estilos.displayClass} text-[color:var(--color-texto)]`}
-          data-detalle-title
-        >
-          Plato
-        </h3>
-        <button
-          type="button"
-          data-detalle-close
-          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-zinc-400 transition-all duration-200 active:scale-95 hover:text-white"
-          aria-label="Cerrar"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            class="h-3.5 w-3.5"
-          >
-            <path d="M6 6l12 12M18 6L6 18"></path>
-          </svg>
-        </button>
-      </div>
+      <NosotrosPanel
+        bloques={nosotros?.bloques ?? []}
+        texto={nosotros?.texto || ''}
+        highlights={nosotros?.highlights || []}
+        designDnaId={theme?.designDnaId || 'elegant'}
+        sectionColors={uiEstilo?.nosotros}
+        estilos={estilos}
+      />
+    </OverlayPanel>
 
-      <div class="relative aspect-[4/3] overflow-hidden bg-black/50">
-        <img
-          data-detalle-img
-          src=""
-          alt=""
-          class="absolute inset-0 hidden size-full object-cover object-center"
+    {
+      ubicacionTheme === 'split' ? (
+        <OverlayPanel
+          sectionId="ubicacion"
+          title={ubicacion?.titulo || 'UBICACIÓN Y HORARIOS'}
+          fondoTipo={fondoUbicacion.tipo}
+          fondoValor={fondoUbicacion.valor}
+          sectionColors={uiEstilo.ubicacion}
+          estilos={estilos}
+        >
+          <UbicacionSplitMap {...ubicacionProps} />
+        </OverlayPanel>
+      ) : (
+        <UbicacionModal {...ubicacionProps} />
+      )
+    }
+
+    {
+      showWifi && (
+        <OverlayPanel sectionId="wifi" title="CONECTAR WI-FI" estilos={estilos}>
+          <div class="px-5 py-8">
+            <WifiGadget
+              ssid={restaurante?.wifi?.ssid || ''}
+              password={restaurante?.wifi?.password || ''}
+              textColor={estilos?.textColor || ''}
+              mutedColor={estilos?.mutedColor || ''}
+            />
+          </div>
+        </OverlayPanel>
+      )
+    }
+
+    {
+      showDividir && (
+        <OverlayPanel sectionId="dividir" title="PEDIR / DIVIDIR CUENTA" estilos={estilos}>
+          <div class="px-5 py-8">
+            <DividirCuenta
+              restauranteId={restaurante?.id || ''}
+              textColor={estilos?.textColor || ''}
+              mutedColor={estilos?.mutedColor || ''}
+              accentText={estilos?.accentText || ''}
+            />
+          </div>
+        </OverlayPanel>
+      )
+    }
+
+    {
+      showLlamarMesero && (
+        <OverlayPanel sectionId="mesero" title="LLAMAR MESERO" estilos={estilos}>
+          <div class="px-5 py-8">
+            <LlamarMeseroGadget
+              restauranteId={restaurante?.id || ''}
+              whatsapp={restaurante?.whatsapp || ubicacion?.whatsapp || ''}
+              nombreRestaurante={restaurante?.nombre || homeProps.nombre}
+              textColor={estilos?.textColor || ''}
+              mutedColor={estilos?.mutedColor || ''}
+            />
+          </div>
+        </OverlayPanel>
+      )
+    }
+
+    {
+      showBoutique && (
+        <BoutiqueGadget
+          productos={boutiqueProductos}
+          textColor={estilos?.textColor || ''}
+          mutedColor={estilos?.mutedColor || ''}
+          displayClass={estilos?.displayClass || ''}
         />
-        <video
-          data-detalle-video
-          class="absolute inset-0 hidden size-full object-contain object-center"
-          controls
-          playsinline
-        ></video>
+      )
+    }
+
+    {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
+    <div
+      class="detalle-modal pointer-events-none fixed inset-0 z-[90] mx-auto flex max-w-md items-center justify-center opacity-0 transition-all duration-300 ease-out"
+      data-detalle-modal
+      aria-hidden="true"
+    >
+      <button
+        type="button"
+        class="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity duration-300"
+        data-detalle-backdrop
+        aria-label="Cerrar detalle"
+      ></button>
+
+      <div
+        class="detalle-modal__card relative z-10 mx-4 w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detalle-modal-title"
+      >
+        <div class="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
+          <h3
+            id="detalle-modal-title"
+            class={`truncate pr-3 text-[0.68rem] font-semibold tracking-[0.22em] uppercase ${estilos?.displayClass || ''} text-[color:var(--color-texto)]`}
+            data-detalle-title
+          >
+            Plato
+          </h3>
+          <button
+            type="button"
+            data-detalle-close
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-zinc-400 transition-all duration-200 active:scale-95 hover:text-white"
+            aria-label="Cerrar"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              class="h-3.5 w-3.5"
+            >
+              <path d="M6 6l12 12M18 6L6 18"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="relative aspect-[4/3] overflow-hidden bg-black/50">
+          <img
+            data-detalle-img
+            src=""
+            alt=""
+            class="absolute inset-0 hidden size-full object-cover object-center"
+          />
+          <video
+            data-detalle-video
+            class="absolute inset-0 hidden size-full object-contain object-center"
+            controls
+            playsinline
+          ></video>
+        </div>
       </div>
     </div>
-  </div>
   </div>
 </div>
 
@@ -273,6 +639,38 @@ const reservasCta =
   .detalle-modal.is-open .detalle-modal__card {
     transform: scale(1);
     opacity: 1;
+  }
+
+  [data-app-nav-overlay].is-open {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  [data-app-nav-overlay].is-open [data-app-nav-panel] {
+    animation: app-nav-fade-in 0.5s ease both;
+  }
+
+  @keyframes app-nav-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  [data-estilo-navegacion='app_tabs'] [data-home-shell] {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-app-nav-overlay],
+    [data-app-nav-overlay].is-open [data-app-nav-panel] {
+      transition: none !important;
+      animation: none !important;
+    }
   }
 </style>
 
@@ -286,6 +684,35 @@ const reservasCta =
   // Persist ?mesa= ASAP (también si el hub aún no montó el gate)
   syncMesaSession();
 
+  /**
+   * Aplica bloqueo Carrd de mesero/cuenta sin mesa (todos los home themes).
+   */
+  function applyMesaGate() {
+    const mesa = syncMesaSession();
+    const unlocked = Boolean(mesa);
+
+    document.querySelectorAll('[data-requires-mesa="true"]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.classList.toggle('is-mesa-locked', !unlocked);
+      el.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
+      if (unlocked) {
+        el.removeAttribute('tabindex');
+      } else {
+        el.setAttribute('tabindex', '-1');
+      }
+    });
+
+    document.documentElement.dataset.mesaAsignada = unlocked ? 'true' : 'false';
+    if (mesa) {
+      document.documentElement.dataset.mesa = mesa;
+    } else {
+      delete document.documentElement.dataset.mesa;
+    }
+  }
+
+  applyMesaGate();
+  document.addEventListener('astro:page-load', applyMesaGate);
+
   function isVideoUrl(url: string) {
     return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
   }
@@ -297,15 +724,77 @@ const reservasCta =
     panel.classList.add(...(open ? OPEN_CLASSES : CLOSED_CLASSES));
   }
 
+  function openUbicacionDrawer(app: HTMLElement) {
+    const drawer = app.querySelector('[data-ubicacion-drawer]');
+    if (!(drawer instanceof HTMLElement)) return;
+    closeDetalle(app);
+    closeBoutique(app);
+    app.querySelectorAll('[data-section]').forEach((el) => {
+      if (el instanceof HTMLElement) setPanelOpen(el, false);
+    });
+    drawer.classList.add('is-open');
+    drawer.dataset.open = 'true';
+    drawer.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  function closeUbicacionDrawer(app: HTMLElement) {
+    const drawer = app.querySelector('[data-ubicacion-drawer]');
+    if (!(drawer instanceof HTMLElement)) return;
+    drawer.classList.remove('is-open');
+    drawer.dataset.open = 'false';
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+
+  function setAppTabsActive(app: HTMLElement, id: string | null) {
+    app.querySelectorAll('[data-app-tab]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.dataset.active = id && el.dataset.appTab === id ? 'true' : 'false';
+    });
+  }
+
+  function closeAppNavOverlay(app: HTMLElement) {
+    const overlay = app.querySelector('[data-app-nav-overlay]');
+    const burger = app.querySelector('[data-app-nav-burger]');
+    if (overlay instanceof HTMLElement) {
+      overlay.classList.remove('is-open');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    if (burger instanceof HTMLElement) {
+      burger.setAttribute('aria-expanded', 'false');
+    }
+    // No forzar overflow aquí: openSection puede mantener el lock del panel
+  }
+
   function openSection(app: HTMLElement, id: string) {
+    // Mantener ?mesa= en sessionStorage antes de cualquier navegación interna
+    syncMesaSession();
+    applyMesaGate();
+    closeAppNavOverlay(app);
+
     if (MESA_GATED_SECTIONS.has(id) && !hasValidMesaSession()) {
       return;
+    }
+
+    // Ubicación: modal/drawer (default) o overlay split
+    if (id === 'ubicacion') {
+      const ubiTheme = String(app.dataset.ubicacionTheme || 'modal')
+        .trim()
+        .toLowerCase();
+      if (ubiTheme !== 'split') {
+        const home = app.querySelector('[data-linktree-home]');
+        openUbicacionDrawer(app);
+        home?.classList.add('scale-[0.98]', 'opacity-40');
+        setAppTabsActive(app, 'ubicacion');
+        return;
+      }
     }
 
     const home = app.querySelector('[data-linktree-home]');
     const panel = app.querySelector(`[data-section="${id}"]`);
     if (!(panel instanceof HTMLElement)) return;
 
+    closeUbicacionDrawer(app);
     app.querySelectorAll('[data-section]').forEach((el) => {
       if (el instanceof HTMLElement) setPanelOpen(el, false);
     });
@@ -313,6 +802,7 @@ const reservasCta =
     setPanelOpen(panel, true);
     home?.classList.add('scale-[0.98]', 'opacity-40');
     document.documentElement.style.overflow = 'hidden';
+    setAppTabsActive(app, id === 'menu' || id === 'nosotros' || id === 'ubicacion' ? id : null);
 
     if (id === 'wifi') {
       document.dispatchEvent(new CustomEvent('xemilla:wifi-open'));
@@ -329,11 +819,14 @@ const reservasCta =
 
   function closeSections(app: HTMLElement) {
     const home = app.querySelector('[data-linktree-home]');
+    closeUbicacionDrawer(app);
+    closeAppNavOverlay(app);
     app.querySelectorAll('[data-section]').forEach((el) => {
       if (el instanceof HTMLElement) setPanelOpen(el, false);
     });
     home?.classList.remove('scale-[0.98]', 'opacity-40');
     document.documentElement.style.overflow = '';
+    setAppTabsActive(app, null);
   }
 
   function clearDetalleMedia(app: HTMLElement) {
@@ -364,6 +857,7 @@ const reservasCta =
     const modal = app.querySelector('[data-boutique-modal]');
     if (!(modal instanceof HTMLElement)) return;
     closeDetalle(app);
+    closeUbicacionDrawer(app);
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
     document.documentElement.style.overflow = 'hidden';
@@ -374,11 +868,11 @@ const reservasCta =
     if (!(modal instanceof HTMLElement)) return;
     modal.classList.remove('is-open');
     modal.setAttribute('aria-hidden', 'true');
-    // Solo liberar scroll si no hay panel de sección abierto
     const anySectionOpen = Array.from(app.querySelectorAll('[data-section]')).some(
       (el) => el instanceof HTMLElement && el.dataset.open === 'true',
     );
-    if (!anySectionOpen) {
+    const drawerOpen = app.querySelector('[data-ubicacion-drawer].is-open');
+    if (!anySectionOpen && !drawerOpen) {
       document.documentElement.style.overflow = '';
     }
   }
@@ -436,31 +930,75 @@ const reservasCta =
       if (root.dataset.navReady === 'true') return;
       root.dataset.navReady = 'true';
 
-      root.querySelectorAll('[data-open-section]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          if (!(btn instanceof HTMLElement)) return;
-          const id = btn.dataset.openSection;
-          if (id) openSection(root, id);
+      // Hamburguesa Alchemist — overlay fullscreen
+      const burger = root.querySelector('[data-app-nav-burger]');
+      const overlay = root.querySelector('[data-app-nav-overlay]');
+      const closeNav = root.querySelector('[data-app-nav-close]');
+      if (burger instanceof HTMLElement && overlay instanceof HTMLElement) {
+        const setOpen = (open: boolean) => {
+          overlay.classList.toggle('is-open', open);
+          overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+          burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open) {
+            document.documentElement.style.overflow = 'hidden';
+          } else {
+            const anyOpen = Array.from(root.querySelectorAll('[data-section]')).some(
+              (el) => el instanceof HTMLElement && el.dataset.open === 'true',
+            );
+            const drawerOpen = root.querySelector('[data-ubicacion-drawer].is-open');
+            if (!anyOpen && !drawerOpen) {
+              document.documentElement.style.overflow = '';
+            }
+          }
+          document.documentElement.classList.remove('overflow-hidden');
+        };
+        burger.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(true);
         });
-      });
-
-      root.querySelectorAll('[data-open-boutique]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          openBoutique(root);
+        closeNav?.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(false);
         });
-      });
-
-      root.querySelectorAll('[data-close-section]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          closeDetalle(root);
-          closeBoutique(root);
-          closeSections(root);
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) setOpen(false);
         });
-      });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && overlay.classList.contains('is-open')) {
+            setOpen(false);
+          }
+        });
+      }
 
+      // Delegación: cubre HomeBentoGrid / Hero / Editorial (incl. UBICACIÓN)
       root.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;
+
+        const openBtn = target.closest('[data-open-section]');
+        if (openBtn instanceof HTMLElement && root.contains(openBtn)) {
+          const id = openBtn.dataset.openSection?.trim();
+          if (id) {
+            event.preventDefault();
+            openSection(root, id);
+            return;
+          }
+        }
+
+        if (target.closest('[data-open-boutique]') && root.contains(target.closest('[data-open-boutique]'))) {
+          closeAppNavOverlay(root);
+          openBoutique(root);
+          return;
+        }
+
+        if (target.closest('[data-close-section]')) {
+          closeDetalle(root);
+          closeBoutique(root);
+          closeSections(root);
+          return;
+        }
 
         const detalleBtn = target.closest('[data-open-detalle]');
         if (detalleBtn instanceof HTMLElement) {
@@ -477,6 +1015,14 @@ const reservasCta =
           target.closest('[data-detalle-backdrop]')
         ) {
           closeDetalle(root);
+          return;
+        }
+
+        if (
+          target.closest('[data-ubicacion-drawer-close]') ||
+          target.closest('[data-ubicacion-drawer-backdrop]')
+        ) {
+          closeSections(root);
           return;
         }
 

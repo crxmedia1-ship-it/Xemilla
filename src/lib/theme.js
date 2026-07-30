@@ -10,6 +10,7 @@ import {
   DEFAULT_DESIGN_DNA,
 } from '../config/themes.js';
 import { resolveMenuFont, mergeGoogleFontHrefs } from '../config/menu-fonts.js';
+import { resolveTypographyCombo } from '../config/typography-combos.js';
 
 export const DEFAULT_THEME = Object.freeze({
   colorPrimario: '#9f1239',
@@ -127,7 +128,9 @@ export function resolveRestaurantTheme(row, slug = '') {
   const resolvedSlug = slug || String(row?.slug || '');
   const effective = mergeThemeSources(row, resolvedSlug);
   const dna = resolveDesignDna(effective, resolvedSlug);
-  const customFont = pickCustomFont(effective.tipo_letra);
+  const typoCombo = resolveTypographyCombo(
+    effective.tipo_letra || effective.tipografia_combo || effective.estilo_adn,
+  );
   const imagenFondo = pickImageUrl(effective.imagen_fondo);
   const menuFont = resolveMenuFont(effective.menu_font);
 
@@ -135,13 +138,19 @@ export function resolveRestaurantTheme(row, slug = '') {
     colorPrimario: pickColor(effective.color_primario, DEFAULT_THEME.colorPrimario),
     colorFondo: pickColor(effective.color_fondo, DEFAULT_THEME.colorFondo),
     colorTexto: pickColor(effective.color_texto, DEFAULT_THEME.colorTexto),
-    tipoLetra: customFont || dna.fonts.stack,
+    tipoLetra: typoCombo.bodyStack,
+    fontHeading: typoCombo.headingStack,
+    fontBody: typoCombo.bodyStack,
+    typographyComboId: typoCombo.id,
     imagenFondo,
     designDnaId: dna.id,
     design: dna,
     menuFontId: menuFont.id,
     menuFontStack: menuFont.stack,
-    googleFontsHref: mergeGoogleFontHrefs(dna.fonts.googleHref, menuFont.googleHref),
+    googleFontsHref: mergeGoogleFontHrefs(
+      typoCombo.googleHref,
+      menuFont.googleHref,
+    ),
   };
 }
 
@@ -162,10 +171,45 @@ export function themeToCssVars(theme) {
   return [
     dnaVars,
     `--color-primario: ${theme.colorPrimario}`,
+    `--color-primary: ${theme.colorPrimario}`,
     `--color-fondo: ${theme.colorFondo}`,
     `--color-texto: ${theme.colorTexto}`,
-    `--fuente-principal: ${theme.tipoLetra}`,
-    `--fuente-menu: ${theme.menuFontStack || theme.design?.fonts?.display || theme.tipoLetra}`,
+    `--color-text: ${theme.colorTexto}`,
+    `--font-heading: ${theme.fontHeading || theme.design?.fonts?.display || theme.tipoLetra}`,
+    `--font-body: ${theme.fontBody || theme.tipoLetra}`,
+    `--fuente-principal: ${theme.fontBody || theme.tipoLetra}`,
+    `--fuente-display: ${theme.fontHeading || theme.design?.fonts?.display || theme.tipoLetra}`,
+    `--fuente-menu: ${theme.menuFontStack || theme.fontHeading || theme.tipoLetra}`,
     `--imagen-fondo: ${img}`,
+  ].join('; ');
+}
+
+/**
+ * Tokens de fondo Home (Identidad de Marca) — independientes de home_theme.
+ * @param {{ tipo?: string, valor?: string } | null | undefined} fondoHome
+ * @param {string} fallbackColor
+ * @returns {string}
+ */
+export function homeBackgroundCssVars(fondoHome, fallbackColor) {
+  const tipo = String(fondoHome?.tipo || 'color')
+    .trim()
+    .toLowerCase();
+  const valor = String(fondoHome?.valor || '').trim();
+  const baseColor = fallbackColor || '#0a0a0a';
+
+  if ((tipo === 'image' || tipo === 'video' || tipo === 'carrusel') && valor) {
+    const safe = valor.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return [
+      `--bg-home: url("${safe.split(/[\n,;]+/)[0]?.trim() || safe}")`,
+      `--bg-home-color: ${baseColor}`,
+      `--fondo-home-tipo: ${tipo}`,
+    ].join('; ');
+  }
+
+  const color = valor || baseColor;
+  return [
+    `--bg-home: ${color}`,
+    `--bg-home-color: ${color}`,
+    `--fondo-home-tipo: color`,
   ].join('; ');
 }

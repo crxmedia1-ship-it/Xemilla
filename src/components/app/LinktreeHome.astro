@@ -1,4 +1,6 @@
 ---
+import { resolveMediaUrl } from '../../lib/cloudinary.js';
+
 interface Props {
   nombre: string;
   logoText: string;
@@ -35,7 +37,7 @@ const {
   nombre,
   logoText,
   logoLetter,
-  logoUrl = '',
+  logoUrl: logoUrlProp = '',
   tagline,
   estilos,
   showWifi = false,
@@ -47,6 +49,10 @@ const {
   reservasCta = null,
   homeUi = {},
 } = Astro.props;
+
+const resolved = resolveMediaUrl(logoUrlProp);
+const logoUrl =
+  resolved && /^https?:\/\//i.test(resolved) ? resolved : null;
 
 /**
  * Subtítulos estilo Carrd bajo cada enlace tipográfico.
@@ -169,7 +175,7 @@ const navSequence: NavItem[] = [
 ---
 
 <div
-  class="linktree-home relative z-10 flex min-h-dvh flex-col px-6 pb-14 pt-14 transition-all duration-300"
+  class="linktree-home relative z-10 flex min-h-dvh flex-col bg-transparent px-6 pb-14 pt-14 transition-all duration-300"
   data-linktree-home
   style={[
     homeUi?.subtitulo_color ? `--home-subtitulo-color:${homeUi.subtitulo_color}` : '',
@@ -179,8 +185,8 @@ const navSequence: NavItem[] = [
 >
   <header class="flex flex-col items-center text-center">
     <div
-      class={`relative flex items-center justify-center rounded-full ${estilos.displayClass}`}
-      style="width:var(--home-logo-size, 5.25rem); height:var(--home-logo-size, 5.25rem)"
+      class={`relative flex items-center justify-center overflow-hidden rounded-full ${estilos.displayClass}`}
+      style="width:var(--logo-size, var(--home-logo-size, 5.25rem)); height:var(--logo-size, var(--home-logo-size, 5.25rem))"
       aria-hidden="true"
     >
       <span
@@ -193,13 +199,14 @@ const navSequence: NavItem[] = [
           <img
             src={logoUrl}
             alt=""
-            class="relative rounded-full border border-white/10 object-cover shadow-inner"
-            style="width:calc(var(--home-logo-size, 5.25rem) - 0.4rem); height:calc(var(--home-logo-size, 5.25rem) - 0.4rem)"
+            class="relative max-w-[85vw] rounded-full border border-white/10 object-contain shadow-inner"
+            style="height:var(--logo-size, var(--home-logo-size, 5.25rem)); width:var(--logo-size, var(--home-logo-size, 5.25rem)); max-width:85vw; object-fit:contain"
+            data-home-logo
           />
         ) : (
           <span
             class={`relative flex items-center justify-center rounded-full border border-white/10 bg-black/20 font-semibold shadow-inner backdrop-blur-md ${estilos.textColor}`}
-            style="width:calc(var(--home-logo-size, 5.25rem) - 0.4rem); height:calc(var(--home-logo-size, 5.25rem) - 0.4rem); font-size:calc(var(--home-logo-size, 5.25rem) * 0.32)"
+            style="width:calc(var(--logo-size, var(--home-logo-size, 5.25rem)) - 0.4rem); height:calc(var(--logo-size, var(--home-logo-size, 5.25rem)) - 0.4rem); font-size:calc(var(--logo-size, var(--home-logo-size, 5.25rem)) * 0.32)"
           >
             {logoLetter}
           </span>
@@ -328,12 +335,6 @@ const navSequence: NavItem[] = [
       })
     }
   </nav>
-
-  <footer
-    class={`mt-10 text-center text-[10px] tracking-[0.28em] uppercase ${estilos.softColor}`}
-  >
-    Powered by CRX
-  </footer>
 </div>
 
 <style>

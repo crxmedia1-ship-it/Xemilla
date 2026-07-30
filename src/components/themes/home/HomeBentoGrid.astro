@@ -1,0 +1,435 @@
+---
+/**
+ * Home Bento Grid — Tech / Apple / Bento Box.
+ * Solo estructura (logo / títulos / nav). Atmósfera vive en RestaurantApp.
+ */
+import { buildHomeNavSequence } from '../../../lib/layout-themes.js';
+import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
+import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
+
+interface Props {
+  nombre?: string;
+  logoText?: string;
+  logoLetter?: string;
+  logoUrl?: string | null;
+  logo_url?: string | null;
+  tagline?: string;
+  eslogan?: string;
+  estilos?: Record<string, string>;
+  showWifi?: boolean;
+  showDividir?: boolean;
+  showLlamarMesero?: boolean;
+  showBoutique?: boolean;
+  wifiSsid?: string;
+  wifiClave?: string;
+  reservasCta?: { label: string; href: string } | null;
+  homeUi?: Record<string, unknown>;
+  restaurante?: Record<string, unknown>;
+}
+
+const {
+  nombre,
+  logoText,
+  logoLetter,
+  logoUrl,
+  tagline,
+  showWifi,
+  showDividir,
+  showLlamarMesero,
+  showBoutique,
+  wifiSsid,
+  wifiClave,
+  reservasCta,
+  homeUi,
+} = resolveSafeHomeProps(Astro.props as Record<string, unknown>);
+
+const {
+  logoSizePx,
+  tituloSizePx,
+  esloganSizePx,
+  menuSizePx,
+  tituloColor,
+  esloganColor,
+  menuColor,
+  estiloNavegacion,
+  efectoEntrada,
+} = resolveHomePxSizes(homeUi);
+
+const navFrontal = estiloNavegacion === 'frontal';
+const immersiveLogoOnly = estiloNavegacion === 'hamburguesa';
+const navAppTabs = estiloNavegacion === 'app_tabs';
+const hasReveal = efectoEntrada === 'reveal';
+const hasEntrance =
+  efectoEntrada === 'rise' ||
+  efectoEntrada === 'blur' ||
+  efectoEntrada === 'zoom' ||
+  efectoEntrada === 'tracking';
+const animClass =
+  efectoEntrada === 'rise'
+    ? 'home-anim-rise'
+    : efectoEntrada === 'blur'
+      ? 'home-anim-blur'
+      : efectoEntrada === 'zoom'
+        ? 'home-anim-zoom'
+        : efectoEntrada === 'tracking'
+          ? 'home-anim-tracking'
+          : hasReveal
+            ? 'home-anim-reveal'
+            : '';
+
+/** Size/color only — public layout ignores X/Y offsets */
+const logoBoxStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); width: var(--logo-size, var(--home-logo-size, ${logoSizePx}px));`;
+const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); max-width: 85vw; width: auto; object-fit: contain;`;
+const logoFallbackStyle = `font-size: calc(var(--logo-size, var(--home-logo-size, ${logoSizePx}px)) * 0.28); color:var(--color-text, var(--color-texto))`;
+const tituloColorCss = `var(--titulo-color, ${tituloColor || 'var(--color-text, var(--color-texto))'})`;
+const esloganColorCss = `var(--eslogan-color, ${esloganColor || 'var(--home-subtitulo-color, var(--color-primary, var(--color-primario)))'})`;
+const menuColorCss = `var(--menu-color, ${menuColor || 'var(--color-text, var(--color-texto))'})`;
+const subtextoColorCss = `var(--subtexto-color, var(--home-subtexto-color, color-mix(in srgb, var(--color-text, var(--color-texto)) 55%, transparent)))`;
+const tituloStyle = `font-size: var(--titulo-size, ${tituloSizePx}px); color: ${tituloColorCss};`;
+const esloganStyle = `font-size: var(--eslogan-size, ${esloganSizePx}px); margin-top: 0.25rem; color: ${esloganColorCss};`;
+const menuTitleStyle = `font-size: var(--menu-size, var(--home-menu-size, ${menuSizePx}px)); color: ${menuColorCss}`;
+const menuSubStyle = `color: ${subtextoColorCss}`;
+
+const navSequence = buildHomeNavSequence({
+  tagline,
+  showWifi,
+  showDividir,
+  showLlamarMesero,
+  showBoutique,
+  wifiSsid,
+  wifiClave,
+  reservasCta,
+  compact: true,
+});
+
+const menuItem = navSequence.find((i) => i.id === 'menu') || null;
+const nosotrosItem = navSequence.find((i) => i.id === 'nosotros') || null;
+const ubicacionItem = navSequence.find((i) => i.id === 'ubicacion') || null;
+const extras = navSequence.filter(
+  (i) => i.id !== 'menu' && i.id !== 'nosotros' && i.id !== 'ubicacion',
+);
+
+const tileBase =
+  'bento-tile flex h-full min-h-[7.5rem] min-w-0 flex-col justify-between overflow-hidden rounded-3xl border p-4 text-left transition-transform duration-200 active:scale-95';
+const tileStyle =
+  'border-color:color-mix(in srgb, var(--color-text, var(--color-texto)) 12%, transparent); background:color-mix(in srgb, var(--color-text, var(--color-texto)) 5%, transparent)';
+---
+
+<div
+  class:list={[
+    'home-bento linktree-home relative z-10 flex min-h-dvh flex-col items-center bg-transparent px-4 pb-8 pt-10 font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
+    immersiveLogoOnly && 'justify-center',
+    navAppTabs && 'pb-24',
+    !immersiveLogoOnly && navFrontal && 'justify-start',
+    animClass,
+  ]}
+  data-linktree-home
+  data-home-theme="bento"
+  data-estilo-navegacion={estiloNavegacion}
+  data-efecto-entrada={efectoEntrada}
+>
+  <header
+    class:list={[
+      'mb-5 flex w-full shrink-0 items-center justify-center gap-3 px-1',
+      immersiveLogoOnly ? 'mb-0 flex-col text-center' : 'text-left',
+    ]}
+    data-home-header
+  >
+    <div
+      class:list={[hasEntrance && 'home-enter home-enter--logo']}
+    >
+      <div
+        class="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border p-1"
+        style={`border-color:color-mix(in srgb, var(--color-text, var(--color-texto)) 12%, transparent); background:color-mix(in srgb, var(--color-text, var(--color-texto)) 6%, transparent); ${logoBoxStyle}`}
+        data-home-logo
+        aria-hidden="true"
+      >
+        {
+          logoUrl ? (
+            <img
+              src={logoUrl}
+              alt=""
+              class="max-w-[85vw] object-contain"
+              data-home-logo
+              style={logoImgStyle}
+            />
+          ) : (
+            <span
+              class="font-semibold tracking-widest"
+              style={logoFallbackStyle}
+              data-home-logo-fallback
+            >
+              {logoLetter}
+            </span>
+          )
+        }
+      </div>
+    </div>
+    {
+      !immersiveLogoOnly ? (
+        <div class="min-w-0 flex-1">
+          <div
+            class:list={[
+              hasEntrance && 'home-enter home-enter--titulo',
+              hasReveal && 'overflow-hidden',
+            ]}
+          >
+            <h1
+              class:list={[
+                'truncate font-semibold uppercase tracking-[0.18em] font-[family-name:var(--font-heading,var(--fuente-display))]',
+                hasReveal && 'home-reveal-inner home-reveal--titulo',
+              ]}
+              data-home-titulo
+              style={tituloStyle}
+            >
+              {logoText}
+            </h1>
+          </div>
+          {
+            tagline ? (
+              <div
+                class:list={[
+                  hasEntrance && 'home-enter home-enter--eslogan',
+                  hasReveal && 'overflow-hidden',
+                ]}
+              >
+                <p
+                  class:list={[
+                    'truncate uppercase tracking-[0.14em]',
+                    hasReveal && 'home-reveal-inner home-reveal--eslogan',
+                  ]}
+                  style={esloganStyle}
+                  data-home-eslogan
+                >
+                  {tagline}
+                </p>
+              </div>
+            ) : null
+          }
+        </div>
+      ) : null
+    }
+  </header>
+
+  {
+    navFrontal ? (
+  <nav
+    class:list={[
+      'grid w-full grid-cols-2 content-start gap-3',
+      hasEntrance && 'home-enter home-enter--botones',
+    ]}
+    aria-label={`Navegación ${nombre}`}
+    data-home-menu
+  >
+    {
+      menuItem ? (
+        <button
+          type="button"
+          data-open-section="menu"
+          class={`${tileBase} col-span-2 min-h-[10.5rem] p-5`}
+          style={`border-color:color-mix(in srgb, var(--color-primary, var(--color-primario)) 35%, transparent); background:color-mix(in srgb, var(--color-primary, var(--color-primario)) 22%, transparent)`}
+        >
+          <span
+            class="inline-flex w-fit rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.2em]"
+            style="background:color-mix(in srgb, var(--color-text, var(--color-texto)) 12%, transparent); color:color-mix(in srgb, var(--color-text, var(--color-texto)) 70%, transparent)"
+          >
+            Destacado
+          </span>
+          <div class="min-w-0">
+            <span
+              class="block font-bold uppercase leading-none tracking-[0.14em]"
+              style={menuTitleStyle}
+            >
+              {menuItem.label}
+            </span>
+            {
+              menuItem.subtitle ? (
+                <span
+                  class="mt-2 block text-[10px] uppercase tracking-[0.16em]"
+                  style={menuSubStyle}
+                >
+                  {menuItem.subtitle}
+                </span>
+              ) : null
+            }
+          </div>
+        </button>
+      ) : null
+    }
+
+    {
+      nosotrosItem ? (
+        <button
+          type="button"
+          data-open-section="nosotros"
+          class={`${tileBase} aspect-square`}
+          style={tileStyle}
+        >
+          <span
+            class="text-[9px] font-semibold uppercase tracking-[0.18em]"
+            style={menuSubStyle}
+          >
+            Explorar
+          </span>
+          <span
+            class="font-semibold uppercase leading-tight tracking-[0.12em]"
+            style={menuTitleStyle}
+          >
+            {nosotrosItem.label}
+          </span>
+        </button>
+      ) : null
+    }
+
+    {
+      ubicacionItem ? (
+        <button
+          type="button"
+          data-open-section="ubicacion"
+          data-open-ubicacion="true"
+          class={`${tileBase} aspect-square`}
+          style={tileStyle}
+        >
+          <span
+            class="text-[9px] font-semibold uppercase tracking-[0.18em]"
+            style={menuSubStyle}
+          >
+            Mapa
+          </span>
+          <span
+            class="font-semibold uppercase leading-tight tracking-[0.12em]"
+            style={menuTitleStyle}
+          >
+            {ubicacionItem.label}
+          </span>
+        </button>
+      ) : null
+    }
+
+    {
+      extras.map((item, index) => {
+        const isLastOdd = extras.length % 2 === 1 && index === extras.length - 1;
+        const cls = [
+          tileBase,
+          isLastOdd ? 'col-span-2 min-h-[5.5rem]' : 'aspect-square',
+          item.requiresMesa ? 'carrd-nav-link--mesa-gated is-mesa-locked' : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        if (item.kind === 'reservas' && item.href) {
+          return (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-reservas-home-cta
+              class={cls}
+              style={tileStyle}
+            >
+              <span
+                class="text-[9px] font-semibold uppercase tracking-[0.18em]"
+                style={menuSubStyle}
+              >
+                Acceso
+              </span>
+              <span
+                class="line-clamp-2 font-semibold uppercase leading-tight tracking-[0.12em]"
+                style={menuTitleStyle}
+              >
+                {item.label}
+              </span>
+            </a>
+          );
+        }
+
+        if (item.kind === 'boutique') {
+          return (
+            <button type="button" data-open-boutique class={cls} style={tileStyle}>
+              <span
+                class="text-[9px] font-semibold uppercase tracking-[0.18em]"
+                style={menuSubStyle}
+              >
+                Shop
+              </span>
+              <span
+                class="line-clamp-2 font-semibold uppercase leading-tight tracking-[0.12em]"
+                style={menuTitleStyle}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            data-open-section={item.id}
+            data-requires-mesa={item.requiresMesa ? 'true' : undefined}
+            aria-disabled={item.requiresMesa ? 'true' : undefined}
+            class={cls}
+            style={tileStyle}
+          >
+            <span
+              class="text-[9px] font-semibold uppercase tracking-[0.18em]"
+              style={menuSubStyle}
+            >
+              Acceso
+            </span>
+            <span
+              class="line-clamp-2 font-semibold uppercase leading-tight tracking-[0.12em]"
+              style={menuTitleStyle}
+              data-carrd-subtitle
+            >
+              {item.label}
+            </span>
+            {item.requiresMesa ? (
+              <span
+                class="carrd-mesa-lock text-[8px] uppercase tracking-[0.12em]"
+                style={menuSubStyle}
+                data-mesa-lock-hint
+                hidden
+              >
+                Requiere QR de mesa
+              </span>
+            ) : null}
+          </button>
+        );
+      })
+    }
+  </nav>
+    ) : null
+  }
+</div>
+
+<style>
+  .bento-tile {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-carrd-subtitle] {
+    display: none;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-mesa-lock-hint] {
+    display: block !important;
+  }
+
+  .carrd-nav-link--mesa-gated:not(.is-mesa-locked) [data-mesa-lock-hint] {
+    display: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bento-tile {
+      transition: none !important;
+    }
+  }
+</style>

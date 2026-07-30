@@ -1,0 +1,249 @@
+---
+/**
+ * Ubicación Modal — drawer fijo desde abajo.
+ * Se monta FUERA del Home; solo visible al abrir la sección ubicación.
+ */
+interface Props {
+  direccion: string;
+  ciudad: string;
+  telefono: string;
+  email?: string;
+  instagram?: string;
+  whatsapp?: string;
+  mapaLabel: string;
+  mapaUrl: string;
+  horarios: string | Array<{ dia: string; horas: string }>;
+  horariosRows?: Array<{ dia: string; horas: string }>;
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  direccion,
+  ciudad,
+  telefono,
+  whatsapp = '',
+  mapaUrl,
+  horarios,
+  horariosRows,
+  estilos,
+} = Astro.props;
+
+const telHref = telefono.replace(/[^\d+]/g, '');
+const waRaw = String(whatsapp || telefono).trim();
+const waDigits = waRaw.replace(/\D/g, '');
+const waHref = /^https?:\/\//i.test(waRaw)
+  ? waRaw
+  : waDigits
+    ? `https://wa.me/${waDigits}`
+    : '';
+
+const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
+const addressLine = mapsQuery;
+const mapsHref =
+  mapaUrl && !/maps\.google\.com\/?$/i.test(mapaUrl)
+    ? mapaUrl
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery || 'restaurante')}`;
+
+function parseHorariosTexto(text: string) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const idx = line.indexOf(':');
+      if (idx === -1) return { dia: '', horas: line };
+      return { dia: line.slice(0, idx).trim(), horas: line.slice(idx + 1).trim() };
+    });
+}
+
+const horarioFilas: Array<{ dia: string; horas: string }> = Array.isArray(horariosRows)
+  ? horariosRows
+  : Array.isArray(horarios)
+    ? horarios
+    : typeof horarios === 'string' && horarios.trim()
+      ? parseHorariosTexto(horarios)
+      : [];
+
+const horariosJson = JSON.stringify(horarioFilas);
+---
+
+<div
+  class="ubicacion-drawer-root pointer-events-none fixed inset-x-0 bottom-0 top-0 z-[60] mx-auto flex w-full max-w-md items-end justify-center opacity-0 transition-opacity duration-300"
+  data-ubicacion-drawer
+  data-open="false"
+  aria-hidden="true"
+>
+  <button
+    type="button"
+    class="absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300"
+    data-ubicacion-drawer-backdrop
+    aria-label="Cerrar ubicación"
+  ></button>
+
+  <div
+    class="ubicacion-drawer relative z-10 max-h-[min(88dvh,40rem)] w-full translate-y-full overflow-hidden rounded-t-[1.75rem] border border-white/12 bg-[color-mix(in_srgb,var(--color-fondo)_92%,transparent)] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-transform duration-300 ease-out"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ubicacion-drawer-title"
+  >
+    <div class="flex justify-center pt-3" aria-hidden="true">
+      <span class="h-1 w-10 rounded-full bg-white/25"></span>
+    </div>
+
+    <div
+      class="ubicacion-modal overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3"
+      data-ubicacion-panel
+      data-ubicacion-theme="modal"
+      data-horarios={horariosJson}
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class={`text-[0.58rem] font-semibold uppercase tracking-[0.24em] ${estilos.softColor}`}>
+            Ubicación y horarios
+          </p>
+          <h3
+            id="ubicacion-drawer-title"
+            class={`mt-2 truncate text-sm font-medium tracking-tight ${estilos.textColor}`}
+          >
+            {addressLine || 'Nuestro local'}
+          </h3>
+        </div>
+
+        <div class="flex shrink-0 items-center gap-2">
+          <div
+            class="live-badge inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1.5"
+            data-live-badge
+            data-open="unknown"
+            role="status"
+            aria-live="polite"
+          >
+            <span data-live-dot class="size-2 rounded-full bg-current opacity-40" aria-hidden="true"
+            ></span>
+            <span
+              data-live-label
+              class={`text-[0.55rem] font-semibold uppercase tracking-[0.16em] ${estilos.mutedColor}`}
+            >
+              …
+            </span>
+          </div>
+          <button
+            type="button"
+            data-ubicacion-drawer-close
+            class="flex size-8 items-center justify-center rounded-full border border-white/12 bg-white/5 text-white/70 transition hover:text-white"
+            aria-label="Cerrar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-3.5">
+              <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <ul class="mt-5 space-y-0 divide-y divide-white/8">
+        {
+          horarioFilas.length === 0 ? (
+            <li class={`py-3 text-sm ${estilos.mutedColor}`}>Sin horarios</li>
+          ) : (
+            horarioFilas.map((h, index) => (
+              <li
+                class="flex items-baseline justify-between gap-3 py-2.5"
+                data-horario-row
+                data-horario-index={index}
+                data-dia={h.dia}
+                data-horas={h.horas}
+              >
+                <span class={`text-sm ${estilos.mutedColor}`}>{h.dia}</span>
+                <span class={`text-sm font-medium tabular-nums ${estilos.textColor}`}>{h.horas}</span>
+              </li>
+            ))
+          )
+        }
+      </ul>
+
+      <div class="mt-5 grid grid-cols-3 gap-2">
+        {
+          telefono ? (
+            <a
+              href={`tel:${telHref}`}
+              class={`flex items-center justify-center rounded-2xl border px-2 py-3.5 text-center transition-all duration-200 active:scale-95 ${estilos.borderColor} ${estilos.textColor}`}
+            >
+              <span class="text-[0.55rem] font-semibold uppercase tracking-[0.14em]">Llamar</span>
+            </a>
+          ) : null
+        }
+        {
+          waHref ? (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              class={`flex items-center justify-center rounded-2xl border px-2 py-3.5 text-center transition-all duration-200 active:scale-95 ${estilos.borderColor} ${estilos.textColor}`}
+            >
+              <span class="text-[0.55rem] font-semibold uppercase tracking-[0.14em]">WhatsApp</span>
+            </a>
+          ) : null
+        }
+        <a
+          href={mapsHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          class={`flex items-center justify-center rounded-2xl border px-2 py-3.5 text-center transition-all duration-200 active:scale-95 ${estilos.borderColor} ${estilos.textColor}`}
+        >
+          <span class="text-[0.55rem] font-semibold uppercase tracking-[0.14em]">Maps</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .ubicacion-drawer-root.is-open {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .ubicacion-drawer-root.is-open .ubicacion-drawer {
+    transform: translateY(0);
+  }
+
+  .live-badge.is-open [data-live-dot] {
+    background: #22c55e;
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+  }
+
+  .live-badge.is-closed [data-live-dot] {
+    background: #ef4444;
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  }
+
+  [data-horario-row].is-today {
+    font-weight: 600;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ubicacion-drawer-root,
+    .ubicacion-drawer {
+      transition: none !important;
+    }
+  }
+</style>
+
+<script>
+  import { initUbicacionLivePanels } from '../../../lib/ubicacion-live-client.js';
+
+  initUbicacionLivePanels();
+  document.addEventListener('astro:page-load', () => initUbicacionLivePanels());
+</script>

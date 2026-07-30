@@ -16,6 +16,12 @@ import {
   uiEstiloToCssVars,
 } from './secciones-ui.js';
 import { parseBoutiqueConfig } from './boutique.js';
+import {
+  normalizeHomeTheme,
+  normalizeUbicacionTheme,
+} from './layout-themes.js';
+import { resolveMediaUrl } from './cloudinary.js';
+import { createSupabaseServiceClient } from './supabase/service.js';
 
 /**
  * Formatea el precio NUMERIC de Postgres para la UI móvil.
@@ -167,6 +173,8 @@ const RESTAURANTE_SELECT_FULL = [
   'share_image_url',
   'app_icon_url',
   'ui_estilo',
+  'home_theme',
+  'ubicacion_theme',
 ].join(', ');
 
 /**
@@ -185,15 +193,65 @@ export async function listRestauranteSlugs() {
 }
 
 /**
- * Carga fila de restaurante; fallback al SELECT base si faltan columnas.
+ * Si la fila pública no trae temas, reintenta con service role (bypass RLS).
+ * @param {Record<string, unknown>} row
+ * @returns {Promise<Record<string, unknown>>}
+ */
+async function enrichThemesWithServiceRole(row) {
+  const hasHome =
+    row.home_theme != null && String(row.home_theme).trim() !== '';
+  const hasUbicacion =
+    row.ubicacion_theme != null && String(row.ubicacion_theme).trim() !== '';
+
+  if (hasHome && hasUbicacion) return row;
+
+  const service = createSupabaseServiceClient();
+  if (!service || !row.id) {
+    console.warn(
+      '[supabase] home_theme/ubicacion_theme ausentes y no hay SUPABASE_SERVICE_ROLE_KEY para reintento.',
+    );
+    return row;
+  }
+
+  const { data, error } = await service
+    .from('restaurantes')
+    .select('home_theme, ubicacion_theme, logo_url')
+    .eq('id', row.id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[supabase] reintento service role (themes):', error.message);
+    return row;
+  }
+
+  if (!data) return row;
+
+  console.log('[supabase] themes via service role:', data);
+
+  return {
+    ...row,
+    home_theme: hasHome ? row.home_theme : data.home_theme,
+    ubicacion_theme: hasUbicacion ? row.ubicacion_theme : data.ubicacion_theme,
+    logo_url: asText(row.logo_url) || asText(data.logo_url) || row.logo_url,
+  };
+}
+
+/**
+ * Carga fila de restaurante; incluye siempre home_theme / ubicacion_theme.
+ * Preferimos select('*') para no omitir columnas de plantilla.
  * @param {string} slug
  */
 async function fetchRestauranteRow(slug) {
   const withFull = await supabase
     .from('restaurantes')
-    .select(RESTAURANTE_SELECT_FULL)
+    .select('*')
     .eq('slug', slug)
     .maybeSingle();
+
+  if (!withFull.error && withFull.data) {
+    const enriched = await enrichThemesWithServiceRole(withFull.data);
+    return { data: enriched, error: null };
+  }
 
   if (!withFull.error) return withFull;
 
@@ -203,15 +261,36 @@ async function fetchRestauranteRow(slug) {
   if (!missingColumn) return withFull;
 
   console.warn(
-    '[supabase] columnas de contenido/marca no disponibles; usando SELECT base.',
+    '[supabase] select(*) falló por columna; usando SELECT base + themes.',
     withFull.error.message,
   );
 
-  return supabase
+  const base = await supabase
     .from('restaurantes')
     .select(RESTAURANTE_SELECT_BASE)
     .eq('slug', slug)
     .maybeSingle();
+
+  if (base.error || !base.data) return base;
+
+  const themes = await supabase
+    .from('restaurantes')
+    .select('id, home_theme, ubicacion_theme, logo_url')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  let merged = { ...base.data };
+  if (!themes.error && themes.data) {
+    merged = {
+      ...merged,
+      home_theme: themes.data.home_theme,
+      ubicacion_theme: themes.data.ubicacion_theme,
+      logo_url: asText(merged.logo_url) || themes.data.logo_url,
+    };
+  }
+
+  merged = await enrichThemesWithServiceRole(merged);
+  return { data: merged, error: null };
 }
 
 /**
@@ -398,6 +477,14 @@ export async function getRestauranteBySlug(slug) {
   }
   if (!row) return null;
 
+  console.log('[getRestauranteBySlug] fila Supabase (completa):', row);
+  console.log(
+    '[getRestauranteBySlug] raw home_theme:',
+    row.home_theme,
+    'ubicacion_theme:',
+    row.ubicacion_theme,
+  );
+
   const [{ data: categoriasRaw, error: catError }, { data: platos, error: platosError }] =
     await Promise.all([
       supabase
@@ -506,6 +593,11 @@ export async function getRestauranteBySlug(slug) {
   const boutique = parseBoutiqueConfig(row.config_boutique);
   const seccionesFondo = parseSeccionesFondo(row.secciones_fondo);
   const uiEstilo = parseUiEstilo(row.ui_estilo);
+  // Alias legacy: columna custom_css → ui_estilo.css_avanzado
+  if (!uiEstilo.css_avanzado) {
+    const legacyCss = sanitizeCustomCss(row.custom_css);
+    if (legacyCss) uiEstilo.css_avanzado = legacyCss;
+  }
 
   const wifiSsid =
     asText(row.gadget_wifi_ssid) ||
@@ -518,26 +610,53 @@ export async function getRestauranteBySlug(slug) {
     asText(identity.wifi?.password) ||
     '';
 
-  const logoUrl = asText(row.logo_url);
-  const shareImageUrl = asText(row.share_image_url) || logoUrl;
-  const appIconUrl = asText(row.app_icon_url) || logoUrl;
+  const logoUrl = resolveMediaUrl(row.logo_url) || '';
+  const shareImageUrl = resolveMediaUrl(row.share_image_url) || logoUrl;
+  const appIconUrl = resolveMediaUrl(row.app_icon_url) || logoUrl;
   const eslogan =
     asText(row.eslogan) || asText(identity.tagline) || '';
 
-  const fondoHome = resolveSectionFondo(seccionesFondo, 'home', {
+  const fondoHomeRaw = resolveSectionFondo(seccionesFondo, 'home', {
     tipo: asText(row.imagen_fondo) ? 'image' : 'color',
     valor: asText(row.imagen_fondo) || asText(row.color_fondo) || theme.colorFondo,
   });
+  let fondoHome = fondoHomeRaw;
+  if (fondoHomeRaw.tipo === 'image' || fondoHomeRaw.tipo === 'video') {
+    fondoHome = {
+      ...fondoHomeRaw,
+      valor: resolveMediaUrl(fondoHomeRaw.valor) || fondoHomeRaw.valor,
+    };
+  } else if (fondoHomeRaw.tipo === 'carrusel') {
+    const urls = String(fondoHomeRaw.valor || '')
+      .split(/[\n,;]+/)
+      .map((u) => u.trim())
+      .filter(Boolean)
+      .map((u) => resolveMediaUrl(u) || u);
+    fondoHome = {
+      ...fondoHomeRaw,
+      valor: urls.join('\n'),
+    };
+  }
   const fondoNosotros = resolveSectionFondo(seccionesFondo, 'nosotros');
   const fondoMenu = resolveSectionFondo(seccionesFondo, 'menu');
   const fondoUbicacion = resolveSectionFondo(seccionesFondo, 'ubicacion');
 
   const uiCssVars = uiEstiloToCssVars(uiEstilo, theme.colorPrimario);
 
+  // Preservar valor RAW de Supabase (sanitize solo en [slug] / RestaurantApp)
+  const homeThemeRaw = row.home_theme ?? /** @type {any} */ (uiEstilo).home_theme ?? null;
+  const ubicacionThemeRaw =
+    row.ubicacion_theme ?? /** @type {any} */ (uiEstilo).ubicacion_theme ?? null;
+  const homeTheme = normalizeHomeTheme(homeThemeRaw);
+  const ubicacionTheme = normalizeUbicacionTheme(ubicacionThemeRaw);
+
   return {
     ...identity,
     tagline: eslogan || identity.tagline,
+    taglineSuperior: String(uiEstilo?.home?.tagline_superior || '').trim(),
     logoUrl,
+    logo_url: logoUrl,
+    logo: logoUrl,
     shareImageUrl,
     appIconUrl,
     logoText: identity.logoText,
@@ -549,6 +668,11 @@ export async function getRestauranteBySlug(slug) {
     theme,
     uiEstilo,
     uiCssVars,
+    homeTheme,
+    ubicacionTheme,
+    /** RAW desde public.restaurantes — no sobrescribir con sanitize */
+    home_theme: homeThemeRaw,
+    ubicacion_theme: ubicacionThemeRaw,
     customCss: sanitizeCustomCss(row.custom_css),
     seccionesFondo: {
       home: fondoHome,

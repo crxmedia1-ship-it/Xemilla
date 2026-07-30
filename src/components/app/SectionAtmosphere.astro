@@ -1,12 +1,35 @@
 ---
 /**
- * Atmósfera de sección: color | image | video + overlay elegante.
+ * Atmósfera de sección (única dueña de fondos/efectos Home).
+ * Tipos: color | image | carrusel | video.
+ * Overlays: puro | gradiente | vineta | oscuro | cinematico (+ grain).
+ * Animación de media vía fondo_animacion → fondoAnimacionClass.
+ * pointer-events-none — la UI encima recibe los clicks.
  */
+import {
+  parseFondoMediaUrls,
+  normalizeOverlayEstilo,
+  normalizeOverlayOpacity,
+  normalizeFondoAnimacion,
+  fondoAnimacionClass,
+} from '../../lib/secciones-ui.js';
+
 interface Props {
   tipo?: string;
   valor?: string;
-  /** Capa oscura sobre media (default true para image/video) */
+  /** Capa sobre media (default true para image/carrusel/video) */
   overlay?: boolean;
+  /** Opacidad 0–1 o 0–90% (solo estilo "oscuro") */
+  overlayOpacity?: number | string;
+  /** puro | gradiente | vineta | oscuro | cinematico */
+  overlayEstilo?: string;
+  /** in | out | pan | float | glow | ninguna — animación de fondo en imagen / video */
+  fondoAnimacion?: string;
+  /**
+   * Home shell: fixed inset-0 z-[-1] (detrás del theme, no alterado por nav).
+   * Overlay panels: absolute inset-0 z-0 (default).
+   */
+  fixed?: boolean;
   class?: string;
 }
 
@@ -14,48 +37,206 @@ const {
   tipo = 'color',
   valor = '',
   overlay = true,
+  overlayOpacity,
+  overlayEstilo: overlayEstiloProp,
+  fondoAnimacion: fondoAnimacionProp,
+  fixed = false,
   class: className = '',
 } = Astro.props;
 
 const kind = String(tipo || 'color').toLowerCase();
 const value = String(valor || '').trim();
 const isImage = kind === 'image' && Boolean(value);
+const isCarrusel = kind === 'carrusel' || kind === 'carousel';
 const isVideo = kind === 'video' && Boolean(value);
 const isColor = kind === 'color' && Boolean(value);
-const showMedia = isImage || isVideo;
+
+const carruselUrls = isCarrusel ? parseFondoMediaUrls(value) : [];
+const hasCarrusel = carruselUrls.length > 0;
+const singleCarruselAsImage = isCarrusel && carruselUrls.length === 1;
+const multiCarrusel = isCarrusel && carruselUrls.length > 1;
+
+const showMedia = isImage || isVideo || hasCarrusel;
+const overlayEstilo = normalizeOverlayEstilo(overlayEstiloProp);
+const fondoAnimacion = normalizeFondoAnimacion(fondoAnimacionProp);
+const mappedAnimClass = fondoAnimacionClass(fondoAnimacion);
+
+/**
+ * Premium default: image (and single-slide carrusel) never look static.
+ * missing / ninguna → animate-ken-burns. Explicit in/out/pan/float/glow respected.
+ * Video keeps mapped classes (in → ken-burns via FONDO_ANIMACION_CLASS).
+ */
+const isStillImageMedia = isImage || singleCarruselAsImage;
+const kenBurnsClass =
+  isStillImageMedia &&
+  (fondoAnimacion === 'ninguna' || !mappedAnimClass)
+    ? 'animate-ken-burns'
+    : mappedAnimClass;
+
+const overlayAlpha = (() => {
+  const n = Number(overlayOpacity);
+  if (!Number.isFinite(n)) return 0.4;
+  if (n > 1) return Math.min(0.9, Math.max(0, n / 100));
+  return Math.min(0.9, Math.max(0, n));
+})();
+const opacityPct = normalizeOverlayOpacity(overlayOpacity, 40);
+
+const isWebm = /\.webm(\?|$)/i.test(value);
+const videoType = isWebm ? 'video/webm' : 'video/mp4';
+
+function safeBgUrl(url: string) {
+  return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+const isCinematic = overlayEstilo === 'cinematico';
+const isOscuro = overlayEstilo === 'oscuro';
+
+/** Estilos de capa overlay según preset (cinematico handled separately) */
+const overlayLayerClass =
+  overlayEstilo === 'puro'
+    ? 'absolute inset-0 bg-transparent'
+    : overlayEstilo === 'gradiente'
+      ? 'absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent'
+      : overlayEstilo === 'vineta'
+        ? 'absolute inset-0'
+        : 'absolute inset-0 bg-black';
+
+const overlayLayerStyle =
+  overlayEstilo === 'vineta'
+    ? 'background: radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,0.55) 100%);'
+    : isOscuro
+      ? `opacity: ${overlayAlpha};`
+      : '';
+
+const showOverlayLayer =
+  showMedia && overlay && overlayEstilo !== 'puro' && !isCinematic;
+const showCinematic =
+  showMedia && overlay && isCinematic;
+
+/** Home: fixed detrás del theme · Overlay panels: absolute dentro del drawer */
+const rootPositionClass = fixed
+  ? 'pointer-events-none fixed inset-0 z-[-1] overflow-hidden'
+  : 'pointer-events-none absolute inset-0 z-0 overflow-hidden';
 ---
 
 {
   (showMedia || isColor) && (
     <div
-      class={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${className}`}
+      class={`${rootPositionClass} ${className}`}
       aria-hidden="true"
       data-section-atmosphere
-      data-fondo-tipo={kind}
+      data-atmosphere-fixed={fixed ? 'true' : undefined}
+      data-fondo-tipo={multiCarrusel ? 'carrusel' : kind}
+      data-overlay-estilo={overlayEstilo}
+      data-overlay-opacity={opacityPct}
+      data-fondo-animacion={fondoAnimacion}
     >
       {isColor && <div class="absolute inset-0" style={`background-color:${value}`} />}
 
-      {isImage && (
+      {(isImage || singleCarruselAsImage) && (
+        <div class="absolute inset-0 overflow-hidden">
+          <div
+            class:list={[
+              'absolute inset-0 bg-cover bg-center will-change-transform',
+              kenBurnsClass,
+            ]}
+            data-atmosphere-media
+            style={`background-image:url("${safeBgUrl(singleCarruselAsImage ? carruselUrls[0] : value)}")`}
+          />
+        </div>
+      )}
+
+      {multiCarrusel && (
         <div
-          class="absolute inset-0 bg-cover bg-center"
-          style={`background-image:url("${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`}
-        />
+          class="absolute inset-0 overflow-hidden"
+          data-fondo-carrusel
+          data-carrusel-interval="4000"
+        >
+          {carruselUrls.map((url, i) => (
+            <div
+              class:list={[
+                'absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out will-change-transform',
+                kenBurnsClass,
+              ]}
+              data-carrusel-slide
+              data-atmosphere-media
+              style={`background-image:url("${safeBgUrl(url)}"); opacity: ${i === 0 ? 1 : 0};`}
+            />
+          ))}
+        </div>
       )}
 
       {isVideo && (
-        <video
-          autoplay
-          muted
-          loop
-          playsinline
-          class="absolute inset-0 z-0 h-full w-full object-cover"
-          src={value}
+        <div class="absolute inset-0 overflow-hidden">
+          <video
+            autoplay
+            loop
+            muted
+            playsinline
+            class:list={[
+              'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover will-change-transform',
+              kenBurnsClass,
+            ]}
+            data-atmosphere-media
+            data-fondo-animacion={fondoAnimacion}
+          >
+            <source src={value} type={videoType} />
+          </video>
+        </div>
+      )}
+
+      {showOverlayLayer && (
+        <div
+          class={overlayLayerClass}
+          style={overlayLayerStyle}
+          data-atmosphere-overlay
         />
       )}
 
-      {showMedia && overlay && (
-        <div class="absolute inset-0 z-[1] bg-black/60 backdrop-blur-[1px]" />
+      {showCinematic && (
+        <>
+          <div
+            class="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/40 to-black/80"
+            data-atmosphere-overlay
+          />
+          <div
+            class="bg-film-grain absolute inset-0 z-10"
+            data-atmosphere-grain
+          />
+        </>
       )}
     </div>
   )
+}
+
+{
+  multiCarrusel ? (
+    <script is:inline>
+      (() => {
+        const roots = document.querySelectorAll('[data-fondo-carrusel]');
+        roots.forEach((root) => {
+          if (!(root instanceof HTMLElement)) return;
+          if (root.dataset.carruselBound === '1') return;
+          root.dataset.carruselBound = '1';
+
+          const slides = Array.from(
+            root.querySelectorAll('[data-carrusel-slide]'),
+          ).filter((el) => el instanceof HTMLElement);
+          if (slides.length < 2) return;
+
+          let index = 0;
+          const ms = Math.max(
+            2000,
+            Number(root.dataset.carruselInterval) || 4000,
+          );
+
+          setInterval(() => {
+            slides[index].style.opacity = '0';
+            index = (index + 1) % slides.length;
+            slides[index].style.opacity = '1';
+          }, ms);
+        });
+      })();
+    </script>
+  ) : null
 }

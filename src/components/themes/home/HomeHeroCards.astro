@@ -1,0 +1,341 @@
+---
+/**
+ * Home Hero Cards — Glassmorphism / Fotográfico.
+ * Solo estructura (logo / títulos / nav). Atmósfera vive en RestaurantApp.
+ */
+import { buildHomeNavSequence } from '../../../lib/layout-themes.js';
+import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
+import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
+
+interface Props {
+  nombre?: string;
+  logoText?: string;
+  logoLetter?: string;
+  logoUrl?: string | null;
+  logo_url?: string | null;
+  tagline?: string;
+  eslogan?: string;
+  menuLink?: string;
+  menu_link?: string;
+  estilos?: Record<string, string>;
+  showWifi?: boolean;
+  showDividir?: boolean;
+  showLlamarMesero?: boolean;
+  showBoutique?: boolean;
+  wifiSsid?: string;
+  wifiClave?: string;
+  reservasCta?: { label: string; href: string } | null;
+  homeUi?: Record<string, unknown>;
+  onOpenUbicacion?: () => void;
+  onOpenNosotros?: () => void;
+  onOpenMenu?: () => void;
+  restaurante?: Record<string, unknown>;
+}
+
+const {
+  nombre,
+  logoText,
+  logoLetter,
+  logoUrl,
+  tagline,
+  showWifi,
+  showDividir,
+  showLlamarMesero,
+  showBoutique,
+  wifiSsid,
+  wifiClave,
+  reservasCta,
+  homeUi,
+} = resolveSafeHomeProps(Astro.props as Record<string, unknown>);
+
+const {
+  logoSizePx,
+  tituloSizePx,
+  esloganSizePx,
+  menuSizePx,
+  tituloColor,
+  esloganColor,
+  menuColor,
+  estiloNavegacion,
+  efectoEntrada,
+} = resolveHomePxSizes(homeUi);
+
+const navFrontal = estiloNavegacion === 'frontal';
+const immersiveLogoOnly = estiloNavegacion === 'hamburguesa';
+const navAppTabs = estiloNavegacion === 'app_tabs';
+const hasReveal = efectoEntrada === 'reveal';
+const hasEntrance =
+  efectoEntrada === 'rise' ||
+  efectoEntrada === 'blur' ||
+  efectoEntrada === 'zoom' ||
+  efectoEntrada === 'tracking';
+const animClass =
+  efectoEntrada === 'rise'
+    ? 'home-anim-rise'
+    : efectoEntrada === 'blur'
+      ? 'home-anim-blur'
+      : efectoEntrada === 'zoom'
+        ? 'home-anim-zoom'
+        : efectoEntrada === 'tracking'
+          ? 'home-anim-tracking'
+          : hasReveal
+            ? 'home-anim-reveal'
+            : '';
+
+/** Size/color only — public layout ignores X/Y offsets */
+const logoBoxStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); width: var(--logo-size, var(--home-logo-size, ${logoSizePx}px));`;
+const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); max-width: 85vw; width: auto; object-fit: contain;`;
+const logoFallbackStyle = `font-size: calc(var(--logo-size, var(--home-logo-size, ${logoSizePx}px)) * 0.3); color:var(--color-text, var(--color-texto))`;
+const tituloColorCss = `var(--titulo-color, ${tituloColor || 'var(--color-text, var(--color-texto))'})`;
+const esloganColorCss = `var(--eslogan-color, ${esloganColor || 'color-mix(in srgb, var(--color-text, var(--color-texto)) 68%, transparent)'})`;
+const menuColorCss = `var(--menu-color, ${menuColor || 'var(--color-text, var(--color-texto))'})`;
+const subtextoColorCss = `var(--subtexto-color, var(--home-subtexto-color, color-mix(in srgb, var(--color-text, var(--color-texto)) 55%, transparent)))`;
+const tituloStyle = `font-size: var(--titulo-size, ${tituloSizePx}px); letter-spacing:var(--home-tracking, 0.28em); max-width:var(--home-titulo-max-w, 28rem); color: ${tituloColorCss};`;
+const esloganStyle = `font-size: var(--eslogan-size, ${esloganSizePx}px); margin-top: 0.5rem; max-width: var(--home-eslogan-max-w, 24rem); color: ${esloganColorCss};`;
+const menuTitleStyle = `font-size: var(--menu-size, var(--home-menu-size, ${menuSizePx}px)); color: ${menuColorCss}`;
+const menuSubStyle = `color: ${subtextoColorCss}`;
+
+const navSequence = buildHomeNavSequence({
+  tagline,
+  showWifi,
+  showDividir,
+  showLlamarMesero,
+  showBoutique,
+  wifiSsid,
+  wifiClave,
+  reservasCta,
+});
+
+const glassStyle =
+  'border-color:color-mix(in srgb, var(--color-text, var(--color-texto)) 14%, transparent); background:color-mix(in srgb, var(--color-text, var(--color-texto)) 8%, transparent); box-shadow:0 8px 32px color-mix(in srgb, var(--color-text, var(--color-texto)) 8%, transparent)';
+---
+
+<div
+  class:list={[
+    'home-hero-cards linktree-home relative z-10 flex min-h-dvh flex-col items-center overflow-hidden bg-transparent font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
+    immersiveLogoOnly && 'justify-center',
+    navAppTabs && 'pb-24',
+    animClass,
+  ]}
+  data-linktree-home
+  data-home-theme="hero"
+  data-estilo-navegacion={estiloNavegacion}
+  data-efecto-entrada={efectoEntrada}
+>
+  <header
+    class="relative z-10 flex w-full flex-col items-center justify-center gap-4 px-6 pb-2 pt-14 text-center"
+    data-home-header
+  >
+    <div class:list={[hasEntrance && 'home-enter home-enter--logo']}>
+      <div
+        class="relative flex items-center justify-center overflow-hidden rounded-full border shadow-2xl backdrop-blur-md"
+        style={`${logoBoxStyle}; ${glassStyle}`}
+        data-home-logo
+        aria-hidden="true"
+      >
+        {
+          logoUrl ? (
+            <img
+              src={logoUrl}
+              alt=""
+              class="max-w-[85vw] object-contain"
+              style={logoImgStyle}
+              data-home-logo
+            />
+          ) : (
+            <span
+              class="font-semibold tracking-widest"
+              style={logoFallbackStyle}
+              data-home-logo-fallback
+            >
+              {logoLetter}
+            </span>
+          )
+        }
+      </div>
+    </div>
+    {
+      !immersiveLogoOnly ? (
+        <div class="flex w-full flex-col items-center justify-center gap-1">
+          <div
+            class:list={[
+              'mt-1 flex w-full items-center justify-center',
+              hasEntrance && 'home-enter home-enter--titulo',
+              hasReveal && 'overflow-hidden',
+            ]}
+          >
+            <h1
+              class:list={[
+                'mx-auto font-semibold uppercase tracking-[0.28em] font-[family-name:var(--font-heading,var(--fuente-display))]',
+                hasReveal && 'home-reveal-inner home-reveal--titulo',
+              ]}
+              data-home-titulo
+              style={tituloStyle}
+            >
+              {logoText}
+            </h1>
+          </div>
+          {
+            tagline ? (
+              <div
+                class:list={[
+                  'flex w-full items-center justify-center',
+                  hasEntrance && 'home-enter home-enter--eslogan',
+                  hasReveal && 'overflow-hidden',
+                ]}
+              >
+                <p
+                  class:list={[
+                    'mx-auto font-medium uppercase tracking-[0.2em]',
+                    hasReveal && 'home-reveal-inner home-reveal--eslogan',
+                  ]}
+                  style={esloganStyle}
+                  data-home-eslogan
+                >
+                  {tagline}
+                </p>
+              </div>
+            ) : null
+          }
+        </div>
+      ) : null
+    }
+  </header>
+
+  {
+    navFrontal ? (
+  <nav
+    class:list={[
+      'relative z-10 mt-auto flex w-full flex-col items-center gap-3 px-4 pb-10 pt-8',
+      hasEntrance && 'home-enter home-enter--botones',
+    ]}
+    aria-label={`Navegación ${nombre}`}
+    data-home-menu
+  >
+    {
+      navSequence.map((item) => {
+        const labelBlock = (
+          <div class="min-w-0 flex-1">
+            <span
+              class="block font-semibold uppercase tracking-[0.2em]"
+              style={menuTitleStyle}
+            >
+              {item.label}
+            </span>
+            {item.subtitle ? (
+              <span
+                class="mt-1.5 block text-[10px] uppercase tracking-[0.16em]"
+                style={menuSubStyle}
+                data-carrd-subtitle
+              >
+                {item.subtitle}
+              </span>
+            ) : null}
+            {item.requiresMesa ? (
+              <span
+                class="carrd-mesa-lock mt-2 block text-[9px] font-medium uppercase tracking-[0.14em]"
+                style={menuSubStyle}
+                data-mesa-lock-hint
+                hidden
+              >
+                Escanea el QR de tu mesa
+              </span>
+            ) : null}
+          </div>
+        );
+        const chevron = (
+          <span
+            class="shrink-0 text-lg opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-70"
+            aria-hidden="true"
+            style="color:var(--color-text, var(--color-texto))"
+          >
+            ›
+          </span>
+        );
+
+        const cardClass =
+          'hero-card group flex w-full items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-left backdrop-blur-md transition-all duration-300 hover:scale-[1.012] active:scale-[0.98]';
+
+        if (item.kind === 'reservas' && item.href) {
+          return (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-reservas-home-cta
+              class={cardClass}
+              style={glassStyle}
+            >
+              {labelBlock}
+              {chevron}
+            </a>
+          );
+        }
+
+        if (item.kind === 'boutique') {
+          return (
+            <button type="button" data-open-boutique class={cardClass} style={glassStyle}>
+              {labelBlock}
+              {chevron}
+            </button>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            data-open-section={item.id}
+            data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
+            data-requires-mesa={item.requiresMesa ? 'true' : undefined}
+            aria-disabled={item.requiresMesa ? 'true' : undefined}
+            class:list={[
+              cardClass,
+              item.requiresMesa && 'carrd-nav-link--mesa-gated is-mesa-locked',
+            ]}
+            style={glassStyle}
+          >
+            {labelBlock}
+            {chevron}
+          </button>
+        );
+      })
+    }
+
+  </nav>
+    ) : null
+  }
+</div>
+
+<style>
+  .hero-card {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-carrd-subtitle] {
+    display: none;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-mesa-lock-hint] {
+    display: block !important;
+  }
+
+  .carrd-nav-link--mesa-gated:not(.is-mesa-locked) [data-mesa-lock-hint] {
+    display: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-card {
+      transition: none !important;
+    }
+    .hero-card:hover {
+      transform: none !important;
+    }
+  }
+</style>

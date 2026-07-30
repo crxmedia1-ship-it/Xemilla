@@ -1,0 +1,579 @@
+---
+/**
+ * Home Editorial — Luxe / Catálogo de autor (maqueta alta gama).
+ * Solo estructura (logo / títulos / nav). Atmósfera vive en RestaurantApp.
+ */
+import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
+import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
+
+interface Props {
+  nombre?: string;
+  logoText?: string;
+  logoLetter?: string;
+  logoUrl?: string | null;
+  logo_url?: string | null;
+  tagline?: string;
+  eslogan?: string;
+  menuLink?: string;
+  menu_link?: string;
+  menu_subtitle?: string;
+  menuSubtitle?: string;
+  estilos?: Record<string, string>;
+  showWifi?: boolean;
+  showDividir?: boolean;
+  showLlamarMesero?: boolean;
+  showBoutique?: boolean;
+  wifiSsid?: string;
+  wifiClave?: string;
+  reservasCta?: {
+    label: string;
+    href: string;
+    subtitulo?: string;
+    activo?: boolean;
+  } | null;
+  showReservas?: boolean;
+  reservas_activo?: boolean;
+  reservas_texto?: string;
+  reservas_subtitulo?: string;
+  reservas_link?: string;
+  homeUi?: {
+    titulo_size?: number | string;
+    logo_size?: number | string;
+    eslogan_size?: number | string;
+    tracking?: string;
+    subtitulo_color?: string;
+  };
+  onOpenUbicacion?: () => void;
+  onOpenNosotros?: () => void;
+  onOpenMenu?: () => void;
+  onOpenReservas?: () => void;
+  restaurante?: Record<string, unknown>;
+}
+
+const props = Astro.props as Record<string, unknown>;
+const r =
+  props?.restaurante && typeof props.restaurante === 'object'
+    ? (props.restaurante as Record<string, unknown>)
+    : props;
+
+const {
+  nombre,
+  logoText,
+  logoLetter,
+  logoUrl,
+  tagline,
+  showWifi,
+  showDividir,
+  showLlamarMesero,
+  showBoutique,
+  wifiSsid,
+  reservasCta,
+  homeUi,
+} = resolveSafeHomeProps(props);
+
+const {
+  logoSizePx,
+  tituloSizePx,
+  esloganSizePx,
+  menuSizePx,
+  tituloColor,
+  esloganColor,
+  menuColor,
+  estiloNavegacion,
+  overlayEstilo,
+  efectoEntrada,
+} = resolveHomePxSizes(homeUi || props?.homeUi);
+
+const navFrontal = estiloNavegacion === 'frontal';
+const navHamburguesa = estiloNavegacion === 'hamburguesa';
+const navAppTabs = estiloNavegacion === 'app_tabs';
+/** Pantalla limpia Alchemist: solo logo centrado */
+const immersiveLogoOnly = navHamburguesa;
+const textShadowPuro = overlayEstilo === 'puro';
+const animRise = efectoEntrada === 'rise';
+const animBlur = efectoEntrada === 'blur';
+const animReveal = efectoEntrada === 'reveal';
+const animZoom = efectoEntrada === 'zoom';
+const animTracking = efectoEntrada === 'tracking';
+const hasEntrance = animRise || animBlur || animZoom || animTracking;
+const hasReveal = animReveal;
+
+/** Fallbacks sólidos — nunca vacíos aunque la DB mande null. Offsets X/Y ignorados (layout centrado). */
+const logoPx = logoSizePx || 160;
+const tituloPx = tituloSizePx || 28;
+const esloganPx = esloganSizePx || 14;
+const menuPx = menuSizePx || 16;
+
+const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); max-width: 85vw; width: auto; object-fit: contain;`;
+const logoFallbackStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); width: var(--logo-size, var(--home-logo-size, ${logoPx}px)); font-size: calc(var(--logo-size, var(--home-logo-size, ${logoPx}px)) * 0.28); color: var(--titulo-color, ${tituloColor || '#ffffff'}); border:1px solid color-mix(in srgb, var(--titulo-color, ${tituloColor || '#ffffff'}) 18%, transparent); border-radius:9999px;`;
+const tituloColorCss = `var(--titulo-color, ${tituloColor || '#ffffff'})`;
+const esloganColorCss = `var(--eslogan-color, ${esloganColor || '#e5e7eb'})`;
+const menuColorCss = `var(--menu-color, ${menuColor || '#ffffff'})`;
+const subtextoColorCss = `var(--subtexto-color, var(--home-subtexto-color, var(--color-primary, var(--color-primario, #9f1239))))`;
+const bordeDestacadoCss = `var(--borde-destacado, var(--home-borde-destacado, var(--color-primary, var(--color-primario, #9f1239))))`;
+const tituloStyle = `font-size: var(--titulo-size, ${tituloPx}px); color: ${tituloColorCss};`;
+const esloganStyle = `font-size: var(--eslogan-size, ${esloganPx}px); color: ${esloganColorCss};`;
+const menuTitleStyle = `font-size: var(--menu-size, var(--home-menu-size, ${menuPx}px)); color: ${menuColorCss}`;
+const menuSubStyle = `color: ${subtextoColorCss}`;
+
+/** Subtítulo del menú: prop | restaurante | fallback maqueta */
+const menuSubtitle = String(
+  props?.menu_subtitle ||
+    props?.menuSubtitle ||
+    r?.menu_subtitle ||
+    r?.menuSubtitle ||
+    'SAVOR ASIAN DELIGHTS',
+)
+  .trim()
+  .toUpperCase();
+
+const eslogan =
+  tagline ||
+  String(props?.eslogan || r?.eslogan || '').trim() ||
+  '';
+
+/**
+ * Reservas / CTA destacado — visible si el switch está activo.
+ * reservas_activo !== false → por defecto visible cuando el gadget está ON.
+ */
+const mostrarReservas =
+  Boolean(
+    props?.showReservas ??
+      props?.reservas_activo ??
+      r?.reservas_activo ??
+      reservasCta,
+  ) &&
+  props?.reservas_activo !== false &&
+  r?.reservas_activo !== false;
+
+const textoReservas = String(
+  props?.reservas_texto ||
+    r?.reservas_texto ||
+    reservasCta?.label ||
+    'PEDIR / RESERVAR',
+)
+  .trim()
+  .toUpperCase() || 'PEDIR / RESERVAR';
+
+const subtituloReservas = String(
+  props?.reservas_subtitulo ||
+    r?.reservas_subtitulo ||
+    reservasCta?.subtitulo ||
+    'EXPERIENCIA PREMIUM',
+)
+  .trim()
+  .toUpperCase() || 'EXPERIENCIA PREMIUM';
+
+const reservasLink = String(
+  props?.reservas_link ||
+    r?.reservas_link ||
+    reservasCta?.href ||
+    '#',
+).trim() || '#';
+
+/** Gadgets opcionales (debajo del índice principal, sin hairlines) */
+const extras: Array<{
+  id: string;
+  label: string;
+  subtitle: string;
+  kind: 'section' | 'boutique';
+  requiresMesa?: boolean;
+}> = [];
+
+if (showWifi) {
+  extras.push({
+    id: 'wifi',
+    label: 'WI-FI',
+    subtitle: wifiSsid ? `RED: ${wifiSsid}` : 'CONECTAR',
+    kind: 'section',
+  });
+}
+if (showLlamarMesero) {
+  extras.push({
+    id: 'mesero',
+    label: 'LLAMAR MESERO',
+    subtitle: 'ASISTENCIA EN MESA',
+    kind: 'section',
+    requiresMesa: true,
+  });
+}
+if (showDividir) {
+  extras.push({
+    id: 'dividir',
+    label: 'DIVIDIR CUENTA',
+    subtitle: 'PEDIR LA CUENTA',
+    kind: 'section',
+    requiresMesa: true,
+  });
+}
+if (showBoutique) {
+  extras.push({
+    id: 'boutique',
+    label: 'BOUTIQUE',
+    subtitle: 'MERCHANDISE',
+    kind: 'boutique',
+  });
+}
+
+const rowClass =
+  'editorial-row group flex w-full cursor-pointer flex-col items-center justify-center py-5 text-center transition-opacity duration-300 hover:opacity-70 focus-visible:opacity-70 focus-visible:outline-none';
+---
+
+<div
+  class:list={[
+    'home-editorial linktree-home relative z-10 flex min-h-dvh flex-col items-center gap-6 bg-transparent px-8 pb-12 pt-16 font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
+    (immersiveLogoOnly || navAppTabs) && 'justify-center',
+    navFrontal && 'justify-start',
+    navAppTabs && 'home-editorial--app-tabs pb-24',
+    immersiveLogoOnly && 'home-editorial--michelin',
+    textShadowPuro && 'home-editorial--overlay-puro',
+    animRise && 'home-anim-rise',
+    animBlur && 'home-anim-blur',
+    animReveal && 'home-anim-reveal',
+    animZoom && 'home-anim-zoom',
+    animTracking && 'home-anim-tracking',
+  ]}
+  data-linktree-home
+  data-home-theme="editorial"
+  data-estilo-navegacion={estiloNavegacion}
+  data-nav-mode={estiloNavegacion}
+  data-overlay-estilo={overlayEstilo}
+  data-efecto-entrada={efectoEntrada}
+  style={[homeUi?.subtitulo_color ? `--home-subtitulo-color:${homeUi.subtitulo_color}` : '']
+    .filter(Boolean)
+    .join('; ')}
+>
+  {/* ── 1. Bloques centrados: Logo / Título+Eslogan (sin offsets X/Y) ── */}
+  <header
+    class:list={[
+      'flex w-full flex-col items-center justify-center gap-4 text-center',
+      immersiveLogoOnly && 'relative z-10',
+    ]}
+    data-home-header
+  >
+    <div
+      class:list={[
+        'editorial-block editorial-block--logo flex w-full shrink-0 items-center justify-center',
+        hasEntrance && 'home-enter home-enter--logo',
+      ]}
+      data-editorial-enter="logo"
+      data-home-block="logo"
+    >
+      <div
+        class="flex min-h-[120px] w-full shrink-0 items-center justify-center"
+        data-home-logo
+      >
+        {
+          logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={nombre || 'Logo'}
+              class="max-w-[85vw] shrink-0 object-contain"
+              data-home-logo
+              style={logoImgStyle}
+            />
+          ) : (
+            <span
+              class="flex shrink-0 items-center justify-center font-medium uppercase tracking-[0.28em]"
+              data-home-logo-fallback
+              style={logoFallbackStyle}
+              aria-hidden="true"
+            >
+              {logoLetter}
+            </span>
+          )
+        }
+      </div>
+    </div>
+
+    {
+      !immersiveLogoOnly ? (
+        <div
+          class="editorial-block editorial-block--branding flex w-full shrink-0 flex-col items-center justify-center gap-3"
+          data-home-block="branding"
+        >
+          {!logoUrl && logoText ? (
+            <div
+              class:list={[
+                'flex w-full shrink-0 items-center justify-center',
+                hasEntrance && 'home-enter home-enter--titulo',
+                hasReveal && 'overflow-hidden',
+              ]}
+              data-editorial-enter="titulo"
+            >
+              <p
+                class:list={[
+                  'mx-auto shrink-0 font-medium uppercase leading-[1.15] tracking-[0.28em] font-[family-name:var(--font-heading,var(--fuente-display))]',
+                  hasReveal && 'home-reveal-inner home-reveal--titulo',
+                ]}
+                data-home-titulo
+                style={tituloStyle}
+              >
+                {logoText}
+              </p>
+            </div>
+          ) : null}
+
+          {eslogan ? (
+            <div
+              class:list={[
+                'flex w-full shrink-0 items-center justify-center',
+                hasEntrance && 'home-enter home-enter--eslogan',
+                hasReveal && 'overflow-hidden',
+              ]}
+              data-editorial-enter="eslogan"
+            >
+              <p
+                class:list={[
+                  'mx-auto max-w-[18rem] shrink-0 font-light uppercase leading-relaxed tracking-[0.25em]',
+                  hasReveal && 'home-reveal-inner home-reveal--eslogan',
+                ]}
+                style={esloganStyle}
+                data-home-eslogan
+              >
+                {eslogan}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null
+    }
+  </header>
+
+  {/* ── 2. Navegación frontal (lista central). hamburguesa/app_tabs viven en RestaurantApp ── */}
+  {
+    navFrontal ? (
+  <div
+    class="contents"
+    data-editorial-overlay="false"
+  >
+    <div
+      class:list={[
+        'editorial-block editorial-block--nav w-full shrink-0',
+        hasEntrance && 'home-enter home-enter--botones',
+      ]}
+      data-editorial-enter="botones"
+      data-home-block="nav"
+    >
+    <nav
+      class="mx-auto mt-4 flex w-full max-w-[22rem] flex-col items-center justify-center"
+      aria-label={`Navegación ${nombre}`}
+      data-editorial-nav
+      data-home-menu
+    >
+    {/* Opción 1: EL MENÚ */}
+    <button
+      type="button"
+      data-open-section="menu"
+      class={rowClass}
+      aria-label="El menú"
+    >
+      <span
+        class="block font-medium uppercase leading-none tracking-[0.22em] font-[family-name:var(--font-heading,var(--fuente-display))]"
+        style={menuTitleStyle}
+      >
+        EL MENÚ
+      </span>
+      <span
+        class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
+        style={menuSubStyle}
+      >
+        {menuSubtitle}
+      </span>
+    </button>
+
+    {/* Opción 2: PEDIR / RESERVAR — CTA destacado (entre MENÚ y NOSOTROS) */}
+    {
+      mostrarReservas ? (
+        <a
+          href={reservasLink}
+          target={reservasLink !== '#' ? '_blank' : undefined}
+          rel={reservasLink !== '#' ? 'noopener noreferrer' : undefined}
+          data-reservas-home-cta
+          class="editorial-cta group mx-auto my-6 block w-full max-w-sm border p-4 text-center transition-transform active:scale-95"
+          style={`border-color: ${bordeDestacadoCss};`}
+        >
+          <span class="block font-bold tracking-[0.25em]" style={menuTitleStyle}>
+            {textoReservas}
+          </span>
+          <span class="mt-1 block text-xs tracking-[0.2em] opacity-80" style={menuSubStyle}>
+            {subtituloReservas}
+          </span>
+        </a>
+      ) : null
+    }
+
+    {/* Opción 3: NOSOTROS */}
+    <button
+      type="button"
+      data-open-section="nosotros"
+      class={rowClass}
+      aria-label="Nosotros"
+    >
+      <span
+        class="block font-medium uppercase leading-none tracking-[0.22em]"
+        style={menuTitleStyle}
+      >
+        NOSOTROS
+      </span>
+      <span
+        class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
+        style={menuSubStyle}
+      >
+        NUESTRA FILOSOFÍA
+      </span>
+    </button>
+
+    {/* Opción 4: UBICACIÓN */}
+    <button
+      type="button"
+      data-open-section="ubicacion"
+      data-open-ubicacion="true"
+      class={rowClass}
+      aria-label="Ubicación"
+    >
+      <span
+        class="block font-medium uppercase leading-none tracking-[0.22em]"
+        style={menuTitleStyle}
+      >
+        UBICACIÓN
+      </span>
+      <span
+        class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
+        style={menuSubStyle}
+      >
+        HORARIOS Y CONTACTO
+      </span>
+    </button>
+
+    {/* Gadgets opcionales — mismo lenguaje tipográfico, sin hairlines */}
+    {
+      extras.map((item) => {
+        if (item.kind === 'boutique') {
+          return (
+            <button type="button" data-open-boutique class={rowClass}>
+              <span
+                class="block font-medium uppercase leading-none tracking-[0.2em]"
+                style={menuTitleStyle}
+              >
+                {item.label}
+              </span>
+              <span
+                class="mt-2 block text-[0.6rem] font-light uppercase tracking-[0.24em]"
+                style={menuSubStyle}
+              >
+                {item.subtitle}
+              </span>
+            </button>
+          );
+        }
+
+        return (
+          <button
+            type="button"
+            data-open-section={item.id}
+            data-requires-mesa={item.requiresMesa ? 'true' : undefined}
+            aria-disabled={item.requiresMesa ? 'true' : undefined}
+            class:list={[
+              rowClass,
+              item.requiresMesa && 'carrd-nav-link--mesa-gated is-mesa-locked',
+            ]}
+          >
+            <span
+              class="block font-medium uppercase leading-none tracking-[0.2em]"
+              style={menuTitleStyle}
+            >
+              {item.label}
+            </span>
+            <span
+              class="mt-2 block text-[0.6rem] font-light uppercase tracking-[0.24em]"
+              style={menuSubStyle}
+              data-carrd-subtitle
+            >
+              {item.subtitle}
+            </span>
+            {item.requiresMesa ? (
+              <span
+                class="carrd-mesa-lock mt-2 block text-[9px] font-medium uppercase tracking-[0.18em] opacity-60"
+                style={menuSubStyle}
+                data-mesa-lock-hint
+                hidden
+              >
+                Escanea el QR de tu mesa
+              </span>
+            ) : null}
+          </button>
+        );
+      })
+    }
+    </nav>
+    </div>
+  </div>
+    ) : null
+  }
+</div>
+
+<style>
+  .editorial-block {
+    isolation: isolate;
+    contain: layout style;
+  }
+  .editorial-block--logo,
+  .editorial-block--branding,
+  .editorial-block--nav {
+    flex-shrink: 0;
+    width: 100%;
+  }
+  .editorial-block--logo img,
+  .editorial-block--logo [data-home-logo-fallback] {
+    flex-shrink: 0;
+  }
+  .home-editorial--michelin > header {
+    pointer-events: none;
+  }
+
+  .editorial-row,
+  .editorial-cta {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Overlay Puro: sombra tipográfica, sin filtro sobre media */
+  .home-editorial--overlay-puro img[data-home-logo] {
+    filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55))
+      drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  }
+  .home-editorial--overlay-puro [data-editorial-enter='titulo'],
+  .home-editorial--overlay-puro [data-editorial-enter='eslogan'],
+  .home-editorial--overlay-puro [data-editorial-enter='botones'] .editorial-row span,
+  .home-editorial--overlay-puro [data-editorial-enter='botones'] .editorial-cta span {
+    text-shadow:
+      0 2px 18px rgba(0, 0, 0, 0.55),
+      0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked {
+    opacity: 0.35;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-mesa-lock-hint] {
+    display: block !important;
+  }
+
+  .carrd-nav-link--mesa-gated.is-mesa-locked [data-carrd-subtitle] {
+    display: none;
+  }
+
+  .carrd-nav-link--mesa-gated:not(.is-mesa-locked) [data-mesa-lock-hint] {
+    display: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .editorial-row,
+    .editorial-cta {
+      transition: none !important;
+    }
+  }
+</style>
+

@@ -2,14 +2,37 @@
 export const prerender = false;
 
 import Layout from '../../layouts/Layout.astro';
-import AdminThemeSwitcher from '../../components/admin/AdminThemeSwitcher.astro';
 import AdminXemillaMark from '../../components/admin/AdminXemillaMark.astro';
 import AdminMetricsPanel from '../../components/admin/AdminMetricsPanel.astro';
+import AdminThemeSwitcher from '../../components/admin/AdminThemeSwitcher.astro';
 import { getAdminDashboardData } from '../../lib/admin.js';
 import { fetchMetricsSnapshot, emptyMetricsSnapshot } from '../../lib/metrics.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
 import { parseBoutiqueConfig } from '../../lib/boutique.js';
+import {
+  normalizeHomeTheme,
+  normalizeUbicacionTheme,
+} from '../../lib/layout-themes.js';
+import {
+  parseUiEstilo,
+  HOME_PX_DEFAULTS,
+  HOME_PX_RANGES,
+  normalizeEstiloNavegacion,
+  normalizeFondoAnimacion,
+  normalizeEfectoEntrada,
+  normalizeOverlayEstilo,
+} from '../../lib/secciones-ui.js';
+import {
+  TYPOGRAPHY_COMBO_OPTIONS,
+  normalizeTypographyComboId,
+  DEFAULT_TYPOGRAPHY_COMBO,
+} from '../../config/typography-combos.js';
+import {
+  getUserAdminRole,
+  getAssignedRestauranteId,
+  ADMIN_ROLE_SUPER,
+} from '../../config/superadmin.js';
 
 const restauranteId =
   Astro.url.searchParams.get('restaurante') ||
@@ -26,18 +49,43 @@ if (!session) {
   return Astro.redirect('/admin/login');
 }
 
-if ((restauranteId || restauranteSlug) && !session.isSuperAdmin) {
-  return Astro.redirect('/admin/dashboard');
-}
+const {
+  restaurante,
+  platos,
+  categorias = [],
+  managingAsSuperAdmin,
+  user,
+  assignedRestauranteId: sessionAssignedId,
+} = session;
 
-if (session.isSuperAdmin && !restauranteId && !restauranteSlug) {
+/** Strict SSR: true only if allowlist SuperAdmin OR metadata role === 'superadmin'. Operativo → false. */
+const isSuperAdmin = getUserAdminRole(user) === ADMIN_ROLE_SUPER;
+const assignedRestauranteId =
+  sessionAssignedId || getAssignedRestauranteId(user);
+
+if (!isSuperAdmin) {
+  // Operativo: URL solo coherencia; SSR ya forzó metadata. Canonicalizar a asignado.
+  if (assignedRestauranteId) {
+    const urlMatchesAssigned =
+      restauranteId === assignedRestauranteId ||
+      restauranteSlug === assignedRestauranteId;
+    if (!urlMatchesAssigned) {
+      return Astro.redirect(
+        `/admin/dashboard?restaurante=${encodeURIComponent(assignedRestauranteId)}`,
+      );
+    }
+  } else if (restauranteId || restauranteSlug) {
+    // Sin asignación: no dejar ?restaurante= / ?slug= ajenos en la URL
+    return Astro.redirect('/admin/dashboard');
+  }
+} else if (!restauranteId && !restauranteSlug) {
   return Astro.redirect('/admin/super/dashboard');
 }
 
-const { restaurante, platos, categorias = [], managingAsSuperAdmin, isSuperAdmin, user } = session;
 const nombre = restaurante?.nombre_comercial ?? 'Sin restaurante';
-const logoUrl = String(restaurante?.logo_url || '').trim();
 const restId = restaurante?.id ?? '';
+const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
+const publicWebAppUrl = publicSlug ? `/${publicSlug}` : '';
 const categoriasJson = JSON.stringify(categorias);
 
 const metricsClient = isSuperAdmin
@@ -65,7 +113,8 @@ const configWifi = parseConfig(restaurante?.config_wifi);
 const configReservas = parseConfig(restaurante?.config_reservas);
 const boutiqueConfig = parseBoutiqueConfig(restaurante?.config_boutique);
 const seccionesFondo = parseConfig(restaurante?.secciones_fondo);
-const uiEstiloRaw = parseConfig(restaurante?.ui_estilo);
+const uiEstiloParsed = parseUiEstilo(restaurante?.ui_estilo);
+const uiEstiloRaw = uiEstiloParsed;
 
 function fondoSeccion(key, fallbackTipo = 'color', fallbackValor = '') {
   const entry = seccionesFondo?.[key] || {};
@@ -132,74 +181,33 @@ const fondoNosotros = fondoSeccion('nosotros', 'color', '');
 const fondoMenu = fondoSeccion('menu', 'color', '');
 const fondoUbicacion = fondoSeccion('ubicacion', 'color', '');
 
-const GLOBAL_FONT_OPTIONS = [
-  { id: '', label: 'Del ADN (automático)', value: '' },
-  {
-    id: 'playfair',
-    label: 'Playfair Display',
-    value: 'Playfair Display, ui-serif, Georgia, serif',
-  },
-  {
-    id: 'syne',
-    label: 'Syne',
-    value: 'Syne, ui-sans-serif, system-ui, sans-serif',
-  },
-  {
-    id: 'space-grotesk',
-    label: 'Space Grotesk',
-    value: 'Space Grotesk, ui-sans-serif, system-ui, sans-serif',
-  },
-  {
-    id: 'outfit',
-    label: 'Outfit',
-    value: 'Outfit, ui-sans-serif, system-ui, sans-serif',
-  },
-  {
-    id: 'oswald',
-    label: 'Oswald',
-    value: 'Oswald, ui-sans-serif, system-ui, sans-serif',
-  },
-];
+const GLOBAL_FONT_OPTIONS = TYPOGRAPHY_COMBO_OPTIONS.map((c) => ({
+  id: c.id,
+  label: `${c.label} — ${c.description}`,
+  value: c.id,
+}));
 
-function matchTipoLetraOption(raw) {
-  const v = String(raw || '').trim().toLowerCase();
-  if (!v) return '';
-  if (v.includes('playfair')) return 'Playfair Display, ui-serif, Georgia, serif';
-  if (v.includes('syne')) return 'Syne, ui-sans-serif, system-ui, sans-serif';
-  if (v.includes('space')) return 'Space Grotesk, ui-sans-serif, system-ui, sans-serif';
-  if (v.includes('outfit')) return 'Outfit, ui-sans-serif, system-ui, sans-serif';
-  if (v.includes('oswald')) return 'Oswald, ui-sans-serif, system-ui, sans-serif';
-  const exact = GLOBAL_FONT_OPTIONS.find((o) => o.value.toLowerCase() === v);
-  return exact ? exact.value : '';
+function matchTipografiaCombo(raw) {
+  return normalizeTypographyComboId(raw || DEFAULT_TYPOGRAPHY_COMBO);
 }
 
 const marca = {
   color_primario: restaurante?.color_primario || '#9f1239',
   color_fondo: restaurante?.color_fondo || '#0a0a0a',
   color_texto: restaurante?.color_texto || '#ffffff',
-  estilo_adn: restaurante?.estilo_adn || 'elegant',
-  tipo_letra: matchTipoLetraOption(restaurante?.tipo_letra),
+  tipografia_combo: matchTipografiaCombo(
+    restaurante?.tipo_letra || restaurante?.estilo_adn,
+  ),
   logo_url: restaurante?.logo_url || '',
+  nombre_comercial: restaurante?.nombre_comercial || nombre || '',
+  tagline_superior: String(uiEstiloRaw?.home?.tagline_superior || '').trim(),
   eslogan: restaurante?.eslogan || '',
   share_image_url: restaurante?.share_image_url || '',
   app_icon_url: restaurante?.app_icon_url || '',
-  home_titulo_size: (() => {
-    const v = uiEstiloRaw?.home?.titulo_size;
-    const n = Number(v);
-    if (n >= 1 && n <= 5) return n;
-    if (v === 'text-xl' || v === 'text-lg') return 2;
-    if (v === 'text-4xl') return 4;
-    if (v === 'text-5xl') return 5;
-    return 3;
-  })(),
-  home_logo_size: (() => {
-    const n = Number(uiEstiloRaw?.home?.logo_size);
-    return n >= 1 && n <= 5 ? n : 3;
-  })(),
-  home_eslogan_size: (() => {
-    const n = Number(uiEstiloRaw?.home?.eslogan_size);
-    return n >= 1 && n <= 5 ? n : 3;
-  })(),
+  home_titulo_size: uiEstiloRaw?.home?.titulo_size ?? HOME_PX_DEFAULTS.titulo,
+  home_logo_size: uiEstiloRaw?.home?.logo_size ?? HOME_PX_DEFAULTS.logo,
+  home_eslogan_size: uiEstiloRaw?.home?.eslogan_size ?? HOME_PX_DEFAULTS.eslogan,
+  home_menu_size: uiEstiloRaw?.home?.menu_size ?? HOME_PX_DEFAULTS.menu,
   home_tracking: [
     'tracking-normal',
     'tracking-wider',
@@ -212,13 +220,34 @@ const marca = {
     uiEstiloRaw?.home?.subtitulo_color ||
     restaurante?.color_primario ||
     '#9f1239',
+  home_titulo_color: uiEstiloRaw?.home?.titulo_color || '',
+  home_eslogan_color: uiEstiloRaw?.home?.eslogan_color || '',
+  home_menu_color: uiEstiloRaw?.home?.menu_color || '',
+  home_subtexto_color: uiEstiloRaw?.home?.subtexto_color || '',
+  home_borde_destacado_color: uiEstiloRaw?.home?.borde_destacado_color || '',
+  home_overlay_opacity:
+    uiEstiloRaw?.home?.overlay_opacity ?? HOME_PX_DEFAULTS.overlay_opacity,
+  home_overlay_estilo: normalizeOverlayEstilo(
+    uiEstiloRaw?.home?.overlay_estilo,
+  ),
+  home_fondo_animacion: normalizeFondoAnimacion(
+    uiEstiloRaw?.home?.fondo_animacion,
+  ),
+  home_estilo_navegacion: normalizeEstiloNavegacion(
+    uiEstiloRaw?.home?.estilo_navegacion,
+  ),
+  home_efecto_entrada: normalizeEfectoEntrada(
+    uiEstiloRaw?.home?.efecto_entrada,
+  ),
   nosotros_color_fondo: uiEstiloRaw?.nosotros?.color_fondo || '',
   nosotros_color_titulo: uiEstiloRaw?.nosotros?.color_titulo || '',
   nosotros_color_cuerpo: uiEstiloRaw?.nosotros?.color_cuerpo || '',
   ubicacion_color_fondo: uiEstiloRaw?.ubicacion?.color_fondo || '',
   ubicacion_color_titulo: uiEstiloRaw?.ubicacion?.color_titulo || '',
   ubicacion_color_cuerpo: uiEstiloRaw?.ubicacion?.color_cuerpo || '',
-  custom_css: restaurante?.custom_css || '',
+  /** Canónico: ui_estilo.css_avanzado; alias columna custom_css */
+  css_avanzado: uiEstiloRaw?.css_avanzado || restaurante?.custom_css || '',
+  custom_css: uiEstiloRaw?.css_avanzado || restaurante?.custom_css || '',
   fondo_home_tipo: fondoHome.tipo,
   fondo_home_valor: fondoHome.valor,
   fondo_nosotros_tipo: fondoNosotros.tipo,
@@ -262,6 +291,8 @@ const marca = {
     restaurante?.gadget_wifi_clave || configWifi.password || '',
   gadget_boutique: Boolean(restaurante?.gadget_boutique),
   boutique_productos: boutiqueConfig.productos,
+  home_theme: normalizeHomeTheme(restaurante?.home_theme),
+  ubicacion_theme: normalizeUbicacionTheme(restaurante?.ubicacion_theme),
   reservas_label: configReservas.label || configReservas.boton_texto || 'PEDIR / RESERVAR',
   reservas_destino_tipo:
     configReservas.destino_tipo === 'whatsapp' || configReservas.tipo === 'whatsapp'
@@ -275,8 +306,53 @@ const marca = {
 };
 
 const fieldClass =
-  'w-full rounded-xl border border-white/10 bg-black/35 px-3.5 py-3 text-sm text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-white/25 focus:ring-2 focus:ring-white/10';
+  'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50';
 const labelClass = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
+/** Glass Bento chrome; .solid-obstacle only on card roots + header (physics walls). */
+const bounceWallClass =
+  'relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl';
+const studioCardClass = `studio-card ${bounceWallClass} solid-obstacle hover:border-indigo-500/40 transition-all duration-300 p-4 space-y-3 gap-3`;
+const colorRowClass =
+  'flex items-center gap-2 rounded-full border border-white/10 bg-zinc-950/60 px-2 py-1.5';
+const tabPillBase =
+  'dashboard-tab shrink-0 text-sm font-medium px-4 py-1.5 rounded-full transition-all';
+const tabPillActive = `${tabPillBase} bg-white text-black`;
+const tabPillInactive = `${tabPillBase} text-zinc-400 hover:text-white hover:bg-white/5`;
+
+const userEmail = String(user?.email || '').trim();
+const userDisplayName = (() => {
+  const metaName = String(
+    user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      user?.user_metadata?.display_name ||
+      '',
+  ).trim();
+  if (metaName) return metaName;
+  const local = userEmail.split('@')[0] || 'Admin';
+  return local
+    .split(/[._\-\s]+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ') || 'Admin';
+})();
+const userRoleLabel = isSuperAdmin
+  ? `${userDisplayName} (SuperAdmin)`
+  : `${userDisplayName} (Operativo)`;
+const userInitials = (() => {
+  const parts = userDisplayName.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  }
+  const local = userEmail.split('@')[0] || '';
+  const localParts = local.split(/[._\-\s]+/).filter(Boolean);
+  if (localParts.length >= 2) {
+    return `${localParts[0][0] || ''}${localParts[1][0] || ''}`.toUpperCase();
+  }
+  return (local.slice(0, 2) || 'AD').toUpperCase();
+})();
+const studioStatusLabel = isSuperAdmin
+  ? 'SuperAdmin Studio · Online'
+  : 'Admin Operativo · Online';
 
 const sampleBulk = isSuperAdmin
   ? `Categoría | Nombre | Descripción | Precio | Destacado | Imagen
@@ -292,117 +368,195 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   description="Gestión masiva del menú"
   adminPanel={true}
 >
-  <main class="mx-auto min-h-dvh w-full max-w-7xl px-6 pb-24 pt-8 lg:px-10">
-    <header class="flex flex-wrap items-end justify-between gap-6 border-b border-white/8 pb-8">
-      <div class="admin-brand-lockup">
-        {
-          logoUrl ? (
-            <img
-              src={logoUrl}
-              alt=""
-              width="52"
-              height="52"
-              class="admin-brand-logo"
-              loading="eager"
-              decoding="async"
-            />
-          ) : null
-        }
-        <div class="min-w-0">
-          {
-            managingAsSuperAdmin || isSuperAdmin ? (
-              <a
-                href="/admin/super/dashboard"
-                class="inline-flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500 transition hover:text-zinc-300"
-              >
-                <span aria-hidden="true">←</span>
-                SuperAdmin
-              </a>
-            ) : (
-              <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                Panel Xemilla
-              </p>
-            )
-          }
-          <h1 class="mt-3 font-blacksushi-display text-4xl font-semibold tracking-tight lg:text-5xl">
-            {nombre}
-          </h1>
-          <p class="mt-2 text-sm text-zinc-500">
-            <span id="platos-count">{platos.length}</span> platos · edición en vivo
-          </p>
-        </div>
+  <header
+    class="solid-obstacle sticky top-0 z-50 flex w-full items-center justify-between gap-3 border-b border-white/10 bg-zinc-950/80 px-6 py-3 backdrop-blur-xl"
+  >
+    <div class="flex min-w-0 shrink-0 items-center gap-3">
+      <a
+        href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
+        class="admin-brand-pill shrink-0"
+      >
+        <span class="text-sm font-semibold tracking-tight">Xemilla</span>
+      </a>
+      <div
+        class="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-mono text-xs text-emerald-400"
+        title={studioStatusLabel}
+      >
+        <span class="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+        </span>
+        {studioStatusLabel}
       </div>
-
-      <div class="flex flex-wrap items-center gap-3">
-        <AdminThemeSwitcher />
-        <form method="POST" action="/api/admin-logout">
-          <button
-            type="submit"
-            class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition hover:border-white/20 hover:text-zinc-300"
-          >
-            Salir
-          </button>
-        </form>
-      </div>
-    </header>
+    </div>
 
     {
+      restaurante ? (
+        <nav
+          class="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-2"
+          role="tablist"
+          aria-label="Secciones del panel"
+          data-admin-top-nav
+        >
+          <button
+            type="button"
+            role="tab"
+            id="tab-menu"
+            data-tab-target="menu"
+            aria-selected="true"
+            aria-controls="panel-menu"
+            class={`${tabPillActive} active`}
+          >
+            Menú
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-metricas"
+            data-tab-target="metricas"
+            aria-selected="false"
+            aria-controls="panel-metricas"
+            class={`${tabPillInactive}`}
+          >
+            Métricas
+          </button>
+          {
+            isSuperAdmin && (
+              <button
+                type="button"
+                role="tab"
+                id="tab-identidad"
+                data-tab-target="identidad"
+                aria-selected="false"
+                aria-controls="panel-identidad"
+                class={`${tabPillInactive}`}
+              >
+                Identidad
+              </button>
+            )
+          }
+        </nav>
+      ) : (
+        <div class="flex-1" aria-hidden="true"></div>
+      )
+    }
+
+    <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+      {
+        isSuperAdmin && (
+          <a
+            href="/admin/super/nuevo-restaurante"
+            class="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-gradient-to-r from-violet-600/80 to-indigo-600/80 px-3.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white shadow-[0_0_20px_rgba(99,102,241,0.25)] backdrop-blur-md transition hover:from-violet-500/90 hover:to-indigo-500/90 hover:border-white/25 active:scale-[0.98]"
+          >
+            <span aria-hidden="true">+</span>
+            Nuevo Restaurante
+          </a>
+        )
+      }
+      {
+        isSuperAdmin && restaurante && (
+          <button
+            type="submit"
+            form="marca-form"
+            id="marca-save"
+            hidden
+            class="admin-action-btn inline-flex items-center justify-center rounded-lg bg-white px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-950 transition hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-50 sm:px-4"
+          >
+            💾 Guardar
+          </button>
+        )
+      }
+      <AdminThemeSwitcher />
+      <div class="relative" data-admin-profile>
+        <button
+          type="button"
+          id="admin-profile-trigger"
+          class="admin-profile-trigger"
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-controls="admin-profile-menu"
+          title={userEmail || 'Perfil'}
+        >
+          <span class="admin-profile-trigger__initials">{userInitials}</span>
+        </button>
+        <div
+          id="admin-profile-menu"
+          class="admin-profile-dropdown"
+          role="menu"
+          aria-labelledby="admin-profile-trigger"
+          hidden
+          data-admin-profile-menu
+        >
+          <div class="admin-profile-dropdown__meta">
+            <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
+            {
+              userEmail ? (
+                <p class="admin-profile-dropdown__email">{userEmail}</p>
+              ) : null
+            }
+          </div>
+          <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
+            <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
+              Cerrar Sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="relative z-10 min-h-[calc(100dvh-4rem)] w-full bg-transparent">
+    <div class="relative z-10 mx-auto w-full max-w-6xl px-4 pb-24 pt-8 sm:px-6">
+    {
       !restaurante ? (
-        <div class="glass-panel mt-12 max-w-xl p-8 text-center">
-          <p class="text-sm text-zinc-400">Restaurante no encontrado.</p>
+        <div class={`glass-panel ${bounceWallClass} max-w-xl p-8 text-center`}>
+          <p class="text-sm text-zinc-400">
+            {
+              assignedRestauranteId
+                ? 'Tu restaurante asignado ya no existe en la base. Pedile al SuperAdmin que te reasigne.'
+                : 'No tenés un restaurante asignado. Pedile al SuperAdmin que cree tus credenciales operativas.'
+            }
+          </p>
         </div>
       ) : (
         <div
-          class="mx-auto mt-10 max-w-7xl"
           data-restaurante-id={restId}
           id="dashboard-root"
           data-categorias={categoriasJson}
+          data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
         >
-          <nav
-            class="mb-8 flex flex-wrap gap-2 border-b border-white/8 pb-4"
-            role="tablist"
-            aria-label="Secciones del panel"
-          >
-            <button
-              type="button"
-              role="tab"
-              id="tab-menu"
-              data-dashboard-tab="menu"
-              aria-selected="true"
-              aria-controls="panel-menu"
-              class="dashboard-tab inline-flex items-center rounded-xl border border-white/15 bg-white px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 ease-out"
-            >
-              Menú
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="tab-metricas"
-              data-dashboard-tab="metricas"
-              aria-selected="false"
-              aria-controls="panel-metricas"
-              class="dashboard-tab inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition-all duration-200 ease-out hover:border-white/20 hover:text-zinc-200"
-            >
-              Métricas
-            </button>
+          <div class="mb-8 flex flex-wrap items-end justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+                {managingAsSuperAdmin || isSuperAdmin ? 'SuperAdmin' : 'Panel Xemilla'}
+              </p>
+              <h1 class="mt-2 font-blacksushi-display text-3xl font-semibold tracking-tight sm:text-4xl">
+                {nombre}
+              </h1>
+              <p class="mt-1.5 text-sm text-zinc-500">
+                <span id="platos-count">{platos.length}</span> platos · edición en vivo
+              </p>
+            </div>
             {
-              isSuperAdmin ? (
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-marca"
-                  data-dashboard-tab="marca"
-                  aria-selected="false"
-                  aria-controls="panel-marca"
-                  class="dashboard-tab inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition-all duration-200 ease-out hover:border-white/20 hover:text-zinc-200"
+              managingAsSuperAdmin || isSuperAdmin ? (
+                <a
+                  href="/admin/super/dashboard"
+                  class="inline-flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500 transition hover:text-zinc-300"
                 >
-                  Identidad de Marca
-                </button>
+                  <span aria-hidden="true">←</span>
+                  SuperAdmin
+                </a>
               ) : null
             }
-          </nav>
+          </div>
 
-          <div id="panel-menu" role="tabpanel" aria-labelledby="tab-menu" data-tab-panel="menu" class="admin-fade-in-up">
+          <div
+            id="panel-menu"
+            role="tabpanel"
+            aria-labelledby="tab-menu"
+            data-tab-panel="menu"
+            class="admin-fade-in-up"
+          >
           {
             isSuperAdmin && (
               <div class="mb-6 space-y-3">
@@ -437,7 +591,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
                 <section
                   id="bulk-panel"
-                  class="bulk-panel glass-panel overflow-hidden"
+                  class={`bulk-panel glass-panel ${bounceWallClass} overflow-hidden`}
                   data-open="false"
                   aria-hidden="true"
                 >
@@ -516,7 +670,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
             <div
               id="platos-empty"
-              class:list={['glass-panel p-10 text-center', platos.length > 0 && 'hidden']}
+              class:list={['glass-panel', bounceWallClass, 'p-10 text-center', platos.length > 0 && 'hidden']}
             >
               <p class="text-sm text-zinc-500">
                 {isSuperAdmin
@@ -525,13 +679,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
               </p>
             </div>
 
-            <div id="platos-no-results" class="glass-panel mb-3 hidden p-6 text-center text-sm text-zinc-500">
+            <div id="platos-no-results" class={`glass-panel ${bounceWallClass} mb-3 hidden p-6 text-center text-sm text-zinc-500`}>
               No hay coincidencias para esa búsqueda.
             </div>
 
             <div
               id="platos-table-wrap"
-              class:list={['glass-panel overflow-hidden', platos.length === 0 && 'hidden']}
+              class:list={['glass-panel', bounceWallClass, 'overflow-hidden', platos.length === 0 && 'hidden']}
             >
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[860px] border-collapse text-sm">
@@ -688,6 +842,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
             role="tabpanel"
             aria-labelledby="tab-metricas"
             data-tab-panel="metricas"
+            class="hidden"
             hidden
           >
             <AdminMetricsPanel
@@ -700,29 +855,35 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           {
             isSuperAdmin && (
           <div
-            id="panel-marca"
+            id="panel-identidad"
             role="tabpanel"
-            aria-labelledby="tab-marca"
-            data-tab-panel="marca"
+            aria-labelledby="tab-identidad"
+            data-tab-panel="identidad"
+            class="hidden"
             hidden
           >
-            <form id="marca-form" class="space-y-6" novalidate>
-              <div class="mb-2">
-                <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
-                  Configuración atómica · SuperAdmin
-                </p>
-                <h2 class="mt-1 font-blacksushi-display text-2xl font-semibold tracking-tight">
+            <form id="marca-form" class="relative z-10 space-y-4" novalidate>
+              <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="font-blacksushi-display text-lg font-semibold tracking-tight text-white">
                   Identidad de Marca
                 </h2>
-                <p class="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
-                  Sub-secciones aisladas: Home, Nosotros, Menú, Horarios &amp; Ubicación, Reservas y Gadgets.
-                  Solo visible para el dueño de la plataforma.
-                </p>
+                {
+                  publicWebAppUrl ? (
+                    <a
+                      href={publicWebAppUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:text-zinc-200"
+                    >
+                      Abrir WebApp ↗
+                    </a>
+                  ) : null
+                }
               </div>
 
-              <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div class="space-y-4">
                 <nav
-                  class="flex shrink-0 gap-2 overflow-x-auto lg:w-52 lg:flex-col lg:overflow-visible"
+                  class="flex gap-1 overflow-x-auto pb-0.5"
                   role="tablist"
                   aria-label="Subsecciones de identidad"
                   id="marca-subnav"
@@ -732,7 +893,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                       { id: 'home', label: 'Home / Core' },
                       { id: 'nosotros', label: 'Nosotros' },
                       { id: 'menu', label: 'Menú' },
-                      { id: 'ubicacion', label: 'Horarios & Ubicación' },
+                      { id: 'ubicacion', label: 'Horarios' },
                       { id: 'reservas', label: 'Reservas' },
                       { id: 'gadgets', label: 'Gadgets' },
                     ].map((tab, i) => (
@@ -742,10 +903,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                         data-marca-subtab={tab.id}
                         aria-selected={i === 0 ? 'true' : 'false'}
                         class:list={[
-                          'marca-subtab whitespace-nowrap rounded-xl border px-3.5 py-2.5 text-left text-[0.58rem] font-semibold uppercase tracking-[0.14em] transition',
+                          'marca-subtab shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-all',
                           i === 0
-                            ? 'border-white/15 bg-white text-zinc-950'
-                            : 'border-white/10 bg-white/[0.04] text-zinc-400 hover:border-white/20 hover:text-zinc-200',
+                            ? 'bg-white/10 text-white'
+                            : 'text-zinc-400 hover:bg-white/5 hover:text-white',
                         ]}
                       >
                         {tab.label}
@@ -754,21 +915,243 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   }
                 </nav>
 
-                <div class="min-w-0 flex-1 space-y-4">
+                <div class="min-w-0 space-y-4">
                   {/* —— HOME / CORE —— */}
-                  <div data-marca-panel="home" class="glass-panel space-y-5 p-6 lg:p-7">
-                    <div>
-                      <p class={labelClass}>Home / Core</p>
-                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
-                        Identidad global
-                      </h3>
-                    </div>
+                  <div data-marca-panel="home" class="overflow-visible">
+                    <div
+                      class="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+                      data-marca-home-controls
+                    >
 
-                    <div class="flex flex-col gap-5">
-                      {/* Fila 1: Logo 2/3 + Eslogan 1/3 */}
-                      <div class="flex flex-col gap-5 md:flex-row">
-                        <label class="block w-full space-y-2 md:w-2/3">
-                          <span class={labelClass}>URL del logo</span>
+                    {/* CARD 1 — Arquitectura & Nav */}
+                    <section class={studioCardClass} aria-labelledby="marca-sec-arquitectura">
+                      <p id="marca-sec-arquitectura" class={labelClass}>Arquitectura &amp; Nav</p>
+
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Plantilla</span>
+                        <select id="marca-home-theme" name="home_theme" class={fieldClass}>
+                          <option value="editorial" selected={marca.home_theme === 'editorial'}>
+                            Editorial
+                          </option>
+                          <option value="hero" selected={marca.home_theme === 'hero'}>
+                            Hero Cards
+                          </option>
+                          <option value="bento" selected={marca.home_theme === 'bento'}>
+                            Bento Grid
+                          </option>
+                          <option value="minimal" selected={marca.home_theme === 'minimal'}>
+                            Minimal
+                          </option>
+                        </select>
+                      </label>
+
+                      <label class="block space-y-1.5" for="marca-home-estilo-navegacion">
+                        <span class={labelClass}>Estilo Nav</span>
+                        <select
+                          id="marca-home-estilo-navegacion"
+                          name="home_estilo_navegacion"
+                          class={fieldClass}
+                        >
+                          <option value="frontal" selected={marca.home_estilo_navegacion === 'frontal'}>
+                            Frontal
+                          </option>
+                          <option value="hamburguesa" selected={marca.home_estilo_navegacion === 'hamburguesa'}>
+                            Hamburguesa
+                          </option>
+                          <option value="app_tabs" selected={marca.home_estilo_navegacion === 'app_tabs'}>
+                            App Tabs
+                          </option>
+                        </select>
+                      </label>
+
+                      <label class="block space-y-1.5" for="marca-home-efecto-entrada">
+                        <span class={labelClass}>Efecto Entrada</span>
+                        <select
+                          id="marca-home-efecto-entrada"
+                          name="home_efecto_entrada"
+                          class={fieldClass}
+                        >
+                          <option value="reveal" selected={marca.home_efecto_entrada === 'reveal'}>
+                            Text Reveal
+                          </option>
+                          <option value="rise" selected={marca.home_efecto_entrada === 'rise'}>
+                            Rise Up
+                          </option>
+                          <option value="blur" selected={marca.home_efecto_entrada === 'blur'}>
+                            Blur &amp; Focus
+                          </option>
+                          <option value="zoom" selected={marca.home_efecto_entrada === 'zoom'}>
+                            Zoom-In
+                          </option>
+                          <option value="tracking" selected={marca.home_efecto_entrada === 'tracking'}>
+                            Tracking
+                          </option>
+                          <option value="ninguno" selected={marca.home_efecto_entrada === 'ninguno' || !marca.home_efecto_entrada}>
+                            Ninguno
+                          </option>
+                        </select>
+                      </label>
+
+                      <label class="block space-y-1.5" for="marca-home-fondo-animacion">
+                        <span class={labelClass}>Animación Fondo</span>
+                        <select
+                          id="marca-home-fondo-animacion"
+                          name="home_fondo_animacion"
+                          data-fondo-animacion-home
+                          class={fieldClass}
+                        >
+                          <option value="in" selected={marca.home_fondo_animacion === 'in' || !marca.home_fondo_animacion}>
+                            Zoom In
+                          </option>
+                          <option value="out" selected={marca.home_fondo_animacion === 'out'}>
+                            Zoom Out
+                          </option>
+                          <option value="pan" selected={marca.home_fondo_animacion === 'pan'}>
+                            Pan
+                          </option>
+                          <option value="float" selected={marca.home_fondo_animacion === 'float'}>
+                            Float
+                          </option>
+                          <option value="glow" selected={marca.home_fondo_animacion === 'glow'}>
+                            Glow
+                          </option>
+                          <option value="ninguna" selected={marca.home_fondo_animacion === 'ninguna'}>
+                            Ninguna
+                          </option>
+                        </select>
+                      </label>
+                    </section>
+
+                    {/* CARD 2 — Identidad & Texto */}
+                    <section class={studioCardClass} aria-labelledby="marca-sec-identidad">
+                      <p id="marca-sec-identidad" class={labelClass}>Identidad &amp; Marca</p>
+
+                      <div class="space-y-3">
+                        <div
+                          class="admin-logo-pedestal group w-full h-32 bg-black/40"
+                          data-logo-preview
+                          aria-hidden="true"
+                        >
+                          <img
+                            class="admin-logo-preview__img max-h-full max-w-full object-contain drop-shadow-lg transition-transform duration-300 group-hover:scale-105"
+                            data-logo-preview-img
+                            src={marca.logo_url || undefined}
+                            alt=""
+                            width="320"
+                            height="128"
+                            hidden={!marca.logo_url}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          <span
+                            class="admin-logo-preview__ph admin-logo-pedestal__empty"
+                            data-logo-preview-ph
+                            hidden={Boolean(marca.logo_url)}
+                          >
+                            <svg
+                              class="admin-logo-pedestal__icon"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.5"
+                              aria-hidden="true"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                              />
+                            </svg>
+                            Subir Logo del Restaurante
+                          </span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 p-2.5 bg-zinc-900/60 rounded-xl border border-white/5">
+                          <label class="block min-w-0 space-y-1">
+                            <span class="text-xs font-mono text-zinc-400">Título</span>
+                            <div class={colorRowClass}>
+                              <input
+                                type="color"
+                                id="marca-home-titulo-color-picker"
+                                value={marca.home_titulo_color || marca.color_texto || '#ffffff'}
+                                class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                              />
+                              <input
+                                type="text"
+                                id="marca-home-titulo-color"
+                                name="titulo_color"
+                                value={marca.home_titulo_color}
+                                placeholder={marca.color_texto || '#ffffff'}
+                                spellcheck="false"
+                                class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                              />
+                            </div>
+                          </label>
+
+                          <label class="block min-w-0 space-y-1">
+                            <span class="text-xs font-mono text-zinc-400">Eslogan</span>
+                            <div class={colorRowClass}>
+                              <input
+                                type="color"
+                                id="marca-home-eslogan-color-picker"
+                                value={marca.home_eslogan_color || marca.home_subtitulo_color || '#e5e7eb'}
+                                class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                              />
+                              <input
+                                type="text"
+                                id="marca-home-eslogan-color"
+                                name="eslogan_color"
+                                value={marca.home_eslogan_color}
+                                placeholder={marca.home_subtitulo_color || '#e5e7eb'}
+                                spellcheck="false"
+                                class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                              />
+                            </div>
+                          </label>
+
+                          <label class="block min-w-0 space-y-1">
+                            <span class="text-xs font-mono text-zinc-400">Botones</span>
+                            <div class={colorRowClass}>
+                              <input
+                                type="color"
+                                id="marca-home-menu-color-picker"
+                                value={marca.home_menu_color || marca.color_texto || '#ffffff'}
+                                class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                              />
+                              <input
+                                type="text"
+                                id="marca-home-menu-color"
+                                name="menu_color"
+                                value={marca.home_menu_color}
+                                placeholder={marca.color_texto || '#ffffff'}
+                                spellcheck="false"
+                                class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                              />
+                            </div>
+                          </label>
+
+                          <label class="block min-w-0 space-y-1">
+                            <span class="text-xs font-mono text-zinc-400">Borde Destacado</span>
+                            <div class={colorRowClass}>
+                              <input
+                                type="color"
+                                id="marca-home-borde-destacado-color-picker"
+                                value={marca.home_borde_destacado_color || marca.color_primario || '#9f1239'}
+                                class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                              />
+                              <input
+                                type="text"
+                                id="marca-home-borde-destacado-color"
+                                name="borde_destacado_color"
+                                value={marca.home_borde_destacado_color}
+                                placeholder={marca.color_primario || '#9f1239'}
+                                spellcheck="false"
+                                class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                              />
+                            </div>
+                          </label>
+                        </div>
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Logo URL</span>
                           <input
                             type="url"
                             id="marca-logo-url"
@@ -776,10 +1159,39 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                             value={marca.logo_url}
                             placeholder="https://…"
                             class={fieldClass}
+                            data-logo-url-input
                           />
                         </label>
-                        <label class="block w-full space-y-2 md:w-1/3">
-                          <span class={labelClass}>Eslogan principal</span>
+                      </div>
+
+                      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Tagline Superior</span>
+                          <input
+                            type="text"
+                            id="marca-tagline-superior"
+                            name="tagline_superior"
+                            value={marca.tagline_superior}
+                            placeholder="Experiencia · Temporada"
+                            class={fieldClass}
+                          />
+                        </label>
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Título Principal</span>
+                          <input
+                            type="text"
+                            id="marca-nombre-comercial"
+                            name="nombre_comercial"
+                            value={marca.nombre_comercial}
+                            placeholder={nombre}
+                            class={fieldClass}
+                          />
+                        </label>
+                      </div>
+
+                      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Eslogan</span>
                           <input
                             type="text"
                             id="marca-eslogan"
@@ -789,24 +1201,19 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                             class={fieldClass}
                           />
                         </label>
-                      </div>
-
-                      {/* Fila 2: ADN + Tipografía global */}
-                      <div class="grid gap-5 md:grid-cols-2">
-                        <label class="block space-y-2">
-                          <span class={labelClass}>Estilo ADN</span>
-                          <select id="marca-estilo-adn" name="estilo_adn" class={fieldClass}>
-                            <option value="elegant" selected={marca.estilo_adn === 'elegant'}>Elegant</option>
-                            <option value="modern" selected={marca.estilo_adn === 'modern'}>Modern</option>
-                            <option value="retro" selected={marca.estilo_adn === 'retro'}>Retro</option>
-                          </select>
-                        </label>
-                        <label class="block space-y-2">
-                          <span class={labelClass}>Tipografía Global</span>
-                          <select id="marca-tipo-letra" name="tipo_letra" class={fieldClass}>
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Combo Tipográfico</span>
+                          <select
+                            id="marca-tipografia-combo"
+                            name="tipografia_combo"
+                            class={fieldClass}
+                          >
                             {
                               GLOBAL_FONT_OPTIONS.map((opt) => (
-                                <option value={opt.value} selected={marca.tipo_letra === opt.value}>
+                                <option
+                                  value={opt.value}
+                                  selected={marca.tipografia_combo === opt.value}
+                                >
                                   {opt.label}
                                 </option>
                               ))
@@ -815,16 +1222,171 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                         </label>
                       </div>
 
-                      {/* Fila 3: Colores 50/50 */}
-                      <div class="grid gap-5 md:grid-cols-2">
-                        <label class="block space-y-2">
-                          <span class={labelClass}>Color primario</span>
-                          <div class="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/35 p-2">
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Tracking Botonera</span>
+                        <select id="marca-home-tracking" name="home_tracking" class={fieldClass}>
+                          <option value="tracking-normal" selected={marca.home_tracking === 'tracking-normal'}>
+                            Compacto
+                          </option>
+                          <option value="tracking-wider" selected={marca.home_tracking === 'tracking-wider'}>
+                            Normal
+                          </option>
+                          <option value="tracking-widest" selected={marca.home_tracking === 'tracking-widest'}>
+                            Amplio
+                          </option>
+                          <option value="tracking-[0.3em]" selected={marca.home_tracking === 'tracking-[0.3em]'}>
+                            Editorial
+                          </option>
+                        </select>
+                      </label>
+                    </section>
+
+                    {/* CARD 3 — Atmósfera & Overlays */}
+                    <section class={studioCardClass} aria-labelledby="marca-sec-atmosfera-visual">
+                      <p id="marca-sec-atmosfera-visual" class={labelClass}>Atmósfera &amp; Overlays</p>
+
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Tipo Fondo</span>
+                        <select
+                          id="marca-fondo-home-tipo"
+                          name="fondo_home_tipo"
+                          data-fondo-tipo="home"
+                          data-fondo-valor-target="marca-fondo-home-valor"
+                          class={fieldClass}
+                        >
+                          <option value="color" selected={marca.fondo_home_tipo === 'color'}>Color</option>
+                          <option value="image" selected={marca.fondo_home_tipo === 'image'}>Imagen</option>
+                          <option value="carrusel" selected={marca.fondo_home_tipo === 'carrusel'}>Carrusel</option>
+                          <option value="video" selected={marca.fondo_home_tipo === 'video'}>Video</option>
+                        </select>
+                      </label>
+
+                      <label class="block space-y-1.5" for="marca-fondo-home-valor">
+                        <span class={labelClass} data-fondo-valor-label="home">
+                          {marca.fondo_home_tipo === 'carrusel'
+                            ? 'Fondo Valor (URLs)'
+                            : marca.fondo_home_tipo === 'video'
+                              ? 'Media URL'
+                              : marca.fondo_home_tipo === 'image'
+                                ? 'Media URL'
+                                : 'Fondo Valor'}
+                        </span>
+                        <textarea
+                          id="marca-fondo-home-valor"
+                          name="fondo_home_valor"
+                          rows={marca.fondo_home_tipo === 'carrusel' ? 3 : 2}
+                          placeholder={
+                            marca.fondo_home_tipo === 'carrusel'
+                              ? 'https://…/foto1.jpg\nhttps://…/foto2.jpg'
+                              : marca.fondo_home_tipo === 'video'
+                                ? 'https://…/video.mp4'
+                                : marca.fondo_home_tipo === 'image'
+                                  ? 'https://…/imagen.jpg'
+                                  : '#0a0a0a'
+                          }
+                          class={`${fieldClass} min-h-[2.5rem] resize-y leading-relaxed`}
+                        >{marca.fondo_home_valor}</textarea>
+                      </label>
+
+                      <label class="block space-y-1.5" for="marca-home-overlay-estilo">
+                        <span class={labelClass}>Overlay Estilo</span>
+                        <select
+                          id="marca-home-overlay-estilo"
+                          name="home_overlay_estilo"
+                          data-overlay-estilo-home
+                          class={fieldClass}
+                        >
+                          <option value="puro" selected={marca.home_overlay_estilo === 'puro'}>
+                            Puro
+                          </option>
+                          <option value="gradiente" selected={marca.home_overlay_estilo === 'gradiente'}>
+                            Gradiente
+                          </option>
+                          <option value="vineta" selected={marca.home_overlay_estilo === 'vineta'}>
+                            Viñeta
+                          </option>
+                          <option value="oscuro" selected={marca.home_overlay_estilo === 'oscuro' || !marca.home_overlay_estilo}>
+                            Oscuro
+                          </option>
+                          <option value="cinematico" selected={marca.home_overlay_estilo === 'cinematico'}>
+                            Cinemático
+                          </option>
+                        </select>
+                      </label>
+
+                      <div
+                        class="space-y-1.5"
+                        data-overlay-oscuro-controls
+                        hidden={
+                          marca.home_overlay_estilo !== 'oscuro' &&
+                          marca.home_overlay_estilo !== 'cinematico' &&
+                          Boolean(marca.home_overlay_estilo)
+                        }
+                      >
+                        <label class="block space-y-1.5" for="marca-home-overlay-opacity">
+                          <span class={labelClass}>Opacidad Overlay</span>
+                          <div class="flex items-center gap-2">
+                            <input
+                              type="range"
+                              min={HOME_PX_RANGES.overlay.min}
+                              max={HOME_PX_RANGES.overlay.max}
+                              step="1"
+                              value={marca.home_overlay_opacity}
+                              data-px-slider-for="marca-home-overlay-opacity"
+                              class="min-w-0 flex-1 accent-white"
+                              aria-label="Opacidad Overlay"
+                            />
+                            <input
+                              type="number"
+                              id="marca-home-overlay-opacity"
+                              name="home_overlay_opacity"
+                              value={marca.home_overlay_opacity}
+                              min={HOME_PX_RANGES.overlay.min}
+                              max={HOME_PX_RANGES.overlay.max}
+                              step="1"
+                              inputmode="numeric"
+                              class={`${fieldClass} w-16 shrink-0 tabular-nums`}
+                            />
+                            <span class="shrink-0 text-[0.65rem] font-semibold text-zinc-500">%</span>
+                          </div>
+                        </label>
+                      </div>
+                    </section>
+
+                    {/* CARD 4 — Colores (restantes) */}
+                    <section class={studioCardClass} aria-labelledby="marca-sec-colores">
+                      <p id="marca-sec-colores" class={labelClass}>Colores</p>
+
+                      <div class="grid grid-cols-2 gap-2 rounded-xl border border-white/5 bg-zinc-900/40 p-2.5">
+                        <label class="block min-w-0 space-y-1">
+                          <span class="text-xs font-mono text-zinc-400">Subtexto</span>
+                          <div class={colorRowClass}>
+                            <input
+                              type="color"
+                              id="marca-home-subtexto-color-picker"
+                              value={marca.home_subtexto_color || marca.color_primario || '#9f1239'}
+                              class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              id="marca-home-subtexto-color"
+                              name="subtexto_color"
+                              value={marca.home_subtexto_color}
+                              placeholder={marca.color_primario || '#9f1239'}
+                              spellcheck="false"
+                              class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                            />
+                          </div>
+                        </label>
+
+                        <label class="block min-w-0 space-y-1">
+                          <span class="text-xs font-mono text-zinc-400">Primario</span>
+                          <div class={colorRowClass}>
                             <input
                               type="color"
                               id="marca-color-primario-picker"
                               value={marca.color_primario}
-                              class="h-10 w-12 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent"
+                              class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
                             />
                             <input
                               type="text"
@@ -833,262 +1395,162 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               value={marca.color_primario}
                               placeholder="#9f1239"
                               spellcheck="false"
-                              class="glass-field min-w-0 flex-1 border-0 bg-transparent px-1 py-2 font-mono text-sm uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
-                            />
-                          </div>
-                        </label>
-                        <label class="block space-y-2">
-                          <span class={labelClass}>Color de texto</span>
-                          <div class="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/35 p-2">
-                            <input
-                              type="color"
-                              id="marca-color-texto-picker"
-                              value={marca.color_texto}
-                              class="h-10 w-12 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent"
-                            />
-                            <input
-                              type="text"
-                              id="marca-color-texto"
-                              name="color_texto"
-                              value={marca.color_texto}
-                              placeholder="#ffffff"
-                              spellcheck="false"
-                              class="glass-field min-w-0 flex-1 border-0 bg-transparent px-1 py-2 font-mono text-sm uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
+                              class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-300 outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-zinc-600"
                             />
                           </div>
                         </label>
                       </div>
+                      <input
+                        type="hidden"
+                        id="marca-color-texto"
+                        name="color_texto"
+                        value={marca.color_texto || '#ffffff'}
+                      />
+                    </section>
 
-                      {/* Fila 4: Fondo home */}
-                      <div class="grid gap-5 md:grid-cols-2">
-                        <label class="block space-y-2">
-                          <span class={labelClass}>Tipo de fondo (Home)</span>
-                          <select
-                            id="marca-fondo-home-tipo"
-                            name="fondo_home_tipo"
-                            data-fondo-tipo="home"
-                            class={fieldClass}
-                          >
-                            <option value="color" selected={marca.fondo_home_tipo === 'color'}>Color</option>
-                            <option value="image" selected={marca.fondo_home_tipo === 'image'}>Imagen</option>
-                            <option value="video" selected={marca.fondo_home_tipo === 'video'}>Video</option>
-                          </select>
-                        </label>
-                        <label class="block space-y-2">
-                          <span class={labelClass}>Valor del fondo (HEX o URL)</span>
+                    {/* CARD — Escalas de Tipografía y Logo (sizes only; public Home uses flex, no X/Y) */}
+                    <section
+                      class={`${studioCardClass} lg:col-span-3`}
+                      aria-labelledby="marca-sec-escalas"
+                    >
+                      <p id="marca-sec-escalas" class={labelClass}>Escalas de Tipografía y Logo</p>
+                      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {
+                          [
+                            {
+                              id: 'marca-home-logo-size',
+                              name: 'logo_size',
+                              label: 'Logo',
+                              value: marca.home_logo_size,
+                              min: HOME_PX_RANGES.logo.min,
+                              max: HOME_PX_RANGES.logo.max,
+                            },
+                            {
+                              id: 'marca-home-titulo-size',
+                              name: 'titulo_size',
+                              label: 'Título',
+                              value: marca.home_titulo_size,
+                              min: HOME_PX_RANGES.titulo.min,
+                              max: HOME_PX_RANGES.titulo.max,
+                            },
+                            {
+                              id: 'marca-home-eslogan-size',
+                              name: 'eslogan_size',
+                              label: 'Eslogan',
+                              value: marca.home_eslogan_size,
+                              min: HOME_PX_RANGES.eslogan.min,
+                              max: HOME_PX_RANGES.eslogan.max,
+                            },
+                            {
+                              id: 'marca-home-menu-size',
+                              name: 'menu_size',
+                              label: 'Menú',
+                              value: marca.home_menu_size,
+                              min: HOME_PX_RANGES.menu.min,
+                              max: HOME_PX_RANGES.menu.max,
+                            },
+                          ].map((field) => (
+                            <label class="block space-y-1.5" for={field.id}>
+                              <span class={labelClass}>{field.label}</span>
+                              <div class="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  id={field.id}
+                                  name={field.name}
+                                  value={field.value}
+                                  min={field.min}
+                                  max={field.max}
+                                  step="1"
+                                  inputmode="numeric"
+                                  class={`${fieldClass} max-w-[5.5rem] shrink-0 tabular-nums`}
+                                />
+                                <span class="text-[0.65rem] tabular-nums text-zinc-600">px</span>
+                              </div>
+                              <input
+                                type="range"
+                                min={field.min}
+                                max={field.max}
+                                step="1"
+                                value={field.value}
+                                data-px-slider-for={field.id}
+                                class="w-full accent-white"
+                                aria-label={`${field.label} tamaño`}
+                              />
+                            </label>
+                          ))
+                        }
+                      </div>
+                    </section>
+
+                    {/* Meta / CSS — full width */}
+                    <section class={`${studioCardClass} lg:col-span-3`} aria-labelledby="marca-sec-atmosfera">
+                      <p id="marca-sec-atmosfera" class={labelClass}>Share &amp; CSS</p>
+                      <div class="grid gap-3 md:grid-cols-2">
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Meta Image</span>
                           <input
-                            type="text"
-                            id="marca-fondo-home-valor"
-                            name="fondo_home_valor"
-                            value={marca.fondo_home_valor}
-                            placeholder="#0a0a0a o https://…"
+                            type="url"
+                            id="marca-share-image-url"
+                            name="share_image_url"
+                            value={marca.share_image_url}
+                            placeholder="https://…"
                             class={fieldClass}
                           />
                         </label>
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Ícono PWA</span>
+                          <input
+                            type="url"
+                            id="marca-app-icon-url"
+                            name="app_icon_url"
+                            value={marca.app_icon_url}
+                            placeholder="https://…"
+                            class={fieldClass}
+                          />
+                        </label>
+                        <label class="block space-y-1.5 md:col-span-2">
+                          <span class={labelClass}>CSS Avanzado</span>
+                          <textarea
+                            id="marca-css-avanzado"
+                            name="css_avanzado"
+                            rows="5"
+                            spellcheck="false"
+                            placeholder={'.restaurant-app {\n  /* overrides */\n}'}
+                            class={`${fieldClass} leading-relaxed`}
+                          >{marca.css_avanzado}</textarea>
+                        </label>
                       </div>
-
-                      {/* Escalas tipográficas Home */}
-                      <div class="border-t border-white/8 pt-5">
-                        <p class={`${labelClass} mb-4`}>Escalas del Home</p>
-                        <div class="grid gap-6 md:grid-cols-3">
-                          <label class="block space-y-3">
-                            <div class="flex items-end justify-between gap-2">
-                              <span class={labelClass}>Tamaño del título</span>
-                              <span
-                                class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400"
-                                data-scale-label
-                                data-for="marca-home-titulo-size"
-                              >
-                                {['', 'XS', 'SM', 'MD', 'LG', 'XL'][marca.home_titulo_size] || 'MD'}
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              id="marca-home-titulo-size"
-                              name="home_titulo_size"
-                              min="1"
-                              max="5"
-                              step="1"
-                              value={marca.home_titulo_size}
-                              class="marca-scale-slider w-full"
-                              data-scale-slider
-                            />
-                            <div class="flex justify-between text-[0.5rem] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                              <span>XS</span><span>SM</span><span>MD</span><span>LG</span><span>XL</span>
-                            </div>
-                          </label>
-
-                          <label class="block space-y-3">
-                            <div class="flex items-end justify-between gap-2">
-                              <span class={labelClass}>Tamaño del logo</span>
-                              <span
-                                class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400"
-                                data-scale-label
-                                data-for="marca-home-logo-size"
-                              >
-                                {['', 'XS', 'SM', 'MD', 'LG', 'XL'][marca.home_logo_size] || 'MD'}
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              id="marca-home-logo-size"
-                              name="home_logo_size"
-                              min="1"
-                              max="5"
-                              step="1"
-                              value={marca.home_logo_size}
-                              class="marca-scale-slider w-full"
-                              data-scale-slider
-                            />
-                            <div class="flex justify-between text-[0.5rem] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                              <span>XS</span><span>SM</span><span>MD</span><span>LG</span><span>XL</span>
-                            </div>
-                          </label>
-
-                          <label class="block space-y-3">
-                            <div class="flex items-end justify-between gap-2">
-                              <span class={labelClass}>Tamaño del eslogan</span>
-                              <span
-                                class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-400"
-                                data-scale-label
-                                data-for="marca-home-eslogan-size"
-                              >
-                                {['', 'XS', 'SM', 'MD', 'LG', 'XL'][marca.home_eslogan_size] || 'MD'}
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              id="marca-home-eslogan-size"
-                              name="home_eslogan_size"
-                              min="1"
-                              max="5"
-                              step="1"
-                              value={marca.home_eslogan_size}
-                              class="marca-scale-slider w-full"
-                              data-scale-slider
-                            />
-                            <div class="flex justify-between text-[0.5rem] font-medium uppercase tracking-[0.12em] text-zinc-600">
-                              <span>XS</span><span>SM</span><span>MD</span><span>LG</span><span>XL</span>
-                            </div>
-                          </label>
-                        </div>
-
-                        <div class="mt-5 grid gap-5 md:grid-cols-2">
-                          <label class="block space-y-2">
-                            <span class={labelClass}>Espaciado de letras</span>
-                            <select id="marca-home-tracking" name="home_tracking" class={fieldClass}>
-                              <option value="tracking-normal" selected={marca.home_tracking === 'tracking-normal'}>Compacto</option>
-                              <option value="tracking-wider" selected={marca.home_tracking === 'tracking-wider'}>Amplio</option>
-                              <option value="tracking-widest" selected={marca.home_tracking === 'tracking-widest'}>Muy amplio</option>
-                              <option value="tracking-[0.3em]" selected={marca.home_tracking === 'tracking-[0.3em]'}>Editorial</option>
-                            </select>
-                          </label>
-                          <label class="block space-y-2">
-                            <span class={labelClass}>Color de subtítulos</span>
-                            <div class="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/35 p-2">
-                              <input
-                                type="color"
-                                id="marca-home-subtitulo-color-picker"
-                                value={marca.home_subtitulo_color || '#9f1239'}
-                                class="h-10 w-12 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent"
-                              />
-                              <input
-                                type="text"
-                                id="marca-home-subtitulo-color"
-                                name="home_subtitulo_color"
-                                value={marca.home_subtitulo_color}
-                                placeholder="#9f1239"
-                                spellcheck="false"
-                                class="glass-field min-w-0 flex-1 border-0 bg-transparent px-1 py-2 font-mono text-sm uppercase tracking-wide text-zinc-300 outline-none placeholder:text-zinc-600"
-                              />
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Atmosfera compartido */}
-                      <div class="border-t border-white/8 pt-5">
-                        <p class={`${labelClass} mb-1`}>Atmósfera de Compartido y Descarga</p>
-                        <p class="mb-4 text-sm text-zinc-500">
-                          Metadatos para WhatsApp / redes y el icono al añadir la WebApp al inicio.
-                        </p>
-                        <div class="grid gap-5 md:grid-cols-2">
-                          <label class="block space-y-2">
-                            <span class={labelClass}>URL de Imagen para Compartir</span>
-                            <input
-                              type="url"
-                              id="marca-share-image-url"
-                              name="share_image_url"
-                              value={marca.share_image_url}
-                              placeholder="https://… (og:image / WhatsApp)"
-                              class={fieldClass}
-                            />
-                          </label>
-                          <label class="block space-y-2">
-                            <span class={labelClass}>URL del Icono de la Aplicación</span>
-                            <input
-                              type="url"
-                              id="marca-app-icon-url"
-                              name="app_icon_url"
-                              value={marca.app_icon_url}
-                              placeholder="https://… (PWA / apple-touch-icon)"
-                              class={fieldClass}
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* CSS avanzado */}
-                      <label class="block space-y-2">
-                        <span class={labelClass}>CSS avanzado global</span>
-                        <textarea
-                          id="marca-custom-css"
-                          name="custom_css"
-                          rows="7"
-                          spellcheck="false"
-                          placeholder={'.restaurant-app {\n  /* tokens y overrides scoped */\n}'}
-                          class={`${fieldClass} font-mono text-[12px] leading-relaxed`}
-                        >{marca.custom_css}</textarea>
-                      </label>
-                    </div>
+                    </section>
+                    </div>{/* /home controls */}
                   </div>
 
                   {/* —— NOSOTROS —— */}
-                  <div data-marca-panel="nosotros" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
-                    <div>
-                      <p class={labelClass}>Sección Nosotros</p>
-                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
-                        Bloques editoriales
-                      </h3>
-                      <p class="mt-2 text-sm leading-relaxed text-zinc-500">
-                        Cada bloque combina título, texto, media y alineación. Se guardan en
-                        <span class="font-mono text-zinc-400"> nosotros_bloques</span>.
-                      </p>
-                    </div>
+                  <div data-marca-panel="nosotros" class={`${studioCardClass} space-y-4`} hidden>
+                    <p class={labelClass}>Nosotros</p>
 
-                    <div class="grid gap-5 lg:grid-cols-2">
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Tipo de fondo (sección)</span>
+                    <div class="grid gap-3 lg:grid-cols-2">
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Tipo de fondo</span>
                         <select id="marca-fondo-nosotros-tipo" name="fondo_nosotros_tipo" class={fieldClass}>
                           <option value="color" selected={marca.fondo_nosotros_tipo === 'color'}>Color</option>
                           <option value="image" selected={marca.fondo_nosotros_tipo === 'image'}>Imagen</option>
                           <option value="video" selected={marca.fondo_nosotros_tipo === 'video'}>Video</option>
                         </select>
                       </label>
-                      <label class="block space-y-2">
+                      <label class="block space-y-1.5">
                         <span class={labelClass}>Valor del fondo</span>
                         <input type="text" id="marca-fondo-nosotros-valor" name="fondo_nosotros_valor" value={marca.fondo_nosotros_valor} placeholder="#0a0a0a o https://…" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Color de Fondo del Contenedor</span>
-                        <input type="text" id="marca-nosotros-color-fondo" name="nosotros_color_fondo" value={marca.nosotros_color_fondo} placeholder="#0a0a0a (opcional)" class={fieldClass} />
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Color Fondo Contenedor</span>
+                        <input type="text" id="marca-nosotros-color-fondo" name="nosotros_color_fondo" value={marca.nosotros_color_fondo} placeholder="#0a0a0a" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Color de Texto de los Títulos</span>
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Color Títulos</span>
                         <input type="text" id="marca-nosotros-color-titulo" name="nosotros_color_titulo" value={marca.nosotros_color_titulo} placeholder="#ffffff" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2 lg:col-span-2">
-                        <span class={labelClass}>Color del Texto del Cuerpo</span>
+                      <label class="block space-y-1.5 lg:col-span-2">
+                        <span class={labelClass}>Color Cuerpo</span>
                         <input type="text" id="marca-nosotros-color-cuerpo" name="nosotros_color_cuerpo" value={marca.nosotros_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
                       </label>
                     </div>
@@ -1150,61 +1612,56 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   </div>
 
                   {/* —— SECCIÓN MENÚ —— */}
-                  <div data-marca-panel="menu" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
-                    <div>
-                      <p class={labelClass}>Menú</p>
-                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
-                        Menú
-                      </h3>
-                    </div>
+                  <div data-marca-panel="menu" class={`${studioCardClass} space-y-4`} hidden>
+                    <p class={labelClass}>Menú</p>
 
-                    <div class="grid gap-5 lg:grid-cols-2">
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Fondo global · tipo</span>
+                    <div class="grid gap-3 lg:grid-cols-2">
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Fondo · tipo</span>
                         <select id="marca-fondo-menu-tipo" name="fondo_menu_tipo" class={fieldClass}>
                           <option value="color" selected={marca.fondo_menu_tipo === 'color'}>Color</option>
                           <option value="image" selected={marca.fondo_menu_tipo === 'image'}>Imagen</option>
                           <option value="video" selected={marca.fondo_menu_tipo === 'video'}>Video</option>
                         </select>
                       </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Fondo global · valor</span>
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Fondo · valor</span>
                         <input type="text" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} placeholder="#0a0a0a o https://…" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2 lg:col-span-2">
-                        <span class={labelClass}>Estilo de Tipografía del Menú</span>
+                      <label class="block space-y-1.5 lg:col-span-2">
+                        <span class={labelClass}>Tipografía Menú</span>
                         <select id="marca-menu-font" name="menu_font" class={fieldClass}>
                           <option value="elegant" selected={marca.menu_font === 'elegant'}>
-                            Elegante / Alta Cocina
+                            Elegante
                           </option>
                           <option value="modern" selected={marca.menu_font === 'modern'}>
-                            Moderna / Minimalista
+                            Moderna
                           </option>
                           <option value="urban" selected={marca.menu_font === 'urban'}>
-                            Urbana / Street Food
+                            Urbana
                           </option>
                         </select>
                       </label>
                     </div>
 
-                    <div class="border-t border-white/8 pt-5 space-y-4">
+                    <div class="border-t border-white/5 pt-3 space-y-3">
                       <p class={labelClass}>Fondos por categoría</p>
                       {
                         categorias.length === 0 ? (
-                          <p class="text-sm text-zinc-500">Aún no hay categorías en el menú.</p>
+                          <p class="text-xs text-zinc-600">Sin categorías</p>
                         ) : (
-                          <div class="space-y-3" id="categorias-fondos-list">
+                          <div class="space-y-2" id="categorias-fondos-list">
                             {categorias.map((cat) => (
                               <div
-                                class="grid gap-3 rounded-xl border border-white/10 bg-black/25 p-4 sm:grid-cols-[1fr_8rem_1fr] sm:items-end"
+                                class="grid gap-2 rounded-lg border border-white/5 bg-zinc-950/50 p-2.5 sm:grid-cols-[1fr_7rem_1fr] sm:items-end"
                                 data-cat-fondo
                                 data-cat-id={cat.id}
                               >
                                 <div class="min-w-0">
-                                  <p class="truncate text-sm font-medium text-zinc-200">{cat.nombre}</p>
-                                  <p class="mt-0.5 font-mono text-[0.65rem] text-zinc-600">#{cat.id}</p>
+                                  <p class="truncate text-xs font-medium text-zinc-200">{cat.nombre}</p>
+                                  <p class="mt-0.5 font-mono text-[0.6rem] text-zinc-600">#{cat.id}</p>
                                 </div>
-                                <label class="block space-y-1.5">
+                                <label class="block space-y-1">
                                   <span class={labelClass}>Tipo</span>
                                   <select data-cat-bg-type class={fieldClass}>
                                     <option value="color" selected={(cat.bg_type || 'color') === 'color'}>Color</option>
@@ -1212,13 +1669,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                                     <option value="video" selected={cat.bg_type === 'video'}>Video</option>
                                   </select>
                                 </label>
-                                <label class="block space-y-1.5">
+                                <label class="block space-y-1">
                                   <span class={labelClass}>Valor</span>
                                   <input
                                     type="text"
                                     data-cat-bg-valor
                                     value={cat.bg_valor || ''}
-                                    placeholder="Heredar global o HEX/URL"
+                                    placeholder="HEX/URL"
                                     class={fieldClass}
                                   />
                                 </label>
@@ -1231,79 +1688,84 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   </div>
 
                   {/* —— HORARIOS & UBICACIÓN —— */}
-                  <div data-marca-panel="ubicacion" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
-                    <div>
-                      <p class={labelClass}>Horarios &amp; Ubicación</p>
-                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
-                        Datos públicos y redes
-                      </h3>
-                    </div>
+                  <div data-marca-panel="ubicacion" class={`${studioCardClass} space-y-4`} hidden>
+                    <p class={labelClass}>Horarios &amp; Ubicación</p>
 
-                    <div class="grid gap-5 lg:grid-cols-2">
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Fondo Ubicación · tipo</span>
+                    <label class="block max-w-md space-y-1.5">
+                      <span class={labelClass}>Plantilla Ubicación</span>
+                      <select
+                        id="marca-ubicacion-theme"
+                        name="ubicacion_theme"
+                        class={fieldClass}
+                      >
+                        <option value="modal" selected={marca.ubicacion_theme === 'modal'}>
+                          Modal / Drawer
+                        </option>
+                        <option value="split" selected={marca.ubicacion_theme === 'split'}>
+                          Split Map + tabs
+                        </option>
+                      </select>
+                    </label>
+
+                    <div class="grid gap-3 lg:grid-cols-2">
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Fondo · tipo</span>
                         <select id="marca-fondo-ubicacion-tipo" name="fondo_ubicacion_tipo" class={fieldClass}>
                           <option value="color" selected={marca.fondo_ubicacion_tipo === 'color'}>Color</option>
                           <option value="image" selected={marca.fondo_ubicacion_tipo === 'image'}>Imagen</option>
                           <option value="video" selected={marca.fondo_ubicacion_tipo === 'video'}>Video</option>
                         </select>
                       </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Fondo Ubicación · valor</span>
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Fondo · valor</span>
                         <input type="text" id="marca-fondo-ubicacion-valor" name="fondo_ubicacion_valor" value={marca.fondo_ubicacion_valor} class={fieldClass} />
                       </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Color de Fondo del Contenedor</span>
-                        <input type="text" id="marca-ubicacion-color-fondo" name="ubicacion_color_fondo" value={marca.ubicacion_color_fondo} placeholder="#0a0a0a (opcional)" class={fieldClass} />
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Color Fondo</span>
+                        <input type="text" id="marca-ubicacion-color-fondo" name="ubicacion_color_fondo" value={marca.ubicacion_color_fondo} placeholder="#0a0a0a" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Color de Texto de los Títulos</span>
+                      <label class="block space-y-1.5">
+                        <span class={labelClass}>Color Títulos</span>
                         <input type="text" id="marca-ubicacion-color-titulo" name="ubicacion_color_titulo" value={marca.ubicacion_color_titulo} placeholder="#ffffff" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2 lg:col-span-2">
-                        <span class={labelClass}>Color del Texto del Cuerpo</span>
+                      <label class="block space-y-1.5 lg:col-span-2">
+                        <span class={labelClass}>Color Cuerpo</span>
                         <input type="text" id="marca-ubicacion-color-cuerpo" name="ubicacion_color_cuerpo" value={marca.ubicacion_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2 lg:col-span-2">
+                      <label class="block space-y-1.5 lg:col-span-2">
                         <span class={labelClass}>Dirección</span>
                         <input type="text" id="marca-direccion" name="direccion" value={marca.direccion} class={fieldClass} />
                       </label>
-                      <label class="block space-y-2 lg:col-span-2">
-                        <span class={labelClass}>Coordenadas Google Maps</span>
+                      <label class="block space-y-1.5 lg:col-span-2">
+                        <span class={labelClass}>Coordenadas Maps</span>
                         <input type="url" id="marca-coordenadas" name="coordenadas_maps" value={marca.coordenadas_maps} placeholder="https://maps.google.com/…" class={fieldClass} />
                       </label>
-                      <label class="block space-y-2 lg:col-span-2">
-                        <span class={labelClass}>Horarios (una línea por franja)</span>
-                        <textarea id="marca-horarios" name="horarios" rows="4" spellcheck="false" placeholder={'Lunes a Viernes: 12:00 – 22:00\nSábado: 12:00 – 23:00'} class={`${fieldClass} font-mono text-[13px]`}>{marca.horarios}</textarea>
+                      <label class="block space-y-1.5 lg:col-span-2">
+                        <span class={labelClass}>Horarios</span>
+                        <textarea id="marca-horarios" name="horarios" rows="3" spellcheck="false" placeholder={'Lunes a Viernes: 12:00 – 22:00\nSábado: 12:00 – 23:00'} class={fieldClass}>{marca.horarios}</textarea>
                       </label>
-                      <label class="block space-y-2">
+                      <label class="block space-y-1.5">
                         <span class={labelClass}>WhatsApp</span>
                         <input type="text" id="marca-whatsapp" name="whatsapp_url" value={marca.whatsapp_url} placeholder="+58…" class={fieldClass} />
                       </label>
                     </div>
 
-                    <div class="border-t border-white/8 pt-5 space-y-4">
-                      <div>
-                        <p class={labelClass}>Redes Sociales Activas</p>
-                        <p class="mt-1.5 text-sm text-zinc-500">
-                          Array dinámico (<span class="font-mono text-zinc-400">redes_sociales</span>). Solo
-                          las URLs con valor se muestran en la WebApp con su logo.
-                        </p>
-                      </div>
-                      <div class="grid gap-5 lg:grid-cols-2">
-                        <label class="block space-y-2">
+                    <div class="border-t border-white/5 pt-3 space-y-3">
+                      <p class={labelClass}>Redes Sociales</p>
+                      <div class="grid gap-3 lg:grid-cols-2">
+                        <label class="block space-y-1.5">
                           <span class={labelClass}>Instagram</span>
                           <input type="url" id="marca-redes-instagram" name="redes_instagram" value={marca.redes_instagram} placeholder="https://instagram.com/…" class={fieldClass} />
                         </label>
-                        <label class="block space-y-2">
+                        <label class="block space-y-1.5">
                           <span class={labelClass}>Facebook</span>
                           <input type="url" id="marca-redes-facebook" name="redes_facebook" value={marca.redes_facebook} placeholder="https://facebook.com/…" class={fieldClass} />
                         </label>
-                        <label class="block space-y-2">
+                        <label class="block space-y-1.5">
                           <span class={labelClass}>TikTok</span>
                           <input type="url" id="marca-redes-tiktok" name="redes_tiktok" value={marca.redes_tiktok} placeholder="https://tiktok.com/@…" class={fieldClass} />
                         </label>
-                        <label class="block space-y-2">
+                        <label class="block space-y-1.5">
                           <span class={labelClass}>TripAdvisor</span>
                           <input type="url" id="marca-redes-tripadvisor" name="redes_tripadvisor" value={marca.redes_tripadvisor} placeholder="https://tripadvisor.com/…" class={fieldClass} />
                         </label>
@@ -1312,11 +1774,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   </div>
 
                   {/* —— RESERVAS —— */}
-                  <div data-marca-panel="reservas" class="glass-panel space-y-5 p-6 lg:p-7" hidden>
-                    <div>
-                      <p class={labelClass}>Sección Reservas</p>
-                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">CTA Carrd en Home</h3>
-                    </div>
+                  <div data-marca-panel="reservas" class={`${studioCardClass} space-y-4`} hidden>
+                    <p class={labelClass}>Reservas</p>
 
                     <label class="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5">
                       <span class="text-sm text-zinc-200">Activar botón de Reservas en Home</span>
@@ -1348,20 +1807,11 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   {/* —— GADGETS —— */}
                   <div
                     data-marca-panel="gadgets"
-                    class="glass-panel space-y-5 p-6 lg:p-7"
+                    class={`${studioCardClass} space-y-4`}
                     style={`--gadget-accent: ${marca.color_primario || '#9f1239'}`}
                     hidden
                   >
-                    <div>
-                      <p class={labelClass}>Gadgets / Herramientas</p>
-                      <h3 class="mt-2 font-blacksushi-display text-xl font-semibold tracking-tight">
-                        Catálogo de módulos
-                      </h3>
-                      <p class="mt-2 max-w-xl text-sm leading-relaxed text-zinc-500">
-                        Activa solo lo que necesitas en mesa. Cada módulo despliega su configuración al
-                        encenderlo.
-                      </p>
-                    </div>
+                    <p class={labelClass}>Gadgets</p>
 
                     <div class="gadget-catalog grid gap-4 sm:grid-cols-2">
                       {/* Wi‑Fi */}
@@ -1385,9 +1835,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                             </span>
                             <div class="min-w-0 pt-0.5">
                               <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Wi‑Fi invitados</h4>
-                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
-                                Muestra red y clave en la WebApp.
-                              </p>
                             </div>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Wi‑Fi">
@@ -1466,9 +1913,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                             </span>
                             <div class="min-w-0 pt-0.5">
                               <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Llamar mesero</h4>
-                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
-                                Botón de asistencia desde la mesa.
-                              </p>
                             </div>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Llamar mesero">
@@ -1520,9 +1964,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                             </span>
                             <div class="min-w-0 pt-0.5">
                               <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Pedir / Dividir cuenta</h4>
-                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
-                                Calculadora rápida para compartir el total.
-                              </p>
                             </div>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Pedir / Dividir cuenta">
@@ -1576,9 +2017,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               <h4 class="text-sm font-semibold tracking-tight text-zinc-100">
                                 Boutique / Tienda Playera
                               </h4>
-                              <p class="mt-1 text-xs leading-relaxed text-zinc-500">
-                                Bloque Carrd + modal con merch destacado (gorras, camisas, termos…).
-                              </p>
                             </div>
                           </div>
                           <label class="relative inline-flex shrink-0 cursor-pointer items-center">
@@ -1673,12 +2111,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                     </div>
                   </div>
 
-                  <div class="flex flex-wrap items-center gap-3 pb-2">
-                    <button type="submit" id="marca-save" class="admin-action-btn inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95 disabled:opacity-50">
-                      Guardar Configuración de Marca
-                    </button>
-                    <p id="marca-feedback" class="hidden text-xs text-zinc-500" role="status"></p>
-                  </div>
+                  <p id="marca-feedback" class="hidden text-xs text-zinc-500" role="status"></p>
                 </div>
               </div>
             </form>
@@ -1691,10 +2124,11 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
 
     <AdminXemillaMark />
+    </div>
 
     <div
       id="mesa-alertas-stack"
-      class="pointer-events-none fixed right-4 top-4 z-[90] flex w-[min(92vw,22rem)] flex-col gap-3"
+      class="pointer-events-none fixed right-4 top-20 z-[90] flex w-[min(92vw,22rem)] flex-col gap-3"
       aria-live="assertive"
       aria-relevant="additions"
     ></div>
@@ -1729,7 +2163,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   >
     <div
       data-modal-card
-      class="modal-card glass-panel relative w-full max-w-2xl overflow-hidden p-0 shadow-2xl"
+      class={`modal-card glass-panel ${bounceWallClass} w-full max-w-2xl overflow-hidden p-0 shadow-2xl`}
     >
       <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
         <h3 id="plato-modal-title" class="truncate font-blacksushi-display text-xl font-semibold">
@@ -1840,7 +2274,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     data-open="false"
     aria-hidden="true"
   >
-    <div data-modal-card class="modal-card glass-panel relative w-full max-w-lg overflow-hidden p-0 shadow-2xl">
+    <div data-modal-card class={`modal-card glass-panel ${bounceWallClass} w-full max-w-lg overflow-hidden p-0 shadow-2xl`}>
       <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
         <div class="min-w-0">
           <p class="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
@@ -1892,7 +2326,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       >
     <div
       data-modal-card
-      class="modal-card glass-panel relative w-full max-w-lg overflow-hidden p-0 shadow-2xl"
+      class={`modal-card glass-panel ${bounceWallClass} w-full max-w-lg overflow-hidden p-0 shadow-2xl`}
     >
       <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
         <div class="min-w-0">
@@ -2078,34 +2512,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     outline-offset: 2px;
   }
 
-  .marca-scale-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 0.35rem;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.12);
-    outline: none;
-    cursor: pointer;
-  }
-  .marca-scale-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 9999px;
-    background: #fff;
-    border: 0;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  }
-  .marca-scale-slider::-moz-range-thumb {
-    width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 9999px;
-    background: #fff;
-    border: 0;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  }
-
   /* Catálogo de gadgets (Lego modules) */
   .gadget-card.is-active,
   .gadget-card.gadget-card--on {
@@ -2228,24 +2634,20 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   }
 
   .dashboard-tab[aria-selected='true'] {
-    border-color: rgba(255, 255, 255, 0.15);
     background: #fff;
     color: #09090b;
   }
   .dashboard-tab[aria-selected='false'] {
-    border-color: rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    background: transparent;
     color: #a1a1aa;
   }
 
   .marca-subtab[aria-selected='true'] {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: #fff;
-    color: #09090b;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
   }
   .marca-subtab[aria-selected='false'] {
-    border-color: rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    background: transparent;
     color: #a1a1aa;
   }
 
@@ -2277,8 +2679,67 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 </style>
 
 <script>
+  /** @type {AbortController | null} */
+  let __dashboardAc = null;
+  /** @type {(() => void) | null} */
+  let __alertasCleanup = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let modalCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let descCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let nuevoCloseTimer = null;
+
+  function teardownAdminDashboard() {
+    __dashboardAc?.abort();
+    __dashboardAc = null;
+    __alertasCleanup?.();
+    __alertasCleanup = null;
+    if (modalCloseTimer) {
+      clearTimeout(modalCloseTimer);
+      modalCloseTimer = null;
+    }
+    if (descCloseTimer) {
+      clearTimeout(descCloseTimer);
+      descCloseTimer = null;
+    }
+    if (nuevoCloseTimer) {
+      clearTimeout(nuevoCloseTimer);
+      nuevoCloseTimer = null;
+    }
+  }
+
+  function initAdminDashboard() {
+    teardownAdminDashboard();
+
+  const ac = new AbortController();
+  __dashboardAc = ac;
+  const { signal } = ac;
+
   const root = document.getElementById('dashboard-root');
-  const restauranteId = root?.dataset.restauranteId || '';
+  const restauranteId = String(root?.dataset.restauranteId || '').trim();
+
+  // Clear stale context warning
+  document.getElementById('menu-context-warning')?.remove();
+  if (root && !restauranteId) {
+    const warn = document.createElement('div');
+    warn.id = 'menu-context-warning';
+    warn.className = 'mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200';
+    warn.setAttribute('role', 'alert');
+    warn.textContent =
+      'No hay restaurante activo (falta restaurante_id). Recargá el panel o volvé a entrar desde SuperAdmin.';
+    root.prepend(warn);
+    console.error('Error en menú:', new Error('restaurante_id ausente en dashboard-root'));
+  }
+
+  function requireRestauranteId() {
+    if (restauranteId) return true;
+    const msg = 'Restaurante no disponible (restaurante_id inválido).';
+    console.error('Error en menú:', new Error(msg));
+    if (typeof showToast === 'function') showToast(msg, 'error');
+    else alert(msg);
+    return false;
+  }
   const bulkText = document.getElementById('bulk-text');
   const bulkSubmit = document.getElementById('bulk-submit');
   const bulkFeedback = document.getElementById('bulk-feedback');
@@ -2398,7 +2859,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     tableWrap?.classList.toggle('hidden', !hasRows || visible === 0);
   }
 
-  searchInput?.addEventListener('input', applySearchFilter);
+  searchInput?.addEventListener('input', applySearchFilter, { signal });
 
   function isVideoUrl(url) {
     return /\.(mp4|webm|ogg)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
@@ -2494,13 +2955,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       input.disabled = false;
     }
   }
-
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let modalCloseTimer = null;
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let descCloseTimer = null;
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let nuevoCloseTimer = null;
 
   /**
    * @param {HTMLElement | null} overlay
@@ -2660,7 +3114,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       modalReplaceFile.value = '';
       if (modalReplaceLabel) modalReplaceLabel.innerHTML = REPLACE_LABEL_HTML;
     }
-  });
+  }, { signal });
 
   function openAttachModal(row) {
     activeMediaRow = row;
@@ -2734,19 +3188,19 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     );
   }
 
-  modalClose?.addEventListener('click', closeModal);
+  modalClose?.addEventListener('click', closeModal, { signal });
   modal?.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
-  });
-  descModalClose?.addEventListener('click', closeDescModal);
+  }, { signal });
+  descModalClose?.addEventListener('click', closeDescModal, { signal });
   descModal?.addEventListener('click', (e) => {
     if (e.target === descModal) closeDescModal();
-  });
+  }, { signal });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (descModal?.dataset.open === 'true') closeDescModal();
     else if (modal?.dataset.open === 'true') closeModal();
-  });
+  }, { signal });
 
   descModalSave?.addEventListener('click', async () => {
     if (!(activeDescRow instanceof HTMLElement)) return;
@@ -2804,7 +3258,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         descModalSave.textContent = 'Guardar';
       }
     }
-  });
+  }, { signal });
 
   document.getElementById('modal-attach-save')?.addEventListener('click', async () => {
     if (!(activeMediaRow instanceof HTMLElement)) return;
@@ -2855,7 +3309,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         saveBtn.textContent = 'Guardar media';
       }
     }
-  });
+  }, { signal });
 
   function buildRow(plato) {
     const tr = document.createElement('tr');
@@ -2921,29 +3375,36 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   bulkSubmit?.addEventListener('click', async () => {
     if (!(bulkSubmit instanceof HTMLButtonElement)) return;
-    const text = bulkText instanceof HTMLTextAreaElement ? bulkText.value : '';
-    bulkSubmit.disabled = true;
-    bulkSubmit.textContent = 'Procesando…';
-    setFeedback('Insertando menú…', true);
     try {
-      const res = await fetch('/api/bulk-insert-platos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurante_id: restauranteId, text }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'No se pudo insertar el menú.');
-      for (const plato of json.platos ?? []) tbody?.prepend(buildRow(plato));
-      refreshCount();
-      setFeedback(`Listo: ${json.count} plato(s) insertados.`, true);
-      if (bulkText instanceof HTMLTextAreaElement) bulkText.value = '';
+      if (!requireRestauranteId()) return;
+      const text = bulkText instanceof HTMLTextAreaElement ? bulkText.value : '';
+      bulkSubmit.disabled = true;
+      bulkSubmit.textContent = 'Procesando…';
+      setFeedback('Insertando menú…', true);
+      try {
+        const res = await fetch('/api/bulk-insert-platos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ restaurante_id: restauranteId, text }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'No se pudo insertar el menú.');
+        for (const plato of json.platos ?? []) tbody?.prepend(buildRow(plato));
+        refreshCount();
+        setFeedback(`Listo: ${json.count} plato(s) insertados.`, true);
+        if (bulkText instanceof HTMLTextAreaElement) bulkText.value = '';
+      } catch (err) {
+        console.error('Error en menú:', err);
+        setFeedback(err instanceof Error ? err.message : 'Error al insertar', false);
+      } finally {
+        bulkSubmit.disabled = false;
+        bulkSubmit.textContent = 'Procesar e Insertar Menú Completo';
+      }
     } catch (err) {
+      console.error('Error en menú:', err);
       setFeedback(err instanceof Error ? err.message : 'Error al insertar', false);
-    } finally {
-      bulkSubmit.disabled = false;
-      bulkSubmit.textContent = 'Procesar e Insertar Menú Completo';
     }
-  });
+  }, { signal });
 
   // ── Bulk panel toggle ──
   bulkToggle?.addEventListener('click', () => {
@@ -2953,7 +3414,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     bulkPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
     bulkToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     bulkChevron?.classList.toggle('rotate-180', open);
-  });
+  }, { signal });
 
   // ── Nuevo plato modal ──
   function fillCategoriasDatalist() {
@@ -2967,22 +3428,38 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   }
 
   function openNuevoPlatoModal() {
-    fillCategoriasDatalist();
-    if (nuevoForm instanceof HTMLFormElement) nuevoForm.reset();
-    if (npDestacado instanceof HTMLElement) {
-      npDestacado.setAttribute('aria-checked', 'false');
-      npDestacado.classList.remove('is-on');
+    try {
+      if (!requireRestauranteId()) return;
+      fillCategoriasDatalist();
+      if (nuevoForm instanceof HTMLFormElement) nuevoForm.reset();
+      if (npDestacado instanceof HTMLElement) {
+        npDestacado.setAttribute('aria-checked', 'false');
+        npDestacado.classList.remove('is-on');
+      }
+      const npCat = document.getElementById('np-categoria');
+      if (npCat instanceof HTMLInputElement) {
+        // New restaurant / empty menu: auto-select default category
+        if (categoriasCache.length === 0) {
+          npCat.value = 'General';
+          npCat.placeholder = 'General (se creará al guardar)';
+        } else if (!npCat.value.trim()) {
+          npCat.value = categoriasCache[0]?.nombre || 'General';
+        }
+      }
+      nuevoError?.classList.add('hidden');
+      if (nuevoError) nuevoError.textContent = '';
+      if (nuevoCloseTimer) {
+        clearTimeout(nuevoCloseTimer);
+        nuevoCloseTimer = null;
+      }
+      openOverlay(nuevoModal);
+      requestAnimationFrame(() => {
+        document.getElementById('np-nombre')?.focus();
+      });
+    } catch (err) {
+      console.error('Error en menú:', err);
+      alert(err instanceof Error ? err.message : 'Error al abrir Nuevo Plato');
     }
-    nuevoError?.classList.add('hidden');
-    if (nuevoError) nuevoError.textContent = '';
-    if (nuevoCloseTimer) {
-      clearTimeout(nuevoCloseTimer);
-      nuevoCloseTimer = null;
-    }
-    openOverlay(nuevoModal);
-    requestAnimationFrame(() => {
-      document.getElementById('np-nombre')?.focus();
-    });
   }
 
   function closeNuevoPlatoModal() {
@@ -2993,115 +3470,130 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (!(npDestacado instanceof HTMLElement)) return;
     const next = npDestacado.getAttribute('aria-checked') !== 'true';
     paintToggle(npDestacado, next);
-  });
+  }, { signal });
 
-  nuevoOpen?.addEventListener('click', openNuevoPlatoModal);
-  nuevoClose?.addEventListener('click', closeNuevoPlatoModal);
+  nuevoOpen?.addEventListener('click', () => {
+    try {
+      openNuevoPlatoModal();
+    } catch (err) {
+      console.error('Error en menú:', err);
+    }
+  }, { signal });
+  nuevoClose?.addEventListener('click', closeNuevoPlatoModal, { signal });
   nuevoModal?.addEventListener('click', (e) => {
     if (e.target === nuevoModal) closeNuevoPlatoModal();
-  });
+  }, { signal });
 
   nuevoForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!(nuevoForm instanceof HTMLFormElement)) return;
-    if (!(nuevoSubmit instanceof HTMLButtonElement)) return;
-
-    const fd = new FormData(nuevoForm);
-    const nombre = String(fd.get('nombre') || '').trim();
-    const descripcion = String(fd.get('descripcion') || '').trim();
-    const categoria = String(fd.get('categoria') || '').trim();
-    const precio = Number(String(fd.get('precio') || '').replace(',', '.'));
-    const destacado =
-      npDestacado instanceof HTMLElement &&
-      npDestacado.getAttribute('aria-checked') === 'true';
-    const fileInput = document.getElementById('np-imagen');
-    const file =
-      fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
-
-    nuevoError?.classList.add('hidden');
-    if (!nombre) {
-      if (nuevoError) {
-        nuevoError.textContent = 'El nombre es obligatorio.';
-        nuevoError.classList.remove('hidden');
-      }
-      return;
-    }
-    if (!Number.isFinite(precio) || precio < 0) {
-      if (nuevoError) {
-        nuevoError.textContent = 'Precio inválido.';
-        nuevoError.classList.remove('hidden');
-      }
-      return;
-    }
-
-    nuevoSubmit.disabled = true;
-    nuevoSubmit.textContent = 'Creando…';
-
     try {
-      let imagenUrl = null;
-      if (file) {
-        nuevoSubmit.textContent = 'Subiendo media…';
-        const uploadFd = new FormData();
-        uploadFd.set('file', file);
-        uploadFd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: uploadFd,
-        });
-        const uploadJson = await uploadRes.json().catch(() => ({}));
-        if (!uploadRes.ok) {
-          throw new Error(uploadJson.error || 'No se pudo subir la media');
+      if (!(nuevoForm instanceof HTMLFormElement)) return;
+      if (!(nuevoSubmit instanceof HTMLButtonElement)) return;
+      if (!requireRestauranteId()) return;
+
+      const fd = new FormData(nuevoForm);
+      const nombre = String(fd.get('nombre') || '').trim();
+      const descripcion = String(fd.get('descripcion') || '').trim();
+      const categoria = String(fd.get('categoria') || '').trim() || 'General';
+      const precio = Number(String(fd.get('precio') || '').replace(',', '.'));
+      const destacado =
+        npDestacado instanceof HTMLElement &&
+        npDestacado.getAttribute('aria-checked') === 'true';
+      const fileInput = document.getElementById('np-imagen');
+      const file =
+        fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+
+      nuevoError?.classList.add('hidden');
+      if (!nombre) {
+        if (nuevoError) {
+          nuevoError.textContent = 'El nombre es obligatorio.';
+          nuevoError.classList.remove('hidden');
         }
-        imagenUrl = uploadJson.url || null;
+        return;
+      }
+      if (!Number.isFinite(precio) || precio < 0) {
+        if (nuevoError) {
+          nuevoError.textContent = 'Precio inválido.';
+          nuevoError.classList.remove('hidden');
+        }
+        return;
       }
 
-      nuevoSubmit.textContent = 'Guardando…';
-      const res = await fetch('/api/create-plato', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurante_id: restauranteId,
-          nombre,
-          descripcion: descripcion || null,
-          precio,
-          destacado,
-          categoria: categoria || undefined,
-          imagen_url: imagenUrl,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'No se pudo crear el plato');
+      nuevoSubmit.disabled = true;
+      nuevoSubmit.textContent = 'Creando…';
 
-      const plato = json.plato;
-      if (plato) {
-        tbody?.prepend(buildRow(plato));
-        refreshCount();
-        if (
-          plato.categoria_nombre &&
-          !categoriasCache.some(
-            (c) =>
-              c.nombre.toLowerCase() ===
-              String(plato.categoria_nombre).toLowerCase(),
-          )
-        ) {
-          categoriasCache.push({
-            id: plato.categoria_id,
-            nombre: plato.categoria_nombre,
+      try {
+        let imagenUrl = null;
+        if (file) {
+          nuevoSubmit.textContent = 'Subiendo media…';
+          const uploadFd = new FormData();
+          uploadFd.set('file', file);
+          uploadFd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: uploadFd,
           });
+          const uploadJson = await uploadRes.json().catch(() => ({}));
+          if (!uploadRes.ok) {
+            throw new Error(uploadJson.error || 'No se pudo subir la media');
+          }
+          imagenUrl = uploadJson.url || null;
         }
+
+        nuevoSubmit.textContent = 'Guardando…';
+        const res = await fetch('/api/create-plato', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurante_id: restauranteId,
+            nombre,
+            descripcion: descripcion || null,
+            precio,
+            destacado,
+            categoria,
+            imagen_url: imagenUrl,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'No se pudo crear el plato');
+
+        const plato = json.plato;
+        if (plato) {
+          tbody?.prepend(buildRow(plato));
+          refreshCount();
+          if (
+            plato.categoria_nombre &&
+            !categoriasCache.some(
+              (c) =>
+                c.nombre.toLowerCase() ===
+                String(plato.categoria_nombre).toLowerCase(),
+            )
+          ) {
+            categoriasCache.push({
+              id: plato.categoria_id,
+              nombre: plato.categoria_nombre,
+            });
+          }
+        }
+        closeNuevoPlatoModal();
+        showToast('Plato creado', 'ok');
+      } catch (err) {
+        console.error('Error en menú:', err);
+        if (nuevoError) {
+          nuevoError.textContent =
+            err instanceof Error ? err.message : 'Error al crear';
+          nuevoError.classList.remove('hidden');
+        }
+        showToast(err instanceof Error ? err.message : 'Error al crear', 'error');
+      } finally {
+        nuevoSubmit.disabled = false;
+        nuevoSubmit.textContent = 'Crear plato';
       }
-      closeNuevoPlatoModal();
     } catch (err) {
-      if (nuevoError) {
-        nuevoError.textContent =
-          err instanceof Error ? err.message : 'Error al crear';
-        nuevoError.classList.remove('hidden');
-      }
-    } finally {
-      nuevoSubmit.disabled = false;
-      nuevoSubmit.textContent = 'Crear plato';
+      console.error('Error en menú:', err);
+      alert(err instanceof Error ? err.message : 'Error en menú');
     }
-  });
+  }, { signal });
 
   tbody?.addEventListener('keydown', (event) => {
     const target = event.target;
@@ -3110,13 +3602,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       event.preventDefault();
       target.blur();
     }
-  });
+  }, { signal });
 
   tbody?.addEventListener('focusout', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || !target.matches('[data-field]')) return;
     void saveField(target);
-  });
+  }, { signal });
 
   /**
    * @param {HTMLElement} row
@@ -3183,7 +3675,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       target.value = '';
       target.disabled = false;
     }
-  });
+  }, { signal });
 
   tbody?.addEventListener('click', async (event) => {
     const target = event.target;
@@ -3252,46 +3744,113 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         alert(err instanceof Error ? err.message : 'Error al actualizar');
       }
     }
-  });
+  }, { signal });
 
-  // ── Tabs Menú / Identidad de Marca ──
-  const tabButtons = document.querySelectorAll('[data-dashboard-tab]');
-  const tabPanels = document.querySelectorAll('[data-tab-panel]');
-
+  // ── Top Nav tabs: menu | metricas | identidad ──
   /**
    * @param {HTMLElement} el
    */
   function playFadeInUp(el) {
     el.classList.remove('admin-fade-in-up');
-    // Force reflow so the animation can re-trigger
     void el.offsetWidth;
     el.classList.add('admin-fade-in-up');
   }
 
   /**
-   * @param {string} id
+   * Normalize legacy aliases (marca → identidad).
+   * @param {string | null} name
    */
-  function setDashboardTab(id) {
-    tabButtons.forEach((btn) => {
-      if (!(btn instanceof HTMLElement)) return;
-      const active = btn.dataset.dashboardTab === id;
-      btn.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    tabPanels.forEach((panel) => {
-      if (!(panel instanceof HTMLElement)) return;
-      const active = panel.dataset.tabPanel === id;
-      panel.hidden = !active;
-      if (active) playFadeInUp(panel);
-    });
+  function normalizeTabName(name) {
+    const raw = String(name || '').trim().toLowerCase();
+    if (raw === 'marca' || raw === 'identidad') return 'identidad';
+    if (raw === 'metricas' || raw === 'métricas') return 'metricas';
+    if (raw === 'menu' || raw === 'menú') return 'menu';
+    return raw || 'menu';
   }
 
-  tabButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
+  function initAdminTopNavTabs() {
+    const root = document.getElementById('dashboard-root');
+    const canUseIdentidad =
+      root instanceof HTMLElement && root.dataset.isSuperAdmin === 'true';
+    const tabButtons = document.querySelectorAll('[data-admin-top-nav] [data-tab-target]');
+    const tabPanels = document.querySelectorAll('[data-tab-panel]');
+    if (!tabButtons.length || !tabPanels.length) return;
+
+    /**
+     * @param {string} targetName
+     */
+    function switchTab(targetName) {
+      let id = normalizeTabName(targetName);
+      // Operativo: never open Identidad (no tab / no panel); force Menú.
+      if (id === 'identidad' && !canUseIdentidad) id = 'menu';
+
+      const allowed = new Set(
+        [...tabButtons]
+          .filter((b) => b instanceof HTMLElement)
+          .map((b) => normalizeTabName(/** @type {HTMLElement} */ (b).getAttribute('data-tab-target'))),
+      );
+      if (!allowed.has(id)) id = 'menu';
+
+      tabPanels.forEach((panel) => {
+        if (!(panel instanceof HTMLElement)) return;
+        const panelName = normalizeTabName(panel.getAttribute('data-tab-panel'));
+        const isActive = panelName === id;
+        if (isActive) {
+          panel.classList.remove('hidden');
+          panel.hidden = false;
+          panel.removeAttribute('hidden');
+          if (id === 'identidad') panel.style.overflow = 'visible';
+          playFadeInUp(panel);
+        } else {
+          panel.classList.add('hidden');
+          panel.hidden = true;
+          panel.setAttribute('hidden', '');
+        }
+      });
+
+      tabButtons.forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const isSelected = normalizeTabName(btn.getAttribute('data-tab-target')) === id;
+        btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        btn.classList.toggle('active', isSelected);
+        if (isSelected) {
+          btn.classList.add('bg-white', 'text-black', 'shadow-md');
+          btn.classList.remove('text-zinc-400', 'hover:text-white', 'hover:bg-white/5');
+        } else {
+          btn.classList.remove('bg-white', 'text-black', 'shadow-md', 'text-zinc-950');
+          btn.classList.add('text-zinc-400', 'hover:text-white', 'hover:bg-white/5');
+        }
+      });
+
+      const marcaSaveBtn = document.getElementById('marca-save');
+      if (marcaSaveBtn instanceof HTMLButtonElement) {
+        marcaSaveBtn.hidden = !(canUseIdentidad && id === 'identidad');
+      }
+    }
+
+    tabButtons.forEach((btn) => {
       if (!(btn instanceof HTMLElement)) return;
-      const id = btn.dataset.dashboardTab || 'menu';
-      setDashboardTab(id);
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = btn.getAttribute('data-tab-target');
+        if (target) switchTab(target);
+      }, { signal });
     });
-  });
+
+    // Operativo: always start on Menú. SuperAdmin: respect active tab markup (default Menú).
+    let defaultTab = 'menu';
+    if (canUseIdentidad) {
+      const activeBtn =
+        document.querySelector('[data-admin-top-nav] [data-tab-target].active') ||
+        document.querySelector('[data-admin-top-nav] [data-tab-target][aria-selected="true"]');
+      if (activeBtn instanceof HTMLElement) {
+        defaultTab = activeBtn.getAttribute('data-tab-target') || 'menu';
+      }
+    }
+    switchTab(defaultTab);
+  }
+
+  initAdminTopNavTabs();
 
   // ── Toast premium ──
   const toastEl = document.getElementById('crx-toast');
@@ -3316,6 +3875,45 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   // ── Identidad de marca ──
   const marcaForm = document.getElementById('marca-form');
+
+  /** Live logo thumbnail from LOGO URL input */
+  function wireLogoPreview() {
+    const input = document.querySelector('[data-logo-url-input]');
+    const img = document.querySelector('[data-logo-preview-img]');
+    const ph = document.querySelector('[data-logo-preview-ph]');
+    if (!(input instanceof HTMLInputElement)) return;
+    if (!(img instanceof HTMLImageElement)) return;
+    if (!(ph instanceof HTMLElement)) return;
+
+    const sync = () => {
+      const url = String(input.value || '').trim();
+      if (!url) {
+        img.hidden = true;
+        img.removeAttribute('src');
+        ph.hidden = false;
+        return;
+      }
+      img.hidden = false;
+      ph.hidden = true;
+      if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+    };
+
+    img.addEventListener('error', () => {
+      img.hidden = true;
+      ph.hidden = false;
+    }, { signal });
+    img.addEventListener('load', () => {
+      if (img.getAttribute('src')) {
+        img.hidden = false;
+        ph.hidden = true;
+      }
+    }, { signal });
+
+    input.addEventListener('input', sync, { signal });
+    input.addEventListener('change', sync, { signal });
+    sync();
+  }
+  wireLogoPreview();
   const marcaSave = document.getElementById('marca-save');
   const marcaFeedback = document.getElementById('marca-feedback');
 
@@ -3328,33 +3926,161 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     const text = document.getElementById(textId);
     if (!(picker instanceof HTMLInputElement) || !(text instanceof HTMLInputElement)) return;
 
-    picker.addEventListener('input', () => {
+    const syncPickerToText = () => {
       text.value = picker.value;
-    });
-    text.addEventListener('input', () => {
+      text.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const syncTextToPicker = () => {
       const v = text.value.trim();
       if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) {
         picker.value =
           v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v;
       }
-    });
+    };
+    picker.addEventListener('input', syncPickerToText, { signal });
+    picker.addEventListener('change', syncPickerToText, { signal });
+    text.addEventListener('input', syncTextToPicker, { signal });
+    text.addEventListener('change', syncTextToPicker, { signal });
   }
 
   wireColorPair('marca-color-primario-picker', 'marca-color-primario');
-  wireColorPair('marca-color-texto-picker', 'marca-color-texto');
-  wireColorPair('marca-home-subtitulo-color-picker', 'marca-home-subtitulo-color');
+  wireColorPair('marca-home-titulo-color-picker', 'marca-home-titulo-color');
+  wireColorPair('marca-home-eslogan-color-picker', 'marca-home-eslogan-color');
+  wireColorPair('marca-home-menu-color-picker', 'marca-home-menu-color');
+  wireColorPair('marca-home-subtexto-color-picker', 'marca-home-subtexto-color');
+  wireColorPair('marca-home-borde-destacado-color-picker', 'marca-home-borde-destacado-color');
 
-  const SCALE_LABELS = ['', 'XS', 'SM', 'MD', 'LG', 'XL'];
-  document.querySelectorAll('[data-scale-slider]').forEach((slider) => {
-    if (!(slider instanceof HTMLInputElement)) return;
-    const label = document.querySelector(`[data-scale-label][data-for="${slider.id}"]`);
-    const sync = () => {
-      const n = Number(slider.value) || 3;
-      if (label instanceof HTMLElement) label.textContent = SCALE_LABELS[n] || 'MD';
+  /** Actualiza label/placeholder del valor de fondo Home según tipo */
+  const fondoHomeTipo = document.getElementById('marca-fondo-home-tipo');
+  const fondoHomeValor = document.getElementById('marca-fondo-home-valor');
+  const fondoHomeLabel = document.querySelector('[data-fondo-valor-label="home"]');
+  const syncFondoHomeValorUi = () => {
+    if (!(fondoHomeTipo instanceof HTMLSelectElement)) return;
+    if (!(fondoHomeValor instanceof HTMLTextAreaElement)) return;
+    const t = fondoHomeTipo.value;
+    const meta = {
+      color: {
+        label: 'Fondo Valor',
+        placeholder: '#0a0a0a',
+        rows: 2,
+      },
+      image: {
+        label: 'Media URL',
+        placeholder: 'https://…/imagen.jpg',
+        rows: 2,
+      },
+      carrusel: {
+        label: 'Fondo Valor (URLs)',
+        placeholder: 'https://…/foto1.jpg\nhttps://…/foto2.jpg',
+        rows: 3,
+      },
+      video: {
+        label: 'Media URL',
+        placeholder: 'https://…/video.mp4',
+        rows: 2,
+      },
+    }[t] || {
+      label: 'Fondo Valor',
+      placeholder: '',
+      rows: 2,
     };
-    slider.addEventListener('input', sync);
-    sync();
+    if (fondoHomeLabel) fondoHomeLabel.textContent = meta.label;
+    fondoHomeValor.placeholder = meta.placeholder;
+    fondoHomeValor.rows = meta.rows;
+  };
+  fondoHomeTipo?.addEventListener('change', syncFondoHomeValorUi, { signal });
+  syncFondoHomeValorUi();
+
+  /** Mostrar slider de opacidad con Filtro Oscuro o Cinemático */
+  const overlayEstiloSelect = document.getElementById('marca-home-overlay-estilo');
+  const overlayOscuroControls = document.querySelector('[data-overlay-oscuro-controls]');
+  const syncOverlayEstiloUi = () => {
+    if (!(overlayEstiloSelect instanceof HTMLSelectElement)) return;
+    if (!(overlayOscuroControls instanceof HTMLElement)) return;
+    const v = overlayEstiloSelect.value;
+    overlayOscuroControls.hidden = v !== 'oscuro' && v !== 'cinematico';
+  };
+  overlayEstiloSelect?.addEventListener('change', syncOverlayEstiloUi, { signal });
+  syncOverlayEstiloUi();
+
+  // Sync number readouts ↔ range sliders (Escalas sizes + overlay)
+  const pxSliderRoot = marcaForm instanceof HTMLElement ? marcaForm : document;
+  pxSliderRoot.querySelectorAll('[data-px-slider-for]').forEach((slider) => {
+    if (!(slider instanceof HTMLInputElement)) return;
+    const inputId = slider.dataset.pxSliderFor;
+    if (!inputId?.startsWith('marca-home-')) return;
+    const numberInput = document.getElementById(inputId);
+    if (!(numberInput instanceof HTMLInputElement)) return;
+
+    const readBounds = () => {
+      const min = Number(numberInput.min);
+      const max = Number(numberInput.max);
+      return {
+        min: Number.isFinite(min) ? min : Number(slider.min) || 0,
+        max: Number.isFinite(max) ? max : Number(slider.max) || 9999,
+      };
+    };
+
+    const clamp = () => {
+      const { min, max } = readBounds();
+      let n = Math.round(Number(numberInput.value));
+      if (!Number.isFinite(n)) n = min;
+      n = Math.min(max, Math.max(min, n));
+      numberInput.value = String(n);
+      slider.min = String(min);
+      slider.max = String(max);
+      slider.value = String(n);
+    };
+
+    slider.addEventListener('input', () => {
+      numberInput.value = slider.value;
+    }, { signal });
+    numberInput.addEventListener('input', () => {
+      const raw = String(numberInput.value || '').trim();
+      if (raw === '' || raw === '-' || raw === '+') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return;
+      const { min, max } = readBounds();
+      slider.value = String(Math.min(max, Math.max(min, Math.round(n))));
+    }, { signal });
+    numberInput.addEventListener('change', clamp, { signal });
+    numberInput.addEventListener('blur', clamp, { signal });
+    clamp();
   });
+
+  // Profile menu (avatar → glass dropdown)
+  (function wireAdminProfileMenu() {
+    const root = document.querySelector('[data-admin-profile]');
+    const trigger = document.getElementById('admin-profile-trigger');
+    const menu = document.querySelector('[data-admin-profile-menu]');
+    if (!(root instanceof HTMLElement)) return;
+    if (!(trigger instanceof HTMLButtonElement)) return;
+    if (!(menu instanceof HTMLElement)) return;
+
+    const setOpen = (open) => {
+      menu.hidden = !open;
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+
+    trigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setOpen(menu.hidden);
+    }, { signal });
+
+    document.addEventListener('click', (event) => {
+      if (menu.hidden) return;
+      const target = event.target;
+      if (target instanceof Node && root.contains(target)) return;
+      setOpen(false);
+    }, { signal });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !menu.hidden) {
+        setOpen(false);
+        trigger.focus();
+      }
+    }, { signal });
+  })();
 
   // Sub-tabs Identidad de Marca
   const marcaSubtabs = document.querySelectorAll('[data-marca-subtab]');
@@ -3364,16 +4090,24 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
    * @param {string} id
    */
   function setMarcaSubtab(id) {
+    const subOn =
+      'marca-subtab shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-all bg-white/10 text-white';
+    const subOff =
+      'marca-subtab shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-all text-zinc-400 hover:bg-white/5 hover:text-white';
     marcaSubtabs.forEach((btn) => {
       if (!(btn instanceof HTMLElement)) return;
       const active = btn.dataset.marcaSubtab === id;
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.className = active ? subOn : subOff;
     });
     marcaPanels.forEach((panel) => {
       if (!(panel instanceof HTMLElement)) return;
       const active = panel.dataset.marcaPanel === id;
       panel.hidden = !active;
-      if (active) playFadeInUp(panel);
+      if (active) {
+        panel.style.overflow = 'visible';
+        playFadeInUp(panel);
+      }
     });
   }
 
@@ -3381,14 +4115,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     btn.addEventListener('click', () => {
       if (!(btn instanceof HTMLElement)) return;
       setMarcaSubtab(btn.dataset.marcaSubtab || 'home');
-    });
+    }, { signal });
   });
 
   // Bloques editoriales Nosotros (add / remove)
   const bloquesList = document.getElementById('nosotros-bloques-list');
   const addBloqueBtn = document.getElementById('nosotros-add-bloque');
   const fieldClassJs =
-    'w-full rounded-xl border border-white/10 bg-black/35 px-3.5 py-3 text-sm text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-white/25 focus:ring-2 focus:ring-white/10';
+    'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-white focus:ring-0';
   const labelClassJs = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
 
   function renumberBloques() {
@@ -3514,7 +4248,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (!(bloquesList instanceof HTMLElement)) return;
     const n = bloquesList.querySelectorAll('[data-nosotros-bloque]').length + 1;
     bloquesList.appendChild(createBloqueEl(n));
-  });
+  }, { signal });
 
   bloquesList?.addEventListener('click', (event) => {
     const target = event.target;
@@ -3535,7 +4269,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
     card.remove();
     renumberBloques();
-  });
+  }, { signal });
 
   // Sync visual ios-toggle + estado de tarjetas gadget
   document.querySelectorAll('[data-marca-gadget]').forEach((input) => {
@@ -3560,7 +4294,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       }
     };
 
-    input.addEventListener('change', sync);
+    input.addEventListener('change', sync, { signal });
     sync();
   });
 
@@ -3573,7 +4307,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     const v = colorPrimarioInput.value.trim();
     if (v) gadgetsPanel.style.setProperty('--gadget-accent', v);
   };
-  colorPrimarioInput?.addEventListener('input', syncGadgetAccent);
+  colorPrimarioInput?.addEventListener('input', syncGadgetAccent, { signal });
   syncGadgetAccent();
 
   marcaForm?.addEventListener('submit', async (event) => {
@@ -3605,26 +4339,63 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
 
     try {
+      // Ruta relativa — nunca hardcodear localhost ni dominio fijo
       const res = await fetch('/api/update-marca', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
         body: JSON.stringify({
           restaurante_id: restauranteId,
           logo_url: val('marca-logo-url'),
+          nombre_comercial: val('marca-nombre-comercial'),
+          tagline_superior: val('marca-tagline-superior'),
           eslogan: val('marca-eslogan'),
           color_primario: val('marca-color-primario'),
           color_texto: val('marca-color-texto'),
           color_fondo: val('marca-fondo-home-valor'),
-          estilo_adn: val('marca-estilo-adn'),
-          tipo_letra: val('marca-tipo-letra'),
-          custom_css: val('marca-custom-css'),
+          estilo_adn: 'elegant',
+          tipografia_combo: val('marca-tipografia-combo') || 'luxe-editorial',
+          tipo_letra: val('marca-tipografia-combo') || 'luxe-editorial',
+          custom_css: val('marca-css-avanzado'),
+          css_avanzado: val('marca-css-avanzado'),
           share_image_url: val('marca-share-image-url'),
           app_icon_url: val('marca-app-icon-url'),
-          home_titulo_size: val('marca-home-titulo-size'),
-          home_logo_size: val('marca-home-logo-size'),
-          home_eslogan_size: val('marca-home-eslogan-size'),
+          home_titulo_size: Number(val('marca-home-titulo-size')) || 28,
+          home_logo_size: Number(val('marca-home-logo-size')) || 160,
+          home_eslogan_size: Number(val('marca-home-eslogan-size')) || 14,
+          home_menu_size: Number(val('marca-home-menu-size')) || 16,
+          logo_size: Number(val('marca-home-logo-size')) || 160,
+          titulo_size: Number(val('marca-home-titulo-size')) || 28,
+          eslogan_size: Number(val('marca-home-eslogan-size')) || 14,
+          menu_size: Number(val('marca-home-menu-size')) || 16,
           home_tracking: val('marca-home-tracking'),
-          home_subtitulo_color: val('marca-home-subtitulo-color'),
+          // Legacy: sin input UI; sincroniza con color de eslogan para no romper CSS --home-subtitulo-color
+          home_subtitulo_color: val('marca-home-eslogan-color'),
+          home_titulo_color: val('marca-home-titulo-color'),
+          home_eslogan_color: val('marca-home-eslogan-color'),
+          home_menu_color: val('marca-home-menu-color'),
+          home_subtexto_color: val('marca-home-subtexto-color'),
+          home_borde_destacado_color: val('marca-home-borde-destacado-color'),
+          home_overlay_opacity: Number(val('marca-home-overlay-opacity')) || 40,
+          home_overlay_estilo: val('marca-home-overlay-estilo') || 'oscuro',
+          home_fondo_animacion: val('marca-home-fondo-animacion') || 'in',
+          home_estilo_navegacion: val('marca-home-estilo-navegacion') || 'frontal',
+          home_efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
+          overlay_opacity: Number(val('marca-home-overlay-opacity')) || 40,
+          overlay_estilo: val('marca-home-overlay-estilo') || 'oscuro',
+          fondo_animacion: val('marca-home-fondo-animacion') || 'in',
+          estilo_navegacion: val('marca-home-estilo-navegacion') || 'frontal',
+          efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
+          fondo_tipo: val('marca-fondo-home-tipo'),
+          fondo_valor: val('marca-fondo-home-valor'),
+          titulo_color: val('marca-home-titulo-color'),
+          eslogan_color: val('marca-home-eslogan-color'),
+          menu_color: val('marca-home-menu-color'),
+          subtexto_color: val('marca-home-subtexto-color'),
+          borde_destacado_color: val('marca-home-borde-destacado-color'),
           nosotros_color_fondo: val('marca-nosotros-color-fondo'),
           nosotros_color_titulo: val('marca-nosotros-color-titulo'),
           nosotros_color_cuerpo: val('marca-nosotros-color-cuerpo'),
@@ -3666,17 +4437,27 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           wifi_password: val('marca-wifi-password'),
           gadget_boutique: checked('marca-gadget-boutique'),
           boutique_productos: collectBoutiqueProductos(),
+          home_theme: val('marca-home-theme') || 'editorial',
+          ubicacion_theme: val('marca-ubicacion-theme') || 'modal',
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || 'No se pudo guardar la identidad');
+      if (!res.ok) throw new Error(json.error || `No se pudo guardar (${res.status})`);
 
       showToast(
         json.message || '¡Identidad de marca actualizada con éxito!',
         'ok',
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al guardar';
+      let msg = err instanceof Error ? err.message : 'Error al guardar';
+      // TypeError: Failed to fetch / NetworkError → endpoint caído o sin respuesta
+      if (
+        err instanceof TypeError ||
+        /failed to fetch|networkerror|load failed/i.test(msg)
+      ) {
+        msg =
+          'No se pudo conectar con /api/update-marca. Revisá que el servidor esté activo y que la respuesta sea JSON.';
+      }
       if (marcaFeedback) {
         marcaFeedback.textContent = msg;
         marcaFeedback.classList.remove('hidden');
@@ -3685,20 +4466,51 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       showToast(msg, 'error');
     } finally {
       marcaSave.disabled = false;
-      marcaSave.textContent = 'Guardar Configuración de Marca';
+      marcaSave.textContent = '💾 Guardar';
+    }
+  }, { signal });
+
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    try {
+      initAdminDashboard();
+    } catch (err) {
+      console.error('Error en menú:', err);
     }
   });
+  document.addEventListener('astro:before-preparation', teardownAdminDashboard);
 </script>
 
 <script>
   import { createSupabaseBrowserClient } from '../../lib/supabase/browser.js';
 
-  const dashRoot = document.getElementById('dashboard-root');
-  const restId = dashRoot?.dataset.restauranteId || '';
-  const stack = document.getElementById('mesa-alertas-stack');
-  const chimeEl = document.getElementById('mesa-alerta-chime');
+  /** @type {AbortController | null} */
+  let __alertasPageAc = null;
+  /** @type {(() => void) | null} */
+  let __alertasChannelCleanup = null;
 
-  if (restId && stack instanceof HTMLElement) {
+  function teardownMesaAlertas() {
+    __alertasPageAc?.abort();
+    __alertasPageAc = null;
+    __alertasChannelCleanup?.();
+    __alertasChannelCleanup = null;
+  }
+
+  function initMesaAlertas() {
+    teardownMesaAlertas();
+
+    const dashRoot = document.getElementById('dashboard-root');
+    const restId = String(dashRoot?.dataset.restauranteId || '').trim();
+    const stack = document.getElementById('mesa-alertas-stack');
+    const chimeEl = document.getElementById('mesa-alerta-chime');
+
+    if (!restId || !(stack instanceof HTMLElement)) return;
+
+    const ac = new AbortController();
+    __alertasPageAc = ac;
+    const { signal } = ac;
+
     const supabase = createSupabaseBrowserClient();
 
     /**
@@ -3766,25 +4578,29 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         'mt-3 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-3.5 py-2 text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-white transition hover:opacity-90 active:scale-95';
       btn.textContent = 'Marcar como atendido';
 
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = '…';
-        try {
-          const res = await fetch('/api/alerta-atendida', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ alerta_id: alerta.id }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json.error || 'Error');
-          card.style.opacity = '0';
-          card.style.transform = 'translateX(12px)';
-          setTimeout(() => card.remove(), 280);
-        } catch {
-          btn.disabled = false;
-          btn.textContent = 'Reintentar';
-        }
-      });
+      btn.addEventListener(
+        'click',
+        async () => {
+          btn.disabled = true;
+          btn.textContent = '…';
+          try {
+            const res = await fetch('/api/alerta-atendida', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ alerta_id: alerta.id }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error || 'Error');
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(12px)';
+            setTimeout(() => card.remove(), 280);
+          } catch {
+            btn.disabled = false;
+            btn.textContent = 'Reintentar';
+          }
+        },
+        { signal },
+      );
 
       card.append(label, msg, btn);
       stack.prepend(card);
@@ -3800,6 +4616,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       .order('created_at', { ascending: false })
       .limit(8)
       .then(({ data, error }) => {
+        if (signal.aborted) return;
         if (error) {
           console.warn('[alertas_mesas]', error.message);
           return;
@@ -3860,7 +4677,17 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         chimeCtx = null;
       }
     }
-    window.addEventListener('pagehide', teardownAlertasRealtime);
-    window.addEventListener('beforeunload', teardownAlertasRealtime);
+    __alertasChannelCleanup = teardownAlertasRealtime;
+    window.addEventListener('pagehide', teardownAlertasRealtime, { signal });
+    window.addEventListener('beforeunload', teardownAlertasRealtime, { signal });
   }
+
+  document.addEventListener('astro:page-load', () => {
+    try {
+      initMesaAlertas();
+    } catch (err) {
+      console.error('Error en menú:', err);
+    }
+  });
+  document.addEventListener('astro:before-preparation', teardownMesaAlertas);
 </script>

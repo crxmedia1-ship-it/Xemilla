@@ -1,31 +1,31 @@
 /**
  * Temas visuales del panel admin Xemilla.
  * Persistidos en localStorage bajo `xemilla-admin-theme`.
+ *
+ * Canónico (Sol/Luna): `dark` (Observatorio Cósmico) | `light` (La Habitación del Tiempo)
+ * Legacy: `onyx` → dark, `alabastro`/`organico`/`cristalino` → light
  */
 
 export const ADMIN_THEME_KEY = 'xemilla-admin-theme';
 
-/** @typedef {'organico' | 'onyx' | 'alabastro'} AdminThemeId */
+/** @typedef {'dark' | 'light'} AdminThemeId */
 
 /** @type {AdminThemeId[]} */
-export const ADMIN_THEME_IDS = ['organico', 'onyx', 'alabastro'];
+export const ADMIN_THEME_IDS = ['dark', 'light'];
 
 /**
- * @type {Record<AdminThemeId, { label: string, swatch: string }>}
+ * @type {Record<AdminThemeId, { label: string, swatch: string, metaColor: string }>}
  */
 export const ADMIN_THEME_META = {
-  organico: {
-    label: 'Xemilla Orgánico',
-    /** Base crema; el CSS del switcher añade el toque de lacre */
-    swatch: '#F0EBE3',
+  dark: {
+    label: 'Observatorio Cósmico',
+    swatch: '#030712',
+    metaColor: '#030712',
   },
-  onyx: {
-    label: 'Xemilla Onyx',
-    swatch: '#0A0A0B',
-  },
-  alabastro: {
-    label: 'Xemilla Alabastro',
-    swatch: '#FFFFFF',
+  light: {
+    label: 'La Habitación del Tiempo',
+    swatch: '#f8fafc',
+    metaColor: '#f8fafc',
   },
 };
 
@@ -37,8 +37,28 @@ export function normalizeAdminTheme(value) {
   const v = String(value || '')
     .trim()
     .toLowerCase();
-  if (v === 'organico' || v === 'organic') return 'organico';
-  if (v === 'onyx' || v === 'oscuro' || v === 'dark') return 'onyx';
-  if (v === 'alabastro' || v === 'claro' || v === 'light') return 'alabastro';
-  return 'onyx';
+  if (
+    v === 'light' ||
+    v === 'claro' ||
+    v === 'alabastro' ||
+    v === 'organico' ||
+    v === 'organic' ||
+    v === 'cristalino' ||
+    v === 'habitacion' ||
+    v === 'habitacion-del-tiempo'
+  ) {
+    return 'light';
+  }
+  if (
+    v === 'dark' ||
+    v === 'oscuro' ||
+    v === 'onyx' ||
+    v === 'deep-space' ||
+    v === 'deepspace' ||
+    v === 'observatorio' ||
+    v === 'observatorio-cosmico'
+  ) {
+    return 'dark';
+  }
+  return 'dark';
 }
