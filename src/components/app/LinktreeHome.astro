@@ -72,15 +72,16 @@ function navSubtitle(id: string, fallbackTagline: string) {
     return 'GUEST NETWORK';
   }
   const map: Record<string, string> = {
-    menu: 'SAVOR ASIAN DELIGHTS',
+    menu: '',
     nosotros: 'NUESTRA FILOSOFÍA',
     ubicacion: 'CONTACTO · MAPS · HORARIOS',
     dividir: 'SPLIT THE BILL',
     mesero: 'CALL YOUR SERVER',
     boutique: 'EXPLORA NUESTRA TIENDA OFICIAL',
   };
-  if (id === 'menu' && fallbackTagline?.trim()) {
-    return fallbackTagline.trim().toUpperCase();
+  if (id === 'menu') {
+    const fromBrand = fallbackTagline?.trim();
+    return fromBrand ? fromBrand.toUpperCase() : '';
   }
   return map[id] || '';
 }

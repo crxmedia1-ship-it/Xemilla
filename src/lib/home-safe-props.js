@@ -64,6 +64,7 @@ export function resolveSafeEstilos(raw) {
  *   logoLetter: string,
  *   logoUrl: string | null,
  *   tagline: string,
+ *   taglineSuperior: string,
  *   menuLink: string,
  *   estilos: Record<string, string>,
  *   showWifi: boolean,
@@ -92,6 +93,17 @@ export function resolveSafeHomeProps(props = {}) {
   );
   const tagline = str(
     props?.tagline || r?.tagline || r?.eslogan || props?.eslogan,
+    '',
+  );
+  const taglineSuperior = str(
+    props?.taglineSuperior ||
+      props?.tagline_superior ||
+      r?.taglineSuperior ||
+      r?.tagline_superior ||
+      (props?.homeUi && typeof props.homeUi === 'object'
+        ? props.homeUi.tagline_superior || props.homeUi.taglineSuperior
+        : '') ||
+      '',
     '',
   );
   const logoText = str(props?.logoText || r?.logoText || nombre, nombre);
@@ -145,6 +157,7 @@ export function resolveSafeHomeProps(props = {}) {
     logoLetter,
     logoUrl: logoUrl || null,
     tagline,
+    taglineSuperior,
     menuLink,
     estilos: resolveSafeEstilos(props?.estilos || r?.estilos),
     showWifi: Boolean(props?.showWifi),

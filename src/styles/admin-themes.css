@@ -235,63 +235,6 @@ html.admin-panel[data-theme='organico'] .admin-deep-space__amber {
   opacity: 0;
 }
 
-/* ── Gastronomic drift bounce layer (admin; z-[-1] behind UI)
- * Assets + 2D physics in Layout.astro #gastronomic-drift-layer.
- * Layer + items: pointer-events none !important (decorative only; never intercept UI clicks).
- * Obstacles: .solid-obstacle ignored (edge-only bounce).
- */
-#gastronomic-drift-layer,
-#gastronomic-drift-layer *,
-#gastronomic-drift-layer .floating-item,
-#gastronomic-drift-layer img {
-  pointer-events: none !important;
-}
-
-#gastronomic-drift-layer img,
-#gastronomic-drift-layer .floating-item {
-  user-select: none;
-  max-width: none;
-  height: auto;
-  object-fit: contain;
-  will-change: transform;
-  left: 0;
-  top: 0;
-  opacity: 1;
-}
-
-/* Fallback theme visibility if dark: utilities miss the class strategy */
-html.admin-panel.dark #gastronomic-drift-layer img[data-drift-theme='dark'],
-html.admin-panel[data-theme='dark'] #gastronomic-drift-layer img[data-drift-theme='dark'],
-html.admin-panel[data-theme='onyx'] #gastronomic-drift-layer img[data-drift-theme='dark'] {
-  display: block !important;
-}
-
-html.admin-panel.light #gastronomic-drift-layer img[data-drift-theme='dark'],
-html.admin-panel[data-theme='light'] #gastronomic-drift-layer img[data-drift-theme='dark'],
-html.admin-panel[data-theme='alabastro'] #gastronomic-drift-layer img[data-drift-theme='dark'],
-html.admin-panel[data-theme='organico'] #gastronomic-drift-layer img[data-drift-theme='dark'] {
-  display: none !important;
-}
-
-html.admin-panel.dark #gastronomic-drift-layer img[data-drift-theme='light'],
-html.admin-panel[data-theme='dark'] #gastronomic-drift-layer img[data-drift-theme='light'],
-html.admin-panel[data-theme='onyx'] #gastronomic-drift-layer img[data-drift-theme='light'] {
-  display: none !important;
-}
-
-html.admin-panel.light #gastronomic-drift-layer img[data-drift-theme='light'],
-html.admin-panel[data-theme='light'] #gastronomic-drift-layer img[data-drift-theme='light'],
-html.admin-panel[data-theme='alabastro'] #gastronomic-drift-layer img[data-drift-theme='light'],
-html.admin-panel[data-theme='organico'] #gastronomic-drift-layer img[data-drift-theme='light'] {
-  display: block !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #gastronomic-drift-layer img {
-    animation: none !important;
-  }
-}
-
 html.admin-panel body.theme-body,
 html.admin-panel body.admin-panel-body {
   background: transparent !important;
@@ -368,7 +311,7 @@ html.admin-panel .hover\:bg-white\/\[0\.14\]:hover {
   filter: brightness(1.08);
 }
 
-/* Floating glass cards — denser glass; solid-obstacle walls for drift */
+/* Floating glass cards — denser glass */
 html.admin-panel .glass-panel,
 html.admin-panel .studio-card {
   border: 1px solid var(--border-subtle);

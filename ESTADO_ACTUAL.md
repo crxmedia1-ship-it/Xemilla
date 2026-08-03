@@ -1,6 +1,6 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-07-30 11:20 -04  
+> **Última Actualización:** 2026-08-03 10:42 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)
@@ -34,7 +34,7 @@
 | Themes Home/Ubicación | `src/lib/layout-themes.js` |
 | API marca | `src/pages/api/update-marca.js` |
 | Tipografías | `src/config/typography-combos.js` |
-| Layout + Aquarium + VT | `src/layouts/Layout.astro` (`ClientRouter`) |
+| Layout + VT | `src/layouts/Layout.astro` (`ClientRouter`) |
 | Temas admin CSS | `src/styles/admin-themes.css` · key `xemilla-admin-theme` |
 | Schema | `supabase_schema.sql` |
 
@@ -53,7 +53,7 @@ Normalizadas en `layout-themes.js` → enrutadas en `RestaurantApp.astro` (try/c
 | `bento` | `HomeBentoGrid.astro` | Grid asimétrico |
 | `minimal` | `HomeMinimal.astro` | Stories / 100vh |
 
-> **Desacoplamiento (2026-07-27):** los 4 themes son **solo estructura** (logo / títulos / slogans / nav). Contenedores `bg-transparent`. **No** renderizan `secciones_fondo`, `SectionAtmosphere`, imágenes/videos de fondo ni overlays de atmósfera. Atmósfera centralizada en `RestaurantApp` → `[data-home-shell]`: `SectionAtmosphere` con `fixed inset-0 z-[-1] pointer-events-none` + theme wrapper `relative z-10 pointer-events-auto`. Shell `bg-transparent` para que `z-[-1]` sea visible.
+> **Desacoplamiento (2026-07-27):** los 4 themes son **solo estructura** (logo / títulos / slogans / nav). Contenedores `bg-transparent`. **No** renderizan `secciones_fondo`, `SectionAtmosphere`, imágenes/videos de fondo ni overlays de atmósfera. Atmósfera centralizada en `RestaurantApp` → `[data-home-shell]`: `SectionAtmosphere` con `fixed inset-0 z-0 pointer-events-none` + theme wrapper `relative z-10 pointer-events-auto`. Shell `bg-transparent`.
 
 > **Escalas only (2026-07-27):** Admin Identidad ya **no** expone controles X/Y. Solo sliders de tamaño (`logo_size`, `titulo_size`, `eslogan_size`, `menu_size`) en card **Escalas de Tipografía y Logo**. WebApp pública usa flex/grid (ignora offsets legacy). Backend puede normalizar offsets ausentes a 0; keys viejas en DB no se borran.
 
@@ -82,7 +82,7 @@ Chrome compartido en `RestaurantApp` (hamburguesa + app_tabs aplican a **todos**
 | `carrusel` | URLs `,` / `;` / newline | Crossfade cada **4s** |
 | `video` | `.mp4` / `.webm` / Cloudinary | `<video autoplay loop muted playsinline>` + clase `fondo_animacion` |
 
-**Stacking Home:** atmósfera `fixed inset-0 z-[-1]` (`pointer-events-none`, prop `fixed` en `SectionAtmosphere`) · theme `relative z-10` (`pointer-events-auto`) · shell `bg-transparent`. Overlay panels siguen usando atmósfera `absolute inset-0 z-0`.
+**Stacking Home:** atmósfera `fixed inset-0 z-0` (`pointer-events-none`, prop `fixed` en `SectionAtmosphere`) · theme `relative z-10` (`pointer-events-auto`) · shell `bg-transparent`. Overlay panels siguen usando atmósfera `absolute inset-0 z-0`. **No usar `z-[-1]`** (puede quedar detrás del background del `body`).
 
 ### Ken Burns / `fondo_animacion`
 
@@ -200,7 +200,6 @@ Tamaños `0` / `null` / vacío → fallback (`normalizeHomePx`).
 - **Centro:** pills `data-tab-target` — **Menú** · **Métricas** · **Identidad** (`{isSuperAdmin && …}` SSR; operativo no renderiza tab ni `#panel-identidad`).
 - **Derecha:** **+ Nuevo Restaurante** · **💾 Guardar** (`#marca-save` / `form="marca-form"`) — ambos solo SuperAdmin · ☀️/🌙 · avatar + logout.
 - Contenido: `relative z-10 max-w-6xl …`. Cards densas `studio-card` / `p-4 rounded-2xl`.
-- Cards / paneles pueden llevar `.solid-obstacle` (additive); el drift cachea solo esos AABBs (ver §5).
 - Identidad: sub-nav `data-marca-subtab` — Home / Nosotros / Menú / Ubicación / Reservas / Gadgets.
 
 ### Power Studio Identidad (Home / Core)
@@ -229,34 +228,21 @@ Scoped: `html.admin-panel` + `data-theme` / `.dark`|`.light`. Toggle: `AdminThem
 
 ---
 
-## 5. Aquarium / gastronomic drift
+## 5. Admin decoración (aquarium / drift) — REMOVIDO
 
-Solo cuando `adminPanel={true}` en `Layout.astro`.
+**2026-08-03:** Eliminado del Admin el aquarium / gastronomic drift.
 
-### Z-stack
+| Removido | Dónde estaba |
+|----------|--------------|
+| `#gastronomic-drift-layer` + 8 `<img>` Cloudinary flotantes | `Layout.astro` (`adminPanel`) |
+| Script `requestAnimationFrame` (física de bordes, setup/teardown View Transitions) | `Layout.astro` inline script |
+| Reglas `#gastronomic-drift-layer` / `.floating-item` / theme visibility | `admin-themes.css` |
+| `@keyframes floating` + `--animate-floating` | `global.css` (solo Admin drift) |
 
-| Capa | z | Rol |
-|------|---|-----|
-| Light void radial / Deep space | `z-[-1]` | Fondo temático |
-| `#gastronomic-drift-layer` | **`z-[-1]`** | Aquarium detrás de UI; **`pointer-events-none !important`** en capa e items (decorativo) |
-| Contenido UI (slot wrapper) | **`relative z-10 pointer-events-auto`** | Interactivo; por encima del drift |
-| Header dashboard | `z-50` | Sticky; por encima del contenido |
+**Conservado:** fondos temáticos Admin (`admin-deep-space` / Habitación del Tiempo void radial); wrapper slot `relative z-10 pointer-events-auto`. **No tocado:** WebApp pública `SectionAtmosphere` / Ken Burns.
 
-### Assets Cloudinary
+Clases residuales `.solid-obstacle` en dashboard cards son inocuas (ya no hay física).
 
-- **Dark (glow):** 4 PNGs `data-drift-theme="dark"` + `drop-shadow` amber/violet/indigo/rose  
-- **Light (sharp):** 4 PNGs `data-drift-theme="light"` sin glow  
-- Clase item: `.floating-item` · visibilidad por `.dark` / `.light` · clases: `pointer-events-none select-none`
-
-### Física — drift lento (solo bordes; sin click boost)
-
-- Loop `requestAnimationFrame` en `Layout.astro`; re-init en `astro:page-load`; cancel rAF en `astro:before-preparation`.
-- Respeto `prefers-reduced-motion: reduce` — sin rAF; capa oculta (`visibility: hidden`).
-- Posición vía `translate3d` + `rotate` (GPU); imgs `absolute`.
-- **Única física:** rebote en bordes del viewport (invertir `vx`/`vy` + clamp). Sin colisión UI ni item↔item. **Sin click-boost / sin listeners de mouse.**
-- Velocidad: `BASE_SPEED ≈ 0.06` vía ángulo trig (`cos`/`sin`); rotación lenta ~0.02–0.04.
-- Skip items con `display: none` (tema dark/light).
-- CSS (`admin-themes.css`): capa e `.floating-item` con `pointer-events: none !important` (no `auto`).
 ---
 
 ## 6. Backend `/api/update-marca` + schema
@@ -274,6 +260,18 @@ Solo cuando `adminPanel={true}` en `Layout.astro`.
 ### Lectura pública (`restaurantes.js`)
 
 `parseUiEstilo` · `parseSeccionesFondo` · `resolveMediaUrl` · `uiEstiloToCssVars` · alias `custom_css` → `css_avanzado`.
+
+**Mapa Admin → WebApp (canónico, 2026-07-30):**
+
+| Studio / save | Columna / JSONB | Consumo público |
+|---------------|-----------------|-----------------|
+| Fondo Home tipo/URL | `secciones_fondo.home.{tipo,valor}` (+ legacy `imagen_fondo`) | `RestaurantApp` → `SectionAtmosphere` (`tipo`/`valor`, `resolveMediaUrl`) |
+| Plantilla Home | `home_theme` (`minimal` \| `editorial` \| `hero` \| `bento`) | `sanitizeTheme` → monta `HomeMinimal` etc. |
+| Tagline superior | `ui_estilo.home.tagline_superior` | eyebrow en Homes (`taglineSuperior`) |
+| Nombre / eslogan | `nombre_comercial` / `eslogan` | `logoText` + `tagline` (Supabase gana; `brand.js` solo huecos) |
+| Overlay / anim / nav | `ui_estilo.home.*` | props atmósfera + `estiloNavegacion` |
+
+**Fixes 2026-07-30:** `buildIdentity` ya no fuerza textos de `brand.js` sobre DB; atmósfera Home usa `z-0` (no `z-[-1]`); eliminado fallback demo `SAVOR ASIAN DELIGHTS`; `tagline_superior` cableado a Homes.
 
 ### Schema (`supabase_schema.sql`) — notas
 
@@ -300,17 +298,18 @@ Solo cuando `adminPanel={true}` en `Layout.astro`.
 - [x] Removido preset “Cargar Preset de Diseño”  
 - [x] **Removido Live Preview** (iframe / phone chrome / sync preview)  
 - [x] Top Nav unificado + Power Studio denso  
-- [x] Aquarium edge-only drift + temas Observatorio / Void radial  
+- [x] Temas Observatorio / Void radial (sin aquarium / drift)  
 - [x] **Themes Home = estructura only**; atmósfera centralizada en `RestaurantApp` / `SectionAtmosphere` (2026-07-27) 
 - [x] **Admin menú VT fix (2026-07-29):** `dashboard.astro` re-bind en `astro:page-load` + AbortController teardown (`astro:before-preparation`); valida `restaurante_id`; Nuevo Plato auto-categoría `General` si no hay categorías; try/catch + toast/`console.error('Error en menú:')`
 - [x] **Operativo SSR restaurant load (2026-07-30):** metadata `restaurante_id` (app|user) → id|slug → fallback `user_id`; login `?restaurante=`; create-operativo refuerza metadata
+- [x] **Studio→WebApp identity sync (2026-07-30):** DB texts/fondo/`home_theme`/`tagline_superior` reflejan en `[slug]`; atmósfera `z-0`; sin demo hardcodes
 
 ### Pendiente
 
 - [ ] Vista expandida / transición al abrir secciones del Menú desde Home  
 - [ ] Unificar `DEFAULT_HOME_THEME` (`bento` en `layout-themes.js` vs default Admin/schema `editorial`)  
 - [ ] Tests de humo: Admin save → `ui_estilo.home` → render público (3 nav styles)  
-- [x] Aquarium: z-[-1] behind UI; **pointer-events-none !important** en capa e items; sin click boost; edge-only; reduced-motion
+- [x] **Admin aquarium/drift removido (2026-08-03):** sin `#gastronomic-drift-layer`, sin rAF, sin CSS `.floating-item`; UI Admin limpia (search/botones libres)
 
 ---
 
@@ -319,9 +318,9 @@ Solo cuando `adminPanel={true}` en `Layout.astro`.
 1. **Leer este archivo primero** (SSOT).  
 2. Defaults / rangos / normalize: `src/lib/secciones-ui.js`.  
 3. SuperAdmin hub: `admin/super/dashboard.astro`. Identidad / Power Studio: `admin/dashboard.astro` (`marca-form`, tab Identidad). **No existe Live Preview.**  
-4. Temas admin: `xemilla-admin-theme` → dark = Observatorio Cósmico · light = Habitación del Tiempo (void radial, no palace). CSS: `admin-themes.css`.  
-5. Aquarium: `#gastronomic-drift-layer` `z-[-1]` behind UI (`relative z-10 pointer-events-auto`); **pointer-events-none !important** everywhere on drift; sin click boost; solo bordes; reduced-motion.  
-6. Render público: `RestaurantApp.astro` → `[data-home-shell]`: `SectionAtmosphere` (z-0) + Home theme estructura (z-10) + chrome nav. Themes **no** pintan fondos.  
+4. Temas admin: `xemilla-admin-theme` → dark = Observatorio Cósmico · light = Habitación del Tiempo (void radial, no palace). CSS: `admin-themes.css`. **Sin aquarium/drift flotante.**  
+5. Admin layout: fondos temáticos `z-[-1]` + slot `relative z-10 pointer-events-auto`. Sin imágenes decorativas flotantes.  
+6. Render público: `RestaurantApp.astro` → `[data-home-shell]`: `SectionAtmosphere` (`fixed z-0`) + Home theme estructura (`z-10`) + chrome nav. Themes **no** pintan fondos. No usar `z-[-1]` (queda bajo el bg del `body`).  
 7. Persistencia: `POST /api/update-marca` → Supabase.  
 8. **No inventar** `IdentidadMarca.astro`: vive en `dashboard.astro`.  
 9. `logo_size` = **10–400** (default 160). CSS vars cortas + aliases `--home-*`.

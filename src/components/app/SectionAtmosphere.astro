@@ -26,7 +26,7 @@ interface Props {
   /** in | out | pan | float | glow | ninguna — animación de fondo en imagen / video */
   fondoAnimacion?: string;
   /**
-   * Home shell: fixed inset-0 z-[-1] (detrás del theme, no alterado por nav).
+   * Home shell: fixed inset-0 z-0 (detrás del theme z-10; no usar z-[-1]).
    * Overlay panels: absolute inset-0 z-0 (default).
    */
   fixed?: boolean;
@@ -113,9 +113,9 @@ const showOverlayLayer =
 const showCinematic =
   showMedia && overlay && isCinematic;
 
-/** Home: fixed detrás del theme · Overlay panels: absolute dentro del drawer */
+/** Home: fixed detrás del theme (z-0, no z-[-1] — evita quedar bajo el bg del body) · Overlay panels: absolute */
 const rootPositionClass = fixed
-  ? 'pointer-events-none fixed inset-0 z-[-1] overflow-hidden'
+  ? 'pointer-events-none fixed inset-0 z-0 overflow-hidden'
   : 'pointer-events-none absolute inset-0 z-0 overflow-hidden';
 ---
 

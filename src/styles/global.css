@@ -25,7 +25,6 @@
   --animate-pan-horizontal: pan-horizontal 30s ease-in-out infinite alternate;
   --animate-float-vertical: float-vertical 30s ease-in-out infinite alternate;
   --animate-pulse-glow: pulse-glow 30s ease-in-out infinite alternate;
-  --animate-floating: floating 28s ease-in-out infinite alternate;
   --animate-text-reveal: text-reveal 0.9s ease-out both;
   --animate-home-rise: home-rise 0.95s ease-out both;
   --animate-home-blur: home-blur 1s ease-out both;
@@ -88,22 +87,6 @@
   to {
     transform: scale(1.08);
     filter: brightness(1.05);
-  }
-}
-
-/* Admin culinary drift (±15px / ±3deg); duration/delay overridden per item */
-@keyframes floating {
-  0% {
-    transform: translate3d(-12px, 8px, 0) rotate(-2.5deg);
-  }
-  33% {
-    transform: translate3d(10px, -14px, 0) rotate(2deg);
-  }
-  66% {
-    transform: translate3d(-8px, -6px, 0) rotate(-1.5deg);
-  }
-  100% {
-    transform: translate3d(14px, 10px, 0) rotate(3deg);
   }
 }
 

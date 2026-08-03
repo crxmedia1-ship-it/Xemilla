@@ -14,6 +14,8 @@ interface Props {
   logo_url?: string | null;
   tagline?: string;
   eslogan?: string;
+  taglineSuperior?: string;
+  tagline_superior?: string;
   menuLink?: string;
   menu_link?: string;
   menu_subtitle?: string;
@@ -62,6 +64,7 @@ const {
   logoLetter,
   logoUrl,
   tagline,
+  taglineSuperior,
   showWifi,
   showDividir,
   showLlamarMesero,
@@ -116,13 +119,17 @@ const esloganStyle = `font-size: var(--eslogan-size, ${esloganPx}px); color: ${e
 const menuTitleStyle = `font-size: var(--menu-size, var(--home-menu-size, ${menuPx}px)); color: ${menuColorCss}`;
 const menuSubStyle = `color: ${subtextoColorCss}`;
 
-/** Subtítulo del menú: prop | restaurante | fallback maqueta */
+/** Subtítulo del menú: prop | tagline_superior | eslogan | vacío (sin demo hardcode) */
 const menuSubtitle = String(
   props?.menu_subtitle ||
     props?.menuSubtitle ||
     r?.menu_subtitle ||
     r?.menuSubtitle ||
-    'SAVOR ASIAN DELIGHTS',
+    taglineSuperior ||
+    props?.taglineSuperior ||
+    props?.tagline_superior ||
+    tagline ||
+    '',
 )
   .trim()
   .toUpperCase();
@@ -131,6 +138,14 @@ const eslogan =
   tagline ||
   String(props?.eslogan || r?.eslogan || '').trim() ||
   '';
+
+/** Eyebrow encima del branding: ui_estilo.home.tagline_superior */
+const eyebrow = String(
+  taglineSuperior ||
+    props?.taglineSuperior ||
+    props?.tagline_superior ||
+    '',
+).trim();
 
 /**
  * Reservas / CTA destacado — visible si el switch está activo.
@@ -292,6 +307,16 @@ const rowClass =
           class="editorial-block editorial-block--branding flex w-full shrink-0 flex-col items-center justify-center gap-3"
           data-home-block="branding"
         >
+          {eyebrow ? (
+            <p
+              class="mx-auto max-w-[20rem] text-[0.62rem] font-light uppercase tracking-[0.32em] opacity-70"
+              style={esloganStyle}
+              data-home-tagline-superior
+            >
+              {eyebrow}
+            </p>
+          ) : null}
+
           {!logoUrl && logoText ? (
             <div
               class:list={[
@@ -374,12 +399,16 @@ const rowClass =
       >
         EL MENÚ
       </span>
-      <span
-        class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
-        style={menuSubStyle}
-      >
-        {menuSubtitle}
-      </span>
+      {
+        menuSubtitle ? (
+          <span
+            class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
+            style={menuSubStyle}
+          >
+            {menuSubtitle}
+          </span>
+        ) : null
+      }
     </button>
 
     {/* Opción 2: PEDIR / RESERVAR — CTA destacado (entre MENÚ y NOSOTROS) */}

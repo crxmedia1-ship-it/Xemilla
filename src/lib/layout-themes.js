@@ -110,7 +110,7 @@ export function homeNavSubtitle(id, fallbackTagline, wifi = {}) {
     return 'GUEST NETWORK';
   }
   const map = {
-    menu: 'SAVOR ASIAN DELIGHTS',
+    menu: '',
     nosotros: 'NUESTRA FILOSOFÍA',
     ubicacion: 'HORARIOS Y CONTACTO',
     dividir: 'SPLIT THE BILL',
@@ -118,8 +118,9 @@ export function homeNavSubtitle(id, fallbackTagline, wifi = {}) {
     boutique: 'EXPLORA NUESTRA TIENDA OFICIAL',
     wifi: 'GUEST NETWORK',
   };
-  if (id === 'menu' && fallbackTagline?.trim()) {
-    return fallbackTagline.trim().toUpperCase();
+  if (id === 'menu') {
+    const fromBrand = fallbackTagline?.trim();
+    return fromBrand ? fromBrand.toUpperCase() : '';
   }
   return map[id] || '';
 }

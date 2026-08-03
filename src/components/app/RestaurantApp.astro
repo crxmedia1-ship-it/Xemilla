@@ -133,6 +133,16 @@ try {
 }
 
 /** Props Home blindadas — nunca undefined sin fallback */
+const taglineSuperior = String(
+  restaurante?.taglineSuperior ||
+    uiEstilo?.home?.tagline_superior ||
+    uiEstilo?.home?.taglineSuperior ||
+    '',
+).trim();
+const brandTagline = String(
+  restaurante?.tagline || restaurante?.eslogan || '',
+).trim();
+
 let homeProps = {
   ...resolveSafeHomeProps({
     nombre: restaurante?.nombre || 'Restaurante',
@@ -140,8 +150,10 @@ let homeProps = {
     logoLetter: restaurante?.logoLetter,
     logoUrl: logoUrl || null,
     logo_url: logoUrl || null,
-    tagline: restaurante?.tagline || restaurante?.eslogan || '',
-    eslogan: restaurante?.eslogan || '',
+    tagline: brandTagline,
+    eslogan: brandTagline,
+    taglineSuperior,
+    tagline_superior: taglineSuperior,
     slug: restaurante?.slug || '',
     menu_link:
       restaurante?.menu_link ||
@@ -156,6 +168,8 @@ let homeProps = {
     reservasCta,
     homeUi: uiEstilo?.home || {},
   }),
+  taglineSuperior,
+  tagline_superior: taglineSuperior,
   /** Reservas CTA — visibles con switch ON (no dependen de href) */
   showReservas,
   reservas_activo: showReservas,
@@ -233,9 +247,10 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 >
   {/*
     HOME stacking (decoupled):
-    - Atmosphere: fixed inset-0 z-[-1] pointer-events-none (SectionAtmosphere)
+    - Atmosphere: fixed inset-0 z-0 pointer-events-none (SectionAtmosphere)
     - Theme chrome: relative z-10 pointer-events-auto
     Nav structure (hamburguesa / app_tabs) never mutates atmosphere.
+    Nota: z-0 (no z-[-1]) — z negativo puede pintar detrás del background del body.
   */}
   <div
     class="relative flex min-h-dvh flex-col overflow-hidden bg-transparent"
@@ -255,7 +270,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     {
       !String(fondoHome?.valor || '').trim() && (
         <div
-          class="pointer-events-none fixed inset-0 z-[-1] overflow-hidden opacity-40"
+          class="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-40"
           aria-hidden="true"
           data-parallax-root
         >

@@ -20,25 +20,24 @@ if (user) {
 ---
 
 <Layout
-  title="Admin · CRX Xemilla"
+  title="Admin · Xemilla"
   theme="crx"
   themeColor="#09090b"
   description="Acceso al panel de administración Xemilla"
 >
-  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-10 pt-16 text-white">
+  <main
+    class="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-black px-6 pb-10 pt-16 text-white sm:px-8"
+  >
     <header class="text-center">
+      <img
+        src="https://res.cloudinary.com/dgphys1xd/image/upload/v1784310548/Photoroom_20260717_132348_xrnil8.png"
+        alt="Xemilla"
+        width="192"
+        height="192"
+        class="mx-auto h-auto w-40 object-contain sm:w-48 animate-[fadeUp_0.5s_ease_both]"
+      />
       <p
-        class="text-[0.62rem] font-semibold uppercase tracking-[0.35em] text-zinc-500 animate-[fadeUp_0.5s_ease_both]"
-      >
-        Xemilla
-      </p>
-      <h1
-        class="mt-3 font-blacksushi-display text-4xl font-semibold tracking-tight animate-[fadeUp_0.55s_ease_0.05s_both]"
-      >
-        CRX
-      </h1>
-      <p
-        class="mx-auto mt-3 max-w-[16rem] text-sm leading-relaxed text-zinc-400 animate-[fadeUp_0.6s_ease_0.1s_both]"
+        class="mx-auto mt-6 max-w-[16rem] text-sm font-light leading-relaxed text-zinc-400 animate-[fadeUp_0.6s_ease_0.1s_both]"
       >
         Entrá al panel de tu restaurante.
       </p>
@@ -46,11 +45,14 @@ if (user) {
 
     <form
       id="login-form"
-      class="glass-panel mt-12 space-y-4 p-5 animate-[fadeUp_0.65s_ease_0.14s_both]"
+      class="mt-12 space-y-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 shadow-2xl backdrop-blur-md sm:p-6 animate-[fadeUp_0.65s_ease_0.14s_both]"
       novalidate
     >
       <div class="space-y-1.5">
-        <label for="email" class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+        <label
+          for="email"
+          class="block text-xs font-semibold uppercase tracking-widest text-zinc-500"
+        >
           Email
         </label>
         <input
@@ -60,14 +62,14 @@ if (user) {
           autocomplete="email"
           required
           placeholder="tu@restaurante.com"
-          class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
+          class="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
         />
       </div>
 
       <div class="space-y-1.5">
         <label
           for="password"
-          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
+          class="block text-xs font-semibold uppercase tracking-widest text-zinc-500"
         >
           Contraseña
         </label>
@@ -78,7 +80,7 @@ if (user) {
           autocomplete="current-password"
           required
           placeholder="••••••••"
-          class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
+          class="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
         />
       </div>
 
@@ -89,14 +91,14 @@ if (user) {
         aria-live="polite"
       ></p>
 
-      <button type="submit" id="login-submit" class="glass-btn mt-2 !bg-white !text-zinc-950">
+      <button
+        type="submit"
+        id="login-submit"
+        class="mt-2 flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-black transition-all duration-200 hover:scale-[1.02] hover:bg-zinc-200 disabled:opacity-60 disabled:hover:scale-100"
+      >
         Entrar al Panel
       </button>
     </form>
-
-    <footer class="mt-auto pt-10 text-center text-[10px] uppercase tracking-[0.28em] text-zinc-600">
-      Powered by CRX
-    </footer>
   </main>
 </Layout>
 

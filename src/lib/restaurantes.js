@@ -193,7 +193,8 @@ export async function listRestauranteSlugs() {
 }
 
 /**
- * Si la fila pública no trae temas, reintenta con service role (bypass RLS).
+ * Si la fila pública no trae identidad visual, reintenta con service role.
+ * Cubre plantillas + JSONB de marca (ui_estilo / secciones_fondo) + textos.
  * @param {Record<string, unknown>} row
  * @returns {Promise<Record<string, unknown>>}
  */
@@ -202,37 +203,58 @@ async function enrichThemesWithServiceRole(row) {
     row.home_theme != null && String(row.home_theme).trim() !== '';
   const hasUbicacion =
     row.ubicacion_theme != null && String(row.ubicacion_theme).trim() !== '';
+  const hasUiEstilo = row.ui_estilo != null && row.ui_estilo !== '';
+  const hasSeccionesFondo =
+    row.secciones_fondo != null && row.secciones_fondo !== '';
 
-  if (hasHome && hasUbicacion) return row;
+  if (hasHome && hasUbicacion && hasUiEstilo && hasSeccionesFondo) {
+    return row;
+  }
 
   const service = createSupabaseServiceClient();
   if (!service || !row.id) {
     console.warn(
-      '[supabase] home_theme/ubicacion_theme ausentes y no hay SUPABASE_SERVICE_ROLE_KEY para reintento.',
+      '[supabase] identidad visual incompleta y no hay SUPABASE_SERVICE_ROLE_KEY para reintento.',
     );
     return row;
   }
 
   const { data, error } = await service
     .from('restaurantes')
-    .select('home_theme, ubicacion_theme, logo_url')
+    .select(
+      'home_theme, ubicacion_theme, logo_url, ui_estilo, secciones_fondo, eslogan, nombre_comercial',
+    )
     .eq('id', row.id)
     .maybeSingle();
 
   if (error) {
-    console.warn('[supabase] reintento service role (themes):', error.message);
+    console.warn('[supabase] reintento service role (identidad):', error.message);
     return row;
   }
 
   if (!data) return row;
 
-  console.log('[supabase] themes via service role:', data);
+  console.log('[supabase] identidad visual via service role:', {
+    home_theme: data.home_theme,
+    ubicacion_theme: data.ubicacion_theme,
+    has_ui_estilo: data.ui_estilo != null,
+    has_secciones_fondo: data.secciones_fondo != null,
+  });
 
   return {
     ...row,
     home_theme: hasHome ? row.home_theme : data.home_theme,
     ubicacion_theme: hasUbicacion ? row.ubicacion_theme : data.ubicacion_theme,
     logo_url: asText(row.logo_url) || asText(data.logo_url) || row.logo_url,
+    ui_estilo: hasUiEstilo ? row.ui_estilo : data.ui_estilo,
+    secciones_fondo: hasSeccionesFondo
+      ? row.secciones_fondo
+      : data.secciones_fondo,
+    eslogan: asText(row.eslogan) || data.eslogan || row.eslogan,
+    nombre_comercial:
+      asText(row.nombre_comercial) ||
+      data.nombre_comercial ||
+      row.nombre_comercial,
   };
 }
 
@@ -419,26 +441,28 @@ function buildUbicacion(row, brand) {
 }
 
 /**
- * Logo / tagline: brand conocido o derivados del nombre comercial.
+ * Logo / tagline: prioridad absoluta Supabase; brand.js solo rellena huecos.
  * @param {Record<string, unknown>} row
  * @param {ReturnType<typeof getBrandProfile>} brand
  * @param {boolean} hasBrandProfile
  */
 function buildIdentity(row, brand, hasBrandProfile) {
   const nombre = asText(row.nombre_comercial) || 'Restaurante';
+  const esloganDb = asText(row.eslogan);
+  const letter = nombre.charAt(0).toUpperCase() || 'R';
+
   if (hasBrandProfile) {
     return {
-      tagline: brand.tagline,
-      logoText: brand.logoText,
-      logoLetter: brand.logoLetter,
+      tagline: esloganDb || asText(brand.tagline) || '',
+      logoText: nombre.toUpperCase() || asText(brand.logoText) || nombre,
+      logoLetter: letter || asText(brand.logoLetter) || 'R',
       estilos: brand.estilos,
       wifi: brand.wifi,
     };
   }
 
-  const letter = nombre.charAt(0).toUpperCase() || 'R';
   return {
-    tagline: '',
+    tagline: esloganDb || '',
     logoText: nombre.toUpperCase(),
     logoLetter: letter,
     estilos: DEFAULT_ESTILOS,
@@ -615,6 +639,13 @@ export async function getRestauranteBySlug(slug) {
   const appIconUrl = resolveMediaUrl(row.app_icon_url) || logoUrl;
   const eslogan =
     asText(row.eslogan) || asText(identity.tagline) || '';
+  const taglineSuperior = String(
+    uiEstilo?.home?.tagline_superior || '',
+  ).trim();
+  const logoText =
+    asText(row.nombre_comercial).toUpperCase() ||
+    identity.logoText ||
+    'RESTAURANTE';
 
   const fondoHomeRaw = resolveSectionFondo(seccionesFondo, 'home', {
     tipo: asText(row.imagen_fondo) ? 'image' : 'color',
@@ -653,13 +684,14 @@ export async function getRestauranteBySlug(slug) {
   return {
     ...identity,
     tagline: eslogan || identity.tagline,
-    taglineSuperior: String(uiEstilo?.home?.tagline_superior || '').trim(),
+    eslogan,
+    taglineSuperior,
     logoUrl,
     logo_url: logoUrl,
     logo: logoUrl,
     shareImageUrl,
     appIconUrl,
-    logoText: identity.logoText,
+    logoText,
     logoLetter: identity.logoLetter,
     id: row.id,
     slug: row.slug,

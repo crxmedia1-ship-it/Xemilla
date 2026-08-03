@@ -38,6 +38,7 @@ const {
   logoLetter,
   logoUrl,
   tagline,
+  taglineSuperior,
   showWifi,
   showDividir,
   showLlamarMesero,
@@ -175,6 +176,17 @@ const glassStyle =
               {logoText}
             </h1>
           </div>
+          {
+            taglineSuperior ? (
+              <p
+                class="mx-auto text-[0.62rem] font-light uppercase tracking-[0.28em] opacity-70"
+                style={esloganStyle}
+                data-home-tagline-superior
+              >
+                {taglineSuperior}
+              </p>
+            ) : null
+          }
           {
             tagline ? (
               <div
