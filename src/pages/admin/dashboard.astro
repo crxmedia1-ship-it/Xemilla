@@ -184,6 +184,13 @@ if (!redesMap.instagram && restaurante?.instagram_url) {
   redesMap.instagram = restaurante.instagram_url;
 }
 
+const opsInstagram = String(
+  redesMap.instagram || restaurante?.instagram_url || '',
+).trim();
+const opsSocialAlt = String(
+  redesMap.facebook || redesMap.tiktok || '',
+).trim();
+
 const fondoHome = fondoSeccion(
   'home',
   restaurante?.imagen_fondo ? 'image' : 'color',
@@ -432,6 +439,17 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           >
             Métricas
           </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-perfil"
+            data-tab-target="perfil"
+            aria-selected="false"
+            aria-controls="panel-perfil"
+            class={`${tabPillInactive}`}
+          >
+            Perfil
+          </button>
           {
             isSuperAdmin && (
               <button
@@ -647,62 +665,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
               </div>
             )
           }
-
-          <section
-            id="ops-contacto-card"
-            class="mb-6 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-4"
-            data-ops-contacto
-          >
-            <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
-              <div class="min-w-0">
-                <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
-                  Operaciones
-                </p>
-                <h2 class="mt-1 font-blacksushi-display text-lg font-semibold tracking-tight text-zinc-100">
-                  Contacto y horario
-                </h2>
-                <p class="mt-1 text-xs text-zinc-500">
-                  Solo teléfono y atención — no altera identidad ni diseño.
-                </p>
-              </div>
-              <p id="ops-contacto-status" class="text-[10px] text-zinc-600" role="status"></p>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <label class="block min-w-0">
-                <span class={labelClass}>Teléfono de Contacto/WhatsApp</span>
-                <input
-                  type="text"
-                  id="ops-telefono"
-                  name="ops_telefono"
-                  value={opsTelefono}
-                  placeholder="+58…"
-                  autocomplete="tel"
-                  class={`${fieldClass} mt-1.5`}
-                />
-              </label>
-              <label class="block min-w-0 sm:col-span-2">
-                <span class={labelClass}>Horario de Atención</span>
-                <input
-                  type="text"
-                  id="ops-horario"
-                  name="ops_horario"
-                  value={opsHorario}
-                  placeholder="Lun a Dom: 12:00 pm - 11:00 pm"
-                  class={`${fieldClass} mt-1.5`}
-                />
-              </label>
-            </div>
-            <div class="mt-3 flex justify-end">
-              <button
-                type="button"
-                id="ops-contacto-save"
-                data-restaurante-id={restId}
-                class="admin-action-btn inline-flex items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
-              >
-                Guardar contacto
-              </button>
-            </div>
-          </section>
 
           <section class="min-w-0">
             <div class="mb-4">
@@ -971,6 +933,95 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
               title="Métricas y Analíticas"
               subtitle={`Rendimiento de ${nombre} · alertas de mesa y vista previa de interés del menú`}
             />
+          </div>
+
+          <div
+            id="panel-perfil"
+            role="tabpanel"
+            aria-labelledby="tab-perfil"
+            data-tab-panel="perfil"
+            class="hidden space-y-6"
+            hidden
+          >
+            <section
+              id="ops-contacto-card"
+              class="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-4"
+              data-ops-contacto
+            >
+              <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+                    Operaciones
+                  </p>
+                  <h2 class="mt-1 font-blacksushi-display text-lg font-semibold tracking-tight text-zinc-100">
+                    Perfil del Restaurante
+                  </h2>
+                  <p class="mt-1 text-xs text-zinc-500">
+                    Contacto, horario y redes — no altera identidad ni diseño.
+                  </p>
+                </div>
+                <p id="ops-contacto-status" class="text-[10px] text-zinc-600" role="status"></p>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="block min-w-0">
+                  <span class={labelClass}>Teléfono de Contacto/WhatsApp</span>
+                  <input
+                    type="text"
+                    id="ops-telefono"
+                    name="ops_telefono"
+                    value={opsTelefono}
+                    placeholder="+58…"
+                    autocomplete="tel"
+                    class={`${fieldClass} mt-1.5`}
+                  />
+                </label>
+                <label class="block min-w-0 sm:col-span-2">
+                  <span class={labelClass}>Horario de Atención</span>
+                  <input
+                    type="text"
+                    id="ops-horario"
+                    name="ops_horario"
+                    value={opsHorario}
+                    placeholder="Lun a Dom: 12:00 pm - 11:00 pm"
+                    class={`${fieldClass} mt-1.5`}
+                  />
+                </label>
+                <label class="block min-w-0">
+                  <span class={labelClass}>Enlace de Instagram</span>
+                  <input
+                    type="url"
+                    id="ops-instagram"
+                    name="ops_instagram"
+                    value={opsInstagram}
+                    placeholder="https://instagram.com/…"
+                    autocomplete="off"
+                    class="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50"
+                  />
+                </label>
+                <label class="block min-w-0">
+                  <span class={labelClass}>Enlace de TikTok / Facebook</span>
+                  <input
+                    type="url"
+                    id="ops-social-alt"
+                    name="ops_social_alt"
+                    value={opsSocialAlt}
+                    placeholder="https://tiktok.com/@… o https://facebook.com/…"
+                    autocomplete="off"
+                    class="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50"
+                  />
+                </label>
+              </div>
+              <div class="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  id="ops-contacto-save"
+                  data-restaurante-id={restId}
+                  class="admin-action-btn inline-flex items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
+                >
+                  Guardar contacto
+                </button>
+              </div>
+            </section>
           </div>
 
           {
@@ -2875,6 +2926,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   const categoryFilters = document.getElementById('category-scroll');
   const opsTelefonoInput = document.getElementById('ops-telefono');
   const opsHorarioInput = document.getElementById('ops-horario');
+  const opsInstagramInput = document.getElementById('ops-instagram');
+  const opsSocialAltInput = document.getElementById('ops-social-alt');
   const opsContactoSave = document.getElementById('ops-contacto-save');
   const opsContactoStatus = document.getElementById('ops-contacto-status');
 
@@ -3153,6 +3206,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         opsHorarioInput instanceof HTMLInputElement
           ? opsHorarioInput.value.trim()
           : '';
+      const instagramUrl =
+        opsInstagramInput instanceof HTMLInputElement
+          ? opsInstagramInput.value.trim()
+          : '';
+      const socialAltUrl =
+        opsSocialAltInput instanceof HTMLInputElement
+          ? opsSocialAltInput.value.trim()
+          : '';
 
       opsContactoSave.disabled = true;
       const prevLabel = opsContactoSave.textContent;
@@ -3170,6 +3231,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
             restaurante_id: restauranteId,
             telefono,
             horario,
+            instagram_url: instagramUrl,
+            facebook_url: socialAltUrl,
           }),
         });
         const json = await res.json().catch(() => ({}));
@@ -3181,12 +3244,22 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         if (opsHorarioInput instanceof HTMLInputElement) {
           opsHorarioInput.value = json.restaurante?.horarios || horario;
         }
+        if (opsInstagramInput instanceof HTMLInputElement) {
+          opsInstagramInput.value =
+            json.restaurante?.instagram_url || instagramUrl;
+        }
+        if (opsSocialAltInput instanceof HTMLInputElement) {
+          opsSocialAltInput.value =
+            json.restaurante?.facebook_url ||
+            json.restaurante?.tiktok_url ||
+            socialAltUrl;
+        }
         if (opsContactoStatus) {
           opsContactoStatus.textContent = '✓ guardado';
           opsContactoStatus.className = 'text-[10px] text-emerald-400';
         }
         if (typeof showToast === 'function') {
-          showToast('Contacto y horario guardados', 'ok');
+          showToast('Perfil del restaurante guardado', 'ok');
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error al guardar';
@@ -4119,6 +4192,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (raw === 'marca' || raw === 'identidad') return 'identidad';
     if (raw === 'metricas' || raw === 'métricas') return 'metricas';
     if (raw === 'menu' || raw === 'menú') return 'menu';
+    if (raw === 'perfil') return 'perfil';
     return raw || 'menu';
   }
 

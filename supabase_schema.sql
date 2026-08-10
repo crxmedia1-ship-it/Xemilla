@@ -123,7 +123,7 @@ ALTER TABLE public.restaurantes
 COMMENT ON COLUMN public.restaurantes.nosotros_bloques IS
   'Array editorial: [{ titulo, texto, media_url, alineacion: alternada|inversa }].';
 COMMENT ON COLUMN public.restaurantes.redes_sociales IS
-  'Array de redes: [{ red: instagram|facebook|tiktok|tripadvisor, url }].';
+  'Array de redes: [{ red: instagram|facebook|tiktok|tripadvisor, url }]. Editable por operativo vía POST /api/update-operativo-contacto (instagram + facebook|tiktok; aislado de ui_estilo).';
 
 ALTER TABLE public.categorias
   ADD COLUMN IF NOT EXISTS bg_type TEXT,
@@ -202,9 +202,9 @@ ALTER TABLE public.restaurantes
 COMMENT ON COLUMN public.restaurantes.direccion IS
   'Dirección pública (ej: Chuao, Caracas. Venezuela.).';
 COMMENT ON COLUMN public.restaurantes.horarios IS
-  'Horarios multilínea Carrd (usar \\n entre líneas). Editable por operativo vía POST /api/update-operativo-contacto (solo horarios + whatsapp_url).';
+  'Horarios multilínea Carrd (usar \\n entre líneas). Editable por operativo vía POST /api/update-operativo-contacto (whitelist: horarios + whatsapp_url + instagram_url + redes_sociales).';
 COMMENT ON COLUMN public.restaurantes.instagram_url IS
-  'URL completa de Instagram del restaurante.';
+  'URL completa de Instagram del restaurante. Editable por operativo vía POST /api/update-operativo-contacto (sync con redes_sociales; aislado de ui_estilo / Identidad).';
 COMMENT ON COLUMN public.restaurantes.whatsapp_url IS
   'WhatsApp: número E.164 o URL wa.me / api.whatsapp.com. Editable por operativo vía POST /api/update-operativo-contacto (aislado de ui_estilo / Identidad).';
 COMMENT ON COLUMN public.restaurantes.coordenadas_maps IS
