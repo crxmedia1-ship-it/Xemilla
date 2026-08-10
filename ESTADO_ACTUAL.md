@@ -1,6 +1,6 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-08-03 10:42 -04  
+> **Última Actualización:** 2026-08-09 23:05 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)
@@ -14,12 +14,12 @@
 | Rol | Cómo se determina | Superficie | Responsabilidad |
 |-----|-------------------|------------|-----------------|
 | **SuperAdmin** | `isSuperAdminUser` / `getUserAdminRole`: email allowlist (`SUPERADMIN_EMAIL`) **o** `role === 'superadmin'` en metadata | Hub `/admin/super/*` → gestiona locales; Identidad en `/admin/dashboard` | Alta de restaurantes, métricas de red, motor de diseño, **crear credenciales operativas** |
-| **Admin Operativo** | `app_metadata` / `user_metadata`: `role: 'admin_operativo'` + `restaurante_id` → `isSuperAdmin === false` | `/admin/dashboard` solo **Menú** + **Métricas** (SSR oculta Identidad / + Nuevo Restaurante / Guardar marca) | CRUD platos del local asignado; query `?restaurante=` ajeno se ignora |
+| **Admin Operativo** | `app_metadata` / `user_metadata`: `role: 'admin_operativo'` + `restaurante_id` → `isSuperAdmin === false` | `/admin/dashboard` solo **Menú** + **Métricas** (SSR oculta Identidad / + Nuevo Restaurante / Guardar marca) | CRUD platos del local asignado; contacto/horario vía `POST /api/update-operativo-contacto` (solo `whatsapp_url` + `horarios`); query `?restaurante=` ajeno se ignora |
 | **Cliente final** | — | `RestaurantApp.astro` vía `[slug].astro` | Home temático + paneles Menú / Nosotros / Ubicación + gadgets |
 
 **Redirect post-login** (`getAdminPostLoginPath`): SuperAdmin → `/admin/super/dashboard` · Operativo → `/admin/dashboard?restaurante=<assigned>` (SSR fuerza metadata `restaurante_id`, id|slug → fallback `user_id`). Middleware bloquea `/admin/super/*` si no es SuperAdmin.
 
-**Alta operativa:** SuperAdmin Hub → card local → “Credenciales operativas” → `POST /api/admin/create-operativo` (service role `createUser` + link `restaurantes.user_id`).
+**Alta operativa:** SuperAdmin Hub → card local → “Credenciales operativas” → `POST /api/create-admin-user` (service role `createUser` + link `restaurantes.user_id`; `/api/admin/create-operativo` es proxy).
 
 ### Mapa rápido de archivos
 
@@ -33,6 +33,7 @@
 | Tokens UI | `src/lib/secciones-ui.js` |
 | Themes Home/Ubicación | `src/lib/layout-themes.js` |
 | API marca | `src/pages/api/update-marca.js` |
+| API ops contacto | `src/pages/api/update-operativo-contacto.js` (`whatsapp_url` + `horarios` only) |
 | Tipografías | `src/config/typography-combos.js` |
 | Layout + VT | `src/layouts/Layout.astro` (`ClientRouter`) |
 | Temas admin CSS | `src/styles/admin-themes.css` · key `xemilla-admin-theme` |
@@ -189,6 +190,7 @@ Tamaños `0` / `null` / vacío → fallback (`normalizeHomePx`).
 ### Hub SuperAdmin — `admin/super/dashboard.astro`
 
 - Lista de locales (cards `glass-panel solid-obstacle`) + CTA **Gestionar Restaurante** → `/admin/dashboard?restaurante=…`
+- Badge Acceso Activo / Sin Acceso: SSR cruza Auth `listUsers` (metadata `restaurante_id`) — **no** `Boolean(user_id)` (ese campo suele ser el SuperAdmin)
 - Tabs: **Locales** · **Métricas** (red, 30 días)
 - Theme switcher + **Nuevo restaurante** + logout
 - **Sin** Live Preview
@@ -310,6 +312,7 @@ Clases residuales `.solid-obstacle` en dashboard cards son inocuas (ya no hay f�
 - [ ] Unificar `DEFAULT_HOME_THEME` (`bento` en `layout-themes.js` vs default Admin/schema `editorial`)  
 - [ ] Tests de humo: Admin save → `ui_estilo.home` → render público (3 nav styles)  
 - [x] **Admin aquarium/drift removido (2026-08-03):** sin `#gastronomic-drift-layer`, sin rAF, sin CSS `.floating-item`; UI Admin limpia (search/botones libres)
+- [x] **Admin operativo UX (2026-08-09):** thumbnails media 40×40; pills filtro categoría; grip prep visual; card Contacto/horario → `POST /api/update-operativo-contacto` (aislado de Identidad/`ui_estilo`)
 
 ---
 
@@ -321,7 +324,7 @@ Clases residuales `.solid-obstacle` en dashboard cards son inocuas (ya no hay f�
 4. Temas admin: `xemilla-admin-theme` → dark = Observatorio Cósmico · light = Habitación del Tiempo (void radial, no palace). CSS: `admin-themes.css`. **Sin aquarium/drift flotante.**  
 5. Admin layout: fondos temáticos `z-[-1]` + slot `relative z-10 pointer-events-auto`. Sin imágenes decorativas flotantes.  
 6. Render público: `RestaurantApp.astro` → `[data-home-shell]`: `SectionAtmosphere` (`fixed z-0`) + Home theme estructura (`z-10`) + chrome nav. Themes **no** pintan fondos. No usar `z-[-1]` (queda bajo el bg del `body`).  
-7. Persistencia: `POST /api/update-marca` → Supabase.  
+7. Persistencia Identidad: `POST /api/update-marca` → Supabase. Contacto/horario operativo: `POST /api/update-operativo-contacto` (solo `whatsapp_url` + `horarios`).  
 8. **No inventar** `IdentidadMarca.astro`: vive en `dashboard.astro`.  
 9. `logo_size` = **10–400** (default 160). CSS vars cortas + aliases `--home-*`.
 

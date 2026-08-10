@@ -87,6 +87,18 @@ const restId = restaurante?.id ?? '';
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
 const publicWebAppUrl = publicSlug ? `/${publicSlug}` : '';
 const categoriasJson = JSON.stringify(categorias);
+const opsTelefono = String(
+  restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
+).trim();
+const opsHorario = String(restaurante?.horarios || '').trim();
+const menuCategoryNames = [
+  ...new Set(
+    [
+      ...categorias.map((c) => String(c?.nombre || '').trim()),
+      ...platos.map((p) => String(p?.categoria_nombre || '').trim()),
+    ].filter(Boolean),
+  ),
+];
 
 const metricsClient = isSuperAdmin
   ? getSuperAdminWriteClient(
@@ -636,6 +648,62 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
             )
           }
 
+          <section
+            id="ops-contacto-card"
+            class="mb-6 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-4"
+            data-ops-contacto
+          >
+            <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+              <div class="min-w-0">
+                <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+                  Operaciones
+                </p>
+                <h2 class="mt-1 font-blacksushi-display text-lg font-semibold tracking-tight text-zinc-100">
+                  Contacto y horario
+                </h2>
+                <p class="mt-1 text-xs text-zinc-500">
+                  Solo teléfono y atención — no altera identidad ni diseño.
+                </p>
+              </div>
+              <p id="ops-contacto-status" class="text-[10px] text-zinc-600" role="status"></p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="block min-w-0">
+                <span class={labelClass}>Teléfono de Contacto/WhatsApp</span>
+                <input
+                  type="text"
+                  id="ops-telefono"
+                  name="ops_telefono"
+                  value={opsTelefono}
+                  placeholder="+58…"
+                  autocomplete="tel"
+                  class={`${fieldClass} mt-1.5`}
+                />
+              </label>
+              <label class="block min-w-0 sm:col-span-2">
+                <span class={labelClass}>Horario de Atención</span>
+                <input
+                  type="text"
+                  id="ops-horario"
+                  name="ops_horario"
+                  value={opsHorario}
+                  placeholder="Lun a Dom: 12:00 pm - 11:00 pm"
+                  class={`${fieldClass} mt-1.5`}
+                />
+              </label>
+            </div>
+            <div class="mt-3 flex justify-end">
+              <button
+                type="button"
+                id="ops-contacto-save"
+                data-restaurante-id={restId}
+                class="admin-action-btn inline-flex items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
+              >
+                Guardar contacto
+              </button>
+            </div>
+          </section>
+
           <section class="min-w-0">
             <div class="mb-4">
               <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
@@ -648,24 +716,53 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
             <div
               id="platos-toolbar"
-              class:list={['mb-3 flex flex-wrap items-center gap-3', platos.length === 0 && 'hidden']}
+              class:list={['mb-3 space-y-2.5', platos.length === 0 && 'hidden']}
             >
-              <div class="relative min-w-[16rem] flex-1">
-                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" aria-hidden="true">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <circle cx="11" cy="11" r="7"></circle>
-                    <path d="M20 20l-3.5-3.5"></path>
-                  </svg>
-                </span>
-                <input
-                  id="platos-search"
-                  type="search"
-                  autocomplete="off"
-                  placeholder="Buscar por nombre o categoría..."
-                  class="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                />
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="relative min-w-[16rem] flex-1">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" aria-hidden="true">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <circle cx="11" cy="11" r="7"></circle>
+                      <path d="M20 20l-3.5-3.5"></path>
+                    </svg>
+                  </span>
+                  <input
+                    id="platos-search"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Buscar por nombre o categoría..."
+                    class="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                  />
+                </div>
+                <p id="search-meta" class="text-xs text-zinc-600">{platos.length} visibles</p>
               </div>
-              <p id="search-meta" class="text-xs text-zinc-600">{platos.length} visibles</p>
+              <div
+                id="platos-category-filters"
+                class="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                role="toolbar"
+                aria-label="Filtrar por categoría"
+              >
+                <button
+                  type="button"
+                  data-cat-filter="todas"
+                  aria-pressed="true"
+                  class="cat-filter-pill shrink-0 rounded-full border border-transparent bg-zinc-100 px-3 py-1 text-xs font-medium text-black"
+                >
+                  Todas
+                </button>
+                {
+                  menuCategoryNames.map((catName) => (
+                    <button
+                      type="button"
+                      data-cat-filter={catName}
+                      aria-pressed="false"
+                      class="cat-filter-pill shrink-0 rounded-full border border-zinc-800 bg-transparent px-3 py-1 text-xs font-medium text-zinc-400"
+                    >
+                      {catName}
+                    </button>
+                  ))
+                }
+              </div>
             </div>
 
             <div
@@ -688,15 +785,16 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
               class:list={['glass-panel', bounceWallClass, 'overflow-hidden', platos.length === 0 && 'hidden']}
             >
               <div class="overflow-x-auto">
-                <table class="w-full min-w-[860px] border-collapse text-sm">
+                <table class="w-full min-w-[900px] border-collapse text-sm">
                   <thead>
                     <tr class="border-b border-white/8 text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+                      <th class="w-8 px-2 py-3" aria-label="Preparación"></th>
                       <th class="px-4 py-3 text-left font-semibold">Plato</th>
                       <th class="w-[9rem] px-3 py-3 text-center font-semibold">Categoría</th>
                       <th class="w-[7.5rem] px-3 py-3 text-right font-semibold">Precio</th>
                       <th class="w-[6.5rem] px-3 py-3 text-center font-semibold">Destacado</th>
                       <th class="w-[6.5rem] px-3 py-3 text-center font-semibold">Disponible</th>
-                      <th class="w-[8.5rem] px-4 py-3 text-right font-semibold">Media</th>
+                      <th class="w-[7rem] px-4 py-3 text-right font-semibold">Media</th>
                     </tr>
                   </thead>
                   <tbody id="platos-tbody">
@@ -709,8 +807,25 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                           data-destacado={plato.destacado ? 'true' : 'false'}
                           data-imagen={plato.imagen_url || ''}
                           data-nombre={plato.nombre}
+                          data-categoria={plato.categoria_nombre || ''}
                           data-search={`${plato.nombre} ${plato.categoria_nombre} ${plato.descripcion || ''}`.toLowerCase()}
                         >
+                          <td class="px-2 py-3.5 text-center">
+                            <span
+                              class="inline-flex cursor-grab text-zinc-600 transition-colors hover:text-white"
+                              title="Preparación · reordenar (próximamente)"
+                              aria-hidden="true"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="9" cy="5" r="1" fill="currentColor"></circle>
+                                <circle cx="9" cy="12" r="1" fill="currentColor"></circle>
+                                <circle cx="9" cy="19" r="1" fill="currentColor"></circle>
+                                <circle cx="15" cy="5" r="1" fill="currentColor"></circle>
+                                <circle cx="15" cy="12" r="1" fill="currentColor"></circle>
+                                <circle cx="15" cy="19" r="1" fill="currentColor"></circle>
+                              </svg>
+                            </span>
+                          </td>
                           <td class="px-4 py-3 text-left">
                             <div class="flex flex-col gap-1">
                               <input
@@ -791,9 +906,15 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                                   <button
                                     type="button"
                                     data-ver-plato
-                                    class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white"
+                                    title="Ver / editar media"
+                                    class="block overflow-hidden rounded-md ring-1 ring-white/10 transition hover:ring-white/25"
                                   >
-                                    Ver
+                                    <img
+                                      src={plato.imagen_url}
+                                      alt=""
+                                      class="h-10 w-10 object-cover rounded-md"
+                                      loading="lazy"
+                                    />
                                   </button>
                                 ) : (
                                   <label class="relative inline-flex cursor-pointer items-center">
@@ -805,9 +926,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                                     />
                                     <span
                                       data-upload-label
-                                      class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white"
+                                      title="Subir media"
+                                      class="flex h-10 w-10 items-center justify-center rounded-md bg-zinc-800/50 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
                                     >
-                                      Subir
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <circle cx="12" cy="13" r="4"></circle>
+                                      </svg>
                                     </span>
                                   </label>
                                 )
@@ -2751,6 +2876,23 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   const countEl = document.getElementById('platos-count');
   const searchInput = document.getElementById('platos-search');
   const searchMeta = document.getElementById('search-meta');
+  const categoryFilters = document.getElementById('platos-category-filters');
+  const opsTelefonoInput = document.getElementById('ops-telefono');
+  const opsHorarioInput = document.getElementById('ops-horario');
+  const opsContactoSave = document.getElementById('ops-contacto-save');
+  const opsContactoStatus = document.getElementById('ops-contacto-status');
+
+  const CAT_PILL_ACTIVE =
+    'cat-filter-pill shrink-0 rounded-full border border-transparent bg-zinc-100 px-3 py-1 text-xs font-medium text-black';
+  const CAT_PILL_INACTIVE =
+    'cat-filter-pill shrink-0 rounded-full border border-zinc-800 bg-transparent px-3 py-1 text-xs font-medium text-zinc-400';
+  const CAMERA_ICON_SVG =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>';
+  const GRIP_ICON_SVG =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="5" r="1" fill="currentColor"></circle><circle cx="9" cy="12" r="1" fill="currentColor"></circle><circle cx="9" cy="19" r="1" fill="currentColor"></circle><circle cx="15" cy="5" r="1" fill="currentColor"></circle><circle cx="15" cy="12" r="1" fill="currentColor"></circle><circle cx="15" cy="19" r="1" fill="currentColor"></circle></svg>';
+
+  /** @type {string} */
+  let activeCategoryFilter = 'todas';
 
   const modal = document.getElementById('plato-modal');
   const modalTitle = document.getElementById('plato-modal-title');
@@ -2831,6 +2973,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     const c = cat?.textContent || '';
     row.dataset.search = `${n} ${c} ${d}`.toLowerCase();
     row.dataset.nombre = n;
+    row.dataset.categoria = c.trim();
   }
 
   function refreshCount() {
@@ -2840,26 +2983,163 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     emptyEl?.classList.toggle('hidden', n > 0);
     tableWrap?.classList.toggle('hidden', n === 0);
     toolbar?.classList.toggle('hidden', n === 0);
+    refreshCategoryPills();
     applySearchFilter();
+  }
+
+  function setCategoryPillActive(btn, active) {
+    if (!(btn instanceof HTMLElement)) return;
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    btn.className = active ? CAT_PILL_ACTIVE : CAT_PILL_INACTIVE;
+  }
+
+  function refreshCategoryPills() {
+    if (!(categoryFilters instanceof HTMLElement)) return;
+    const names = new Set();
+    for (const cat of categoriasCache) {
+      const n = String(cat?.nombre || '').trim();
+      if (n) names.add(n);
+    }
+    for (const row of allRows()) {
+      if (!(row instanceof HTMLElement)) continue;
+      const n = String(row.dataset.categoria || '').trim();
+      if (n && n !== '—') names.add(n);
+    }
+
+    const current = activeCategoryFilter;
+    categoryFilters.innerHTML = '';
+
+    const todas = document.createElement('button');
+    todas.type = 'button';
+    todas.dataset.catFilter = 'todas';
+    todas.textContent = 'Todas';
+    setCategoryPillActive(todas, current === 'todas');
+    categoryFilters.appendChild(todas);
+
+    const sorted = [...names].sort((a, b) => a.localeCompare(b, 'es'));
+    for (const name of sorted) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.catFilter = name;
+      btn.textContent = name;
+      setCategoryPillActive(btn, current === name);
+      categoryFilters.appendChild(btn);
+    }
+
+    if (current !== 'todas' && !names.has(current)) {
+      activeCategoryFilter = 'todas';
+      setCategoryPillActive(todas, true);
+    }
   }
 
   function applySearchFilter() {
     const q = (searchInput instanceof HTMLInputElement ? searchInput.value : '').trim().toLowerCase();
+    const catFilter = String(activeCategoryFilter || 'todas').trim().toLowerCase();
     const rows = allRows();
     let visible = 0;
     for (const row of rows) {
       if (!(row instanceof HTMLElement)) continue;
-      const match = !q || (row.dataset.search || '').includes(q);
+      const rowCat = String(row.dataset.categoria || '').trim().toLowerCase();
+      const catMatch = catFilter === 'todas' || rowCat === catFilter;
+      const textMatch = !q || (row.dataset.search || '').includes(q);
+      const match = catMatch && textMatch;
       row.classList.toggle('hidden', !match);
       if (match) visible += 1;
     }
-    if (searchMeta) searchMeta.textContent = q ? `${visible} de ${rows.length}` : `${rows.length} visibles`;
+    const filtered = Boolean(q) || catFilter !== 'todas';
+    if (searchMeta) {
+      searchMeta.textContent = filtered
+        ? `${visible} de ${rows.length}`
+        : `${rows.length} visibles`;
+    }
     const hasRows = rows.length > 0;
     noResults?.classList.toggle('hidden', !(hasRows && visible === 0));
     tableWrap?.classList.toggle('hidden', !hasRows || visible === 0);
   }
 
   searchInput?.addEventListener('input', applySearchFilter, { signal });
+
+  categoryFilters?.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const btn = target.closest('[data-cat-filter]');
+      if (!(btn instanceof HTMLElement) || !categoryFilters.contains(btn)) return;
+      const next = String(btn.dataset.catFilter || 'todas');
+      activeCategoryFilter = next;
+      for (const pill of categoryFilters.querySelectorAll('[data-cat-filter]')) {
+        if (!(pill instanceof HTMLElement)) continue;
+        setCategoryPillActive(pill, pill.dataset.catFilter === next);
+      }
+      applySearchFilter();
+    },
+    { signal },
+  );
+
+  opsContactoSave?.addEventListener(
+    'click',
+    async () => {
+      if (!(opsContactoSave instanceof HTMLButtonElement)) return;
+      if (!requireRestauranteId()) return;
+      const telefono =
+        opsTelefonoInput instanceof HTMLInputElement
+          ? opsTelefonoInput.value.trim()
+          : '';
+      const horario =
+        opsHorarioInput instanceof HTMLInputElement
+          ? opsHorarioInput.value.trim()
+          : '';
+
+      opsContactoSave.disabled = true;
+      const prevLabel = opsContactoSave.textContent;
+      opsContactoSave.textContent = 'Guardando…';
+      if (opsContactoStatus) {
+        opsContactoStatus.textContent = '';
+        opsContactoStatus.className = 'text-[10px] text-zinc-600';
+      }
+
+      try {
+        const res = await fetch('/api/update-operativo-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurante_id: restauranteId,
+            telefono,
+            horario,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'No se pudo guardar contacto');
+
+        if (opsTelefonoInput instanceof HTMLInputElement) {
+          opsTelefonoInput.value = json.restaurante?.whatsapp_url || telefono;
+        }
+        if (opsHorarioInput instanceof HTMLInputElement) {
+          opsHorarioInput.value = json.restaurante?.horarios || horario;
+        }
+        if (opsContactoStatus) {
+          opsContactoStatus.textContent = '✓ guardado';
+          opsContactoStatus.className = 'text-[10px] text-emerald-400';
+        }
+        if (typeof showToast === 'function') {
+          showToast('Contacto y horario guardados', 'ok');
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error al guardar';
+        if (opsContactoStatus) {
+          opsContactoStatus.textContent = msg;
+          opsContactoStatus.className = 'text-[10px] text-rose-400';
+        }
+        if (typeof showToast === 'function') showToast(msg, 'error');
+        else alert(msg);
+      } finally {
+        opsContactoSave.disabled = false;
+        opsContactoSave.textContent = prevLabel || 'Guardar contacto';
+      }
+    },
+    { signal },
+  );
 
   function isVideoUrl(url) {
     return /\.(mp4|webm|ogg)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
@@ -3294,8 +3574,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       }
 
       row.dataset.imagen = imagenUrl;
-      const btn = row.querySelector('[data-ver-plato]');
-      if (btn) btn.textContent = 'Ver';
+      setRowMediaUrl(row, imagenUrl);
       closeModal();
       if (imagenUrl) openPreviewModal(row);
     } catch (err) {
@@ -3320,11 +3599,18 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     tr.dataset.destacado = plato.destacado ? 'true' : 'false';
     tr.dataset.imagen = plato.imagen_url || '';
     tr.dataset.nombre = plato.nombre;
+    tr.dataset.categoria = plato.categoria_nombre || '';
     tr.dataset.search =
       `${plato.nombre} ${plato.categoria_nombre || ''} ${plato.descripcion || ''}`.toLowerCase();
     const precio = Number(plato.precio).toFixed(2);
+    const mediaCell = plato.imagen_url
+      ? `<button type="button" data-ver-plato title="Ver / editar media" class="block overflow-hidden rounded-md ring-1 ring-white/10 transition hover:ring-white/25"><img src="${escapeHtml(plato.imagen_url)}" alt="" class="h-10 w-10 object-cover rounded-md" loading="lazy" /></button>`
+      : `<label class="relative inline-flex cursor-pointer items-center"><input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" /><span data-upload-label title="Subir media" class="flex h-10 w-10 items-center justify-center rounded-md bg-zinc-800/50 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300">${CAMERA_ICON_SVG}</span></label>`;
 
     tr.innerHTML = `
+      <td class="px-2 py-3.5 text-center">
+        <span class="inline-flex cursor-grab text-zinc-600 transition-colors hover:text-white" title="Preparación · reordenar (próximamente)" aria-hidden="true">${GRIP_ICON_SVG}</span>
+      </td>
       <td class="px-4 py-3 text-left">
         <div class="flex flex-col gap-1">
           <input type="text" value="${escapeHtml(plato.nombre)}" data-field="nombre" data-original="${escapeHtml(plato.nombre)}"
@@ -3356,14 +3642,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       </td>
       <td class="px-4 py-3.5 text-right">
         <div class="inline-flex items-center justify-end gap-1.5" data-media-actions>
-          ${
-            plato.imagen_url
-              ? `<button type="button" data-ver-plato class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white">Ver</button>`
-              : `<label class="relative inline-flex cursor-pointer items-center">
-                  <input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" />
-                  <span data-upload-label class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white">Subir</span>
-                </label>`
-          }
+          ${mediaCell}
           <button type="button" data-delete class="rounded-lg p-1.5 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400" aria-label="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16"></path><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"></path><path d="M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12"></path><path d="M10 11v6M14 11v6"></path></svg>
           </button>
@@ -3620,19 +3899,30 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (!(actions instanceof HTMLElement)) return;
 
     const deleteBtn = actions.querySelector('[data-delete]');
-    const label = actions.querySelector('label');
-    label?.remove();
+    actions.querySelector('label')?.remove();
+    actions.querySelector('[data-ver-plato]')?.remove();
 
-    if (!actions.querySelector('[data-ver-plato]')) {
+    if (url) {
       const ver = document.createElement('button');
       ver.type = 'button';
-      ver.dataset.verPlato = '';
       ver.setAttribute('data-ver-plato', '');
+      ver.title = 'Ver / editar media';
       ver.className =
-        'rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-neutral-800/50 hover:text-white';
-      ver.textContent = 'Ver';
+        'block overflow-hidden rounded-md ring-1 ring-white/10 transition hover:ring-white/25';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.className = 'h-10 w-10 object-cover rounded-md';
+      ver.appendChild(img);
       if (deleteBtn) actions.insertBefore(ver, deleteBtn);
       else actions.appendChild(ver);
+    } else {
+      const label = document.createElement('label');
+      label.className = 'relative inline-flex cursor-pointer items-center';
+      label.innerHTML = `<input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" /><span data-upload-label title="Subir media" class="flex h-10 w-10 items-center justify-center rounded-md bg-zinc-800/50 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300">${CAMERA_ICON_SVG}</span>`;
+      if (deleteBtn) actions.insertBefore(label, deleteBtn);
+      else actions.appendChild(label);
     }
   }
 
@@ -3649,8 +3939,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (!file) return;
 
     const label = row.querySelector('[data-upload-label]');
-    const prevText = label?.textContent || 'Subir';
-    if (label) label.textContent = 'Subiendo…';
+    const prevHtml = label?.innerHTML || CAMERA_ICON_SVG;
+    if (label) label.textContent = '…';
     target.disabled = true;
 
     try {
@@ -3670,7 +3960,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       await updatePlato(id, { imagen_url: url });
       setRowMediaUrl(row, url);
     } catch (err) {
-      if (label) label.textContent = prevText;
+      if (label) label.innerHTML = prevHtml;
       alert(err instanceof Error ? err.message : 'Error al subir media');
       target.value = '';
       target.disabled = false;

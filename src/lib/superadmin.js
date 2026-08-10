@@ -32,7 +32,7 @@ export async function listAllRestaurantes(supabase, user = null) {
   const { data, error } = await client
     .from('restaurantes')
     .select(
-      'id, nombre_comercial, slug, whatsapp_num, gadget_wifi, gadget_dividir_cuenta, created_at',
+      'id, nombre_comercial, slug, user_id, whatsapp_num, gadget_wifi, gadget_dividir_cuenta, created_at',
     )
     .order('nombre_comercial', { ascending: true });
 

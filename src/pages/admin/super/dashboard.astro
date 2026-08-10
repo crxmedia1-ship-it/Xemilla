@@ -6,6 +6,7 @@ import AdminXemillaMark from '../../../components/admin/AdminXemillaMark.astro';
 import AdminMetricsPanel from '../../../components/admin/AdminMetricsPanel.astro';
 import AdminThemeSwitcher from '../../../components/admin/AdminThemeSwitcher.astro';
 import { requireSuperAdmin, listAllRestaurantes, getSuperAdminWriteClient } from '../../../lib/superadmin.js';
+import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchMetricsSnapshot } from '../../../lib/metrics.js';
 
 const gate = await requireSuperAdmin({
@@ -20,6 +21,39 @@ if (!gate) {
 const restaurantes = await listAllRestaurantes(gate.supabase, gate.user);
 const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
 const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
+
+/** Operativo access = Auth metadata restaurante_id (not truthy restaurantes.user_id — that is often SuperAdmin). */
+/** @type {import('@supabase/supabase-js').User[]} */
+const authUsers = [];
+const service = createSupabaseServiceClient();
+if (service) {
+  const perPage = 200;
+  for (let page = 1; page <= 50; page += 1) {
+    const { data: authPage, error: listErr } = await service.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (listErr) {
+      console.error('[super/dashboard] listUsers:', listErr.message);
+      break;
+    }
+    const batch = authPage?.users ?? [];
+    authUsers.push(...batch);
+    if (batch.length < perPage) break;
+  }
+}
+
+const localesConAcceso = new Set(
+  authUsers
+    .flatMap((u) => [
+      u.user_metadata?.restaurante_id,
+      u.app_metadata?.restaurante_id,
+      u.user_metadata?.restauranteId,
+      u.app_metadata?.restauranteId,
+    ])
+    .filter(Boolean)
+    .map(String),
+);
 ---
 
 <Layout
@@ -108,12 +142,34 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
           </div>
         ) : (
           <ul class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {restaurantes.map((r) => (
+            {restaurantes.map((r) => {
+              const tieneAcceso =
+                localesConAcceso.has(String(r.id)) ||
+                localesConAcceso.has(String(r.slug));
+              const ctaLabel = tieneAcceso ? 'ACTUALIZAR CLAVE' : 'CREAR ACCESO';
+              return (
               <li class="glass-panel solid-obstacle flex min-h-[11rem] flex-col justify-between gap-5 p-6 transition-all duration-300 ease-out transform will-change-transform hover:-translate-y-1 hover:scale-[1.01] hover:shadow-lg hover:border-white/20">
                 <div class="space-y-1">
-                  <h2 class="font-blacksushi-display text-2xl font-semibold leading-tight tracking-tight text-white">
-                    {r.nombre_comercial}
-                  </h2>
+                  <div class="flex items-start justify-between gap-2">
+                    <h2 class="font-blacksushi-display text-2xl font-semibold leading-tight tracking-tight text-white">
+                      {r.nombre_comercial}
+                    </h2>
+                    {tieneAcceso ? (
+                      <span
+                        data-access-badge
+                        class="shrink-0 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded-full font-medium tracking-wide"
+                      >
+                        🟢 Acceso Activo
+                      </span>
+                    ) : (
+                      <span
+                        data-access-badge
+                        class="shrink-0 bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 text-xs px-2 py-0.5 rounded-full font-medium tracking-wide"
+                      >
+                        ⚪ Sin Acceso
+                      </span>
+                    )}
+                  </div>
                   <p class="font-mono text-[0.58rem] uppercase tracking-[0.14em] text-zinc-600">
                     /{r.slug}
                   </p>
@@ -139,6 +195,7 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
                       data-operativo-form
                       data-restaurante-id={r.id}
                       data-restaurante-nombre={r.nombre_comercial}
+                      data-has-access={tieneAcceso ? 'true' : 'false'}
                       novalidate
                     >
                       <label class="block space-y-1">
@@ -176,15 +233,17 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
                       ></p>
                       <button
                         type="submit"
+                        data-operativo-submit
                         class="inline-flex w-full items-center justify-center rounded-lg bg-white px-3 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-zinc-950 transition hover:bg-zinc-100 disabled:opacity-50"
                       >
-                        Crear / asignar
+                        {ctaLabel}
                       </button>
                     </form>
                   </details>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )
       }
@@ -238,6 +297,24 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
     });
   }
 
+  const ACCESS_ACTIVE_CLASSES =
+    'shrink-0 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded-full font-medium tracking-wide';
+  const DEFAULT_CTA = 'CREAR ACCESO';
+  const ACTIVE_CTA = 'ACTUALIZAR CLAVE';
+
+  /**
+   * @param {HTMLFormElement} form
+   */
+  function markAccessActive(form) {
+    form.dataset.hasAccess = 'true';
+    const card = form.closest('li');
+    const badge = card?.querySelector('[data-access-badge]');
+    if (badge instanceof HTMLElement) {
+      badge.className = ACCESS_ACTIVE_CLASSES;
+      badge.textContent = '🟢 Acceso Activo';
+    }
+  }
+
   function initOperativoForms() {
     document.querySelectorAll('[data-operativo-form]').forEach((form) => {
       if (!(form instanceof HTMLFormElement)) return;
@@ -261,15 +338,17 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
         const password =
           passwordInput instanceof HTMLInputElement ? passwordInput.value : '';
 
+        const idleLabel =
+          form.dataset.hasAccess === 'true' ? ACTIVE_CTA : DEFAULT_CTA;
+
         feedback.classList.add('hidden');
         feedback.textContent = '';
         feedback.classList.remove('text-rose-400', 'text-emerald-400');
         submitBtn.disabled = true;
-        const prevLabel = submitBtn.textContent;
-        submitBtn.textContent = 'Guardando…';
+        submitBtn.textContent = 'Creando...';
 
         try {
-          const res = await fetch('/api/admin/create-operativo', {
+          const res = await fetch('/api/create-admin-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({
@@ -285,6 +364,8 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
             feedback.textContent = data.error || 'No se pudo crear el usuario.';
             feedback.classList.add('text-rose-400');
             feedback.classList.remove('hidden');
+            submitBtn.disabled = false;
+            submitBtn.textContent = idleLabel;
             return;
           }
 
@@ -293,15 +374,22 @@ const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
             : `Creado: ${data.email || email} (Admin Operativo).`;
           feedback.classList.add('text-emerald-400');
           feedback.classList.remove('hidden');
+          submitBtn.textContent = '¡Credenciales Listas!';
           if (passwordInput instanceof HTMLInputElement) passwordInput.value = '';
+          markAccessActive(form);
+          submitBtn.disabled = false;
+          window.setTimeout(() => {
+            if (submitBtn.textContent === '¡Credenciales Listas!') {
+              submitBtn.textContent = ACTIVE_CTA;
+            }
+          }, 2500);
         } catch (err) {
           feedback.textContent =
             err instanceof Error ? err.message : 'Error de red al crear credenciales.';
           feedback.classList.add('text-rose-400');
           feedback.classList.remove('hidden');
-        } finally {
           submitBtn.disabled = false;
-          submitBtn.textContent = prevLabel || 'Crear / asignar';
+          submitBtn.textContent = idleLabel;
         }
       });
     });

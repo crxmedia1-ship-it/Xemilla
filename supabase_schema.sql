@@ -202,11 +202,11 @@ ALTER TABLE public.restaurantes
 COMMENT ON COLUMN public.restaurantes.direccion IS
   'Dirección pública (ej: Chuao, Caracas. Venezuela.).';
 COMMENT ON COLUMN public.restaurantes.horarios IS
-  'Horarios multilínea Carrd (usar \\n entre líneas).';
+  'Horarios multilínea Carrd (usar \\n entre líneas). Editable por operativo vía POST /api/update-operativo-contacto (solo horarios + whatsapp_url).';
 COMMENT ON COLUMN public.restaurantes.instagram_url IS
   'URL completa de Instagram del restaurante.';
 COMMENT ON COLUMN public.restaurantes.whatsapp_url IS
-  'WhatsApp: número E.164 o URL wa.me / api.whatsapp.com.';
+  'WhatsApp: número E.164 o URL wa.me / api.whatsapp.com. Editable por operativo vía POST /api/update-operativo-contacto (aislado de ui_estilo / Identidad).';
 COMMENT ON COLUMN public.restaurantes.coordenadas_maps IS
   'URL de Google Maps (enlace o búsqueda).';
 COMMENT ON COLUMN public.restaurantes.nosotros_subtitulo IS
