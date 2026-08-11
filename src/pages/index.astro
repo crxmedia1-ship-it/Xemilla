@@ -74,7 +74,7 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
     </p>
 
     {/* Central hero — Logo → Slogan → CTA */}
-    <div class="relative z-20 flex min-h-screen flex-col items-center justify-center px-4 mt-12">
+    <div class="relative z-20 flex min-h-screen max-w-full flex-col items-center justify-center overflow-x-hidden px-4 mt-12">
       <img
         src={logoSrc}
         alt="Xemilla"
@@ -85,7 +85,7 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 
       <h1
         id="hero-slogan"
-        class="slogan-typewriter text-xl md:text-3xl font-light tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 text-center max-w-xl mx-auto text-balance mt-6 mb-10 animate-[typewriter_7s_steps(46)_3s_both,blink_0.75s_step-end_10s_4,hideCaret_0.01s_linear_13s_forwards] border-r-2 border-white/80 pr-1 inline-block"
+        class="slogan-typewriter inline-block whitespace-nowrap text-sm sm:text-xl md:text-3xl font-light tracking-tight sm:tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 text-center mt-6 mb-10 animate-[typewriter_7s_steps(46)_3s_both,blink_0.75s_step-end_10s_4,hideCaret_0.01s_linear_13s_forwards] border-r-2 border-white/80 pr-1"
       >
         {slogan}
       </h1>
@@ -128,6 +128,8 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 
   .slogan-typewriter {
     display: inline-block;
+    white-space: nowrap;
+    max-width: 100%;
     border-right: 2px solid rgba(255, 255, 255, 0.8);
     padding-right: 0.25rem;
     /* 0–3s clip delay → 3–10s type → 10–13s blink → 13s hide caret */
@@ -135,6 +137,14 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
       typewriter 7s steps(46) 3s both,
       blink 0.75s step-end 10s 4,
       hideCaret 0.01s linear 13s forwards;
+  }
+
+  /* Fit 46-char Spanish line on very narrow phones without wrapping */
+  @media (max-width: 380px) {
+    .slogan-typewriter {
+      font-size: 0.72rem;
+      letter-spacing: -0.025em;
+    }
   }
 
   @keyframes logoSettle {
@@ -407,18 +417,42 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
       }
     };
 
-    const onPointerMove = (e) => {
-      if (e.touches && e.touches[0]) {
-        setLight(e.touches[0].clientX, e.touches[0].clientY);
-        return;
-      }
+    const hideLight = () => {
+      lightEl?.classList.remove('light-active');
+      creditEl?.classList.remove('light-active');
+    };
+
+    // Ignore mouse events that browsers fire after a touch (would re-stick the light)
+    let touchActive = false;
+    let ignoreMouseUntil = 0;
+
+    const onMouseMove = (e) => {
+      if (touchActive || performance.now() < ignoreMouseUntil) return;
       setLight(e.clientX, e.clientY);
     };
 
+    const onTouchPoint = (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      touchActive = true;
+      setLight(t.clientX, t.clientY);
+    };
+
+    const onTouchEnd = () => {
+      touchActive = false;
+      ignoreMouseUntil = performance.now() + 500;
+      hideLight();
+    };
+
     // Listen on window so CTA stays clickable (light + credit are pointer-events-none)
-    window.addEventListener('mousemove', onPointerMove, { passive: true });
-    window.addEventListener('touchstart', onPointerMove, { passive: true });
-    window.addEventListener('touchmove', onPointerMove, { passive: true });
+    // Touch: press-and-hold only — hide on lift/cancel. Mouse: follow while moving.
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mouseleave', hideLight, { passive: true });
+    document.documentElement.addEventListener('mouseleave', hideLight, { passive: true });
+    window.addEventListener('touchstart', onTouchPoint, { passive: true });
+    window.addEventListener('touchmove', onTouchPoint, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
     // Reduced motion: show cosmos + CTA without waiting on climax
     if (reduceMotion) {
