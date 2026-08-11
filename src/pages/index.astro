@@ -7,6 +7,10 @@ const waHref =
 const logoSrc =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 
+/** Single void floater — light-revealed bounce after climax */
+const floaterSrc =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
+
 /**
  * Placeholder cinematic BG — Mixkit free stock (smoke on black).
  * Swap `videoSrc` for a branded/dark particles asset when available.
@@ -56,6 +60,23 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 
     {/* Pointer light — paint-only, above grain / below CTA */}
     <div id="pointer-light" class="pointer-light absolute inset-0 z-[16]" aria-hidden="true"></div>
+
+    {/* Single void floater — DVD bounce; revealed only under pointer light mask */}
+    <div
+      id="void-floater"
+      class="void-floater absolute inset-0 z-[17] pointer-events-none select-none"
+      aria-hidden="true"
+    >
+      <img
+        id="void-floater-img"
+        src={floaterSrc}
+        alt=""
+        width="96"
+        height="96"
+        draggable="false"
+        class="void-floater__img"
+      />
+    </div>
 
     {/* powered by CRX — full-bleed so mask uses viewport --lx/--ly; only lit zone shows text */}
     <div
@@ -350,6 +371,54 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
     opacity: 1;
   }
 
+  /* Single void floater — lit only by pointer mask after void; soft bounce via JS */
+  .void-floater {
+    --lx: -9999px;
+    --ly: -9999px;
+    opacity: 0;
+    transition: opacity 1.6s ease;
+    -webkit-mask-image: radial-gradient(
+      200px circle at var(--lx) var(--ly),
+      #000 0%,
+      rgba(0, 0, 0, 0.65) 42%,
+      transparent 72%
+    );
+    mask-image: radial-gradient(
+      200px circle at var(--lx) var(--ly),
+      #000 0%,
+      rgba(0, 0, 0, 0.65) 42%,
+      transparent 72%
+    );
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  #hero-stage.void-active .void-floater {
+    opacity: 1;
+  }
+
+  .void-floater__img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 64px;
+    height: auto;
+    max-width: none;
+    opacity: 0.6;
+    filter: brightness(1.05) contrast(0.95);
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+  }
+
+  @media (min-width: 768px) {
+    .void-floater__img {
+      width: 88px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .hero-video-fade {
       opacity: 1;
@@ -400,6 +469,14 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
       opacity: 0.35;
       transition: none;
     }
+
+    .void-floater {
+      transition: none;
+    }
+
+    .void-floater__img {
+      will-change: auto;
+    }
   }
 </style>
 
@@ -411,6 +488,8 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
     const voidEl = document.getElementById('spatial-void');
     const lightEl = document.getElementById('pointer-light');
     const creditEl = document.getElementById('crx-credit');
+    const floaterEl = document.getElementById('void-floater');
+    const floaterImg = document.getElementById('void-floater-img');
     if (!video) return;
 
     // Single bind guard (DOMContentLoaded + astro:page-load / ClientRouter)
@@ -434,11 +513,20 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
         creditEl.style.setProperty('--ly', ly);
         creditEl.classList.add('light-active');
       }
+      if (floaterEl) {
+        floaterEl.style.setProperty('--lx', lx);
+        floaterEl.style.setProperty('--ly', ly);
+      }
     };
 
     const hideLight = () => {
       lightEl?.classList.remove('light-active');
       creditEl?.classList.remove('light-active');
+      // Park mask off-viewport so floater vanishes with the light
+      if (floaterEl) {
+        floaterEl.style.setProperty('--lx', '-9999px');
+        floaterEl.style.setProperty('--ly', '-9999px');
+      }
     };
 
     // Ignore mouse events that browsers fire after a touch (would re-stick the light)
@@ -473,10 +561,117 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
     window.addEventListener('touchend', onTouchEnd, { passive: true });
     window.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
-    // Reduced motion: show cosmos + CTA without waiting on climax
+    // Soft DVD-style bounce — only after void-active; paused for reduced motion
+    let floaterRaf = 0;
+    let floaterRunning = false;
+    let floaterLastTs = 0;
+    let fx = 0;
+    let fy = 0;
+    let vx = 0;
+    let vy = 0;
+
+    const randSign = () => (Math.random() < 0.5 ? -1 : 1);
+
+    const initFloaterPhysics = () => {
+      if (!stage || !floaterImg) return;
+      const stageW = stage.clientWidth;
+      const stageH = stage.clientHeight;
+      const imgW = floaterImg.offsetWidth || 64;
+      const imgH = floaterImg.offsetHeight || 64;
+
+      // Mid / slightly off-center start — avoid CTA dead-center habitually
+      fx = stageW * (0.28 + Math.random() * 0.2);
+      fy = stageH * (0.22 + Math.random() * 0.18);
+
+      // ~24–36 px/s (≈0.4–0.6 px/frame @ 60fps), slight random angle
+      const speed = 24 + Math.random() * 12;
+      const angle = (Math.PI / 5) + Math.random() * (Math.PI / 3);
+      vx = Math.cos(angle) * speed * randSign();
+      vy = Math.sin(angle) * speed * randSign();
+
+      // Clamp initial position inside bounds
+      fx = Math.max(0, Math.min(fx, Math.max(0, stageW - imgW)));
+      fy = Math.max(0, Math.min(fy, Math.max(0, stageH - imgH)));
+      floaterImg.style.transform = `translate(${fx}px, ${fy}px)`;
+    };
+
+    const tickFloater = (ts) => {
+      if (!floaterRunning || !stage || !floaterImg) return;
+
+      if (!floaterLastTs) floaterLastTs = ts;
+      const dt = Math.min((ts - floaterLastTs) / 1000, 0.05);
+      floaterLastTs = ts;
+
+      const stageW = stage.clientWidth;
+      const stageH = stage.clientHeight;
+      const imgW = floaterImg.offsetWidth || 64;
+      const imgH = floaterImg.offsetHeight || 64;
+      const maxX = Math.max(0, stageW - imgW);
+      const maxY = Math.max(0, stageH - imgH);
+
+      fx += vx * dt;
+      fy += vy * dt;
+
+      if (fx <= 0) {
+        fx = 0;
+        vx = Math.abs(vx);
+      } else if (fx >= maxX) {
+        fx = maxX;
+        vx = -Math.abs(vx);
+      }
+
+      if (fy <= 0) {
+        fy = 0;
+        vy = Math.abs(vy);
+      } else if (fy >= maxY) {
+        fy = maxY;
+        vy = -Math.abs(vy);
+      }
+
+      floaterImg.style.transform = `translate(${fx}px, ${fy}px)`;
+      floaterRaf = requestAnimationFrame(tickFloater);
+    };
+
+    const startFloater = () => {
+      if (reduceMotion || floaterRunning || !floaterImg) return;
+      floaterRunning = true;
+      initFloaterPhysics();
+      floaterLastTs = 0;
+      floaterRaf = requestAnimationFrame(tickFloater);
+    };
+
+    const stopFloater = () => {
+      floaterRunning = false;
+      if (floaterRaf) {
+        cancelAnimationFrame(floaterRaf);
+        floaterRaf = 0;
+      }
+    };
+
+    window.addEventListener(
+      'resize',
+      () => {
+        if (!floaterRunning || !stage || !floaterImg) return;
+        const maxX = Math.max(0, stage.clientWidth - (floaterImg.offsetWidth || 64));
+        const maxY = Math.max(0, stage.clientHeight - (floaterImg.offsetHeight || 64));
+        fx = Math.max(0, Math.min(fx, maxX));
+        fy = Math.max(0, Math.min(fy, maxY));
+        floaterImg.style.transform = `translate(${fx}px, ${fy}px)`;
+      },
+      { passive: true },
+    );
+
+    // Reduced motion: show cosmos + CTA without waiting on climax (no bounce)
     if (reduceMotion) {
       stage?.classList.add('climax-done', 'void-active');
       voidEl?.classList.add('void-active');
+      if (floaterImg && stage) {
+        const imgW = floaterImg.offsetWidth || 64;
+        const imgH = floaterImg.offsetHeight || 64;
+        fx = Math.max(0, stage.clientWidth * 0.35 - imgW / 2);
+        fy = Math.max(0, stage.clientHeight * 0.28 - imgH / 2);
+        floaterImg.style.transform = `translate(${fx}px, ${fy}px)`;
+      }
     }
 
     const tryTriggerClimax = () => {
@@ -495,6 +690,7 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
         video.classList.add('animate-void');
         stage?.classList.add('void-active');
         voidEl?.classList.add('void-active');
+        startFloater();
 
         // Park video layer only after dissolve — avoids hard cut via climax-done
         window.setTimeout(() => {
@@ -526,6 +722,15 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
       sloganEl.style.borderColor = 'transparent';
       sloganEl.style.paddingRight = '0';
     }, 13000);
+
+    // Cleanup on Astro client navigations
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        stopFloater();
+      },
+      { once: true },
+    );
   }
 
   document.addEventListener('DOMContentLoaded', bindHeroClimax);
