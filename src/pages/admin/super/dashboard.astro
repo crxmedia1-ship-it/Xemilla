@@ -67,20 +67,17 @@ const localesConAcceso = new Set(
     <header class="solid-obstacle flex flex-wrap items-end justify-between gap-6">
       <div class="admin-brand-lockup admin-brand-lockup--xemilla">
         <img
-          src="https://res.cloudinary.com/dgphys1xd/image/upload/v1784310548/Photoroom_20260717_132348_xrnil8.png"
+          src="https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png"
           alt="Xemilla"
           width="200"
           height="88"
-          class="admin-xemilla-hero-logo"
+          class="h-7 w-auto object-contain"
           loading="eager"
           decoding="async"
         />
         <div>
-          <p class="text-[0.62rem] font-semibold uppercase tracking-[0.32em] text-zinc-500">
+          <h1 class="font-blacksushi-display text-2xl font-semibold tracking-tight lg:text-3xl">
             Súper Administrador
-          </p>
-          <h1 class="mt-2 font-blacksushi-display text-4xl font-semibold tracking-tight lg:text-5xl">
-            Xemilla
           </h1>
           <p class="mt-2 text-sm text-zinc-400">
             {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red · vista escritorio
@@ -178,10 +175,33 @@ const localesConAcceso = new Set(
                 <div class="mt-auto space-y-3">
                   <a
                     href={`/admin/dashboard?restaurante=${encodeURIComponent(r.id)}`}
-                    class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl border border-white/12 bg-white/[0.08] px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-white transition-all duration-200 hover:opacity-90 hover:border-white/25 hover:bg-white/[0.14] active:scale-95"
+                    class="w-full py-2 bg-white/10 hover:bg-white/20 text-white font-medium text-xs tracking-wider rounded-lg transition-all"
                   >
-                    Gestionar Restaurante
+                    GESTIONAR RESTAURANTE
                   </a>
+                  <div>
+                    <p class="mb-1.5 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+                      WebApp
+                    </p>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                      <a
+                        href={`/${r.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-[11px] font-mono text-zinc-300 bg-zinc-900/60 hover:bg-zinc-800 border border-white/5 hover:border-white/20 py-1.5 px-2 rounded-md flex items-center justify-center gap-1 transition-all shadow-sm"
+                      >
+                        Local ↗
+                      </a>
+                      <a
+                        href={`https://xemilla.vercel.app/${r.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-[11px] font-mono text-zinc-300 bg-zinc-900/60 hover:bg-zinc-800 border border-white/5 hover:border-white/20 py-1.5 px-2 rounded-md flex items-center justify-center gap-1 transition-all shadow-sm"
+                      >
+                        Vercel ↗
+                      </a>
+                    </div>
+                  </div>
 
                   <details class="group rounded-xl border border-white/8 bg-black/20 open:border-white/15">
                     <summary class="cursor-pointer list-none px-3 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:text-zinc-300 [&::-webkit-details-marker]:hidden">

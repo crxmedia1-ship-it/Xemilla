@@ -257,6 +257,7 @@ CREATE TABLE IF NOT EXISTS public.platos (
   imagen_url      TEXT,
   disponible      BOOLEAN NOT NULL DEFAULT TRUE,
   destacado       BOOLEAN NOT NULL DEFAULT FALSE,
+  orden           INTEGER NOT NULL DEFAULT 0,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -273,6 +274,17 @@ COMMENT ON COLUMN public.platos.destacado IS
 -- Migración segura si la tabla ya existía sin la columna
 ALTER TABLE public.platos
   ADD COLUMN IF NOT EXISTS destacado BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Orden visual del plato dentro de su categoría (1..n relativo en el admin).
+-- REQUIRED MIGRATION: run in Supabase SQL editor if the column is missing.
+ALTER TABLE public.platos
+  ADD COLUMN IF NOT EXISTS orden INTEGER NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.platos.orden IS
+  'Posición del plato dentro de su categoría (orden visual del menú / admin).';
+
+CREATE INDEX IF NOT EXISTS idx_platos_restaurante_categoria_orden
+  ON public.platos (restaurante_id, categoria_id, orden);
 
 CREATE INDEX IF NOT EXISTS idx_platos_restaurante_id
   ON public.platos (restaurante_id);

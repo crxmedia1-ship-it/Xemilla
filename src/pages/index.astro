@@ -13,7 +13,7 @@ const logoSrc =
  */
 const videoSrc = 'https://assets.mixkit.co/videos/1961/1961-720.mp4';
 
-const slogan = 'El estándar definitivo para restaurantes de lujo.';
+const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 ---
 
 <Layout
@@ -23,15 +23,15 @@ const slogan = 'El estándar definitivo para restaurantes de lujo.';
   description="Xemilla — software gastronómico de marca blanca para restaurantes"
 >
   <main class="relative h-dvh w-screen overflow-hidden bg-black">
-    {/* Immersive background — Ken Burns on video (CSS only) */}
-    <div class="hero-video-fade absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
-      <!-- TODO: Reemplazar este src por el enlace del video loop definitivo de Cloudinary -->
+    {/* Immersive background — play once, climax zoom + fade to black */}
+    <div class="hero-video-fade absolute inset-0 z-0 overflow-hidden bg-black" aria-hidden="true">
+      <!-- TODO: Reemplazar este src por el enlace del video definitivo de Cloudinary -->
       <video
+        id="hero-video"
         autoplay
-        loop
         muted
         playsinline
-        class="absolute inset-0 w-full h-full object-cover z-0 bg-ken-burns"
+        class="absolute inset-0 w-full h-full object-cover z-0"
         src={videoSrc}
       />
     </div>
@@ -60,68 +60,54 @@ const slogan = 'El estándar definitivo para restaurantes de lujo.';
       />
 
       <h1
-        class="text-2xl md:text-4xl font-light tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-500 mx-auto mt-8 overflow-hidden whitespace-nowrap border-r-2 border-white/50 animate-[typing_2.5s_steps(40,end),blink-caret_0.75s_step-end_infinite] max-w-fit"
+        class="slogan-typewriter text-xl md:text-3xl font-light tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 text-center max-w-xl mx-auto text-balance mt-6 mb-10 animate-[typewriter_5.5s_steps(46)_forwards]"
       >
         {slogan}
       </h1>
 
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="backdrop-blur-xl bg-white/10 border border-white/20 text-white font-semibold tracking-wide px-10 py-4 rounded-lg mt-12 opacity-0 animate-[fade-in-pulse_8s_ease-out_infinite_forwards]"
+      <div
+        id="cta-container"
+        class="opacity-0 pointer-events-none transition-opacity duration-[1500ms] ease-in-out mt-12"
       >
-        SOLICITAR ACCESO
-      </a>
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="cta-subtle-scale inline-block backdrop-blur-xl bg-white/10 border border-white/20 text-white font-semibold tracking-wide px-10 py-4 rounded-lg transition-transform duration-300 hover:scale-[1.03] animate-[subtleScale_4s_ease-in-out_infinite]"
+        >
+          SOLICITAR ACCESO
+        </a>
+      </div>
     </div>
   </main>
 </Layout>
 
 <style is:global>
-  .bg-ken-burns {
-    animation: ken-burns-intense 15s ease-in-out infinite alternate;
-    transform-origin: center center;
-  }
-
-  @keyframes ken-burns-intense {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.35); }
-  }
-
-  @keyframes typing {
-    from {
-      width: 0;
-      opacity: 0;
-    }
-    to {
-      width: 100%;
-      opacity: 1;
-    }
-  }
-
-  @keyframes blink-caret {
-    50% {
-      border-color: transparent;
-    }
-  }
-
-  @keyframes fade-in-pulse {
-    0%,
-    50% {
-      opacity: 0;
-      transform: translateY(10px) scale(0.98);
-    }
-    60% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    80% {
-      transform: scale(1.03);
+  @keyframes typewriter {
+    0% {
+      clip-path: inset(0 100% 0 0);
     }
     100% {
-      opacity: 1;
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  .slogan-typewriter {
+    animation: typewriter 5.5s steps(46) forwards;
+  }
+
+  @keyframes subtleScale {
+    0%,
+    100% {
       transform: scale(1);
     }
+    50% {
+      transform: scale(1.03);
+    }
+  }
+
+  .cta-subtle-scale {
+    animation: subtleScale 4s ease-in-out infinite;
   }
 
   @keyframes fadeInSoft {
@@ -133,7 +119,15 @@ const slogan = 'El estándar definitivo para restaurantes de lujo.';
     }
   }
 
-  /* Video: soft opacity fade from black (wrapper); Ken Burns stays on <video> */
+  @keyframes intoTheVoid {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+  .animate-void {
+    animation: intoTheVoid 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Video wrapper: soft opacity fade from black (climax via .animate-void) */
   .hero-video-fade {
     opacity: 0;
     animation: fadeInSoft 3s ease-in-out forwards;
@@ -145,5 +139,56 @@ const slogan = 'El estándar definitivo para restaurantes de lujo.';
       transform: none;
       animation: none !important;
     }
+
+    .slogan-typewriter {
+      clip-path: none;
+      animation: none !important;
+    }
+
+    #cta-container {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .cta-subtle-scale {
+      animation: none !important;
+    }
   }
 </style>
+
+<script>
+  function bindHeroClimax() {
+    const video = document.getElementById('hero-video');
+    const cta = document.getElementById('cta-container');
+    if (!video) return;
+
+    // Single bind guard (DOMContentLoaded + astro:page-load / ClientRouter)
+    if (video.dataset.climaxBound === '1') return;
+    video.dataset.climaxBound = '1';
+
+    let transitionTriggered = false;
+
+    video.addEventListener('timeupdate', () => {
+      const timeLeft = video.duration - video.currentTime;
+
+      // Detonar la transición 3 segundos antes de que acabe el video
+      if (timeLeft <= 3.0 && !transitionTriggered) {
+        transitionTriggered = true;
+
+        // Inyectar la clase CSS pura que hace el zoom y el fundido
+        video.classList.add('animate-void');
+
+        // Revelar el botón CTA sincronizado con el fundido a negro
+        if (cta) {
+          // Aumentamos la duración del fade del botón para que sea más dramático
+          cta.classList.replace('duration-[1500ms]', 'duration-[2500ms]');
+          cta.classList.remove('opacity-0', 'pointer-events-none');
+          cta.classList.add('opacity-100', 'pointer-events-auto');
+        }
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', bindHeroClimax);
+  document.addEventListener('astro:page-load', bindHeroClimax);
+</script>

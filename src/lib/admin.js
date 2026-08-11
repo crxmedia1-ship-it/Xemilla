@@ -181,11 +181,19 @@ export async function getAdminDashboardData(ctx, opts = {}) {
   let restaurante = null;
 
   if (isSuper && (restauranteId || slug)) {
-    // Service role (si existe) evita fallos RLS al gestionar locales ajenos
-    restaurante = await fetchRestauranteAdmin(writeClient, {
-      id: restauranteId,
-      slug: restauranteId ? null : slug,
-    });
+    // Service role (si existe) evita fallos RLS al gestionar locales ajenos.
+    // `?restaurante=` puede ser UUID o slug (mismo param que usa el hub).
+    if (restauranteId && UUID_RE.test(restauranteId)) {
+      restaurante = await fetchRestauranteAdmin(writeClient, { id: restauranteId });
+    }
+    if (!restaurante) {
+      const slugToken =
+        slug ||
+        (restauranteId && !UUID_RE.test(restauranteId) ? restauranteId : null);
+      if (slugToken) {
+        restaurante = await fetchRestauranteAdmin(writeClient, { slug: slugToken });
+      }
+    }
   } else if (!isSuper) {
     // Operativo: ignorar ?restaurante= / ?slug=; siempre metadata (id|slug) → user_id
     restaurante = await resolveOperativoRestaurante(
@@ -212,14 +220,17 @@ export async function getAdminDashboardData(ctx, opts = {}) {
 
   const readClient = isSuper ? writeClient : operativoReadClient;
 
-  const [{ data: platos, error: platosError }, catResult] = await Promise.all([
+  const platosSelectWithOrden =
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, categorias(nombre)';
+  const platosSelectBase =
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, categorias(nombre)';
+
+  const [{ data: platosRaw, error: platosError }, catResult] = await Promise.all([
     readClient
       .from('platos')
-      .select(
-        'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, categorias(nombre)',
-      )
+      .select(platosSelectWithOrden)
       .eq('restaurante_id', restaurante.id)
-      .order('categoria_id', { ascending: true })
+      .order('orden', { ascending: true })
       .order('id', { ascending: true }),
     readClient
       .from('categorias')
@@ -227,6 +238,28 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       .eq('restaurante_id', restaurante.id)
       .order('orden', { ascending: true }),
   ]);
+
+  let platos = platosRaw;
+  let platosLoadError = platosError;
+  if (platosLoadError) {
+    const missingOrden = /orden|column|does not exist|schema cache/i.test(
+      platosLoadError.message || '',
+    );
+    if (missingOrden) {
+      console.warn(
+        '[admin] platos.orden no disponible; SELECT/ORDER fallback.',
+        platosLoadError.message,
+      );
+      const fallback = await readClient
+        .from('platos')
+        .select(platosSelectBase)
+        .eq('restaurante_id', restaurante.id)
+        .order('categoria_id', { ascending: true })
+        .order('id', { ascending: true });
+      platos = fallback.data;
+      platosLoadError = fallback.error;
+    }
+  }
 
   let categorias = catResult.data;
   if (catResult.error) {
@@ -244,8 +277,8 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     }
   }
 
-  if (platosError) {
-    console.error('[admin] platos:', platosError.message);
+  if (platosLoadError) {
+    console.error('[admin] platos:', platosLoadError.message);
     return {
       user,
       restaurante,
@@ -258,27 +291,45 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     };
   }
 
+  const categoriasMapped = (categorias ?? []).map((c) => ({
+    id: c.id,
+    nombre: c.nombre,
+    orden: Number.isFinite(Number(c.orden)) ? Number(c.orden) : 0,
+    bg_type: c.bg_type || 'color',
+    bg_valor: c.bg_valor || '',
+  }));
+
+  /** Category display order → dish order within category (reload-stable). */
+  const categoriaOrdenById = new Map(
+    categoriasMapped.map((c) => [c.id, c.orden]),
+  );
+
+  const platosMapped = (platos ?? []).map((p, index) => ({
+    id: p.id,
+    nombre: p.nombre,
+    descripcion: p.descripcion,
+    precio: Number(p.precio),
+    imagen_url: p.imagen_url,
+    disponible: p.disponible,
+    destacado: Boolean(p.destacado),
+    categoria_id: p.categoria_id,
+    orden: Number.isFinite(Number(p.orden)) ? Number(p.orden) : index + 1,
+    categoria_nombre: p.categorias?.nombre ?? 'Sin categoría',
+  }));
+
+  platosMapped.sort((a, b) => {
+    const aCat = categoriaOrdenById.get(a.categoria_id) ?? Number.MAX_SAFE_INTEGER;
+    const bCat = categoriaOrdenById.get(b.categoria_id) ?? Number.MAX_SAFE_INTEGER;
+    if (aCat !== bCat) return aCat - bCat;
+    if (a.orden !== b.orden) return a.orden - b.orden;
+    return Number(a.id) - Number(b.id);
+  });
+
   return {
     user,
     restaurante,
-    platos: (platos ?? []).map((p) => ({
-      id: p.id,
-      nombre: p.nombre,
-      descripcion: p.descripcion,
-      precio: Number(p.precio),
-      imagen_url: p.imagen_url,
-      disponible: p.disponible,
-      destacado: Boolean(p.destacado),
-      categoria_id: p.categoria_id,
-      categoria_nombre: p.categorias?.nombre ?? 'Sin categoría',
-    })),
-    categorias: (categorias ?? []).map((c) => ({
-      id: c.id,
-      nombre: c.nombre,
-      orden: c.orden,
-      bg_type: c.bg_type || 'color',
-      bg_valor: c.bg_valor || '',
-    })),
+    platos: platosMapped,
+    categorias: categoriasMapped,
     isSuperAdmin: isSuper,
     role: role || ADMIN_ROLE_OPERATIVO,
     assignedRestauranteId,
