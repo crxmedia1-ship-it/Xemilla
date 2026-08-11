@@ -22,7 +22,10 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
   themeColor="#000000"
   description="Xemilla — software gastronómico de marca blanca para restaurantes"
 >
-  <main id="hero-stage" class="relative h-dvh w-screen overflow-hidden bg-black">
+  <main
+    id="hero-stage"
+    class="landing-lock relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden overflow-x-hidden overscroll-none bg-black"
+  >
     {/* Immersive background — play once, climax zoom + fade to black */}
     <div class="hero-video-fade absolute inset-0 z-0 overflow-hidden bg-black" aria-hidden="true">
       <!-- TODO: Reemplazar este src por el enlace del video definitivo de Cloudinary -->
@@ -57,7 +60,7 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
     {/* powered by CRX — full-bleed so mask uses viewport --lx/--ly; only lit zone shows text */}
     <div
       id="crx-credit"
-      class="crx-credit absolute inset-0 z-[17] flex items-end justify-center pb-8 pointer-events-none"
+      class="crx-credit absolute inset-0 z-[17] flex items-end justify-center pb-[max(2rem,env(safe-area-inset-bottom))] pointer-events-none"
       aria-hidden="true"
     >
       <span class="font-mono text-[10px] uppercase tracking-[0.3em] text-white/90">
@@ -67,38 +70,40 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 
     {/* Verified brand badge — exact top center */}
     <p
-      class="absolute top-6 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/90 border border-white/10 text-[10px] uppercase font-mono tracking-[0.25em] text-zinc-300 shadow-xl backdrop-blur-md hover:border-white/20 transition-all"
+      class="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-30 inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-zinc-900/90 border border-white/10 text-center text-[10px] uppercase font-mono tracking-[0.25em] text-zinc-300 shadow-xl backdrop-blur-md hover:border-white/20 transition-all"
     >
       <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
       SOFTWARE GASTRONÓMICO
     </p>
 
-    {/* Central hero — Logo → Slogan → CTA */}
-    <div class="relative z-20 flex min-h-screen max-w-full flex-col items-center justify-center overflow-x-hidden px-4 mt-12">
+    {/* Central hero — Logo → Slogan → CTA (raised on mobile, centered md+) */}
+    <div
+      class="relative z-20 flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col items-center justify-start gap-3 overflow-hidden px-4 pt-[18vh] pb-[max(2.5rem,env(safe-area-inset-bottom))] md:justify-center md:gap-0 md:pt-0 md:pb-8"
+    >
       <img
         src={logoSrc}
         alt="Xemilla"
         width="256"
         height="108"
-        class="logo-settle h-auto w-56 object-contain opacity-95 sm:w-64"
+        class="logo-settle h-auto w-[70%] max-w-[220px] object-contain opacity-95 sm:w-64 sm:max-w-none md:w-64"
       />
 
       <h1
         id="hero-slogan"
-        class="slogan-typewriter inline-block whitespace-nowrap text-sm sm:text-xl md:text-3xl font-light tracking-tight sm:tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 text-center mt-6 mb-10 animate-[typewriter_7s_steps(46)_3s_both,blink_0.75s_step-end_10s_4,hideCaret_0.01s_linear_13s_forwards] border-r-2 border-white/80 pr-1"
+        class="slogan-typewriter inline-block whitespace-nowrap text-sm sm:text-xl md:text-3xl font-light tracking-tight sm:tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 text-center mt-0 mb-3 md:mt-6 md:mb-10 animate-[typewriter_7s_steps(46)_3s_both,blink_0.75s_step-end_10s_4,hideCaret_0.01s_linear_13s_forwards] border-r-2 border-white/80 pr-1"
       >
         {slogan}
       </h1>
 
       <div
         id="cta-container"
-        class="opacity-0 pointer-events-none transition-opacity duration-[1500ms] ease-in-out mt-12"
+        class="opacity-0 pointer-events-none transition-opacity duration-[1500ms] ease-in-out mt-3 md:mt-12"
       >
         <a
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          class="cta-subtle-scale inline-block backdrop-blur-xl bg-white/10 border border-white/20 text-white font-semibold tracking-wide px-10 py-4 rounded-lg transition-transform duration-300 hover:scale-[1.03] animate-[subtleScale_4s_ease-in-out_infinite]"
+          class="cta-subtle-scale inline-block backdrop-blur-xl bg-white/10 border border-white/20 text-white font-semibold tracking-wide px-8 py-3.5 md:px-10 md:py-4 rounded-lg transition-transform duration-300 hover:scale-[1.03] animate-[subtleScale_4s_ease-in-out_infinite]"
         >
           SOLICITAR ACCESO
         </a>
@@ -108,6 +113,20 @@ const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 </Layout>
 
 <style is:global>
+  /* Lock landing to one viewport — no rubber-band scroll on mobile */
+  html:has(.landing-lock),
+  html:has(.landing-lock) body {
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .landing-lock {
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
   @keyframes typewriter {
     0% { clip-path: inset(0 100% 0 0); }
     100% { clip-path: inset(0 0 0 0); }
