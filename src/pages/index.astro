@@ -1,53 +1,149 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const waHref =
+  'https://wa.me/584148706285?text=Hola.%20Me%20interesa%20elevar%20la%20experiencia%20digital%20de%20mi%20restaurante%20y%20me%20gustar%C3%ADa%20agendar%20un%20demo%20de%20Xemilla.';
+
+const logoSrc =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
+
+/**
+ * Placeholder cinematic BG — Mixkit free stock (smoke on black).
+ * Swap `videoSrc` for a branded/dark particles asset when available.
+ */
+const videoSrc = 'https://assets.mixkit.co/videos/1961/1961-720.mp4';
+
+const slogan = 'El estándar definitivo para restaurantes de lujo.';
 ---
 
 <Layout
-  title="Xemilla · Menús digitales CRX"
+  title="Xemilla · Software gastronómico"
   theme="crx"
-  themeColor="#09090b"
-  description="Xemilla — menús digitales de marca blanca para restaurantes"
+  themeColor="#000000"
+  description="Xemilla — software gastronómico de marca blanca para restaurantes"
 >
-  <main class="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-12 pt-16 text-white">
-    <header class="text-center">
-      <p class="text-[0.62rem] font-semibold uppercase tracking-[0.4em] text-zinc-500">
-        Software CRX
-      </p>
-      <h1 class="mt-5 font-blacksushi-display text-[2.75rem] font-semibold leading-none tracking-tight">
-        Xemilla
+  <main class="relative h-dvh w-screen overflow-hidden bg-black">
+    {/* Immersive background — Ken Burns on video (CSS only) */}
+    <div class="hero-video-fade absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+      <!-- TODO: Reemplazar este src por el enlace del video loop definitivo de Cloudinary -->
+      <video
+        autoplay
+        loop
+        muted
+        playsinline
+        class="absolute inset-0 w-full h-full object-cover z-0 bg-ken-burns"
+        src={videoSrc}
+      />
+    </div>
+
+    {/* Dark cinematic veil */}
+    <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/90 z-10 pointer-events-none"></div>
+
+    {/* Film grain between veil and UI */}
+    <div class="bg-film-grain absolute inset-0 z-[15]" aria-hidden="true" />
+
+    {/* System label — absolute top-right, out of central flow */}
+    <p
+      class="absolute top-8 right-8 z-50 backdrop-blur-md bg-white/10 border border-white/20 text-[9px] tracking-[0.4em] text-white/90 px-5 py-2 rounded-full uppercase shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+    >
+      SOFTWARE GASTRONÓMICO
+    </p>
+
+    {/* Central hero — Logo → Slogan → CTA */}
+    <div class="relative z-20 flex flex-col items-center justify-center min-h-screen px-4">
+      <img
+        src={logoSrc}
+        alt="Xemilla"
+        width="256"
+        height="108"
+        class="h-auto w-56 object-contain opacity-95 sm:w-64"
+      />
+
+      <h1
+        class="text-2xl md:text-4xl font-light tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-500 mx-auto mt-8 overflow-hidden whitespace-nowrap border-r-2 border-white/50 animate-[typing_2.5s_steps(40,end),blink-caret_0.75s_step-end_infinite] max-w-fit"
+      >
+        {slogan}
       </h1>
-      <p class="mx-auto mt-5 max-w-[18rem] text-[0.9rem] leading-relaxed text-zinc-400">
-        Menús digitales de marca blanca. Cada restaurante vive en su propia experiencia, aislada
-        y lista para el comensal.
-      </p>
-    </header>
 
-    <section class="mt-14 space-y-8" aria-label="Presentación">
-      <div class="rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-5 py-6">
-        <ul class="space-y-4 text-left text-sm leading-relaxed text-zinc-400">
-          <li class="flex gap-3">
-            <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-500" aria-hidden="true" />
-            Identidad visual exclusiva por local
-          </li>
-          <li class="flex gap-3">
-            <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-500" aria-hidden="true" />
-            Menú, gadgets y media en una sola webapp móvil
-          </li>
-          <li class="flex gap-3">
-            <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-500" aria-hidden="true" />
-            Acceso solo por el enlace o QR de cada restaurante
-          </li>
-        </ul>
-      </div>
-
-      <p class="text-center text-[0.78rem] leading-relaxed text-zinc-500">
-        Si llegaste aquí buscando un menú, pedí el enlace al establecimiento. No hay directorio
-        público de locales.
-      </p>
-    </section>
-
-    <footer class="mt-16 text-center text-[10px] uppercase tracking-[0.28em] text-zinc-600">
-      Powered by CRX
-    </footer>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="backdrop-blur-xl bg-white/10 border border-white/20 text-white font-semibold tracking-wide px-10 py-4 rounded-lg mt-12 opacity-0 animate-[fade-in-pulse_8s_ease-out_infinite_forwards]"
+      >
+        SOLICITAR ACCESO
+      </a>
+    </div>
   </main>
 </Layout>
+
+<style is:global>
+  .bg-ken-burns {
+    animation: ken-burns-intense 15s ease-in-out infinite alternate;
+    transform-origin: center center;
+  }
+
+  @keyframes ken-burns-intense {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.35); }
+  }
+
+  @keyframes typing {
+    from {
+      width: 0;
+      opacity: 0;
+    }
+    to {
+      width: 100%;
+      opacity: 1;
+    }
+  }
+
+  @keyframes blink-caret {
+    50% {
+      border-color: transparent;
+    }
+  }
+
+  @keyframes fade-in-pulse {
+    0%,
+    50% {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+    60% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    80% {
+      transform: scale(1.03);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fadeInSoft {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Video: soft opacity fade from black (wrapper); Ken Burns stays on <video> */
+  .hero-video-fade {
+    opacity: 0;
+    animation: fadeInSoft 3s ease-in-out forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-video-fade {
+      opacity: 1;
+      transform: none;
+      animation: none !important;
+    }
+  }
+</style>
