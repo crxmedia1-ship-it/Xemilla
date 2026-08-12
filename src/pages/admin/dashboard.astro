@@ -36,6 +36,7 @@ import {
   getAssignedRestauranteId,
   ADMIN_ROLE_SUPER,
 } from '../../config/superadmin.js';
+import { resolveHubCoverUrl, resolveHubLogoBg } from '../../lib/hub-media.js';
 
 const restauranteId =
   Astro.url.searchParams.get('restaurante') ||
@@ -109,6 +110,10 @@ const opsTelefono = String(
   restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
 ).trim();
 const opsHorario = String(restaurante?.horarios || '').trim();
+const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
+const hubLogoUrl = String(restaurante?.logo_url || '').trim();
+const hubLogoBg = resolveHubLogoBg(restaurante || {});
+const hubNombre = String(restaurante?.nombre_comercial || nombre || '').trim();
 const menuCategoryNames = [
   ...new Set(
     [
@@ -1016,8 +1021,111 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
             hidden
           >
             <section
+              id="hub-datos-card"
+              class="rounded-2xl border border-zinc-800/50 bg-zinc-900/40 p-4"
+              data-hub-datos
+            >
+              <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+                    Ficha del local
+                  </p>
+                  <h2 class="mt-1 font-blacksushi-display text-lg font-semibold tracking-tight text-zinc-100">
+                    Editar datos
+                  </h2>
+                  <p class="mt-1 text-xs text-zinc-500">
+                    Nombre, teléfono, logo y foto de la tarjeta del Hub. El fondo de la WebApp se edita en Identidad.
+                  </p>
+                </div>
+                <p id="hub-datos-status" class="text-[10px] text-zinc-600" role="status"></p>
+              </div>
+
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block min-w-0 sm:col-span-2">
+                  <span class={labelClass}>Nombre comercial</span>
+                  <input
+                    type="text"
+                    id="hub-nombre"
+                    value={hubNombre}
+                    class={`${fieldClass} mt-1.5`}
+                  />
+                </label>
+                <label class="block min-w-0 sm:col-span-2">
+                  <span class={labelClass}>Teléfono / WhatsApp</span>
+                  <input
+                    type="text"
+                    id="hub-telefono"
+                    value={opsTelefono}
+                    placeholder="+58…"
+                    class={`${fieldClass} mt-1.5`}
+                  />
+                </label>
+
+                <div class="space-y-2">
+                  <span class={labelClass}>Logo</span>
+                  <div class="mt-1.5 flex items-center gap-3">
+                    <div
+                      id="hub-logo-preview"
+                      class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/40"
+                    >
+                      {hubLogoUrl ? (
+                        <img src={hubLogoUrl} alt="" class="h-full w-full object-cover" />
+                      ) : (
+                        <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Logo</span>
+                      )}
+                    </div>
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <input type="hidden" id="hub-logo-url" value={hubLogoUrl} />
+                      <input type="hidden" id="hub-logo-bg" value={hubLogoBg} />
+                      <input
+                        id="hub-logo-file"
+                        type="file"
+                        accept="image/*"
+                        class="block w-full text-[0.65rem] text-zinc-400 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-[0.55rem] file:font-semibold file:uppercase file:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <span class={labelClass}>Foto portada Hub</span>
+                  <p class="text-[10px] text-zinc-600">
+                    Solo tarjeta SuperAdmin — no cambia el fondo de la WebApp.
+                  </p>
+                  <div class="mt-1 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                    <div id="hub-cover-preview" class="flex aspect-[4/3] items-center justify-center">
+                      {hubCoverUrl ? (
+                        <img src={hubCoverUrl} alt="" class="h-full w-full object-cover" />
+                      ) : (
+                        <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Portada</span>
+                      )}
+                    </div>
+                  </div>
+                  <input type="hidden" id="hub-cover-url" value={hubCoverUrl} />
+                  <input
+                    id="hub-cover-file"
+                    type="file"
+                    accept="image/*"
+                    class="block w-full text-[0.65rem] text-zinc-400 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-[0.55rem] file:font-semibold file:uppercase file:text-white"
+                  />
+                </div>
+              </div>
+
+              <div class="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  id="hub-datos-save"
+                  data-restaurante-id={restId}
+                  class="admin-action-btn inline-flex items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
+                >
+                  Guardar datos
+                </button>
+              </div>
+            </section>
+
+            <section
               id="ops-contacto-card"
-              class="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-4"
+              class="rounded-2xl border border-zinc-800/50 bg-zinc-900/40 p-4"
               data-ops-contacto
             >
               <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -1029,24 +1137,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                     Perfil del Restaurante
                   </h2>
                   <p class="mt-1 text-xs text-zinc-500">
-                    Contacto, horario y redes — no altera identidad ni diseño.
+                    Horario y redes — no altera identidad ni diseño.
                   </p>
                 </div>
                 <p id="ops-contacto-status" class="text-[10px] text-zinc-600" role="status"></p>
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
-                <label class="block min-w-0">
-                  <span class={labelClass}>Teléfono de Contacto/WhatsApp</span>
-                  <input
-                    type="text"
-                    id="ops-telefono"
-                    name="ops_telefono"
-                    value={opsTelefono}
-                    placeholder="+58…"
-                    autocomplete="tel"
-                    class={`${fieldClass} mt-1.5`}
-                  />
-                </label>
                 <label class="block min-w-0 sm:col-span-2">
                   <span class={labelClass}>Horario de Atención</span>
                   <input
@@ -3023,10 +3119,20 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   const searchInput = document.getElementById('platos-search');
   const searchMeta = document.getElementById('search-meta');
   const categoryFilters = document.getElementById('category-scroll');
-  const opsTelefonoInput = document.getElementById('ops-telefono');
+  const opsTelefonoInput = document.getElementById('hub-telefono');
   const opsHorarioInput = document.getElementById('ops-horario');
   const opsInstagramInput = document.getElementById('ops-instagram');
   const opsSocialAltInput = document.getElementById('ops-social-alt');
+  const hubDatosSave = document.getElementById('hub-datos-save');
+  const hubDatosStatus = document.getElementById('hub-datos-status');
+  const hubNombreInput = document.getElementById('hub-nombre');
+  const hubLogoUrlInput = document.getElementById('hub-logo-url');
+  const hubLogoBgInput = document.getElementById('hub-logo-bg');
+  const hubCoverUrlInput = document.getElementById('hub-cover-url');
+  const hubLogoFileInput = document.getElementById('hub-logo-file');
+  const hubCoverFileInput = document.getElementById('hub-cover-file');
+  const hubLogoPreview = document.getElementById('hub-logo-preview');
+  const hubCoverPreview = document.getElementById('hub-cover-preview');
   const opsContactoSave = document.getElementById('ops-contacto-save');
   const opsContactoStatus = document.getElementById('ops-contacto-status');
 
@@ -3657,10 +3763,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     async () => {
       if (!(opsContactoSave instanceof HTMLButtonElement)) return;
       if (!requireRestauranteId()) return;
-      const telefono =
-        opsTelefonoInput instanceof HTMLInputElement
-          ? opsTelefonoInput.value.trim()
-          : '';
       const horario =
         opsHorarioInput instanceof HTMLInputElement
           ? opsHorarioInput.value.trim()
@@ -3688,7 +3790,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             restaurante_id: restauranteId,
-            telefono,
             horario,
             instagram_url: instagramUrl,
             facebook_url: socialAltUrl,
@@ -3697,9 +3798,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         const json = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(json.error || 'No se pudo guardar contacto');
 
-        if (opsTelefonoInput instanceof HTMLInputElement) {
-          opsTelefonoInput.value = json.restaurante?.whatsapp_url || telefono;
-        }
         if (opsHorarioInput instanceof HTMLInputElement) {
           opsHorarioInput.value = json.restaurante?.horarios || horario;
         }
@@ -3731,6 +3829,224 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       } finally {
         opsContactoSave.disabled = false;
         opsContactoSave.textContent = prevLabel || 'Guardar contacto';
+      }
+    },
+    { signal },
+  );
+
+  /**
+   * @param {File} file
+   */
+  async function uploadHubMedia(file) {
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.url) {
+      throw new Error(json.error || 'No se pudo subir la imagen');
+    }
+    return String(json.url);
+  }
+
+  /**
+   * @param {HTMLInputElement | null} fileInput
+   * @param {HTMLInputElement | null} hiddenInput
+   * @param {HTMLElement | null} preview
+   * @param {'logo' | 'cover'} kind
+   */
+  function bindHubUpload(fileInput, hiddenInput, preview, kind) {
+    if (!(fileInput instanceof HTMLInputElement)) return;
+    fileInput.addEventListener(
+      'change',
+      () => {
+        const file = fileInput.files?.[0];
+        fileInput.value = '';
+        if (!file) return;
+
+        /**
+         * @param {File} ready
+         */
+        async function runUpload(ready) {
+          try {
+            const url = await uploadHubMedia(ready);
+            if (hiddenInput instanceof HTMLInputElement) hiddenInput.value = url;
+            if (preview) {
+              preview.innerHTML = '';
+              const img = document.createElement('img');
+              img.src = url;
+              img.alt = '';
+              img.className =
+                kind === 'logo' ? 'h-full w-full object-contain' : 'h-full w-full object-cover';
+              preview.appendChild(img);
+            }
+            if (
+              kind === 'cover' &&
+              typeof window.XemillaImageCrop?.samplePlateColorFromUrl === 'function' &&
+              hubLogoBgInput instanceof HTMLInputElement
+            ) {
+              try {
+                hubLogoBgInput.value =
+                  await window.XemillaImageCrop.samplePlateColorFromUrl(url);
+              } catch {
+                /* keep */
+              }
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Error al subir';
+            if (typeof showToast === 'function') showToast(msg, 'error');
+            else alert(msg);
+          }
+        }
+
+        const cropApi = window.XemillaImageCrop;
+        if (cropApi && typeof cropApi.open === 'function') {
+          const coverForSample =
+            kind === 'logo' && hubCoverUrlInput instanceof HTMLInputElement
+              ? hubCoverUrlInput.value.trim()
+              : '';
+          void cropApi.open({
+            file,
+            aspect: kind === 'cover' ? 'cover' : 'logo',
+            title: kind === 'cover' ? 'Recortar cover' : 'Recortar logo',
+            coverUrl: coverForSample,
+            onConfirm: (cropped, meta) => {
+              if (meta?.plateBg && hubLogoBgInput instanceof HTMLInputElement) {
+                hubLogoBgInput.value = meta.plateBg;
+              }
+              return runUpload(cropped);
+            },
+          });
+          return;
+        }
+
+        void runUpload(file);
+      },
+      { signal },
+    );
+  }
+
+  bindHubUpload(
+    hubLogoFileInput instanceof HTMLInputElement ? hubLogoFileInput : null,
+    hubLogoUrlInput instanceof HTMLInputElement ? hubLogoUrlInput : null,
+    hubLogoPreview instanceof HTMLElement ? hubLogoPreview : null,
+    'logo',
+  );
+  bindHubUpload(
+    hubCoverFileInput instanceof HTMLInputElement ? hubCoverFileInput : null,
+    hubCoverUrlInput instanceof HTMLInputElement ? hubCoverUrlInput : null,
+    hubCoverPreview instanceof HTMLElement ? hubCoverPreview : null,
+    'cover',
+  );
+
+  hubDatosSave?.addEventListener(
+    'click',
+    async () => {
+      if (!(hubDatosSave instanceof HTMLButtonElement)) return;
+      if (!requireRestauranteId()) return;
+
+      const nombre =
+        hubNombreInput instanceof HTMLInputElement
+          ? hubNombreInput.value.trim()
+          : '';
+      const telefono =
+        opsTelefonoInput instanceof HTMLInputElement
+          ? opsTelefonoInput.value.trim()
+          : '';
+      const logoUrl =
+        hubLogoUrlInput instanceof HTMLInputElement
+          ? hubLogoUrlInput.value.trim()
+          : '';
+      const coverUrl =
+        hubCoverUrlInput instanceof HTMLInputElement
+          ? hubCoverUrlInput.value.trim()
+          : '';
+      let logoBg =
+        hubLogoBgInput instanceof HTMLInputElement
+          ? hubLogoBgInput.value.trim()
+          : '';
+
+      if (!nombre) {
+        if (typeof showToast === 'function') showToast('El nombre es obligatorio', 'error');
+        return;
+      }
+
+      if (
+        coverUrl &&
+        (!logoBg || logoBg === '#111111') &&
+        typeof window.XemillaImageCrop?.samplePlateColorFromUrl === 'function'
+      ) {
+        try {
+          logoBg = await window.XemillaImageCrop.samplePlateColorFromUrl(coverUrl);
+          if (hubLogoBgInput instanceof HTMLInputElement) hubLogoBgInput.value = logoBg;
+        } catch {
+          /* keep */
+        }
+      }
+
+      hubDatosSave.disabled = true;
+      const prevLabel = hubDatosSave.textContent;
+      hubDatosSave.textContent = 'Guardando…';
+      if (hubDatosStatus) {
+        hubDatosStatus.textContent = '';
+        hubDatosStatus.className = 'text-[10px] text-zinc-600';
+      }
+
+      try {
+        /** @type {Record<string, string>} */
+        const body = {
+          restaurante_id: restauranteId,
+          nombre_comercial: nombre,
+          whatsapp_num: telefono,
+        };
+        if (logoUrl) body.logo_url = logoUrl;
+        if (coverUrl) body.hub_cover_url = coverUrl;
+        if (/^#[0-9A-Fa-f]{6}$/.test(logoBg)) body.hub_logo_bg = logoBg;
+
+        const res = await fetch('/api/update-hub-datos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'No se pudo guardar');
+
+        if (hubNombreInput instanceof HTMLInputElement) {
+          hubNombreInput.value =
+            json.restaurante?.nombre_comercial || nombre;
+        }
+        if (opsTelefonoInput instanceof HTMLInputElement) {
+          opsTelefonoInput.value =
+            json.restaurante?.whatsapp_num ||
+            json.restaurante?.whatsapp_url ||
+            telefono;
+        }
+        if (hubLogoUrlInput instanceof HTMLInputElement) {
+          hubLogoUrlInput.value = json.restaurante?.logo_url || logoUrl;
+        }
+        if (hubCoverUrlInput instanceof HTMLInputElement && coverUrl) {
+          hubCoverUrlInput.value = json.restaurante?.hub_cover_url || coverUrl;
+        }
+        if (hubLogoBgInput instanceof HTMLInputElement) {
+          hubLogoBgInput.value = json.restaurante?.hub_logo_bg || logoBg;
+        }
+        if (hubDatosStatus) {
+          hubDatosStatus.textContent = '✓ guardado';
+          hubDatosStatus.className = 'text-[10px] text-emerald-400';
+        }
+        if (typeof showToast === 'function') {
+          showToast('Datos del local guardados', 'ok');
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error al guardar';
+        if (hubDatosStatus) {
+          hubDatosStatus.textContent = msg;
+          hubDatosStatus.className = 'text-[10px] text-rose-400';
+        }
+        if (typeof showToast === 'function') showToast(msg, 'error');
+        else alert(msg);
+      } finally {
+        hubDatosSave.disabled = false;
+        hubDatosSave.textContent = prevLabel || 'Guardar datos';
       }
     },
     { signal },

@@ -1,0 +1,968 @@
+---
+/**
+ * Recorte tipo Apple Photos para el Hub:
+ * - cover → 100% del grid (16:9), modo Llenar
+ * - logo  → placa inferior (~5.5:1): Encajar (default) o Llenar + color de fondo
+ * API: window.XemillaImageCrop.open({ file, aspect:'logo'|'cover', fit?, background?, onConfirm })
+ */
+---
+
+<div
+  id="xemilla-image-crop"
+  class="hub-crop"
+  hidden
+  aria-hidden="true"
+>
+  <button type="button" class="hub-crop__backdrop" data-crop-cancel aria-label="Cerrar"></button>
+  <div
+    class="hub-crop__dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="xemilla-crop-title"
+  >
+    <div class="hub-crop__header">
+      <div>
+        <p class="hub-crop__title" id="xemilla-crop-title">Recortar</p>
+        <p class="hub-crop__hint" data-crop-hint>
+          Arrastrá · pellizcá o usá el zoom · el marco es el espacio real del grid
+        </p>
+      </div>
+      <button type="button" class="hub-crop__close" data-crop-cancel aria-label="Cerrar">×</button>
+    </div>
+
+    <div class="hub-crop__guide" data-crop-guide aria-hidden="true">
+      <div class="hub-crop__guide-card" data-guide-card>
+        <div class="hub-crop__guide-cover" data-guide-cover></div>
+        <div class="hub-crop__guide-glass" data-guide-logo></div>
+      </div>
+      <p class="hub-crop__guide-label" data-crop-guide-label>Zona activa</p>
+    </div>
+
+    <div class="hub-crop__toolbar" data-crop-toolbar hidden>
+      <div class="hub-crop__modes" role="group" aria-label="Ajuste del logo">
+        <button type="button" class="hub-crop__mode is-active" data-crop-fit="contain">
+          Encajar
+        </button>
+        <button type="button" class="hub-crop__mode" data-crop-fit="cover">
+          Llenar
+        </button>
+      </div>
+      <div class="hub-crop__bg" role="group" aria-label="Fondo del logo">
+        <button type="button" class="hub-crop__bg-swatch hub-crop__bg-swatch--auto is-active" data-crop-bg="auto" title="Desde el cover">Auto</button>
+        <button type="button" class="hub-crop__bg-swatch" data-crop-bg="#000000" title="Fondo negro" style="background:#000"></button>
+        <button type="button" class="hub-crop__bg-swatch" data-crop-bg="#ffffff" title="Fondo blanco" style="background:#fff"></button>
+        <button type="button" class="hub-crop__bg-swatch" data-crop-bg="#18181b" title="Carbón" style="background:#18181b"></button>
+      </div>
+    </div>
+
+    <div class="hub-crop__stage" data-crop-stage data-aspect="logo">
+      <div class="hub-crop__canvas" data-crop-canvas>
+        <img data-crop-image alt="" draggable="false" />
+      </div>
+      <div class="hub-crop__frame" data-crop-frame aria-hidden="true">
+        <span class="hub-crop__grid" aria-hidden="true"></span>
+        <span class="hub-crop__safe" data-crop-safe aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <label class="hub-crop__zoom">
+      <span>Zoom</span>
+      <input type="range" min="0.2" max="5" step="0.01" value="1" data-crop-zoom />
+    </label>
+
+    <div class="hub-crop__actions">
+      <button type="button" class="hub-crop__btn hub-crop__btn--ghost" data-crop-cancel>
+        Cancelar
+      </button>
+      <button type="button" class="hub-crop__btn hub-crop__btn--primary" data-crop-apply>
+        Usar recorte
+      </button>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  /* Media 16:9 bands within media (footer = 10% of card → cover/logo = 2/3 + 1/3 of media) */
+  :root {
+    --hub-crop-cover-aspect: 1.77778; /* 16 / 9 full card */
+    --hub-crop-logo-aspect: 5.5; /* glass label plate */
+  }
+
+  .hub-crop {
+    position: fixed;
+    inset: 0;
+    z-index: 11000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .hub-crop.is-open {
+    display: flex !important;
+  }
+
+  .hub-crop__backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    cursor: pointer;
+  }
+
+  .hub-crop__dialog {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 28rem);
+    border-radius: 1.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #111113;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
+    padding: 1.15rem 1.15rem 1.25rem;
+    color: #fafafa;
+  }
+
+  .hub-crop__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .hub-crop__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #fff;
+  }
+
+  .hub-crop__hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: #a1a1aa;
+  }
+
+  .hub-crop__close {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e4e4e7;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .hub-crop__guide {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .hub-crop__guide-card {
+    position: relative;
+    width: 4.8rem;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #000;
+    flex-shrink: 0;
+  }
+
+  .hub-crop__guide-cover {
+    position: absolute;
+    inset: 0;
+    background: #27272a;
+    opacity: 0.55;
+    transition: opacity 160ms ease, background 160ms ease;
+  }
+
+  .hub-crop__guide-glass {
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: 8%;
+    height: 26%;
+    border-radius: 0.28rem;
+    border: 0;
+    background: #111;
+    opacity: 0.45;
+    transition: opacity 160ms ease, background 160ms ease;
+  }
+
+  .hub-crop__guide-card[data-active='cover'] .hub-crop__guide-cover {
+    opacity: 1;
+    background: linear-gradient(135deg, #52525b, #18181b);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  }
+
+  .hub-crop__guide-card[data-active='logo'] .hub-crop__guide-glass {
+    opacity: 1;
+    background: #3f3f46;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+
+  .hub-crop__guide-label {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #d4d4d8;
+  }
+
+  .hub-crop__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .hub-crop__toolbar[hidden] {
+    display: none !important;
+  }
+
+  .hub-crop__modes {
+    display: inline-flex;
+    padding: 0.18rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .hub-crop__mode {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #a1a1aa;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .hub-crop__mode.is-active {
+    background: #fff;
+    color: #09090b;
+  }
+
+  .hub-crop__bg {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .hub-crop__bg-swatch {
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .hub-crop__bg-swatch.is-active {
+    box-shadow: 0 0 0 2px #fff;
+  }
+
+  .hub-crop__bg-swatch--auto {
+    width: auto;
+    min-width: 2.4rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #52525b, #18181b);
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .hub-crop__stage {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 0.85rem;
+    background: #000;
+    touch-action: none;
+    user-select: none;
+    cursor: grab;
+  }
+
+  .hub-crop__stage[data-aspect='logo'] {
+    background: #000;
+  }
+
+  .hub-crop__safe {
+    position: absolute;
+    inset: 8%;
+    border: 1px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 0.2rem;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .hub-crop__stage[data-aspect='logo'][data-fit='contain'] .hub-crop__safe {
+    opacity: 1;
+  }
+
+  .hub-crop__stage:active {
+    cursor: grabbing;
+  }
+
+  .hub-crop__stage[data-aspect='cover'] {
+    aspect-ratio: var(--hub-crop-cover-aspect);
+  }
+
+  .hub-crop__stage[data-aspect='logo'] {
+    aspect-ratio: var(--hub-crop-logo-aspect);
+  }
+
+  .hub-crop__canvas {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform;
+  }
+
+  .hub-crop__canvas img {
+    max-width: none;
+    max-height: none;
+    width: auto;
+    height: auto;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .hub-crop__frame {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid rgba(255, 255, 255, 0.95);
+    border-radius: 0.35rem;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.52);
+    pointer-events: none;
+  }
+
+  .hub-crop__grid {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, transparent 33.33%, rgba(255, 255, 255, 0.28) 33.33%, rgba(255, 255, 255, 0.28) 33.45%, transparent 33.45%, transparent 66.66%, rgba(255, 255, 255, 0.28) 66.66%, rgba(255, 255, 255, 0.28) 66.78%, transparent 66.78%),
+      linear-gradient(to bottom, transparent 33.33%, rgba(255, 255, 255, 0.28) 33.33%, rgba(255, 255, 255, 0.28) 33.45%, transparent 33.45%, transparent 66.66%, rgba(255, 255, 255, 0.28) 66.66%, rgba(255, 255, 255, 0.28) 66.78%, transparent 66.78%);
+  }
+
+  .hub-crop__zoom {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #a1a1aa;
+  }
+
+  .hub-crop__zoom input {
+    flex: 1;
+    accent-color: #fff;
+  }
+
+  .hub-crop__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    margin-top: 1rem;
+  }
+
+  .hub-crop__btn {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.68rem 1.05rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .hub-crop__btn--ghost {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e4e4e7;
+  }
+
+  .hub-crop__btn--primary {
+    background: #fff;
+    color: #09090b;
+  }
+
+  .hub-crop__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Ficha modal media previews */
+  .hub-ficha-preview {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .hub-ficha-slot {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(24, 24, 27, 0.1);
+    background: #0a0a0a;
+  }
+
+  .hub-ficha-slot--cover {
+    aspect-ratio: var(--hub-crop-cover-aspect);
+  }
+
+  .hub-ficha-slot--logo {
+    aspect-ratio: var(--hub-crop-logo-aspect);
+    background: var(--hub-logo-plate, #000);
+  }
+
+  .hub-ficha-slot--logo-glass {
+    display: none;
+  }
+
+  .hub-ficha-slot--logo img {
+    object-fit: contain !important;
+    background: transparent;
+  }
+
+  .hub-ficha-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hub-ficha-slot__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #71717a;
+  }
+
+  .hub-ficha-slot__badge {
+    position: absolute;
+    left: 0.55rem;
+    top: 0.55rem;
+    z-index: 1;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 0.22rem 0.5rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    backdrop-filter: blur(8px);
+  }
+
+  .hub-ficha-slot__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.45rem;
+  }
+
+  .hub-ficha-slot__actions span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #71717a;
+  }
+
+  .hub-ficha-file {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #18181b;
+    color: #fff !important;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .hub-ficha-file input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  import { samplePlateColorFromUrl } from '../../lib/hub-plate-color.js';
+
+  /** Cover = full 16:9 · Logo = bottom plate ~5.5:1 */
+  const COVER_ASPECT = 16 / 9;
+  const LOGO_ASPECT = 5.5;
+  const ZOOM_MIN = 0.2;
+  const ZOOM_MAX = 5;
+  /** Safe inset inside logo plate when Encajar (breathing room). */
+  const LOGO_SAFE_PAD = 0.08;
+  const DEFAULT_PLATE = '#111111';
+
+  function initXemillaImageCrop() {
+    const root = document.getElementById('xemilla-image-crop');
+    if (!(root instanceof HTMLElement)) return;
+    if (root.dataset.bound === 'true') return;
+    root.dataset.bound = 'true';
+
+    const stage = root.querySelector('[data-crop-stage]');
+    const canvas = root.querySelector('[data-crop-canvas]');
+    const img = root.querySelector('[data-crop-image]');
+    const frame = root.querySelector('[data-crop-frame]');
+    const zoom = root.querySelector('[data-crop-zoom]');
+    const titleEl = root.querySelector('#xemilla-crop-title');
+    const hintEl = root.querySelector('[data-crop-hint]');
+    const guideCard = root.querySelector('.hub-crop__guide-card');
+    const guideLabel = root.querySelector('[data-crop-guide-label]');
+    const toolbar = root.querySelector('[data-crop-toolbar]');
+    const applyBtn = root.querySelector('[data-crop-apply]');
+
+    if (
+      !(stage instanceof HTMLElement) ||
+      !(canvas instanceof HTMLElement) ||
+      !(img instanceof HTMLImageElement) ||
+      !(frame instanceof HTMLElement) ||
+      !(zoom instanceof HTMLInputElement) ||
+      !(applyBtn instanceof HTMLButtonElement)
+    ) {
+      return;
+    }
+
+    /** @type {any} */
+    let active = null;
+    let objectUrl = '';
+    let baseScale = 1;
+    let scale = 1;
+    let tx = 0;
+    let ty = 0;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let naturalW = 0;
+    let naturalH = 0;
+    /** @type {'contain' | 'cover'} */
+    let fitMode = 'contain';
+    /** @type {string} resolved paint color */
+    let plateBg = DEFAULT_PLATE;
+    /** @type {string} 'auto' | hex */
+    let plateBgChoice = 'auto';
+    let autoPlateBg = DEFAULT_PLATE;
+    /** @type {Map<number, {x:number,y:number}>} */
+    const pointers = new Map();
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
+
+    function kind() {
+      return active?.aspect === 'cover' ? 'cover' : 'logo';
+    }
+
+    function clampZoom(value) {
+      return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+    }
+
+    function resolvePlatePaint() {
+      return plateBgChoice === 'auto' ? autoPlateBg : plateBgChoice;
+    }
+
+    function setZoom(value) {
+      const next = clampZoom(value);
+      zoom.value = String(next);
+      zoom.min = String(ZOOM_MIN);
+      zoom.max = String(ZOOM_MAX);
+      scale = baseScale * next;
+      applyTransform();
+    }
+
+    function applyTransform() {
+      canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    }
+
+    function syncFitUi() {
+      const isLogo = kind() === 'logo';
+      plateBg = resolvePlatePaint();
+      stage.dataset.fit = isLogo ? fitMode : 'cover';
+      stage.style.background = isLogo ? plateBg : '#000';
+      if (toolbar instanceof HTMLElement) {
+        toolbar.hidden = !isLogo;
+      }
+      root.querySelectorAll('[data-crop-fit]').forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        btn.classList.toggle('is-active', btn.dataset.cropFit === fitMode);
+      });
+      root.querySelectorAll('[data-crop-bg]').forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const key = btn.dataset.cropBg || '';
+        btn.classList.toggle('is-active', key === plateBgChoice);
+        if (key === 'auto') {
+          btn.style.background = `linear-gradient(135deg, ${autoPlateBg}, #18181b)`;
+        }
+      });
+    }
+
+    function fitImage() {
+      const frameRect = frame.getBoundingClientRect();
+      if (!naturalW || !naturalH || !frameRect.width || !frameRect.height) return;
+
+      const isLogoContain = kind() === 'logo' && fitMode === 'contain';
+      const pad = isLogoContain ? LOGO_SAFE_PAD : 0;
+      const fitW = frameRect.width * (1 - pad * 2);
+      const fitH = frameRect.height * (1 - pad * 2);
+      const sx = fitW / naturalW;
+      const sy = fitH / naturalH;
+      baseScale = isLogoContain ? Math.min(sx, sy) : Math.max(sx, sy);
+
+      const z = clampZoom(Number(zoom.value || 1));
+      zoom.value = String(z);
+      scale = baseScale * z;
+      img.style.width = `${naturalW}px`;
+      img.style.height = `${naturalH}px`;
+      applyTransform();
+    }
+
+    function resetView() {
+      zoom.value = '1';
+      tx = 0;
+      ty = 0;
+      fitImage();
+    }
+
+    function closeCrop(cancelled = true) {
+      root.classList.remove('is-open');
+      root.hidden = true;
+      root.setAttribute('aria-hidden', 'true');
+      pointers.clear();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = '';
+      }
+      img.removeAttribute('src');
+      const cb = active;
+      active = null;
+      if (cancelled) cb?.onCancel?.();
+    }
+
+    /**
+     * @param {any} opts
+     */
+    async function open(opts) {
+      if (!opts?.file || typeof opts.onConfirm !== 'function') return;
+      active = opts;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(opts.file);
+
+      const isCover = opts.aspect === 'cover';
+      fitMode = isCover ? 'cover' : opts.fit === 'cover' ? 'cover' : 'contain';
+
+      const coverForSample = String(opts.coverUrl || opts.sampleFrom || '').trim();
+      autoPlateBg = DEFAULT_PLATE;
+      if (typeof opts.background === 'string' && /^#([0-9A-Fa-f]{6})$/.test(opts.background)) {
+        autoPlateBg = opts.background;
+        plateBgChoice = opts.backgroundMode === 'manual' ? opts.background : 'auto';
+      } else {
+        plateBgChoice = 'auto';
+      }
+      if (coverForSample && !isCover) {
+        try {
+          autoPlateBg = await samplePlateColorFromUrl(coverForSample);
+        } catch {
+          /* keep default */
+        }
+      }
+      plateBg = resolvePlatePaint();
+
+      stage.dataset.aspect = isCover ? 'cover' : 'logo';
+      syncFitUi();
+
+      if (guideCard instanceof HTMLElement) {
+        guideCard.dataset.active = isCover ? 'cover' : 'logo';
+      }
+      if (guideLabel instanceof HTMLElement) {
+        guideLabel.textContent = isCover
+          ? 'Cover · 100% del grid'
+          : 'Logo · rectángulo inferior';
+      }
+      if (titleEl instanceof HTMLElement) {
+        titleEl.textContent = opts.title || (isCover ? 'Recortar cover' : 'Recortar logo');
+      }
+      if (hintEl instanceof HTMLElement) {
+        hintEl.textContent =
+          opts.hint ||
+          (isCover
+            ? 'El marco es el cover a pantalla completa (16:9)'
+            : 'Subí PNG sin fondo: Encajar + Auto pinta la placa con el color del cover.');
+      }
+
+      zoom.min = String(ZOOM_MIN);
+      zoom.max = String(ZOOM_MAX);
+      zoom.value = '1';
+      tx = 0;
+      ty = 0;
+      scale = 1;
+      applyBtn.disabled = true;
+
+      img.onload = () => {
+        naturalW = img.naturalWidth;
+        naturalH = img.naturalHeight;
+        fitImage();
+        applyBtn.disabled = false;
+      };
+      img.src = objectUrl;
+
+      root.hidden = false;
+      root.classList.add('is-open');
+      root.setAttribute('aria-hidden', 'false');
+      window.requestAnimationFrame(fitImage);
+    }
+
+    async function applyCrop() {
+      if (!active || !naturalW || !naturalH) return;
+      applyBtn.disabled = true;
+      applyBtn.textContent = 'Procesando…';
+
+      try {
+        const stageRect = stage.getBoundingClientRect();
+        const frameRect = frame.getBoundingClientRect();
+        const centerX = stageRect.left + stageRect.width / 2 + tx;
+        const centerY = stageRect.top + stageRect.height / 2 + ty;
+        const imgLeft = centerX - (naturalW * scale) / 2;
+        const imgTop = centerY - (naturalH * scale) / 2;
+
+        const sx = (frameRect.left - imgLeft) / scale;
+        const sy = (frameRect.top - imgTop) / scale;
+        const sw = frameRect.width / scale;
+        const sh = frameRect.height / scale;
+
+        const isLogo = kind() === 'logo';
+        const targetAspect = isLogo ? LOGO_ASPECT : COVER_ASPECT;
+        const maxSide = isLogo ? 1600 : 1800;
+        let outW = isLogo ? 1400 : 1600;
+        let outH = Math.max(1, Math.round(outW / targetAspect));
+        if (Math.max(outW, outH) > maxSide) {
+          const ratio = maxSide / Math.max(outW, outH);
+          outW = Math.max(1, Math.round(outW * ratio));
+          outH = Math.max(1, Math.round(outH * ratio));
+        }
+
+        const canvasEl = document.createElement('canvas');
+        canvasEl.width = outW;
+        canvasEl.height = outH;
+        const ctx = canvasEl.getContext('2d');
+        if (!ctx) throw new Error('No se pudo crear el canvas');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        const paint = resolvePlatePaint();
+        // Logo Encajar: fondo transparente → la placa CSS pinta el color que combina con el cover
+        // Logo Llenar / cover: relleno sólido
+        if (isLogo && fitMode === 'contain') {
+          ctx.clearRect(0, 0, outW, outH);
+        } else {
+          ctx.fillStyle = isLogo ? paint : '#000000';
+          ctx.fillRect(0, 0, outW, outH);
+        }
+
+        const sx0 = Math.max(0, sx);
+        const sy0 = Math.max(0, sy);
+        const sx1 = Math.min(naturalW, sx + sw);
+        const sy1 = Math.min(naturalH, sy + sh);
+
+        if (sx1 > sx0 && sy1 > sy0) {
+          const dx = ((sx0 - sx) / sw) * outW;
+          const dy = ((sy0 - sy) / sh) * outH;
+          const dw = ((sx1 - sx0) / sw) * outW;
+          const dh = ((sy1 - sy0) / sh) * outH;
+          ctx.drawImage(img, sx0, sy0, sx1 - sx0, sy1 - sy0, dx, dy, dw, dh);
+        }
+
+        const mime = isLogo ? 'image/png' : 'image/jpeg';
+        const blob = await new Promise((resolve, reject) => {
+          if (isLogo) {
+            canvasEl.toBlob(
+              (b) => (b ? resolve(b) : reject(new Error('No se pudo generar el recorte'))),
+              mime,
+            );
+          } else {
+            canvasEl.toBlob(
+              (b) => (b ? resolve(b) : reject(new Error('No se pudo generar el recorte'))),
+              mime,
+              0.92,
+            );
+          }
+        });
+
+        const base = (active.file.name || 'imagen').replace(/\.[^.]+$/, '');
+        const ext = isLogo ? 'png' : 'jpg';
+        const cropped = new File([blob], `${base}-crop.${ext}`, { type: mime });
+        const confirm = active.onConfirm;
+        const meta = {
+          plateBg: paint,
+          fit: fitMode,
+        };
+        closeCrop(false);
+        await confirm(cropped, meta);
+      } catch (err) {
+        console.error('[ImageCrop]', err);
+        applyBtn.disabled = false;
+        applyBtn.textContent = 'Usar recorte';
+        window.alert(err instanceof Error ? err.message : 'Error al recortar');
+      } finally {
+        if (applyBtn.isConnected) {
+          applyBtn.disabled = false;
+          applyBtn.textContent = 'Usar recorte';
+        }
+      }
+    }
+
+    zoom.addEventListener('input', () => {
+      setZoom(Number(zoom.value || 1));
+    });
+
+    root.querySelectorAll('[data-crop-fit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!(btn instanceof HTMLElement)) return;
+        if (kind() !== 'logo') return;
+        const next = btn.dataset.cropFit === 'cover' ? 'cover' : 'contain';
+        if (next === fitMode) return;
+        fitMode = next;
+        syncFitUi();
+        resetView();
+      });
+    });
+
+    root.querySelectorAll('[data-crop-bg]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!(btn instanceof HTMLElement)) return;
+        if (kind() !== 'logo') return;
+        const next = btn.dataset.cropBg || 'auto';
+        plateBgChoice = next;
+        syncFitUi();
+      });
+    });
+
+    stage.addEventListener(
+      'wheel',
+      (event) => {
+        if (!(event instanceof WheelEvent)) return;
+        event.preventDefault();
+        const current = Number(zoom.value || 1);
+        setZoom(current + (event.deltaY < 0 ? 0.08 : -0.08));
+      },
+      { passive: false },
+    );
+
+    stage.addEventListener('pointerdown', (event) => {
+      if (!(event instanceof PointerEvent)) return;
+      stage.setPointerCapture(event.pointerId);
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (pointers.size === 1) {
+        dragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+      } else if (pointers.size === 2) {
+        dragging = false;
+        const pts = [...pointers.values()];
+        pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        pinchStartZoom = Number(zoom.value || 1);
+      }
+    });
+
+    stage.addEventListener('pointermove', (event) => {
+      if (!(event instanceof PointerEvent)) return;
+      if (!pointers.has(event.pointerId)) return;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (pointers.size === 2) {
+        const pts = [...pointers.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        if (pinchStartDist > 0) {
+          setZoom(pinchStartZoom * (dist / pinchStartDist));
+        }
+        return;
+      }
+
+      if (!dragging) return;
+      tx += event.clientX - lastX;
+      ty += event.clientY - lastY;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      applyTransform();
+    });
+
+    const endPointer = (event) => {
+      if (!(event instanceof PointerEvent)) return;
+      pointers.delete(event.pointerId);
+      dragging = pointers.size === 1;
+      if (pointers.size === 1) {
+        const remaining = [...pointers.values()][0];
+        lastX = remaining.x;
+        lastY = remaining.y;
+      }
+      try {
+        stage.releasePointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
+    };
+    stage.addEventListener('pointerup', endPointer);
+    stage.addEventListener('pointercancel', endPointer);
+
+    root.querySelectorAll('[data-crop-cancel]').forEach((btn) => {
+      btn.addEventListener('click', () => closeCrop(true));
+    });
+    applyBtn.addEventListener('click', () => {
+      void applyCrop();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && root.classList.contains('is-open')) closeCrop(true);
+    });
+    window.addEventListener('resize', () => {
+      if (root.classList.contains('is-open')) fitImage();
+    });
+
+    window.XemillaImageCrop = {
+      open,
+      close: () => closeCrop(true),
+      samplePlateColorFromUrl,
+      COVER_ASPECT,
+      LOGO_ASPECT,
+    };
+  }
+
+  initXemillaImageCrop();
+  document.addEventListener('astro:page-load', initXemillaImageCrop);
+</script>

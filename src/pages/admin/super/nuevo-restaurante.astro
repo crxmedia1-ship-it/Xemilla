@@ -25,6 +25,8 @@ if (Astro.request.method === 'POST') {
     nombreComercial: String(form.get('nombre_comercial') ?? ''),
     slug: String(form.get('slug') ?? ''),
     whatsapp: String(form.get('whatsapp_num') ?? ''),
+    logoUrl: String(form.get('logo_url') ?? ''),
+    hubCoverUrl: String(form.get('hub_cover_url') ?? ''),
   });
 
   if (result.error) {
@@ -38,10 +40,11 @@ if (Astro.request.method === 'POST') {
 <Layout
   title="Nuevo restaurante · Xemilla"
   theme="crx"
-  themeColor="#09090b"
+  themeColor="#050505"
   description="Registrar un nuevo local en Xemilla"
+  adminPanel={true}
 >
-  <main class="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-16 pt-10 text-white">
+  <main class="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-16 pt-10 text-white">
     <header>
       <a
         href="/admin/super/dashboard"
@@ -53,11 +56,11 @@ if (Astro.request.method === 'POST') {
         Nuevo restaurante
       </h1>
       <p class="mt-2 text-sm leading-relaxed text-zinc-400">
-        Registrá un cliente en la red Xemilla.
+        Datos de ficha del Hub. El fondo de la WebApp se configura después en Studio → Identidad.
       </p>
     </header>
 
-    <form method="POST" class="glass-panel mt-8 space-y-4 p-5" novalidate>
+    <form method="POST" class="glass-panel mt-8 space-y-5 p-5" novalidate>
       <div class="space-y-1.5">
         <label
           for="nombre_comercial"
@@ -106,15 +109,65 @@ if (Astro.request.method === 'POST') {
           for="whatsapp_num"
           class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
         >
-          WhatsApp
+          Teléfono / WhatsApp
         </label>
         <input
           id="whatsapp_num"
           name="whatsapp_num"
           type="tel"
-          placeholder="56912345678"
+          required
+          placeholder="584141234567"
           class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
         />
+      </div>
+
+      <div class="space-y-2 border-t border-white/8 pt-4">
+        <p class="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+          Logo
+        </p>
+        <p class="text-[11px] leading-relaxed text-zinc-600">
+          Avatar del local en el Hub y la WebApp.
+        </p>
+        <div class="flex items-center gap-3">
+          <div
+            id="logo-preview"
+            class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/40"
+          >
+            <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Logo</span>
+          </div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <input type="hidden" id="logo_url" name="logo_url" value="" />
+            <input
+              id="logo_file"
+              type="file"
+              accept="image/*"
+              class="block w-full text-[0.65rem] text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[0.6rem] file:font-semibold file:uppercase file:tracking-wider file:text-white hover:file:bg-white/15"
+            />
+            <p id="logo-upload-status" class="text-[10px] text-zinc-600" role="status"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 border-t border-white/8 pt-4">
+        <p class="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+          Foto de portada (Hub)
+        </p>
+        <p class="text-[11px] leading-relaxed text-zinc-600">
+          Solo para la tarjeta del SuperAdmin. No es el fondo de la WebApp pública.
+        </p>
+        <div class="overflow-hidden rounded-xl border border-white/10 bg-black/40">
+          <div id="cover-preview" class="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-950 to-black">
+            <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Portada Hub</span>
+          </div>
+        </div>
+        <input type="hidden" id="hub_cover_url" name="hub_cover_url" value="" />
+        <input
+          id="hub_cover_file"
+          type="file"
+          accept="image/*"
+          class="block w-full text-[0.65rem] text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[0.6rem] file:font-semibold file:uppercase file:tracking-wider file:text-white hover:file:bg-white/15"
+        />
+        <p id="cover-upload-status" class="text-[10px] text-zinc-600" role="status"></p>
       </div>
 
       {
@@ -125,7 +178,7 @@ if (Astro.request.method === 'POST') {
         )
       }
 
-      <button type="submit" class="glass-btn mt-2 !bg-white !text-zinc-950">
+      <button type="submit" id="create-submit" class="glass-btn mt-2 !bg-white !text-zinc-950">
         Crear restaurante
       </button>
     </form>
@@ -157,4 +210,87 @@ if (Astro.request.method === 'POST') {
     if (slugTouched || !(slugInput instanceof HTMLInputElement)) return;
     slugInput.value = toSlug(nombreInput instanceof HTMLInputElement ? nombreInput.value : '');
   });
+
+  /**
+   * @param {File} file
+   * @returns {Promise<string>}
+   */
+  async function uploadToCloudinary(file) {
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.url) {
+      throw new Error(json.error || 'No se pudo subir la imagen');
+    }
+    return String(json.url);
+  }
+
+  /**
+   * @param {string} fileInputId
+   * @param {string} hiddenInputId
+   * @param {string} previewId
+   * @param {string} statusId
+   * @param {'logo' | 'cover'} mode
+   */
+  function bindUpload(fileInputId, hiddenInputId, previewId, statusId, mode) {
+    const fileInput = document.getElementById(fileInputId);
+    const hidden = document.getElementById(hiddenInputId);
+    const preview = document.getElementById(previewId);
+    const status = document.getElementById(statusId);
+    if (!(fileInput instanceof HTMLInputElement)) return;
+
+    /**
+     * @param {File} file
+     */
+    async function runUpload(file) {
+      if (status) {
+        status.textContent = 'Subiendo…';
+        status.className = 'text-[10px] text-zinc-400';
+      }
+      try {
+        const url = await uploadToCloudinary(file);
+        if (hidden instanceof HTMLInputElement) hidden.value = url;
+        if (preview) {
+          preview.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = '';
+          img.className = 'h-full w-full object-cover';
+          preview.appendChild(img);
+        }
+        if (status) {
+          status.textContent = '✓ listo';
+          status.className = 'text-[10px] text-emerald-400';
+        }
+      } catch (err) {
+        if (status) {
+          status.textContent = err instanceof Error ? err.message : 'Error al subir';
+          status.className = 'text-[10px] text-rose-400';
+        }
+      }
+    }
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = '';
+      if (!file) return;
+
+      const cropApi = window.XemillaImageCrop;
+      if (cropApi && typeof cropApi.open === 'function') {
+        cropApi.open({
+          file,
+          aspect: mode === 'cover' ? 'cover' : 'logo',
+          title: mode === 'cover' ? 'Recortar cover' : 'Recortar logo',
+          onConfirm: (cropped) => runUpload(cropped),
+        });
+        return;
+      }
+
+      void runUpload(file);
+    });
+  }
+
+  bindUpload('logo_file', 'logo_url', 'logo-preview', 'logo-upload-status', 'logo');
+  bindUpload('hub_cover_file', 'hub_cover_url', 'cover-preview', 'cover-upload-status', 'cover');
 </script>

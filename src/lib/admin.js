@@ -49,6 +49,8 @@ const RESTAURANTE_ADMIN_SELECT = [
   'redes_sociales',
   'share_image_url',
   'app_icon_url',
+  'hub_cover_url',
+  'hub_logo_bg',
   'ui_estilo',
   'home_theme',
   'ubicacion_theme',

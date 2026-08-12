@@ -177,6 +177,20 @@ COMMENT ON COLUMN public.restaurantes.app_icon_url IS
 COMMENT ON COLUMN public.restaurantes.ui_estilo IS
   'Tokens UI JSONB. home: estilo_navegacion (frontal|hamburguesa|app_tabs), fondo_animacion (in|out|pan|float|glow|ninguna), overlay_estilo (puro|gradiente|vineta|oscuro|cinematico), sizes/offsets px, colores, css_avanzado.';
 
+-- Portada exclusiva del Hub SuperAdmin (NO es el fondo de la WebApp pública)
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS hub_cover_url TEXT;
+
+COMMENT ON COLUMN public.restaurantes.hub_cover_url IS
+  'Foto de portada para Visual Cards del Hub SuperAdmin. Independiente de imagen_fondo / secciones_fondo (WebApp).';
+
+-- Color de la placa del logo en el Hub (muestreado desde el cover)
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS hub_logo_bg TEXT;
+
+COMMENT ON COLUMN public.restaurantes.hub_logo_bg IS
+  'Color hex de la placa del logo en Visual Cards. Suele derivarse de la franja inferior del hub_cover_url.';
+
 -- Plantillas de estructura (Layout Themes)
 ALTER TABLE public.restaurantes
   ADD COLUMN IF NOT EXISTS home_theme TEXT NOT NULL DEFAULT 'editorial',
