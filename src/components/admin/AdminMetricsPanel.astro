@@ -1,16 +1,24 @@
 ---
 /**
- * Panel de Métricas y Analíticas — KPIs de servicio + placeholder de menú.
+ * Panel de Métricas — layout Kit (Mobbin): hero + grid 2×2 + donuts + strip lateral.
  */
 interface Props {
   /** Snapshot precalculado (lib/metrics.js) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metrics: any;
-  /** Título contextual */
   title?: string;
   subtitle?: string;
-  /** Modo red (SuperAdmin global) */
   network?: boolean;
+  /** Marca / restaurante */
+  brandName?: string;
+  brandLogoUrl?: string;
+  brandTagline?: string;
+  /** Solo admin de local: subir logo desde Métricas */
+  allowLogoUpload?: boolean;
+  restauranteId?: string;
+  /** SuperAdmin red */
+  localesCount?: number;
+  localesActivos?: number;
 }
 
 const {
@@ -18,6 +26,15 @@ const {
   title = 'Métricas y Analíticas',
   subtitle = 'Rendimiento operativo en tiempo casi real',
   network = false,
+  brandName = network ? 'Xemilla' : 'Local',
+  brandLogoUrl = '',
+  brandTagline = network
+    ? 'Plataforma white-label para restaurantes'
+    : 'Operación en sala',
+  allowLogoUpload = false,
+  restauranteId = '',
+  localesCount = 0,
+  localesActivos = 0,
 } = Astro.props;
 
 const m = metrics || {};
@@ -26,316 +43,452 @@ const hoy = volumen.hoy || { total: 0, mesero: 0, cuenta: 0 };
 const semana = volumen.semana || { total: 0, mesero: 0, cuenta: 0 };
 const mesas = Array.isArray(m.mesasActivas) ? m.mesasActivas : [];
 const platos = Array.isArray(m.platosMasVistos) ? m.platosMasVistos : [];
-const weekMax = Math.max(semana.mesero || 0, semana.cuenta || 0, 1);
+
+/** @param {number} n */
+function formatHero(n) {
+  const v = Number(n) || 0;
+  if (v >= 10000) return `${Math.round(v / 1000)}K+`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(v);
+}
+
+const heroValue = formatHero(semana.total ?? 0);
+const heroCaption =
+  semana.total === 1
+    ? 'solicitud en los últimos 7 días'
+    : 'solicitudes en los últimos 7 días';
+
+const mixTotal = Math.max((semana.mesero || 0) + (semana.cuenta || 0), 1);
+const mixMeseroPct = Math.round(((semana.mesero || 0) / mixTotal) * 100);
+const mixCuentaPct = 100 - mixMeseroPct;
+
+/** Donut segments for mix */
+const mixSegments = [
+  { label: 'Llamar mesero', pct: mixMeseroPct, color: '#2563eb' },
+  { label: 'Pedir cuenta', pct: mixCuentaPct, color: '#f97316' },
+].filter((s) => s.pct > 0);
+
+/** Top mesas for second donut (max 3 + otros) */
+const mesaDonutRaw = mesas.slice(0, 3);
+const mesaDonutTotal = mesaDonutRaw.reduce((acc, row) => acc + (row.total || 0), 0) || 1;
+const mesaColors = ['#6366f1', '#14b8a6', '#eab308', '#a1a1aa'];
+/** @type {Array<{ label: string, pct: number, color: string }>} */
+const mesaSegments =
+  mesaDonutRaw.length > 0
+    ? mesaDonutRaw.map((row, i) => ({
+        label: `Mesa ${row.mesa}`,
+        pct: Math.round(((row.total || 0) / mesaDonutTotal) * 100),
+        color: mesaColors[i] || mesaColors[3],
+      }))
+    : [{ label: 'Sin datos', pct: 100, color: '#d4d4d8' }];
+
+/** Platos donut */
+const platosDonutRaw = platos.slice(0, 3);
+const platosDonutTotal = platosDonutRaw.reduce((acc, row) => acc + (row.vistas || 0), 0) || 1;
+const platoColors = ['#0ea5e9', '#8b5cf6', '#ec4899', '#d4d4d8'];
+/** @type {Array<{ label: string, pct: number, color: string }>} */
+const platoSegments =
+  platosDonutRaw.length > 0
+    ? platosDonutRaw.map((row, i) => ({
+        label: row.nombre,
+        pct: Math.round(((row.vistas || 0) / platosDonutTotal) * 100),
+        color: platoColors[i] || platoColors[3],
+      }))
+    : [{ label: 'Sin vistas', pct: 100, color: '#e4e4e7' }];
+
+/**
+ * SVG donut path segments.
+ * @param {Array<{ pct: number, color: string }>} segments
+ */
+function donutStrokes(segments) {
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+  return segments.map((seg) => {
+    const len = (seg.pct / 100) * c;
+    const dash = `${len} ${c - len}`;
+    const strokeDashoffset = -offset;
+    offset += len;
+    return { ...seg, dash, strokeDashoffset, r, cx: 52, cy: 52 };
+  });
+}
+
+const mixStrokes = donutStrokes(mixSegments.length ? mixSegments : [{ pct: 100, color: '#d4d4d8' }]);
+const mesaStrokes = donutStrokes(mesaSegments);
+const platoStrokes = donutStrokes(platoSegments);
+
+const gridMetrics = [
+  {
+    value: m.tiempoPromedioLabel || '—',
+    title: 'Tiempo de respuesta',
+    desc: 'Promedio desde alerta hasta atendida',
+    count: null,
+  },
+  {
+    value: String(hoy.total ?? 0),
+    title: 'Volumen hoy',
+    desc: `${hoy.mesero ?? 0} mesero · ${hoy.cuenta ?? 0} cuenta`,
+    count: Number(hoy.total ?? 0),
+  },
+  {
+    value: String(semana.total ?? 0),
+    title: 'Volumen 7 días',
+    desc: `${semana.mesero ?? 0} mesero · ${semana.cuenta ?? 0} cuenta`,
+    count: Number(semana.total ?? 0),
+  },
+  {
+    value: String(m.pendientes ?? 0),
+    title: 'Pendientes ahora',
+    desc: `${m.totalAlertas ?? 0} alertas en ventana`,
+    count: Number(m.pendientes ?? 0),
+  },
+];
+
+const sideMetrics = network
+  ? [
+      { value: String(localesCount), label: 'Locales en la red', count: localesCount },
+      { value: String(localesActivos), label: 'Con acceso operativo', count: localesActivos },
+    ]
+  : [
+      { value: String(mesas.length || 0), label: 'Mesas en ranking', count: mesas.length || 0 },
+      { value: String(platos.length || 0), label: 'Platos con vistas', count: platos.length || 0 },
+    ];
+
+const safeLogo = String(brandLogoUrl || '').trim();
+const showUpload = allowLogoUpload && restauranteId;
 ---
 
-<section class="admin-metrics solid-obstacle" data-admin-metrics>
-  <header class="mb-8">
-    <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-      {network ? 'Red Xemilla' : 'Operación en sala'}
-    </p>
-    <h2 class="mt-2 font-blacksushi-display text-2xl font-semibold tracking-tight lg:text-3xl">
-      {title}
-    </h2>
-    <p class="mt-2 max-w-xl text-sm leading-relaxed text-zinc-500">
-      {subtitle}
-    </p>
+<section class="kit-metrics solid-obstacle" data-admin-metrics data-kit-metrics>
+  <header class="kit-metrics__intro">
+    <p class="kit-metrics__eyebrow">{network ? 'Red Xemilla' : 'Operación en sala'}</p>
+    <h2 class="kit-metrics__title">{title}</h2>
+    <p class="kit-metrics__subtitle">{subtitle}</p>
   </header>
 
-  <!-- KPI strip -->
-  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
-      <p class="metrics-kpi__label">Tiempo promedio de respuesta</p>
-      <p class="metrics-kpi__value mt-3 tabular-nums">
-        {m.tiempoPromedioLabel || '—'}
-      </p>
-      <p class="mt-2 text-xs text-zinc-500">
-        Desde alerta hasta “atendida”
-      </p>
-    </article>
-
-    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
-      <p class="metrics-kpi__label">Volumen hoy</p>
-      <p class="metrics-kpi__value mt-3 tabular-nums">{hoy.total ?? 0}</p>
-      <p class="mt-2 text-xs text-zinc-500">
-        {hoy.mesero ?? 0} mesero · {hoy.cuenta ?? 0} cuenta
-      </p>
-    </article>
-
-    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
-      <p class="metrics-kpi__label">Volumen 7 días</p>
-      <p class="metrics-kpi__value mt-3 tabular-nums">{semana.total ?? 0}</p>
-      <p class="mt-2 text-xs text-zinc-500">
-        {semana.mesero ?? 0} mesero · {semana.cuenta ?? 0} cuenta
-      </p>
-    </article>
-
-    <article class="metrics-kpi glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-5">
-      <p class="metrics-kpi__label">Pendientes ahora</p>
-      <p class="metrics-kpi__value mt-3 tabular-nums">{m.pendientes ?? 0}</p>
-      <p class="mt-2 text-xs text-zinc-500">
-        {m.totalAlertas ?? 0} alertas en la ventana
-      </p>
-    </article>
-  </div>
-
-  <div class="mt-6 grid gap-6 lg:grid-cols-2">
-    <!-- Ranking mesas -->
-    <article class="glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-6">
-      <div class="flex items-end justify-between gap-3">
-        <div>
-          <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-            Ranking
-          </p>
-          <h3 class="mt-1.5 text-lg font-semibold tracking-tight">
-            Mesas más activas
-          </h3>
-        </div>
-        <p class="text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-          Top 5
-        </p>
-      </div>
-
-      {
-        mesas.length === 0 ? (
-          <p class="mt-8 text-sm text-zinc-500">
-            Aún no hay alertas registradas. Cuando los comensales usen el QR de mesa,
-            verás el ranking aquí.
-          </p>
+  <div class="kit-metrics__shell" data-kit-animate="0">
+  <div class="kit-metrics__board">
+    <!-- Columna hero: logo + métrica principal -->
+    <aside class="kit-metrics__hero" data-kit-animate="1">
+      <div class="kit-metrics__hero-top">
+      <div
+        class="kit-metrics__logo-slot"
+        data-metrics-logo-slot
+      >
+        {safeLogo ? (
+          <img
+            src={safeLogo}
+            alt=""
+            class="kit-metrics__logo-img"
+            data-metrics-logo-img
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
-          <ul class="mt-6 space-y-4">
-            {mesas.map((row, i) => (
-              <li>
-                <div class="mb-1.5 flex items-baseline justify-between gap-3">
-                  <span class="text-sm font-medium tracking-tight">
-                    <span class="mr-2 text-xs tabular-nums text-zinc-500">{i + 1}.</span>
-                    Mesa {row.mesa}
-                  </span>
-                  <span class="text-xs tabular-nums text-zinc-500">{row.total} alertas</span>
-                </div>
-                <div class="metrics-bar">
-                  <span class="metrics-bar__fill" style={`width:${row.pct}%`} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )
-      }
-    </article>
+          <span class="kit-metrics__logo-empty" data-metrics-logo-empty>
+            {showUpload ? 'Subir logo' : brandName.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        {showUpload && (
+          <label class="kit-metrics__logo-upload" title="Cambiar logo">
+            <input
+              type="file"
+              accept="image/*"
+              data-metrics-logo-file
+              data-restaurante-id={restauranteId}
+            />
+            <span aria-hidden="true">+</span>
+          </label>
+        )}
+      </div>
 
-    <!-- Volumen por tipo -->
-    <article class="glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl p-6">
-      <div class="flex items-end justify-between gap-3">
-        <div>
-          <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-            Mix de servicio
-          </p>
-          <h3 class="mt-1.5 text-lg font-semibold tracking-tight">
-            Solicitudes · 7 días
+      <div class="kit-metrics__hero-body">
+        <p class="kit-metrics__brand-name">{brandName}</p>
+        <p
+          class="kit-metrics__hero-value"
+          data-kit-count={String(semana.total ?? 0)}
+          data-kit-format="compact"
+          data-kit-display={heroValue}
+        >
+          {heroValue}
+        </p>
+        <p class="kit-metrics__hero-caption">{heroCaption}</p>
+        <p class="kit-metrics__brand-tag kit-metrics__brand-tag--desk">{brandTagline}</p>
+      </div>
+      </div>
+
+      <p class="kit-metrics__brand-tag kit-metrics__brand-tag--mob">{brandTagline}</p>
+
+      <div class="kit-metrics__hero-foot" aria-hidden="true">
+        <span class="kit-metrics__wordmark">{network ? 'Xemilla' : brandName}</span>
+      </div>
+    </aside>
+
+    <!-- Grid central -->
+    <div class="kit-metrics__main" data-kit-animate="2">
+      <div class="kit-metrics__grid">
+        {gridMetrics.map((cell, i) => (
+          <article class="kit-metrics__cell" data-kit-animate={String(3 + i)}>
+            <p
+              class="kit-metrics__cell-value"
+              {...(cell.count != null
+                ? {
+                    'data-kit-count': String(cell.count),
+                    'data-kit-display': cell.value,
+                  }
+                : {})}
+            >
+              {cell.value}
+            </p>
+            <p class="kit-metrics__cell-title">{cell.title}</p>
+            <p class="kit-metrics__cell-desc">{cell.desc}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="kit-metrics__charts">
+        <article class="kit-metrics__chart-card" data-kit-animate="7">
+          <h3 class="kit-metrics__chart-title">Mix de servicio</h3>
+          <p class="kit-metrics__chart-sub">Solicitudes · 7 días</p>
+          <div class="kit-metrics__chart-row">
+            <svg class="kit-metrics__donut" viewBox="0 0 104 104" aria-hidden="true" data-kit-donut>
+              <circle cx="52" cy="52" r="42" fill="none" stroke="currentColor" stroke-width="14" class="kit-metrics__donut-bg" />
+              {mixStrokes.map((s) => (
+                <circle
+                  cx={s.cx}
+                  cy={s.cy}
+                  r={s.r}
+                  fill="none"
+                  stroke={s.color}
+                  stroke-width="14"
+                  stroke-dasharray={s.dash}
+                  stroke-dashoffset={s.strokeDashoffset}
+                  transform="rotate(-90 52 52)"
+                  stroke-linecap="butt"
+                />
+              ))}
+            </svg>
+            <ul class="kit-metrics__legend">
+              {mixSegments.map((seg) => (
+                <li>
+                  <span class="kit-metrics__dot" style={`background:${seg.color}`} />
+                  <span class="kit-metrics__legend-label">{seg.label}</span>
+                  <span class="kit-metrics__legend-pct">{seg.pct}%</span>
+                </li>
+              ))}
+              {mixSegments.length === 0 && (
+                <li>
+                  <span class="kit-metrics__dot" style="background:#d4d4d8" />
+                  <span class="kit-metrics__legend-label">Sin solicitudes</span>
+                  <span class="kit-metrics__legend-pct">—</span>
+                </li>
+              )}
+            </ul>
+          </div>
+        </article>
+
+        <article class="kit-metrics__chart-card" data-kit-animate="8">
+          <h3 class="kit-metrics__chart-title">
+            {network ? 'Mesas más activas' : 'Interés del menú'}
           </h3>
-        </div>
+          <p class="kit-metrics__chart-sub">
+            {network ? 'Top mesas · 30 días' : 'Platos más vistos'}
+          </p>
+          <div class="kit-metrics__chart-row">
+            <svg class="kit-metrics__donut" viewBox="0 0 104 104" aria-hidden="true" data-kit-donut>
+              <circle cx="52" cy="52" r="42" fill="none" stroke="currentColor" stroke-width="14" class="kit-metrics__donut-bg" />
+              {(network ? mesaStrokes : platoStrokes).map((s) => (
+                <circle
+                  cx={s.cx}
+                  cy={s.cy}
+                  r={s.r}
+                  fill="none"
+                  stroke={s.color}
+                  stroke-width="14"
+                  stroke-dasharray={s.dash}
+                  stroke-dashoffset={s.strokeDashoffset}
+                  transform="rotate(-90 52 52)"
+                  stroke-linecap="butt"
+                />
+              ))}
+            </svg>
+            <ul class="kit-metrics__legend">
+              {(network ? mesaSegments : platoSegments).map((seg) => (
+                <li>
+                  <span class="kit-metrics__dot" style={`background:${seg.color}`} />
+                  <span class="kit-metrics__legend-label">{seg.label}</span>
+                  <span class="kit-metrics__legend-pct">{seg.pct}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </article>
       </div>
-
-      <ul class="mt-8 space-y-5">
-        <li>
-          <div class="mb-1.5 flex items-baseline justify-between gap-3">
-            <span class="text-sm font-medium tracking-tight">Llamar mesero</span>
-            <span class="text-xs tabular-nums text-zinc-500">{semana.mesero ?? 0}</span>
-          </div>
-          <div class="metrics-bar">
-            <span
-              class="metrics-bar__fill metrics-bar__fill--mesero"
-              style={`width:${Math.round(((semana.mesero || 0) / weekMax) * 100)}%`}
-            />
-          </div>
-        </li>
-        <li>
-          <div class="mb-1.5 flex items-baseline justify-between gap-3">
-            <span class="text-sm font-medium tracking-tight">Pedir la cuenta</span>
-            <span class="text-xs tabular-nums text-zinc-500">{semana.cuenta ?? 0}</span>
-          </div>
-          <div class="metrics-bar">
-            <span
-              class="metrics-bar__fill metrics-bar__fill--cuenta"
-              style={`width:${Math.round(((semana.cuenta || 0) / weekMax) * 100)}%`}
-            />
-          </div>
-        </li>
-      </ul>
-
-      <div class="mt-8 grid grid-cols-2 gap-3 border-t border-white/8 pt-5">
-        <div>
-          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">Hoy · mesero</p>
-          <p class="mt-1 text-xl font-semibold tabular-nums">{hoy.mesero ?? 0}</p>
-        </div>
-        <div>
-          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">Hoy · cuenta</p>
-          <p class="mt-1 text-xl font-semibold tabular-nums">{hoy.cuenta ?? 0}</p>
-        </div>
-      </div>
-    </article>
-  </div>
-
-  <!-- Platos más vistos (pre-cableado) -->
-  <article class="glass-panel relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl mt-6 p-6">
-    <div class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <p class="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-          Interés del menú
-        </p>
-        <h3 class="mt-1.5 text-lg font-semibold tracking-tight">
-          Platos más vistos
-        </h3>
-        <p class="mt-1.5 max-w-lg text-sm text-zinc-500">
-          Contador de clics en “Ver” del menú público. Estructura lista; se poblará al
-          registrar eventos de visualización.
-        </p>
-      </div>
-      <span class="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-        Pre-cableado
-      </span>
     </div>
 
-    {
-      platos.length === 0 ? (
-        <div class="metrics-placeholder mt-8">
-          <div class="metrics-placeholder__bars" aria-hidden="true">
-            <span style="width:78%" />
-            <span style="width:62%" />
-            <span style="width:48%" />
-            <span style="width:35%" />
-            <span style="width:22%" />
-          </div>
-          <p class="mt-5 text-center text-sm text-zinc-500">
-            Sin datos de vistas todavía. Cuando el frontend registre los clics en VER,
-            aparecerán aquí los platos más consultados.
+    <!-- Strip lateral -->
+    <aside class="kit-metrics__side" data-kit-animate="9">
+      {sideMetrics.map((item, i) => (
+        <article class="kit-metrics__side-cell" data-kit-animate={String(10 + i)}>
+          <p
+            class="kit-metrics__side-value"
+            data-kit-count={String(item.count)}
+            data-kit-display={item.value}
+          >
+            {item.value}
           </p>
-        </div>
-      ) : (
-        <ul class="mt-6 space-y-4">
-          {platos.map((row, i) => (
-            <li>
-              <div class="mb-1.5 flex items-baseline justify-between gap-3">
-                <span class="text-sm font-medium tracking-tight">
-                  <span class="mr-2 text-xs tabular-nums text-zinc-500">{i + 1}.</span>
-                  {row.nombre}
-                </span>
-                <span class="text-xs tabular-nums text-zinc-500">{row.vistas} vistas</span>
-              </div>
-              <div class="metrics-bar">
-                <span class="metrics-bar__fill metrics-bar__fill--vistas" style={`width:${row.pct}%`} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )
-    }
-  </article>
+          <p class="kit-metrics__side-label">{item.label}</p>
+        </article>
+      ))}
+    </aside>
+  </div>
+  </div>
 </section>
 
-<style>
-  .metrics-kpi__label {
-    font-size: 0.55rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-soft, #71717a);
+<script>
+  function initMetricsLogoUpload() {
+    document.querySelectorAll('[data-metrics-logo-file]').forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+      if (input.dataset.bound === 'true') return;
+      input.dataset.bound = 'true';
+
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        input.value = '';
+        if (!file) return;
+
+        const restauranteId = input.dataset.restauranteId || '';
+        const root = input.closest('[data-kit-metrics]');
+        const slot = root?.querySelector('[data-metrics-logo-slot]');
+        const img = root?.querySelector('[data-metrics-logo-img]');
+        const empty = root?.querySelector('[data-metrics-logo-empty]');
+
+        try {
+          const body = new FormData();
+          body.append('file', file);
+          const up = await fetch('/api/upload', { method: 'POST', body });
+          const upJson = await up.json().catch(() => ({}));
+          if (!up.ok || !upJson.url) {
+            throw new Error(upJson.error || 'No se pudo subir');
+          }
+          const url = String(upJson.url);
+
+          if (restauranteId) {
+            const save = await fetch('/api/update-hub-datos', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                restaurante_id: restauranteId,
+                logo_url: url,
+              }),
+            });
+            const saveJson = await save.json().catch(() => ({}));
+            if (!save.ok) throw new Error(saveJson.error || 'No se pudo guardar');
+          }
+
+          empty?.remove();
+          if (img instanceof HTMLImageElement) {
+            img.src = url;
+          } else if (slot instanceof HTMLElement) {
+            const next = document.createElement('img');
+            next.src = url;
+            next.alt = '';
+            next.className = 'kit-metrics__logo-img';
+            next.dataset.metricsLogoImg = '';
+            slot.prepend(next);
+          }
+
+          const hubInput = document.getElementById('hub-logo-url');
+          if (hubInput instanceof HTMLInputElement) hubInput.value = url;
+        } catch (err) {
+          window.alert(err instanceof Error ? err.message : 'Error al subir logo');
+        }
+      });
+    });
   }
 
-  .metrics-kpi__value {
-    font-size: 1.85rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    color: var(--text-primary, #fafafa);
+  initMetricsLogoUpload();
+  document.addEventListener('astro:page-load', initMetricsLogoUpload);
+
+  /** @param {number} n */
+  function formatCompact(n) {
+    const v = Math.max(0, Number(n) || 0);
+    if (v >= 10000) return `${Math.round(v / 1000)}K+`;
+    if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+    return String(Math.round(v));
   }
 
-  .metrics-bar {
-    height: 0.35rem;
-    overflow: hidden;
-    border-radius: 9999px;
-    background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+  /**
+   * @param {HTMLElement} el
+   */
+  function animateCount(el) {
+    const target = Number(el.dataset.kitCount);
+    if (!Number.isFinite(target)) return;
+    const finalText = el.dataset.kitDisplay || String(target);
+    const format = el.dataset.kitFormat || 'int';
+    const duration = 820;
+    const start = performance.now();
+
+    /** @param {number} now */
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      const val = target * eased;
+      if (format === 'compact') {
+        el.textContent = formatCompact(val);
+      } else {
+        el.textContent = String(Math.round(val));
+      }
+      if (t < 1) requestAnimationFrame(frame);
+      else el.textContent = finalText;
+    }
+    requestAnimationFrame(frame);
   }
 
-  .metrics-bar__fill {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--color-acento, #6b2d3c);
-    transition:
-      width 500ms ease-out,
-      background-color 500ms ease-in-out;
-    min-width: 0.25rem;
+  /**
+   * @param {HTMLElement} kit
+   */
+  function playKitMotion(kit) {
+    if (kit.classList.contains('is-live')) return;
+    kit.classList.add('is-live');
+    kit.querySelectorAll('[data-kit-count]').forEach((el) => {
+      if (el instanceof HTMLElement) animateCount(el);
+    });
+    kit.querySelectorAll('[data-kit-donut]').forEach((svg) => {
+      svg.classList.add('is-drawn');
+    });
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill,
-  html.admin-panel[data-theme='dark'] .metrics-bar__fill {
-    background: #10b981;
+  function initKitMetricsMotion() {
+    /** @type {Set<Element>} */
+    const seen = new Set();
+
+    /**
+     * @param {Element} panel
+     */
+    function bindPanel(panel) {
+      if (!(panel instanceof HTMLElement) || seen.has(panel)) return;
+      seen.add(panel);
+
+      const run = () => {
+        if (panel.hidden || panel.classList.contains('hidden')) return;
+        const kit = panel.querySelector('[data-kit-metrics]');
+        if (kit instanceof HTMLElement) playKitMotion(kit);
+      };
+
+      run();
+      const observer = new MutationObserver(run);
+      observer.observe(panel, { attributes: true, attributeFilter: ['hidden', 'class'] });
+    }
+
+    document.querySelectorAll('[data-super-panel="metricas"], [data-tab-panel="metricas"]').forEach(bindPanel);
+
+    document.querySelectorAll('[data-kit-metrics]').forEach((kit) => {
+      if (!(kit instanceof HTMLElement)) return;
+      const panel = kit.closest('[data-super-panel], [data-tab-panel]');
+      if (!panel) playKitMotion(kit);
+    });
   }
 
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--mesero,
-  html.admin-panel[data-theme='dark'] .metrics-bar__fill--mesero {
-    background: #34d399;
-  }
-
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--cuenta,
-  html.admin-panel[data-theme='dark'] .metrics-bar__fill--cuenta {
-    background: #a7f3d0;
-  }
-
-  html.admin-panel[data-theme='onyx'] .metrics-bar__fill--vistas,
-  html.admin-panel[data-theme='dark'] .metrics-bar__fill--vistas {
-    background: #ffffff;
-  }
-
-  html.admin-panel[data-theme='organico'] .metrics-bar__fill--mesero {
-    background: #6b2d3c;
-  }
-
-  html.admin-panel[data-theme='organico'] .metrics-bar__fill--cuenta {
-    background: color-mix(in srgb, #6b2d3c 55%, #c4a574);
-  }
-
-  html.admin-panel[data-theme='organico'] .metrics-bar__fill--vistas {
-    background: #8a7c74;
-  }
-
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill,
-  html.admin-panel[data-theme='light'] .metrics-bar__fill {
-    background: #18181b;
-  }
-
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--mesero,
-  html.admin-panel[data-theme='light'] .metrics-bar__fill--mesero {
-    background: #27272a;
-  }
-
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--cuenta,
-  html.admin-panel[data-theme='light'] .metrics-bar__fill--cuenta {
-    background: #52525b;
-  }
-
-  html.admin-panel[data-theme='alabastro'] .metrics-bar__fill--vistas,
-  html.admin-panel[data-theme='light'] .metrics-bar__fill--vistas {
-    background: #a1a1aa;
-  }
-
-  .metrics-placeholder__bars {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    opacity: 0.35;
-  }
-
-  .metrics-placeholder__bars > span {
-    display: block;
-    height: 0.35rem;
-    border-radius: 9999px;
-    background: var(--color-acento, #6b2d3c);
-  }
-
-  html.admin-panel[data-theme='onyx'] .metrics-placeholder__bars > span,
-  html.admin-panel[data-theme='dark'] .metrics-placeholder__bars > span {
-    background: #10b981;
-  }
-</style>
+  initKitMetricsMotion();
+  document.addEventListener('astro:page-load', initKitMetricsMotion);
+</script>

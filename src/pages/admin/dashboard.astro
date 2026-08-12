@@ -1008,7 +1008,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
             <AdminMetricsPanel
               metrics={metrics}
               title="Métricas y Analíticas"
-              subtitle={`Rendimiento de ${nombre} · alertas de mesa y vista previa de interés del menú`}
+              subtitle={`Rendimiento de ${nombre} · alertas de mesa e interés del menú`}
+              brandName={nombre}
+              brandLogoUrl={hubLogoUrl}
+              brandTagline={String(restaurante?.eslogan || '').trim() || `Operación · ${nombre}`}
+              allowLogoUpload={true}
+              restauranteId={restId}
             />
           </div>
 

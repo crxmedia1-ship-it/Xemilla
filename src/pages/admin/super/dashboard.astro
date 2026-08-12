@@ -55,6 +55,14 @@ const localesConAcceso = new Set(
     .map(String),
 );
 
+const networkLocalesActivos = restaurantes.filter(
+  (r) =>
+    localesConAcceso.has(String(r.id)) || localesConAcceso.has(String(r.slug)),
+).length;
+
+const xemillaLogo =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
+
 /**
  * @param {string | null | undefined} url
  * @param {string | null | undefined} num
@@ -542,6 +550,11 @@ function resolveMapsEmbed(direccion) {
         network={true}
         title="Métricas de la red"
         subtitle="Agregado de alertas de mesa en todos los locales · últimos 30 días"
+        brandName="Xemilla"
+        brandLogoUrl={xemillaLogo}
+        brandTagline="Plataforma white-label para restaurantes"
+        localesCount={restaurantes.length}
+        localesActivos={networkLocalesActivos}
       />
     </div>
   </main>
