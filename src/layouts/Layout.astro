@@ -72,6 +72,18 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
     <link href={fontHref} rel="stylesheet" />
     <meta name="description" content={description} />
     <meta name="theme-color" content={initialThemeColor} id="meta-theme-color" />
+    {
+      adminPanel ? (
+        <>
+          <link rel="manifest" href="/admin.webmanifest" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="apple-mobile-web-app-title" content="Xemilla" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="application-name" content="Xemilla Studio" />
+        </>
+      ) : null
+    }
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />

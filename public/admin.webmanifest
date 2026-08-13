@@ -1,0 +1,26 @@
+{
+  "name": "Xemilla Studio",
+  "short_name": "Xemilla",
+  "description": "Gestioná el menú de tu restaurante en segundos.",
+  "start_url": "/admin/dashboard",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "https://res.cloudinary.com/dgphys1xd/image/upload/c_fill,w_192,h_192/v1786337633/IMG_3774_zsxajg.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://res.cloudinary.com/dgphys1xd/image/upload/c_fill,w_512,h_512/v1786337633/IMG_3774_zsxajg.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

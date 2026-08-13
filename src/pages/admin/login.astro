@@ -126,14 +126,12 @@ const xemillaWordmark =
     transform: translateY(28px) scale(0.97);
     filter: blur(8px);
     animation: loginReveal 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
-    will-change: transform, opacity, filter;
   }
 
   .login-in {
     opacity: 0;
     transform: translateY(14px);
     animation: loginIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    will-change: transform, opacity;
   }
 
   .login-in--1 { animation-delay: 0.28s; }
@@ -178,7 +176,6 @@ const xemillaWordmark =
       radial-gradient(ellipse 70% 50% at 50% 100%, #18181b 0%, transparent 50%),
       linear-gradient(180deg, #121214 0%, #09090b 45%, #000 100%);
     animation: abyssPulse 12s ease-in-out infinite alternate;
-    will-change: transform;
   }
 
   /* Niebla oscura (no luces blancas) */
@@ -189,7 +186,6 @@ const xemillaWordmark =
     border-radius: 50%;
     filter: blur(80px);
     opacity: 0.35;
-    will-change: transform;
   }
 
   .login-abyss__fog--a {
@@ -217,6 +213,82 @@ const xemillaWordmark =
     mask-image: radial-gradient(ellipse 65% 55% at 50% 42%, #000 10%, transparent 75%);
     -webkit-mask-image: radial-gradient(ellipse 65% 55% at 50% 42%, #000 10%, transparent 75%);
     animation: abyssGrid 28s linear infinite, abyssGridBreath 10s ease-in-out infinite alternate;
+  }
+
+  /* Mobile / touch: lighter continuous FX for battery + FPS */
+  @media (max-width: 768px), (pointer: coarse) {
+    .login-card {
+      filter: none;
+      transform: translateY(18px);
+      animation: loginRevealMobile 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .login-in {
+      transform: translateY(10px);
+      animation-duration: 0.55s;
+    }
+
+    .login-in--1 { animation-delay: 0.16s; }
+    .login-in--2 { animation-delay: 0.24s; }
+    .login-in--3 { animation-delay: 0.3s; }
+    .login-in--4 { animation-delay: 0.38s; }
+    .login-in--5 { animation-delay: 0.44s; }
+    .login-in--6 { animation-delay: 0.5s; }
+
+    .login-abyss__base {
+      inset: -4%;
+      animation: abyssPulse 18s ease-in-out infinite alternate;
+    }
+
+    .login-abyss__fog {
+      filter: blur(36px);
+      opacity: 0.28;
+    }
+
+    .login-abyss__fog--b {
+      display: none; /* one fog layer is enough on phones */
+    }
+
+    .login-abyss__fog--a {
+      animation: abyssFogA 36s ease-in-out infinite alternate;
+    }
+
+    .login-abyss__grid {
+      animation: abyssGridBreath 12s ease-in-out infinite alternate; /* no pan */
+      background-size: 48px 48px;
+    }
+
+    .login-abyss__grain {
+      display: none; /* grain SVG + steps() is expensive on mobile GPUs */
+    }
+  }
+
+  @media (max-width: 640px) {
+    .login-stage {
+      align-items: flex-start;
+      padding-top: max(2.5rem, env(safe-area-inset-top));
+      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+
+    .login-abyss__grid {
+      inset: -22% -10% 0;
+      mask-image: radial-gradient(ellipse 82% 60% at 50% 24%, #000 8%, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse 82% 60% at 50% 24%, #000 8%, transparent 72%);
+      opacity: 0.055;
+    }
+
+    .login-card {
+      margin-top: 1.25rem;
+    }
+  }
+
+  @keyframes loginRevealMobile {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .login-abyss__grain {

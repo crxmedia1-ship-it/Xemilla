@@ -438,36 +438,124 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   adminPanel={true}
 >
   <header
-    class="solid-obstacle relative sticky top-0 z-50 flex w-full items-center justify-between border-b border-white/10 bg-zinc-950/80 px-6 py-3 backdrop-blur-xl"
+    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex w-full flex-col gap-2 border-b border-white/10 bg-zinc-950/80 px-4 py-2.5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-3"
   >
-    {/* Left zone — Context & Branding */}
-    <div class="flex items-center gap-2">
-      <a
-        href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
-        class="admin-brand-pill shrink-0"
-      >
-        <img
-          src="https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png"
-          class="h-7 w-auto object-contain"
-          alt="Xemilla"
-        />
-      </a>
-      <span class="text-white/20" aria-hidden="true">/</span>
-      <span class="text-sm font-medium text-white/80 truncate max-w-[10rem] sm:max-w-[16rem]" title={studioContextLabel}>
-        {studioContextLabel}
-      </span>
+    {/* Top row: brand + actions */}
+    <div class="flex min-w-0 items-center justify-between gap-2 sm:contents">
+      <div class="flex min-w-0 items-center gap-2">
+        <a
+          href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
+          class="admin-brand-pill shrink-0"
+        >
+          <img
+            src="https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png"
+            class="h-6 w-auto object-contain sm:h-7"
+            alt="Xemilla"
+          />
+        </a>
+        <span class="hidden text-white/20 sm:inline" aria-hidden="true">/</span>
+        <span
+          class="min-w-0 truncate text-sm font-medium text-white/80 max-w-[9.5rem] sm:hidden"
+          title={nombre}
+        >
+          {nombre}
+        </span>
+        <span
+          class="hidden truncate text-sm font-medium text-white/80 sm:inline max-w-[10rem] md:max-w-[16rem]"
+          title={studioContextLabel}
+        >
+          {studioContextLabel}
+        </span>
+      </div>
+
+      <div class="flex shrink-0 items-center gap-2 sm:order-3 sm:gap-4">
+        <div class="hidden items-center gap-3 md:flex">
+          {
+            publicWebAppUrl ? (
+              <a
+                href={publicWebAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs text-zinc-400 transition-colors hover:text-white"
+              >
+                WebApp ↗
+              </a>
+            ) : null
+          }
+          <a
+            href="/admin/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-xs text-zinc-400 transition-colors hover:text-white"
+          >
+            Login ↗
+          </a>
+        </div>
+
+        {
+          isSuperAdmin && restaurante ? (
+            <button
+              type="submit"
+              form="marca-form"
+              id="marca-save"
+              hidden
+              class="admin-action-btn inline-flex items-center justify-center rounded-lg bg-white px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-950 transition hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-50 sm:px-4"
+            >
+              Guardar
+            </button>
+          ) : null
+        }
+
+        <AdminThemeSwitcher />
+        <div class="relative" data-admin-profile>
+          <button
+            type="button"
+            id="admin-profile-trigger"
+            class="admin-profile-trigger"
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-controls="admin-profile-menu"
+            title={userEmail || 'Perfil'}
+            data-admin-profile-trigger
+          >
+            <span class="admin-profile-trigger__initials">{userInitials}</span>
+          </button>
+          <div
+            id="admin-profile-menu"
+            class="admin-profile-dropdown"
+            role="menu"
+            aria-labelledby="admin-profile-trigger"
+            hidden
+            data-admin-profile-menu
+          >
+            <div class="admin-profile-dropdown__meta">
+              <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
+              {
+                userEmail ? (
+                  <p class="admin-profile-dropdown__email">{userEmail}</p>
+                ) : null
+              }
+            </div>
+            <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
+              <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
+                Cerrar Sesión
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
-    {/* Center zone — Pill navigation (absolutely centered) */}
+    {/* Nav pills — desktop centered; mobile uses bottom dock */}
     {
       restaurante ? (
         <nav
-          class="absolute left-1/2 -translate-x-1/2 flex items-center"
+          class="admin-studio-header__nav hidden w-full items-center justify-center overflow-x-auto scrollbar-hide sm:absolute sm:left-1/2 sm:order-2 sm:flex sm:w-auto sm:-translate-x-1/2"
           role="tablist"
           aria-label="Secciones del panel"
           data-admin-top-nav
         >
-          <div class="bg-white/5 border border-white/10 rounded-full p-1 flex gap-1 shadow-sm backdrop-blur-md">
+          <div class="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1 shadow-sm backdrop-blur-md">
             <button
               type="button"
               role="tab"
@@ -520,89 +608,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         </nav>
       ) : null
     }
-
-    {/* Right zone — Compact actions (no new-restaurant CTA) */}
-    <div class="flex items-center gap-4">
-      <div class="hidden items-center gap-3 sm:flex">
-        {
-          publicWebAppUrl ? (
-            <a
-              href={publicWebAppUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-xs text-zinc-400 hover:text-white transition-colors"
-            >
-              WebApp ↗
-            </a>
-          ) : null
-        }
-        <a
-          href="/admin/login"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-xs text-zinc-400 hover:text-white transition-colors"
-        >
-          Login ↗
-        </a>
-      </div>
-
-      {
-        isSuperAdmin && restaurante ? (
-          <button
-            type="submit"
-            form="marca-form"
-            id="marca-save"
-            hidden
-            class="admin-action-btn inline-flex items-center justify-center rounded-lg bg-white px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-950 transition hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-50 sm:px-4"
-          >
-            Guardar
-          </button>
-        ) : null
-      }
-
-      <div class="flex items-center gap-2">
-        <AdminThemeSwitcher />
-        <div class="relative" data-admin-profile>
-          <button
-            type="button"
-            id="admin-profile-trigger"
-            class="admin-profile-trigger"
-            aria-expanded="false"
-            aria-haspopup="menu"
-            aria-controls="admin-profile-menu"
-            title={userEmail || 'Perfil'}
-          >
-            <span class="admin-profile-trigger__initials">{userInitials}</span>
-          </button>
-          <div
-            id="admin-profile-menu"
-            class="admin-profile-dropdown"
-            role="menu"
-            aria-labelledby="admin-profile-trigger"
-            hidden
-            data-admin-profile-menu
-          >
-            <div class="admin-profile-dropdown__meta">
-              <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
-              {
-                userEmail ? (
-                  <p class="admin-profile-dropdown__email">{userEmail}</p>
-                ) : null
-              }
-            </div>
-            <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
-              <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
-                Cerrar Sesión
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
   </header>
 
   <main class="relative z-10 min-h-[calc(100dvh-4rem)] w-full bg-transparent">
-    <div class="relative z-10 mx-auto w-full max-w-6xl px-4 pb-24 pt-8 sm:px-6">
+    <div class="relative z-10 mx-auto w-full max-w-6xl px-4 pb-[max(6rem,calc(env(safe-area-inset-bottom)+4rem))] pt-6 sm:px-6 sm:pb-24 sm:pt-8">
     {
       !restaurante ? (
         <div class={`glass-panel ${bounceWallClass} max-w-xl p-8 text-center`}>
@@ -621,15 +630,15 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           data-categorias={categoriasJson}
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
         >
-          <div class="mb-8 flex flex-wrap items-end justify-between gap-3">
+          <div class="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
             <div class="min-w-0">
               <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
                 {managingAsSuperAdmin || isSuperAdmin ? 'SuperAdmin' : 'Panel Xemilla'}
               </p>
-              <h1 class="mt-2 font-blacksushi-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h1 class="mt-1.5 font-blacksushi-display text-[1.85rem] font-semibold tracking-tight sm:mt-2 sm:text-4xl">
                 {nombre}
               </h1>
-              <p class="mt-1.5 text-sm text-zinc-500">
+              <p class="mt-1 text-sm text-zinc-500 sm:mt-1.5">
                 <span id="platos-count">{platos.length}</span> platos · edición en vivo
               </p>
             </div>
@@ -655,8 +664,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           >
           {
             isSuperAdmin && (
-              <div class="mb-6 space-y-3">
-                <div class="flex flex-wrap items-center gap-2.5">
+              <div class="mb-5 space-y-3 sm:mb-6">
+                <div class="hidden flex-wrap items-center gap-2.5 sm:flex">
                   <button
                     type="button"
                     id="bulk-toggle"
@@ -678,10 +687,31 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   <button
                     type="button"
                     id="nuevo-plato-open"
+                    data-nuevo-plato-open
                     class="admin-action-btn inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 hover:bg-zinc-100 active:scale-95"
                   >
                     <span aria-hidden="true">+</span>
                     Nuevo Plato
+                  </button>
+                </div>
+
+                {/* Mobile primary actions — full-width app bar */}
+                <div class="grid grid-cols-2 gap-2 sm:hidden">
+                  <button
+                    type="button"
+                    id="bulk-toggle-mobile"
+                    aria-expanded="false"
+                    aria-controls="bulk-panel"
+                    class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-zinc-300 active:scale-[0.98]"
+                  >
+                    Carga masiva
+                  </button>
+                  <button
+                    type="button"
+                    data-nuevo-plato-open
+                    class="admin-action-btn inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-3 py-3.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-zinc-950 active:scale-[0.98]"
+                  >
+                    + Nuevo
                   </button>
                 </div>
 
@@ -744,10 +774,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
             <div
               id="platos-toolbar"
-              class:list={['mb-3 space-y-2.5', platos.length === 0 && 'hidden']}
+              class:list={['platos-toolbar mb-3 space-y-2.5', platos.length === 0 && 'hidden']}
             >
               <div class="flex flex-wrap items-center gap-3">
-                <div class="relative min-w-[16rem] flex-1">
+                <div class="relative min-w-0 flex-1 sm:min-w-[16rem]">
                   <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" aria-hidden="true">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                       <circle cx="11" cy="11" r="7"></circle>
@@ -758,18 +788,40 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                     id="platos-search"
                     type="search"
                     autocomplete="off"
-                    placeholder="Buscar por nombre o categoría..."
-                    class="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                    placeholder="Buscar plato…"
+                    class="w-full rounded-2xl border border-white/10 bg-black/40 py-3.5 pl-10 pr-4 text-base text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10 sm:rounded-xl sm:py-3 sm:text-sm"
                   />
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex w-full items-center justify-between gap-2 sm:w-auto">
                   <p id="search-meta" class="text-xs text-zinc-600">{platos.length} visibles</p>
                   <p id="menu-orden-status" class="text-[10px] text-zinc-500 opacity-0 transition-opacity duration-200" aria-live="polite"></p>
                 </div>
               </div>
+
+              {/* Status chips — Shopify-style quick filters (mobile app) */}
+              <div
+                id="status-scroll"
+                class="flex overflow-x-auto gap-2 pb-0.5 scrollbar-hide w-full"
+                role="toolbar"
+                aria-label="Filtrar por estado"
+              >
+                <button type="button" data-status-filter="todas" aria-pressed="true" class="status-filter-pill is-on">
+                  Todos
+                </button>
+                <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill">
+                  En carta
+                </button>
+                <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill">
+                  Agotados
+                </button>
+                <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill">
+                  Destacados
+                </button>
+              </div>
+
               <div
                 id="category-scroll"
-                class="flex overflow-x-auto gap-2 pb-2 scrollbar-hide w-full cursor-grab active:cursor-grabbing"
+                class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide w-full cursor-grab active:cursor-grabbing"
                 role="toolbar"
                 aria-label="Filtrar por categoría"
               >
@@ -778,7 +830,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   data-cat-filter="todas"
                   aria-pressed="true"
                   draggable="false"
-                  class="cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-transparent bg-zinc-100 px-3 py-1 text-xs font-medium text-black"
+                  class="cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-transparent bg-zinc-100 px-3.5 py-2 text-xs font-medium text-black sm:py-1"
                 >
                   Todas
                 </button>
@@ -790,7 +842,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                       data-categoria-id={resolveMenuCategoriaId(catName)}
                       aria-pressed="false"
                       draggable="true"
-                      class="cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-zinc-800 bg-transparent px-3 py-1 text-xs font-medium text-zinc-400"
+                      class="cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-zinc-800 bg-transparent px-3.5 py-2 text-xs font-medium text-zinc-400 sm:py-1"
                     >
                       {catName}
                     </button>
@@ -816,10 +868,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
             <div
               id="platos-table-wrap"
-              class:list={['glass-panel', bounceWallClass, 'overflow-hidden', platos.length === 0 && 'hidden']}
+              class:list={['glass-panel', bounceWallClass, 'platos-table-wrap overflow-hidden', platos.length === 0 && 'hidden']}
             >
-              <div class="overflow-x-auto">
-                <table class="w-full min-w-[900px] border-collapse text-sm">
+              <div class="platos-table-scroll overflow-x-auto">
+                <table class="platos-table w-full min-w-[900px] border-collapse text-sm">
                   <thead>
                     <tr class="border-b border-white/8 text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-zinc-600">
                       <th class="w-14 px-2 py-3" aria-label="Orden"></th>
@@ -835,7 +887,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                     {
                       platos.map((plato) => (
                         <tr
-                          class="border-b border-white/[0.05] transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-neutral-800/50"
+                          class="platos-row border-b border-white/[0.05] transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-neutral-800/50"
                           data-plato-id={plato.id}
                           data-disponible={plato.disponible ? 'true' : 'false'}
                           data-destacado={plato.destacado ? 'true' : 'false'}
@@ -848,7 +900,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                           )}
                           data-search={`${plato.nombre} ${plato.categoria_nombre} ${plato.descripcion || ''}`.toLowerCase()}
                         >
-                          <td class="px-2 py-3.5 text-center">
+                          <td class="platos-cell platos-cell--order px-2 py-3.5 text-center" data-label="#">
                             <input
                               type="number"
                               min="1"
@@ -861,7 +913,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               class="w-12 bg-transparent text-white/80 font-mono text-center border-b border-white/10 hover:border-white/30 focus:border-white focus:outline-none transition-colors appearance-none p-1 text-sm"
                             />
                           </td>
-                          <td class="px-4 py-3 text-left">
+                          <td class="platos-cell platos-cell--dish px-4 py-3 text-left" data-label="Plato">
                             <div class="flex flex-col gap-1">
                               <input
                                 type="text"
@@ -891,10 +943,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
                             </div>
                           </td>
-                          <td class="px-3 py-3.5 text-center text-xs text-zinc-400" data-categoria>
+                          <td class="platos-cell platos-cell--cat px-3 py-3.5 text-center text-xs text-zinc-400" data-label="Categoría" data-categoria>
                             {plato.categoria_nombre}
                           </td>
-                          <td class="px-3 py-3.5 text-right">
+                          <td class="platos-cell platos-cell--precio px-3 py-3.5 text-right" data-label="Precio">
                             <div class="inline-flex items-center justify-end gap-1">
                               <span class="text-xs text-zinc-600">$</span>
                               <input
@@ -910,7 +962,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               />
                             </div>
                           </td>
-                          <td class="px-3 py-3.5 text-center">
+                          <td class="platos-cell platos-cell--destacado px-3 py-3.5 text-center" data-label="Destacado">
                             <button
                               type="button"
                               role="switch"
@@ -922,7 +974,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               <span class="ios-toggle__knob" aria-hidden="true" />
                             </button>
                           </td>
-                          <td class="px-3 py-3.5 text-center">
+                          <td class="platos-cell platos-cell--disponible px-3 py-3.5 text-center" data-label="Disponible">
                             <button
                               type="button"
                               role="switch"
@@ -934,7 +986,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               <span class="ios-toggle__knob" aria-hidden="true" />
                             </button>
                           </td>
-                          <td class="px-4 py-3.5 text-right">
+                          <td class="platos-cell platos-cell--media px-4 py-3.5 text-right" data-label="Media">
                             <div class="inline-flex items-center justify-end gap-1.5" data-media-actions>
                               {
                                 plato.imagen_url ? (
@@ -975,7 +1027,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               <button
                                 type="button"
                                 data-delete
-                                class="rounded-lg p-1.5 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400"
+                                class="rounded-lg p-2 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400 sm:p-1.5"
                                 aria-label={`Eliminar ${plato.nombre}`}
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
@@ -2486,7 +2538,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
     <div
       id="crx-toast"
-      class="crx-toast pointer-events-none fixed bottom-6 left-1/2 z-[80] max-w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-white/12 bg-zinc-950/95 px-5 py-3.5 text-center shadow-2xl shadow-black/50 backdrop-blur-xl"
+      class="crx-toast pointer-events-none fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-white/12 bg-zinc-950/95 px-5 py-3.5 text-center shadow-2xl shadow-black/50 backdrop-blur-xl sm:bottom-6"
       data-open="false"
       role="status"
       aria-live="polite"
@@ -2494,6 +2546,57 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     >
       <p id="crx-toast-msg" class="text-sm font-medium tracking-wide text-zinc-100"></p>
     </div>
+
+    {
+      restaurante ? (
+        <>
+          {
+            isSuperAdmin ? (
+              <button
+                type="button"
+                class="studio-fab"
+                data-nuevo-plato-open
+                aria-label="Nuevo plato"
+              >
+                <span aria-hidden="true">+</span>
+              </button>
+            ) : null
+          }
+          <nav class="studio-dock" aria-label="Navegación Studio" data-admin-bottom-nav>
+            <button type="button" class="studio-dock__btn is-active" data-tab-target="menu" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h10"></path>
+              </svg>
+              <span>Menú</span>
+            </button>
+            <button type="button" class="studio-dock__btn" data-tab-target="metricas" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path>
+              </svg>
+              <span>Métricas</span>
+            </button>
+            <button type="button" class="studio-dock__btn" data-tab-target="perfil" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M20 21a8 8 0 10-16 0"></path>
+                <circle cx="12" cy="8" r="3.5"></circle>
+              </svg>
+              <span>Perfil</span>
+            </button>
+            {
+              isSuperAdmin ? (
+                <button type="button" class="studio-dock__btn" data-tab-target="identidad" aria-selected="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"></path>
+                  </svg>
+                  <span>Marca</span>
+                </button>
+              ) : null
+            }
+          </nav>
+        </>
+      ) : null
+    }
   </main>
 
   {/* Modal media */}
@@ -3048,6 +3151,458 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       animation: none;
     }
   }
+
+  /* ── Status chips (Shopify-like) ── */
+  .status-filter-pill {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.12)) 100%, transparent);
+    background: transparent;
+    color: var(--text-muted, #a1a1aa);
+    padding: 0.55rem 0.95rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease;
+  }
+
+  .status-filter-pill.is-on,
+  .status-filter-pill[aria-pressed='true'] {
+    background: var(--text-primary, #fff);
+    color: var(--bg-page, #09090b);
+    border-color: transparent;
+  }
+
+  html.admin-panel.light .status-filter-pill.is-on,
+  html.admin-panel[data-theme='light'] .status-filter-pill.is-on,
+  html.admin-panel[data-theme='alabastro'] .status-filter-pill.is-on,
+  html.admin-panel[data-theme='organico'] .status-filter-pill.is-on,
+  html.admin-panel.light .status-filter-pill[aria-pressed='true'],
+  html.admin-panel[data-theme='light'] .status-filter-pill[aria-pressed='true'] {
+    background: #18181b;
+    color: #fff;
+  }
+
+  /* ── Bottom dock + FAB (app shell) ── */
+  .studio-dock {
+    display: none;
+  }
+
+  .studio-fab {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .studio-dock {
+      position: fixed;
+      left: 50%;
+      bottom: max(0.65rem, env(safe-area-inset-bottom));
+      z-index: 70;
+      display: flex;
+      width: min(94vw, 26rem);
+      transform: translateX(-50%);
+      align-items: stretch;
+      justify-content: space-around;
+      gap: 0.15rem;
+      padding: 0.45rem 0.4rem;
+      border-radius: 1.45rem;
+      border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.12)) 100%, transparent);
+      background: color-mix(in srgb, var(--bg-card, rgba(18, 18, 18, 0.92)) 92%, transparent);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.28),
+        0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    }
+
+    html.admin-panel.light .studio-dock,
+    html.admin-panel[data-theme='light'] .studio-dock,
+    html.admin-panel[data-theme='alabastro'] .studio-dock,
+    html.admin-panel[data-theme='organico'] .studio-dock {
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow:
+        0 16px 36px rgba(15, 23, 42, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.95) inset;
+    }
+
+    .studio-dock__btn {
+      flex: 1 1 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.18rem;
+      min-height: 3.15rem;
+      border: 0;
+      border-radius: 1.05rem;
+      background: transparent;
+      color: var(--text-muted, #a1a1aa);
+      font-size: 0.62rem;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      padding: 0.3rem 0.2rem;
+      transition: color 160ms ease, background-color 160ms ease, transform 120ms ease;
+    }
+
+    .studio-dock__btn svg {
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    .studio-dock__btn.is-active,
+    .studio-dock__btn[aria-selected='true'] {
+      color: var(--text-primary, #fff);
+      background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.08)) 100%, transparent);
+    }
+
+    html.admin-panel.light .studio-dock__btn.is-active,
+    html.admin-panel[data-theme='light'] .studio-dock__btn.is-active,
+    html.admin-panel.light .studio-dock__btn[aria-selected='true'],
+    html.admin-panel[data-theme='light'] .studio-dock__btn[aria-selected='true'] {
+      color: #18181b;
+      background: rgba(24, 24, 27, 0.08);
+    }
+
+    .studio-dock__btn:active {
+      transform: scale(0.96);
+    }
+
+    .studio-fab {
+      position: fixed;
+      right: max(1rem, env(safe-area-inset-right));
+      bottom: calc(5.15rem + env(safe-area-inset-bottom));
+      z-index: 68;
+      display: grid;
+      place-items: center;
+      width: 3.35rem;
+      height: 3.35rem;
+      border: 0;
+      border-radius: 9999px;
+      background: #fff;
+      color: #09090b;
+      font-size: 1.65rem;
+      font-weight: 500;
+      line-height: 1;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+      transition: transform 140ms ease, opacity 140ms ease;
+    }
+
+    html.admin-panel.light .studio-fab,
+    html.admin-panel[data-theme='light'] .studio-fab {
+      background: #18181b;
+      color: #fff;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
+    }
+
+    .studio-fab:active {
+      transform: scale(0.94);
+    }
+
+    /* Compact app chrome */
+    .admin-studio-header {
+      border-bottom-color: transparent;
+      background: color-mix(in srgb, var(--bg-card, rgba(9, 9, 11, 0.86)) 90%, transparent);
+    }
+
+    .platos-toolbar {
+      position: sticky;
+      top: calc(env(safe-area-inset-top) + 3.55rem);
+      z-index: 35;
+      margin-inline: -0.85rem;
+      padding: 0.55rem 0.85rem 0.75rem;
+      background: color-mix(in srgb, var(--bg-base, #09090b) 90%, transparent);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.08)) 80%, transparent);
+    }
+
+    html.admin-panel.light .platos-toolbar,
+    html.admin-panel[data-theme='light'] .platos-toolbar,
+    html.admin-panel[data-theme='alabastro'] .platos-toolbar,
+    html.admin-panel[data-theme='organico'] .platos-toolbar {
+      background: color-mix(in srgb, #f4f6f8 92%, transparent);
+    }
+
+    .platos-table-wrap {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    .platos-table-scroll {
+      overflow: visible !important;
+    }
+
+    .platos-table {
+      min-width: 0 !important;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .platos-table thead {
+      display: none;
+    }
+
+    .platos-table tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding-bottom: 0.5rem;
+    }
+
+    /* Shopify / Zomato style dish card */
+    .platos-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 5rem minmax(0, 1fr) auto;
+      grid-template-areas:
+        'media dish dest'
+        'media meta meta'
+        'price price avail';
+      gap: 0.4rem 0.75rem;
+      align-items: center;
+      padding: 0.85rem;
+      margin: 0;
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08)) !important;
+      border-radius: 1.25rem;
+      background: var(--bg-card, rgba(24, 24, 27, 0.78));
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+      transform: none !important;
+    }
+
+    .platos-row:hover {
+      transform: none !important;
+    }
+
+    .platos-row.hidden {
+      display: none !important;
+    }
+
+    .platos-cell {
+      padding: 0 !important;
+      width: auto;
+      text-align: left !important;
+    }
+
+    .platos-cell--order {
+      position: absolute;
+      top: 0.55rem;
+      left: 0.55rem;
+      z-index: 2;
+      grid-area: auto;
+    }
+
+    .platos-cell--order input[data-dish-order] {
+      width: 1.7rem;
+      min-height: 1.7rem;
+      border: 0;
+      border-radius: 0.55rem;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      backdrop-filter: blur(6px);
+    }
+
+    .platos-cell--media {
+      grid-area: media;
+      align-self: stretch;
+    }
+
+    .platos-cell--media [data-media-actions] {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.4rem;
+      width: 100%;
+      height: 100%;
+    }
+
+    .platos-cell--media [data-ver-plato],
+    .platos-cell--media label {
+      width: 100%;
+    }
+
+    .platos-cell--media img,
+    .platos-cell--media [data-upload-label] {
+      width: 100% !important;
+      height: 5.1rem !important;
+      border-radius: 0.95rem !important;
+      object-fit: cover;
+    }
+
+    .platos-cell--media [data-delete] {
+      display: none !important;
+    }
+
+    .platos-cell--dish {
+      grid-area: dish;
+      min-width: 0;
+    }
+
+    .platos-cell--dish .field-inline,
+    .platos-cell--dish [data-edit-descripcion] {
+      max-width: none !important;
+    }
+
+    .platos-cell--dish .field-inline {
+      font-size: 1.02rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      padding: 0.05rem 0;
+    }
+
+    .platos-cell--dish [data-descripcion-preview] {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+    .platos-cell--dish [data-field-saved] {
+      display: none;
+    }
+
+    .platos-cell--destacado {
+      grid-area: dest;
+      align-self: start;
+      justify-self: end;
+    }
+
+    .platos-cell--destacado .ios-toggle {
+      width: 2.55rem;
+      height: 1.45rem;
+    }
+
+    .platos-cell--destacado .ios-toggle__knob {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    .platos-cell--destacado .ios-toggle.is-on .ios-toggle__knob {
+      transform: translateX(1.05rem);
+    }
+
+    .platos-cell--cat {
+      grid-area: meta;
+      display: inline-flex;
+      align-items: center;
+      width: auto;
+      max-width: max-content;
+      padding: 0.28rem 0.55rem !important;
+      border-radius: 9999px;
+      background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.06)) 100%, transparent);
+      font-size: 0.68rem !important;
+      font-weight: 600;
+      color: var(--text-muted, #a1a1aa) !important;
+    }
+
+    .platos-cell--precio {
+      grid-area: price;
+      display: flex;
+      align-items: center;
+      margin-top: 0.1rem;
+    }
+
+    .platos-cell--precio .precio-input {
+      width: 5.5rem;
+      min-height: 2.6rem;
+      border-radius: 0.9rem;
+      border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.12)) 100%, transparent);
+      background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.04)) 100%, transparent);
+      font-size: 1.02rem;
+      font-weight: 650;
+    }
+
+    .platos-cell--disponible {
+      grid-area: avail;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      justify-self: end;
+      min-height: 2.6rem;
+      margin-top: 0.1rem;
+      padding: 0.25rem 0.4rem 0.25rem 0.65rem !important;
+      border-radius: 9999px;
+      background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.05)) 100%, transparent);
+    }
+
+    .platos-cell--cat::before,
+    .platos-cell--destacado::before,
+    .platos-cell--disponible::before,
+    .platos-cell--order::before,
+    .platos-cell--dish::before,
+    .platos-cell--precio::before,
+    .platos-cell--media::before {
+      content: none;
+    }
+
+    .platos-cell--disponible::after {
+      content: 'En carta';
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-soft, #71717a);
+      order: -1;
+    }
+
+    .platos-row[data-disponible='false'] .platos-cell--disponible::after {
+      content: 'Agotado';
+      color: #fb7185;
+    }
+
+    .platos-row[data-disponible='false'] {
+      opacity: 0.78;
+    }
+
+    .ios-toggle {
+      width: 3.05rem;
+      height: 1.78rem;
+      flex-shrink: 0;
+    }
+
+    .ios-toggle__knob {
+      width: 1.42rem;
+      height: 1.42rem;
+    }
+
+    .ios-toggle.is-on .ios-toggle__knob {
+      transform: translateX(1.28rem);
+    }
+
+    /* Hide redundant page hero on phone — name lives in header */
+    #dashboard-root > .mb-5,
+    #dashboard-root > .mb-8 {
+      display: none;
+    }
+
+    #panel-menu > .mb-5 .hidden.sm\\:flex,
+    #panel-menu .space-y-3 > .hidden.sm\\:flex {
+      display: none !important;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .status-filter-pill {
+      padding: 0.35rem 0.8rem;
+      font-size: 0.72rem;
+    }
+
+    .platos-row:hover {
+      background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.04)) 100%, transparent);
+    }
+
+    .studio-dock,
+    .studio-fab {
+      display: none !important;
+    }
+  }
 </style>
 
 <script>
@@ -3152,6 +3707,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   /** @type {string} */
   let activeCategoryFilter = 'todas';
+  let activeStatusFilter = 'todas';
+  const statusFilters = document.getElementById('status-scroll');
 
   const modal = document.getElementById('plato-modal');
   const modalTitle = document.getElementById('plato-modal-title');
@@ -3177,11 +3734,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   const descModalError = document.getElementById('desc-modal-error');
 
   const bulkToggle = document.getElementById('bulk-toggle');
+  const bulkToggleMobile = document.getElementById('bulk-toggle-mobile');
   const bulkPanel = document.getElementById('bulk-panel');
   const bulkChevron = document.getElementById('bulk-toggle-chevron');
 
   const nuevoModal = document.getElementById('nuevo-plato-modal');
-  const nuevoOpen = document.getElementById('nuevo-plato-open');
+  const nuevoOpeners = document.querySelectorAll('[data-nuevo-plato-open]');
   const nuevoClose = document.getElementById('nuevo-plato-close');
   const nuevoForm = document.getElementById('nuevo-plato-form');
   const nuevoSubmit = document.getElementById('nuevo-plato-submit');
@@ -3480,18 +4038,25 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   function applySearchFilter() {
     const q = (searchInput instanceof HTMLInputElement ? searchInput.value : '').trim().toLowerCase();
     const catFilter = String(activeCategoryFilter || 'todas').trim().toLowerCase();
+    const statusFilter = String(activeStatusFilter || 'todas').trim().toLowerCase();
     const rows = allRows();
     let visible = 0;
     for (const row of rows) {
       if (!(row instanceof HTMLElement)) continue;
       const rowCat = String(row.dataset.categoria || '').trim().toLowerCase();
+      const disponible = row.dataset.disponible === 'true';
+      const destacado = row.dataset.destacado === 'true';
       const catMatch = catFilter === 'todas' || rowCat === catFilter;
       const textMatch = !q || (row.dataset.search || '').includes(q);
-      const match = catMatch && textMatch;
+      let statusMatch = true;
+      if (statusFilter === 'disponibles') statusMatch = disponible;
+      else if (statusFilter === 'agotados') statusMatch = !disponible;
+      else if (statusFilter === 'destacados') statusMatch = destacado;
+      const match = catMatch && textMatch && statusMatch;
       row.classList.toggle('hidden', !match);
       if (match) visible += 1;
     }
-    const filtered = Boolean(q) || catFilter !== 'todas';
+    const filtered = Boolean(q) || catFilter !== 'todas' || statusFilter !== 'todas';
     if (searchMeta) {
       searchMeta.textContent = filtered
         ? `${visible} de ${rows.length}`
@@ -3553,6 +4118,26 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   }
 
   searchInput?.addEventListener('input', applySearchFilter, { signal });
+
+  statusFilters?.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !(statusFilters instanceof HTMLElement)) return;
+      const btn = target.closest('[data-status-filter]');
+      if (!(btn instanceof HTMLElement) || !statusFilters.contains(btn)) return;
+      const next = String(btn.dataset.statusFilter || 'todas').trim().toLowerCase() || 'todas';
+      activeStatusFilter = next;
+      for (const pill of statusFilters.querySelectorAll('[data-status-filter]')) {
+        if (!(pill instanceof HTMLElement)) continue;
+        const on = String(pill.dataset.statusFilter || '').trim().toLowerCase() === next;
+        pill.setAttribute('aria-pressed', on ? 'true' : 'false');
+        pill.classList.toggle('is-on', on);
+      }
+      applySearchFilter();
+    },
+    { signal },
+  );
 
   /** @type {HTMLElement | null} */
   let draggedCategoryPill = null;
@@ -4509,7 +5094,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   function buildRow(plato) {
     const tr = document.createElement('tr');
     tr.className =
-      'border-b border-white/[0.05] transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-neutral-800/50';
+      'platos-row border-b border-white/[0.05] transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-neutral-800/50';
     tr.dataset.platoId = String(plato.id);
     tr.dataset.disponible = plato.disponible ? 'true' : 'false';
     tr.dataset.destacado = plato.destacado ? 'true' : 'false';
@@ -4534,10 +5119,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       : `<label class="relative inline-flex cursor-pointer items-center"><input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" /><span data-upload-label title="Subir media" class="flex h-10 w-10 items-center justify-center rounded-md bg-zinc-800/50 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300">${CAMERA_ICON_SVG}</span></label>`;
 
     tr.innerHTML = `
-      <td class="px-2 py-3.5 text-center">
+      <td class="platos-cell platos-cell--order px-2 py-3.5 text-center" data-label="#">
         <input type="number" min="1" step="1" value="${orderValue}" data-plato-id="${escapeHtml(String(plato.id))}" data-dish-order aria-label="Orden del plato" title="Cambiar orden" class="${DISH_ORDER_INPUT_CLASS}" />
       </td>
-      <td class="px-4 py-3 text-left">
+      <td class="platos-cell platos-cell--dish px-4 py-3 text-left" data-label="Plato">
         <div class="flex flex-col gap-1">
           <input type="text" value="${escapeHtml(plato.nombre)}" data-field="nombre" data-original="${escapeHtml(plato.nombre)}"
             class="field-inline w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15" />
@@ -4548,28 +5133,28 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
           <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
         </div>
       </td>
-      <td class="px-3 py-3.5 text-center text-xs text-zinc-400" data-categoria>${escapeHtml(plato.categoria_nombre || '—')}</td>
-      <td class="px-3 py-3.5 text-right">
+      <td class="platos-cell platos-cell--cat px-3 py-3.5 text-center text-xs text-zinc-400" data-label="Categoría" data-categoria>${escapeHtml(plato.categoria_nombre || '—')}</td>
+      <td class="platos-cell platos-cell--precio px-3 py-3.5 text-right" data-label="Precio">
         <div class="inline-flex items-center justify-end gap-1">
           <span class="text-xs text-zinc-600">$</span>
           <input type="number" inputmode="decimal" min="0" step="0.01" value="${precio}" data-field="precio" data-original="${precio}"
             class="field-inline precio-input w-[5.25rem] rounded-lg border border-transparent bg-white/[0.04] px-2 py-1.5 text-right text-sm tabular-nums text-zinc-100 outline-none transition focus:border-white/20 focus:bg-black/50" />
         </div>
       </td>
-      <td class="px-3 py-3.5 text-center">
+      <td class="platos-cell platos-cell--destacado px-3 py-3.5 text-center" data-label="Destacado">
         <button type="button" role="switch" aria-checked="${Boolean(plato.destacado)}" data-toggle-destacado title="Destacado" class="ios-toggle ${plato.destacado ? 'is-on' : ''}">
           <span class="ios-toggle__knob" aria-hidden="true"></span>
         </button>
       </td>
-      <td class="px-3 py-3.5 text-center">
+      <td class="platos-cell platos-cell--disponible px-3 py-3.5 text-center" data-label="Disponible">
         <button type="button" role="switch" aria-checked="${Boolean(plato.disponible)}" data-toggle-disponible title="Disponible" class="ios-toggle ${plato.disponible ? 'is-on' : ''}">
           <span class="ios-toggle__knob" aria-hidden="true"></span>
         </button>
       </td>
-      <td class="px-4 py-3.5 text-right">
+      <td class="platos-cell platos-cell--media px-4 py-3.5 text-right" data-label="Media">
         <div class="inline-flex items-center justify-end gap-1.5" data-media-actions>
           ${mediaCell}
-          <button type="button" data-delete class="rounded-lg p-1.5 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400" aria-label="Eliminar">
+          <button type="button" data-delete class="rounded-lg p-2 text-zinc-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-rose-500/10 hover:text-rose-400 sm:p-1.5" aria-label="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16"></path><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"></path><path d="M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12"></path><path d="M10 11v6M14 11v6"></path></svg>
           </button>
         </div>
@@ -4612,14 +5197,22 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   }, { signal });
 
   // ── Bulk panel toggle ──
-  bulkToggle?.addEventListener('click', () => {
+  function setBulkPanelOpen(open) {
     if (!(bulkPanel instanceof HTMLElement)) return;
-    const open = bulkPanel.dataset.open !== 'true';
     bulkPanel.dataset.open = open ? 'true' : 'false';
     bulkPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
-    bulkToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    bulkToggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+    bulkToggleMobile?.setAttribute('aria-expanded', open ? 'true' : 'false');
     bulkChevron?.classList.toggle('rotate-180', open);
-  }, { signal });
+  }
+
+  function toggleBulkPanel() {
+    if (!(bulkPanel instanceof HTMLElement)) return;
+    setBulkPanelOpen(bulkPanel.dataset.open !== 'true');
+  }
+
+  bulkToggle?.addEventListener('click', toggleBulkPanel, { signal });
+  bulkToggleMobile?.addEventListener('click', toggleBulkPanel, { signal });
 
   // ── Nuevo plato modal ──
   function fillCategoriasDatalist() {
@@ -4677,13 +5270,19 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     paintToggle(npDestacado, next);
   }, { signal });
 
-  nuevoOpen?.addEventListener('click', () => {
-    try {
-      openNuevoPlatoModal();
-    } catch (err) {
-      console.error('Error en menú:', err);
-    }
-  }, { signal });
+  nuevoOpeners.forEach((btn) => {
+    btn.addEventListener(
+      'click',
+      () => {
+        try {
+          openNuevoPlatoModal();
+        } catch (err) {
+          console.error('Error en menú:', err);
+        }
+      },
+      { signal },
+    );
+  });
   nuevoClose?.addEventListener('click', closeNuevoPlatoModal, { signal });
   nuevoModal?.addEventListener('click', (e) => {
     if (e.target === nuevoModal) closeNuevoPlatoModal();
@@ -4938,6 +5537,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       try {
         // Boolean explícito → columna platos.disponible (menú público filtra eq true)
         await updatePlato(id, { disponible: Boolean(next) });
+        applySearchFilter();
       } catch (err) {
         row.dataset.disponible = prev ? 'true' : 'false';
         paintToggle(toggleDisp, prev);
@@ -4954,6 +5554,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       paintToggle(toggleDest, next);
       try {
         await updatePlato(id, { destacado: next });
+        applySearchFilter();
       } catch (err) {
         row.dataset.destacado = prev ? 'true' : 'false';
         paintToggle(toggleDest, prev);
@@ -4989,8 +5590,11 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     const root = document.getElementById('dashboard-root');
     const canUseIdentidad =
       root instanceof HTMLElement && root.dataset.isSuperAdmin === 'true';
-    const tabButtons = document.querySelectorAll('[data-admin-top-nav] [data-tab-target]');
+    const tabButtons = document.querySelectorAll(
+      '[data-admin-top-nav] [data-tab-target], [data-admin-bottom-nav] [data-tab-target]',
+    );
     const tabPanels = document.querySelectorAll('[data-tab-panel]');
+    const fab = document.querySelector('.studio-fab');
     if (!tabButtons.length || !tabPanels.length) return;
 
     /**
@@ -5030,14 +5634,24 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         const isSelected = normalizeTabName(btn.getAttribute('data-tab-target')) === id;
         btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
         btn.classList.toggle('active', isSelected);
-        if (isSelected) {
-          btn.classList.add('bg-white/10', 'text-white');
-          btn.classList.remove('bg-white', 'text-black', 'text-zinc-950', 'shadow-md', 'text-zinc-400', 'hover:text-white', 'hover:bg-white/5');
-        } else {
-          btn.classList.remove('bg-white', 'bg-white/10', 'text-black', 'text-white', 'shadow-md', 'text-zinc-950');
-          btn.classList.add('text-zinc-400', 'hover:text-white');
+        btn.classList.toggle('is-active', isSelected);
+
+        const inTopNav = Boolean(btn.closest('[data-admin-top-nav]'));
+        if (inTopNav) {
+          if (isSelected) {
+            btn.classList.add('bg-white/10', 'text-white');
+            btn.classList.remove('bg-white', 'text-black', 'text-zinc-950', 'shadow-md', 'text-zinc-400', 'hover:text-white', 'hover:bg-white/5');
+          } else {
+            btn.classList.remove('bg-white', 'bg-white/10', 'text-black', 'text-white', 'shadow-md', 'text-zinc-950');
+            btn.classList.add('text-zinc-400', 'hover:text-white');
+          }
         }
       });
+
+      if (fab instanceof HTMLElement) {
+        fab.hidden = id !== 'menu';
+        fab.style.display = id === 'menu' ? '' : 'none';
+      }
 
       const marcaSaveBtn = document.getElementById('marca-save');
       if (marcaSaveBtn instanceof HTMLButtonElement) {
@@ -5059,7 +5673,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (canUseIdentidad) {
       const activeBtn =
         document.querySelector('[data-admin-top-nav] [data-tab-target].active') ||
-        document.querySelector('[data-admin-top-nav] [data-tab-target][aria-selected="true"]');
+        document.querySelector('[data-admin-top-nav] [data-tab-target][aria-selected="true"]') ||
+        document.querySelector('[data-admin-bottom-nav] [data-tab-target].is-active');
       if (activeBtn instanceof HTMLElement) {
         defaultTab = activeBtn.getAttribute('data-tab-target') || 'menu';
       }
@@ -5265,38 +5880,68 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     clamp();
   });
 
-  // Profile menu (avatar → glass dropdown)
+  // Profile menu (avatar → glass dropdown) — supports mobile + desktop instances
   (function wireAdminProfileMenu() {
-    const root = document.querySelector('[data-admin-profile]');
-    const trigger = document.getElementById('admin-profile-trigger');
-    const menu = document.querySelector('[data-admin-profile-menu]');
-    if (!(root instanceof HTMLElement)) return;
-    if (!(trigger instanceof HTMLButtonElement)) return;
-    if (!(menu instanceof HTMLElement)) return;
+    const roots = document.querySelectorAll('[data-admin-profile]');
+    if (!roots.length) return;
 
-    const setOpen = (open) => {
-      menu.hidden = !open;
-      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-    };
+    /**
+     * @param {HTMLElement} root
+     */
+    function bindRoot(root) {
+      const trigger = root.querySelector('[data-admin-profile-trigger], .admin-profile-trigger');
+      const menu = root.querySelector('[data-admin-profile-menu]');
+      if (!(trigger instanceof HTMLButtonElement)) return;
+      if (!(menu instanceof HTMLElement)) return;
 
-    trigger.addEventListener('click', (event) => {
-      event.stopPropagation();
-      setOpen(menu.hidden);
-    }, { signal });
+      const setOpen = (open) => {
+        menu.hidden = !open;
+        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
 
-    document.addEventListener('click', (event) => {
-      if (menu.hidden) return;
-      const target = event.target;
-      if (target instanceof Node && root.contains(target)) return;
-      setOpen(false);
-    }, { signal });
+      trigger.addEventListener(
+        'click',
+        (event) => {
+          event.stopPropagation();
+          // Close other open profile menus first
+          roots.forEach((other) => {
+            if (!(other instanceof HTMLElement) || other === root) return;
+            const otherMenu = other.querySelector('[data-admin-profile-menu]');
+            const otherTrigger = other.querySelector('[data-admin-profile-trigger], .admin-profile-trigger');
+            if (otherMenu instanceof HTMLElement) otherMenu.hidden = true;
+            if (otherTrigger instanceof HTMLElement) otherTrigger.setAttribute('aria-expanded', 'false');
+          });
+          setOpen(menu.hidden);
+        },
+        { signal },
+      );
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !menu.hidden) {
-        setOpen(false);
-        trigger.focus();
-      }
-    }, { signal });
+      document.addEventListener(
+        'click',
+        (event) => {
+          if (menu.hidden) return;
+          const target = event.target;
+          if (target instanceof Node && root.contains(target)) return;
+          setOpen(false);
+        },
+        { signal },
+      );
+
+      document.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key === 'Escape' && !menu.hidden) {
+            setOpen(false);
+            trigger.focus();
+          }
+        },
+        { signal },
+      );
+    }
+
+    roots.forEach((root) => {
+      if (root instanceof HTMLElement) bindRoot(root);
+    });
   })();
 
   // Sub-tabs Identidad de Marca

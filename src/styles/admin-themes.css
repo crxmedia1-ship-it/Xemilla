@@ -259,9 +259,15 @@ html.admin-panel body.admin-panel-body {
   font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: -0.014em;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
   transition:
     background-color 500ms ease-in-out,
     color 500ms ease-in-out;
+}
+
+html.admin-panel {
+  overflow-x: clip;
 }
 
 html.admin-panel h1,
@@ -2281,6 +2287,18 @@ html.admin-panel[data-theme='dark'] .kit-metrics {
   }
 }
 
+/* Mobile kit entrance: no blur filter (expensive per-cell) */
+@keyframes kit-rise-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes kit-donut-pop {
   from {
     opacity: 0;
@@ -2656,3 +2674,143 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
     font-size: 0.88rem;
   }
 }
+
+/* ─── Admin mobile polish (Studio + SuperAdmin) ─────────────────────── */
+@media (max-width: 768px), (pointer: coarse) {
+  /* Continuous deep-space FX: static on phones */
+  .admin-deep-space__stars,
+  .admin-deep-space__stardust {
+    animation: none !important;
+  }
+
+  .admin-deep-space__stardust {
+    opacity: 0.35;
+  }
+
+  html.admin-panel .glass-panel,
+  html.admin-panel .studio-card {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  .super-hub-search {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .super-until-hero {
+    backdrop-filter: blur(10px) saturate(1.15);
+    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  }
+
+  .kit-metrics.is-live [data-kit-animate],
+  .kit-metrics.is-live .kit-metrics__intro {
+    animation-name: kit-rise-mobile;
+    animation-duration: 0.45s;
+  }
+
+  .kit-metrics__donut.is-drawn {
+    animation-duration: 0.4s;
+  }
+}
+
+@media (max-width: 768px) {
+  .super-admin-dash {
+    padding-inline: 0.85rem;
+    padding-top: max(0.85rem, env(safe-area-inset-top));
+    padding-bottom: max(4.5rem, calc(env(safe-area-inset-bottom) + 3rem));
+  }
+
+  .super-hub-search {
+    flex-wrap: wrap;
+    border-radius: 1.1rem;
+    padding: 0.65rem 0.8rem;
+    gap: 0.45rem;
+  }
+
+  .super-hub-search__count {
+    margin-left: auto;
+  }
+
+  .super-hub-search__input {
+    flex: 1 1 10rem;
+    font-size: 0.95rem;
+  }
+
+  .hub-modal {
+    padding: 0.65rem;
+    align-items: flex-end;
+  }
+
+  .hub-modal__dialog,
+  .hub-modal__dialog--wide {
+    width: 100%;
+    max-height: min(92dvh, 44rem);
+    border-radius: 1.15rem 1.15rem 0.85rem 0.85rem;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .admin-studio-header {
+    padding-top: max(0.55rem, env(safe-area-inset-top));
+  }
+
+  .admin-studio-header__nav .dashboard-tab,
+  .admin-studio-header__nav button {
+    font-size: 0.78rem;
+    padding-inline: 0.85rem;
+    white-space: nowrap;
+    min-height: 2.1rem;
+  }
+
+  html.admin-panel main .max-w-6xl {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+    padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 5.5rem));
+  }
+
+  /* Studio app feel: avoid page chrome fighting cards */
+  html.admin-panel #dashboard-root > .mb-5,
+  html.admin-panel #dashboard-root > .mb-8 {
+    margin-bottom: 1rem;
+  }
+
+  html.admin-panel #dashboard-root > .mb-5 h1,
+  html.admin-panel #dashboard-root > .mb-8 h1 {
+    font-size: 1.65rem;
+  }
+
+  /* Menu cards live in dashboard styles; keep scroll helpers */
+  html.admin-panel .overflow-x-auto,
+  html.admin-panel .platos-table-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Avoid cramped cards / sheets on phones */
+  html.admin-panel .glass-panel {
+    border-radius: 1rem;
+  }
+
+  .super-hub-card {
+    border-radius: 1rem;
+  }
+
+  .super-hub-card__media {
+    aspect-ratio: 4 / 5;
+  }
+}
+
+@media (max-width: 420px) {
+  .super-until-hero__cta-icon {
+    display: none;
+  }
+
+  .super-until-hero__cta {
+    padding-inline: 0.8rem;
+  }
+
+  .super-hub-search__icon {
+    display: none;
+  }
+}
+
