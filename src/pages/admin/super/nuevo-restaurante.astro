@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../layouts/Layout.astro';
+import AdminThemeSwitcher from '../../../components/admin/AdminThemeSwitcher.astro';
 import {
   requireSuperAdmin,
   createRestauranteAsSuperAdmin,
@@ -18,15 +19,36 @@ if (!gate) {
 
 let errorMsg = '';
 
+/** Prefill after validation error */
+const prefill = {
+  nombre: '',
+  slug: '',
+  whatsapp: '',
+  direccion: '',
+  logoUrl: '',
+  hubCoverUrl: '',
+  hubLogoBg: '',
+};
+
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+  prefill.nombre = String(form.get('nombre_comercial') ?? '');
+  prefill.slug = String(form.get('slug') ?? '');
+  prefill.whatsapp = String(form.get('whatsapp_num') ?? '');
+  prefill.direccion = String(form.get('direccion') ?? '');
+  prefill.logoUrl = String(form.get('logo_url') ?? '');
+  prefill.hubCoverUrl = String(form.get('hub_cover_url') ?? '');
+  prefill.hubLogoBg = String(form.get('hub_logo_bg') ?? '');
+
   const result = await createRestauranteAsSuperAdmin(gate.supabase, gate.user, {
     userId: gate.user.id,
-    nombreComercial: String(form.get('nombre_comercial') ?? ''),
-    slug: String(form.get('slug') ?? ''),
-    whatsapp: String(form.get('whatsapp_num') ?? ''),
-    logoUrl: String(form.get('logo_url') ?? ''),
-    hubCoverUrl: String(form.get('hub_cover_url') ?? ''),
+    nombreComercial: prefill.nombre,
+    slug: prefill.slug,
+    whatsapp: prefill.whatsapp,
+    direccion: prefill.direccion,
+    logoUrl: prefill.logoUrl,
+    hubCoverUrl: prefill.hubCoverUrl,
+    hubLogoBg: prefill.hubLogoBg,
   });
 
   if (result.error) {
@@ -35,6 +57,9 @@ if (Astro.request.method === 'POST') {
     return Astro.redirect('/admin/super/dashboard');
   }
 }
+
+const xemillaWordmark =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 ---
 
 <Layout
@@ -44,150 +69,676 @@ if (Astro.request.method === 'POST') {
   description="Registrar un nuevo local en Xemilla"
   adminPanel={true}
 >
-  <main class="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-16 pt-10 text-white">
-    <header>
-      <a
-        href="/admin/super/dashboard"
-        class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500 transition hover:text-zinc-300"
-      >
-        ← SuperAdmin
+  <main class="nuevo-rest mx-auto min-h-dvh w-full max-w-5xl px-4 pb-20 pt-5 sm:px-6 lg:px-10 lg:pt-8">
+    <header class="nuevo-rest__top solid-obstacle">
+      <a href="/admin/super/dashboard" class="nuevo-rest__brand" aria-label="Volver al SuperAdmin">
+        <img
+          src={xemillaWordmark}
+          alt="xemilla"
+          width="140"
+          height="40"
+          class="nuevo-rest__brand-img"
+          loading="eager"
+          decoding="async"
+        />
       </a>
-      <h1 class="mt-4 font-blacksushi-display text-3xl font-semibold tracking-tight">
-        Nuevo restaurante
-      </h1>
-      <p class="mt-2 text-sm leading-relaxed text-zinc-400">
-        Datos de ficha del Hub. El fondo de la WebApp se configura después en Studio → Identidad.
-      </p>
+      <div class="nuevo-rest__top-actions">
+        <AdminThemeSwitcher />
+        <a href="/admin/super/dashboard" class="nuevo-rest__back">← SuperAdmin</a>
+      </div>
     </header>
 
-    <form method="POST" class="glass-panel mt-8 space-y-5 p-5" novalidate>
-      <div class="space-y-1.5">
-        <label
-          for="nombre_comercial"
-          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
-        >
-          Nombre comercial
-        </label>
-        <input
-          id="nombre_comercial"
-          name="nombre_comercial"
-          type="text"
-          required
-          placeholder="Black Sushi"
-          class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
-        />
-      </div>
+    <div class="nuevo-rest__intro solid-obstacle">
+      <p class="nuevo-rest__eyebrow">Alta en la red</p>
+      <h1 class="nuevo-rest__title">Nuevo restaurante</h1>
+      <p class="nuevo-rest__lead">
+        Completá la ficha del Hub. El fondo y la identidad pública se configuran después en Studio.
+      </p>
+    </div>
 
-      <div class="space-y-1.5">
-        <label
-          for="slug"
-          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
-        >
-          Slug (URL)
-        </label>
-        <div class="relative">
-          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600"
-            >/</span
-          >
+    <form method="POST" class="nuevo-rest__layout" id="nuevo-rest-form" novalidate>
+      <section class="nuevo-rest__form glass-panel solid-obstacle">
+        <div class="nuevo-rest__field">
+          <label for="nombre_comercial">Nombre comercial</label>
           <input
-            id="slug"
-            name="slug"
+            id="nombre_comercial"
+            name="nombre_comercial"
             type="text"
             required
-            pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-            placeholder="blacksushi"
-            class="glass-field pl-6 font-blacksushi text-sm text-white placeholder:text-zinc-600"
+            autocomplete="organization"
+            placeholder="Ej. Black Sushi"
+            value={prefill.nombre}
           />
         </div>
-        <p class="text-[11px] leading-relaxed text-zinc-600">
-          Solo minúsculas, números y guiones. Quedará en xemilla.com/slug
-        </p>
-      </div>
 
-      <div class="space-y-1.5">
-        <label
-          for="whatsapp_num"
-          class="block text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500"
-        >
-          Teléfono / WhatsApp
-        </label>
-        <input
-          id="whatsapp_num"
-          name="whatsapp_num"
-          type="tel"
-          required
-          placeholder="584141234567"
-          class="glass-field font-blacksushi text-sm text-white placeholder:text-zinc-600"
-        />
-      </div>
-
-      <div class="space-y-2 border-t border-white/8 pt-4">
-        <p class="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-          Logo
-        </p>
-        <p class="text-[11px] leading-relaxed text-zinc-600">
-          Avatar del local en el Hub y la WebApp.
-        </p>
-        <div class="flex items-center gap-3">
-          <div
-            id="logo-preview"
-            class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/40"
-          >
-            <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Logo</span>
-          </div>
-          <div class="min-w-0 flex-1 space-y-2">
-            <input type="hidden" id="logo_url" name="logo_url" value="" />
+        <div class="nuevo-rest__field">
+          <label for="slug">URL pública (slug)</label>
+          <div class="nuevo-rest__slug">
+            <span aria-hidden="true">/</span>
             <input
-              id="logo_file"
-              type="file"
-              accept="image/*"
-              class="block w-full text-[0.65rem] text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[0.6rem] file:font-semibold file:uppercase file:tracking-wider file:text-white hover:file:bg-white/15"
+              id="slug"
+              name="slug"
+              type="text"
+              required
+              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+              placeholder="blacksushi"
+              value={prefill.slug}
+              aria-describedby="slug-hint"
             />
-            <p id="logo-upload-status" class="text-[10px] text-zinc-600" role="status"></p>
           </div>
-        </div>
-      </div>
-
-      <div class="space-y-2 border-t border-white/8 pt-4">
-        <p class="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-          Foto de portada (Hub)
-        </p>
-        <p class="text-[11px] leading-relaxed text-zinc-600">
-          Solo para la tarjeta del SuperAdmin. No es el fondo de la WebApp pública.
-        </p>
-        <div class="overflow-hidden rounded-xl border border-white/10 bg-black/40">
-          <div id="cover-preview" class="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-950 to-black">
-            <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Portada Hub</span>
-          </div>
-        </div>
-        <input type="hidden" id="hub_cover_url" name="hub_cover_url" value="" />
-        <input
-          id="hub_cover_file"
-          type="file"
-          accept="image/*"
-          class="block w-full text-[0.65rem] text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-[0.6rem] file:font-semibold file:uppercase file:tracking-wider file:text-white hover:file:bg-white/15"
-        />
-        <p id="cover-upload-status" class="text-[10px] text-zinc-600" role="status"></p>
-      </div>
-
-      {
-        errorMsg && (
-          <p class="text-center text-xs leading-relaxed text-rose-400" role="alert">
-            {errorMsg}
+          <p id="slug-hint" class="nuevo-rest__hint">
+            Solo minúsculas, números y guiones · xemilla.com/<span data-slug-live>{prefill.slug || 'slug'}</span>
           </p>
-        )
-      }
+        </div>
 
-      <button type="submit" id="create-submit" class="glass-btn mt-2 !bg-white !text-zinc-950">
-        Crear restaurante
-      </button>
+        <div class="nuevo-rest__row">
+          <div class="nuevo-rest__field">
+            <label for="whatsapp_num">WhatsApp</label>
+            <input
+              id="whatsapp_num"
+              name="whatsapp_num"
+              type="tel"
+              required
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="584141234567"
+              value={prefill.whatsapp}
+            />
+            <p class="nuevo-rest__hint">Código de país + número, sin espacios</p>
+          </div>
+          <div class="nuevo-rest__field">
+            <label for="direccion">Dirección <span class="nuevo-rest__optional">opcional</span></label>
+            <input
+              id="direccion"
+              name="direccion"
+              type="text"
+              autocomplete="street-address"
+              placeholder="Calle, ciudad"
+              value={prefill.direccion}
+            />
+          </div>
+        </div>
+
+        <div class="nuevo-rest__media-grid">
+          <div class="nuevo-rest__media-block">
+            <div class="nuevo-rest__media-head">
+              <div>
+                <p class="nuevo-rest__media-label">Logo</p>
+                <p class="nuevo-rest__hint">Avatar del Hub y la WebApp</p>
+              </div>
+              <button type="button" class="nuevo-rest__upload-btn" data-pick="logo">
+                Subir logo
+              </button>
+            </div>
+            <button
+              type="button"
+              class="nuevo-rest__logo-slot"
+              data-pick="logo"
+              data-logo-preview
+              aria-label="Elegir logo"
+            >
+              {
+                prefill.logoUrl ? (
+                  <img src={prefill.logoUrl} alt="" class="nuevo-rest__logo-img" />
+                ) : (
+                  <span>Logo</span>
+                )
+              }
+            </button>
+            <input type="hidden" id="logo_url" name="logo_url" value={prefill.logoUrl} />
+            <input id="logo_file" type="file" accept="image/*" class="sr-only" tabindex="-1" />
+            <p id="logo-upload-status" class="nuevo-rest__status" role="status"></p>
+          </div>
+
+          <div class="nuevo-rest__media-block nuevo-rest__media-block--cover">
+            <div class="nuevo-rest__media-head">
+              <div>
+                <p class="nuevo-rest__media-label">Portada Hub</p>
+                <p class="nuevo-rest__hint">Solo tarjeta SuperAdmin · no es el fondo público</p>
+              </div>
+              <button type="button" class="nuevo-rest__upload-btn" data-pick="cover">
+                Subir portada
+              </button>
+            </div>
+            <button
+              type="button"
+              class="nuevo-rest__cover-slot"
+              data-pick="cover"
+              data-cover-preview
+              aria-label="Elegir portada"
+            >
+              {
+                prefill.hubCoverUrl ? (
+                  <img src={prefill.hubCoverUrl} alt="" class="nuevo-rest__cover-img" />
+                ) : (
+                  <span>Portada</span>
+                )
+              }
+            </button>
+            <input type="hidden" id="hub_cover_url" name="hub_cover_url" value={prefill.hubCoverUrl} />
+            <input type="hidden" id="hub_logo_bg" name="hub_logo_bg" value={prefill.hubLogoBg} />
+            <input id="hub_cover_file" type="file" accept="image/*" class="sr-only" tabindex="-1" />
+            <p id="cover-upload-status" class="nuevo-rest__status" role="status"></p>
+          </div>
+        </div>
+
+        {
+          errorMsg && (
+            <p class="nuevo-rest__error" role="alert">
+              {errorMsg}
+            </p>
+          )
+        }
+
+        <div class="nuevo-rest__actions">
+          <a href="/admin/super/dashboard" class="nuevo-rest__cancel">Cancelar</a>
+          <button type="submit" id="create-submit" class="nuevo-rest__submit">
+            Crear restaurante
+          </button>
+        </div>
+      </section>
+
+      <aside class="nuevo-rest__preview solid-obstacle" aria-label="Vista previa de la tarjeta">
+        <p class="nuevo-rest__preview-label">Así se ve en el Hub</p>
+        <article class="nuevo-rest__card" data-live-card>
+          <div class="nuevo-rest__card-media" data-live-cover>
+            {
+              prefill.hubCoverUrl ? (
+                <img src={prefill.hubCoverUrl} alt="" />
+              ) : (
+                <div class="nuevo-rest__card-empty">Sin portada</div>
+              )
+            }
+            <div
+              class="nuevo-rest__card-plate"
+              data-live-plate
+              style={prefill.hubLogoBg ? `background:${prefill.hubLogoBg}` : undefined}
+            >
+              <div class="nuevo-rest__card-logo" data-live-logo>
+                {
+                  prefill.logoUrl ? (
+                    <img src={prefill.logoUrl} alt="" />
+                  ) : (
+                    <span data-live-name-fallback>{prefill.nombre || 'Logo'}</span>
+                  )
+                }
+              </div>
+            </div>
+          </div>
+          <p class="nuevo-rest__card-meta">
+            <span data-live-name>{prefill.nombre || 'Nombre del local'}</span>
+            <span data-live-slug>/{prefill.slug || 'slug'}</span>
+          </p>
+        </article>
+      </aside>
     </form>
   </main>
 </Layout>
 
+<style is:global>
+  .nuevo-rest__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .nuevo-rest__brand-img {
+    height: 1.35rem;
+    width: auto;
+    object-fit: contain;
+    filter: brightness(0);
+  }
+
+  html.admin-panel.dark .nuevo-rest__brand-img,
+  html.admin-panel[data-theme='dark'] .nuevo-rest__brand-img,
+  html.admin-panel[data-theme='onyx'] .nuevo-rest__brand-img {
+    filter: brightness(0) invert(1);
+  }
+
+  html.admin-panel.light .nuevo-rest__brand-img,
+  html.admin-panel[data-theme='light'] .nuevo-rest__brand-img {
+    filter: brightness(0);
+  }
+
+  .nuevo-rest__top-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .nuevo-rest__back {
+    color: var(--text-muted) !important;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+
+  .nuevo-rest__back:hover {
+    color: var(--text-primary) !important;
+  }
+
+  .nuevo-rest__eyebrow {
+    margin: 0;
+    color: var(--text-soft) !important;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .nuevo-rest__title {
+    margin: 0.35rem 0 0;
+    color: var(--text-primary) !important;
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .nuevo-rest__lead {
+    margin: 0.45rem 0 0;
+    max-width: 36rem;
+    color: var(--text-muted) !important;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .nuevo-rest__layout {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 1.35rem;
+  }
+
+  @media (min-width: 960px) {
+    .nuevo-rest__layout {
+      grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.85fr);
+      align-items: start;
+    }
+
+    .nuevo-rest__preview {
+      position: sticky;
+      top: 1.25rem;
+    }
+  }
+
+  .nuevo-rest__form {
+    display: grid;
+    gap: 1.1rem;
+    padding: 1.25rem;
+  }
+
+  .nuevo-rest__field {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .nuevo-rest__field label {
+    color: var(--text-soft) !important;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .nuevo-rest__optional {
+    letter-spacing: 0.04em;
+    text-transform: none;
+    font-weight: 500;
+    opacity: 0.75;
+  }
+
+  .nuevo-rest__field input[type='text'],
+  .nuevo-rest__field input[type='tel'],
+  .nuevo-rest__slug input {
+    width: 100%;
+    min-height: 2.7rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--field-bg);
+    color: var(--field-text) !important;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.92rem;
+    outline: none;
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .nuevo-rest__field input:focus,
+  .nuevo-rest__slug:focus-within {
+    border-color: var(--focus-border);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+
+  .nuevo-rest__slug {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--field-bg);
+    padding-left: 0.85rem;
+    color: var(--text-soft);
+  }
+
+  .nuevo-rest__slug input {
+    border: 0;
+    background: transparent;
+    box-shadow: none !important;
+    padding-left: 0.15rem;
+  }
+
+  .nuevo-rest__slug:focus-within {
+    border-color: var(--focus-border);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+
+  .nuevo-rest__hint {
+    margin: 0;
+    color: var(--text-soft) !important;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .nuevo-rest__row {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .nuevo-rest__row {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .nuevo-rest__media-grid {
+    display: grid;
+    gap: 1rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  @media (min-width: 640px) {
+    .nuevo-rest__media-grid {
+      grid-template-columns: 11rem minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  .nuevo-rest__media-block {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .nuevo-rest__media-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .nuevo-rest__media-label {
+    margin: 0;
+    color: var(--text-soft) !important;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .nuevo-rest__upload-btn {
+    appearance: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--overlay-soft) 90%, transparent);
+    color: var(--text-primary) !important;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .nuevo-rest__upload-btn:hover {
+    border-color: var(--border-strong);
+    background: var(--bg-card-elevated);
+  }
+
+  .nuevo-rest__logo-slot,
+  .nuevo-rest__cover-slot {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    overflow: hidden;
+    border: 1px dashed var(--border-strong);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--overlay-soft) 85%, transparent);
+    color: var(--text-soft) !important;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .nuevo-rest__logo-slot {
+    aspect-ratio: 1;
+    min-height: 7.5rem;
+  }
+
+  .nuevo-rest__cover-slot {
+    aspect-ratio: 4 / 3;
+    min-height: 10rem;
+  }
+
+  .nuevo-rest__logo-slot:hover,
+  .nuevo-rest__cover-slot:hover {
+    border-color: var(--text-muted);
+    transform: translateY(-1px);
+  }
+
+  .nuevo-rest__logo-img,
+  .nuevo-rest__cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .nuevo-rest__logo-img {
+    object-fit: contain;
+    padding: 0.75rem;
+    background: #111;
+  }
+
+  .nuevo-rest__status {
+    min-height: 1rem;
+    margin: 0;
+    font-size: 0.7rem;
+    color: var(--text-soft) !important;
+  }
+
+  .nuevo-rest__status.is-ok {
+    color: #059669 !important;
+  }
+
+  .nuevo-rest__status.is-err {
+    color: #e11d48 !important;
+  }
+
+  .nuevo-rest__error {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(225, 29, 72, 0.25);
+    background: rgba(225, 29, 72, 0.08);
+    color: #e11d48 !important;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .nuevo-rest__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding-top: 0.35rem;
+  }
+
+  .nuevo-rest__cancel {
+    color: var(--text-muted) !important;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0.65rem 0.9rem;
+  }
+
+  .nuevo-rest__cancel:hover {
+    color: var(--text-primary) !important;
+  }
+
+  .nuevo-rest__submit {
+    appearance: none;
+    border: 0;
+    border-radius: 9999px;
+    min-height: 2.55rem;
+    padding: 0.7rem 1.35rem;
+    background: var(--btn-primary-bg) !important;
+    color: var(--btn-primary-fg) !important;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.45);
+    transition:
+      transform 160ms ease,
+      filter 160ms ease;
+  }
+
+  .nuevo-rest__submit:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+
+  .nuevo-rest__submit:disabled {
+    opacity: 0.55;
+    cursor: wait;
+    transform: none;
+  }
+
+  .nuevo-rest__preview-label {
+    margin: 0 0 0.75rem;
+    color: var(--text-soft) !important;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .nuevo-rest__card {
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .nuevo-rest__card-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    background: #111;
+    overflow: hidden;
+  }
+
+  .nuevo-rest__card-media > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .nuevo-rest__card-empty {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .nuevo-rest__card-plate {
+    position: absolute;
+    left: 50%;
+    bottom: 0.85rem;
+    transform: translateX(-50%);
+    width: min(78%, 12.5rem);
+    height: 3.1rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.45rem;
+    background: #111;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .nuevo-rest__card-logo {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+  }
+
+  .nuevo-rest__card-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .nuevo-rest__card-logo span {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+
+  .nuevo-rest__card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0;
+    padding: 0.85rem 1rem 1rem;
+  }
+
+  .nuevo-rest__card-meta span:first-child {
+    color: var(--text-primary) !important;
+    font-size: 0.92rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
+  .nuevo-rest__card-meta span:last-child {
+    color: var(--text-soft) !important;
+    font-size: 0.75rem;
+  }
+</style>
+
 <script>
+  const form = document.getElementById('nuevo-rest-form');
   const slugInput = document.getElementById('slug');
   const nombreInput = document.getElementById('nombre_comercial');
+  const submitBtn = document.getElementById('create-submit');
 
   function toSlug(value) {
     return String(value ?? '')
@@ -201,14 +752,45 @@ if (Astro.request.method === 'POST') {
       .replace(/^-|-$/g, '');
   }
 
-  let slugTouched = false;
+  function setText(sel, value) {
+    document.querySelectorAll(sel).forEach((el) => {
+      el.textContent = value;
+    });
+  }
+
+  function refreshLive() {
+    const nombre =
+      nombreInput instanceof HTMLInputElement ? nombreInput.value.trim() : '';
+    const slug = slugInput instanceof HTMLInputElement ? slugInput.value.trim() : '';
+    setText('[data-live-name]', nombre || 'Nombre del local');
+    setText('[data-live-slug]', `/${slug || 'slug'}`);
+    setText('[data-slug-live]', slug || 'slug');
+    const fallback = document.querySelector('[data-live-name-fallback]');
+    if (fallback && !document.querySelector('[data-live-logo] img')) {
+      fallback.textContent = nombre || 'Logo';
+    }
+  }
+
+  let slugTouched = Boolean(
+    slugInput instanceof HTMLInputElement && slugInput.value.trim(),
+  );
+
   slugInput?.addEventListener('input', () => {
     slugTouched = true;
+    if (slugInput instanceof HTMLInputElement) {
+      const cleaned = toSlug(slugInput.value);
+      if (cleaned !== slugInput.value) slugInput.value = cleaned;
+    }
+    refreshLive();
   });
 
   nombreInput?.addEventListener('input', () => {
-    if (slugTouched || !(slugInput instanceof HTMLInputElement)) return;
-    slugInput.value = toSlug(nombreInput instanceof HTMLInputElement ? nombreInput.value : '');
+    if (!slugTouched && slugInput instanceof HTMLInputElement) {
+      slugInput.value = toSlug(
+        nombreInput instanceof HTMLInputElement ? nombreInput.value : '',
+      );
+    }
+    refreshLive();
   });
 
   /**
@@ -227,18 +809,97 @@ if (Astro.request.method === 'POST') {
   }
 
   /**
-   * @param {string} fileInputId
-   * @param {string} hiddenInputId
-   * @param {string} previewId
-   * @param {string} statusId
+   * @param {'logo' | 'cover'} mode
+   * @param {string} url
+   * @param {string} [plateBg]
+   */
+  function applyPreview(mode, url, plateBg) {
+    if (mode === 'logo') {
+      const slot = document.querySelector('[data-logo-preview]');
+      const live = document.querySelector('[data-live-logo]');
+      if (slot) {
+        slot.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        img.className = 'nuevo-rest__logo-img';
+        slot.appendChild(img);
+      }
+      if (live) {
+        live.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        live.appendChild(img);
+      }
+      return;
+    }
+
+    const slot = document.querySelector('[data-cover-preview]');
+    const liveCover = document.querySelector('[data-live-cover]');
+    const plate = document.querySelector('[data-live-plate]');
+
+    if (slot) {
+      slot.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.className = 'nuevo-rest__cover-img';
+      slot.appendChild(img);
+    }
+
+    if (liveCover) {
+      const existingPlate = liveCover.querySelector('[data-live-plate]');
+      const prevLogoHtml = liveCover.querySelector('[data-live-logo]')?.innerHTML || '';
+      liveCover.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      liveCover.appendChild(img);
+
+      const plateEl =
+        existingPlate instanceof HTMLElement
+          ? existingPlate
+          : document.createElement('div');
+      plateEl.className = 'nuevo-rest__card-plate';
+      plateEl.dataset.livePlate = '';
+      if (plateBg) plateEl.style.background = plateBg;
+
+      let logoWrap = plateEl.querySelector('[data-live-logo]');
+      if (!(logoWrap instanceof HTMLElement)) {
+        logoWrap = document.createElement('div');
+        logoWrap.className = 'nuevo-rest__card-logo';
+        logoWrap.dataset.liveLogo = '';
+        logoWrap.innerHTML =
+          prevLogoHtml ||
+          `<span data-live-name-fallback>${
+            nombreInput instanceof HTMLInputElement && nombreInput.value.trim()
+              ? nombreInput.value.trim()
+              : 'Logo'
+          }</span>`;
+        plateEl.appendChild(logoWrap);
+      }
+      liveCover.appendChild(plateEl);
+    } else if (plate instanceof HTMLElement && plateBg) {
+      plate.style.background = plateBg;
+    }
+  }
+
+  /**
    * @param {'logo' | 'cover'} mode
    */
-  function bindUpload(fileInputId, hiddenInputId, previewId, statusId, mode) {
-    const fileInput = document.getElementById(fileInputId);
-    const hidden = document.getElementById(hiddenInputId);
-    const preview = document.getElementById(previewId);
-    const status = document.getElementById(statusId);
+  function bindPicker(mode) {
+    const fileInput = document.getElementById(mode === 'logo' ? 'logo_file' : 'hub_cover_file');
+    const hidden = document.getElementById(mode === 'logo' ? 'logo_url' : 'hub_cover_url');
+    const status = document.getElementById(
+      mode === 'logo' ? 'logo-upload-status' : 'cover-upload-status',
+    );
+    const plateHidden = document.getElementById('hub_logo_bg');
     if (!(fileInput instanceof HTMLInputElement)) return;
+
+    document.querySelectorAll(`[data-pick="${mode}"]`).forEach((el) => {
+      el.addEventListener('click', () => fileInput.click());
+    });
 
     /**
      * @param {File} file
@@ -246,27 +907,37 @@ if (Astro.request.method === 'POST') {
     async function runUpload(file) {
       if (status) {
         status.textContent = 'Subiendo…';
-        status.className = 'text-[10px] text-zinc-400';
+        status.className = 'nuevo-rest__status';
       }
       try {
         const url = await uploadToCloudinary(file);
         if (hidden instanceof HTMLInputElement) hidden.value = url;
-        if (preview) {
-          preview.innerHTML = '';
-          const img = document.createElement('img');
-          img.src = url;
-          img.alt = '';
-          img.className = 'h-full w-full object-cover';
-          preview.appendChild(img);
+
+        let plateBg = '';
+        if (mode === 'cover') {
+          const sample = window.XemillaImageCrop?.samplePlateColorFromUrl;
+          if (typeof sample === 'function') {
+            try {
+              plateBg = (await sample(url)) || '';
+            } catch {
+              plateBg = '';
+            }
+          }
+          if (plateHidden instanceof HTMLInputElement && plateBg) {
+            plateHidden.value = plateBg;
+          }
         }
+
+        applyPreview(mode, url, plateBg);
         if (status) {
-          status.textContent = '✓ listo';
-          status.className = 'text-[10px] text-emerald-400';
+          status.textContent = 'Listo';
+          status.className = 'nuevo-rest__status is-ok';
         }
+        refreshLive();
       } catch (err) {
         if (status) {
           status.textContent = err instanceof Error ? err.message : 'Error al subir';
-          status.className = 'text-[10px] text-rose-400';
+          status.className = 'nuevo-rest__status is-err';
         }
       }
     }
@@ -281,7 +952,13 @@ if (Astro.request.method === 'POST') {
         cropApi.open({
           file,
           aspect: mode === 'cover' ? 'cover' : 'logo',
-          title: mode === 'cover' ? 'Recortar cover' : 'Recortar logo',
+          title: mode === 'cover' ? 'Recortar portada' : 'Recortar logo',
+          coverUrl:
+            mode === 'logo'
+              ? document.getElementById('hub_cover_url') instanceof HTMLInputElement
+                ? /** @type {HTMLInputElement} */ (document.getElementById('hub_cover_url')).value
+                : ''
+              : undefined,
           onConfirm: (cropped) => runUpload(cropped),
         });
         return;
@@ -291,6 +968,14 @@ if (Astro.request.method === 'POST') {
     });
   }
 
-  bindUpload('logo_file', 'logo_url', 'logo-preview', 'logo-upload-status', 'logo');
-  bindUpload('hub_cover_file', 'hub_cover_url', 'cover-preview', 'cover-upload-status', 'cover');
+  bindPicker('logo');
+  bindPicker('cover');
+  refreshLive();
+
+  form?.addEventListener('submit', () => {
+    if (submitBtn instanceof HTMLButtonElement) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creando…';
+    }
+  });
 </script>

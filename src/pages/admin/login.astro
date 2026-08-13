@@ -17,6 +17,9 @@ const {
 if (user) {
   return Astro.redirect(getAdminPostLoginPath(user));
 }
+
+const xemillaWordmark =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 ---
 
 <Layout
@@ -26,91 +29,282 @@ if (user) {
   description="Acceso al panel de administración Xemilla"
 >
   <main
-    class="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-black px-6 pb-10 pt-16 text-white sm:px-8"
+    class="login-stage relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-6"
   >
-    <header class="text-center">
-      <img
-        src="https://res.cloudinary.com/dgphys1xd/image/upload/v1784310548/Photoroom_20260717_132348_xrnil8.png"
-        alt="Xemilla"
-        width="192"
-        height="192"
-        class="mx-auto h-auto w-40 object-contain brightness-0 invert opacity-90 sm:w-48 animate-[fadeUp_0.5s_ease_both]"
-      />
-      <p
-        class="mx-auto mt-6 max-w-[16rem] text-sm font-light leading-relaxed text-zinc-400 animate-[fadeUp_0.6s_ease_0.1s_both]"
-      >
-        Entrá al panel de tu restaurante.
-      </p>
-    </header>
+    <!-- Abismo vivo sin “luces”: niebla, grano y grilla que respira -->
+    <div class="login-abyss" aria-hidden="true">
+      <div class="login-abyss__base"></div>
+      <div class="login-abyss__fog login-abyss__fog--a"></div>
+      <div class="login-abyss__fog login-abyss__fog--b"></div>
+      <div class="login-abyss__grid"></div>
+      <div class="login-abyss__grain"></div>
+      <div class="login-abyss__vignette"></div>
+    </div>
 
-    <form
-      id="login-form"
-      class="mt-12 space-y-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 shadow-2xl backdrop-blur-md sm:p-6 animate-[fadeUp_0.65s_ease_0.14s_both]"
-      novalidate
-    >
-      <div class="space-y-1.5">
-        <label
-          for="email"
-          class="block text-xs font-semibold uppercase tracking-widest text-zinc-500"
-        >
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autocomplete="email"
-          required
-          placeholder="tu@restaurante.com"
-          class="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+    <section class="login-card z-10 mx-4 flex w-full max-w-md flex-col rounded-3xl border border-white/10 bg-zinc-900/40 p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:p-10">
+      <header class="flex flex-col items-center text-center">
+        <img
+          src={xemillaWordmark}
+          alt="Xemilla"
+          width="200"
+          height="72"
+          class="login-wordmark login-in login-in--1 h-8 w-auto object-contain sm:h-9"
+          loading="eager"
+          decoding="async"
         />
-      </div>
+        <h1 class="login-in login-in--2 mt-6 mb-2 text-center text-2xl font-bold tracking-tight text-white">
+          Bienvenido
+        </h1>
+        <p class="login-in login-in--3 mb-8 max-w-[22rem] text-center text-sm text-balance text-zinc-400">
+          Accede a tu panel para gestionar tu restaurante.
+        </p>
+      </header>
 
-      <div class="space-y-1.5">
-        <label
-          for="password"
-          class="block text-xs font-semibold uppercase tracking-widest text-zinc-500"
+      <form id="login-form" class="flex w-full flex-col" novalidate>
+        <div class="login-in login-in--4 mb-5">
+          <label
+            for="email"
+            class="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400"
+          >
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            placeholder="tu@restaurante.com"
+            class="w-full rounded-xl border border-white/10 bg-zinc-950/50 px-4 py-3 text-white placeholder:text-zinc-600 transition-all focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+          />
+        </div>
+
+        <div class="login-in login-in--5 mb-2">
+          <label
+            for="password"
+            class="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400"
+          >
+            Contraseña
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            placeholder="••••••••"
+            class="w-full rounded-xl border border-white/10 bg-zinc-950/50 px-4 py-3 text-white placeholder:text-zinc-600 transition-all focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+          />
+        </div>
+
+        <p
+          id="login-error"
+          class="mt-3 hidden text-center text-xs leading-relaxed text-rose-400"
+          role="alert"
+          aria-live="polite"
+        ></p>
+
+        <button
+          type="submit"
+          id="login-submit"
+          class="login-in login-in--6 mt-6 w-full rounded-xl bg-white py-3.5 text-sm font-bold tracking-wide text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-transform hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
         >
-          Contraseña
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-          placeholder="••••••••"
-          class="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
-        />
-      </div>
-
-      <p
-        id="login-error"
-        class="hidden text-center text-xs leading-relaxed text-rose-400"
-        role="alert"
-        aria-live="polite"
-      ></p>
-
-      <button
-        type="submit"
-        id="login-submit"
-        class="mt-2 flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-black transition-all duration-200 hover:scale-[1.02] hover:bg-zinc-200 disabled:opacity-60 disabled:hover:scale-100"
-      >
-        Entrar al Panel
-      </button>
-    </form>
+          ENTRAR AL PANEL
+        </button>
+      </form>
+    </section>
   </main>
 </Layout>
 
-<style>
-  @keyframes fadeUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
+<style is:global>
+  .login-wordmark {
+    filter: brightness(0) invert(1);
+  }
+
+  .login-card {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+    filter: blur(8px);
+    animation: loginReveal 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
+    will-change: transform, opacity, filter;
+  }
+
+  .login-in {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: loginIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+  }
+
+  .login-in--1 { animation-delay: 0.28s; }
+  .login-in--2 { animation-delay: 0.4s; }
+  .login-in--3 { animation-delay: 0.5s; }
+  .login-in--4 { animation-delay: 0.62s; }
+  .login-in--5 { animation-delay: 0.72s; }
+  .login-in--6 { animation-delay: 0.84s; }
+
+  @keyframes loginReveal {
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
     }
+  }
+
+  @keyframes loginIn {
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  .login-stage {
+    background: #050505;
+  }
+
+  .login-abyss {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .login-abyss__base {
+    position: absolute;
+    inset: -10%;
+    background:
+      radial-gradient(ellipse 90% 60% at 50% 0%, #27272a 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 50% 100%, #18181b 0%, transparent 50%),
+      linear-gradient(180deg, #121214 0%, #09090b 45%, #000 100%);
+    animation: abyssPulse 12s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  /* Niebla oscura (no luces blancas) */
+  .login-abyss__fog {
+    position: absolute;
+    width: 85vmax;
+    height: 55vmax;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+    will-change: transform;
+  }
+
+  .login-abyss__fog--a {
+    top: -18%;
+    left: -20%;
+    background: radial-gradient(circle, #3f3f46 0%, transparent 70%);
+    animation: abyssFogA 26s ease-in-out infinite alternate;
+  }
+
+  .login-abyss__fog--b {
+    right: -22%;
+    bottom: -24%;
+    background: radial-gradient(circle, #27272a 0%, transparent 72%);
+    animation: abyssFogB 32s ease-in-out infinite alternate;
+  }
+
+  .login-abyss__grid {
+    position: absolute;
+    inset: -10%;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.55) 1px, transparent 1px);
+    background-size: 56px 56px;
+    opacity: 0.04;
+    mask-image: radial-gradient(ellipse 65% 55% at 50% 42%, #000 10%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 65% 55% at 50% 42%, #000 10%, transparent 75%);
+    animation: abyssGrid 28s linear infinite, abyssGridBreath 10s ease-in-out infinite alternate;
+  }
+
+  .login-abyss__grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.12;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    animation: abyssGrain 1.2s steps(2) infinite;
+  }
+
+  .login-abyss__vignette {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 58% 48% at 50% 45%, transparent 15%, rgba(0, 0, 0, 0.62) 100%);
+  }
+
+  @keyframes abyssPulse {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.08);
+    }
+  }
+
+  @keyframes abyssFogA {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(10%, 8%, 0) scale(1.12);
+    }
+  }
+
+  @keyframes abyssFogB {
+    from {
+      transform: translate3d(0, 0, 0) scale(1.05);
+    }
+    to {
+      transform: translate3d(-12%, -6%, 0) scale(1.18);
+    }
+  }
+
+  @keyframes abyssGrid {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-56px, -56px, 0);
+    }
+  }
+
+  @keyframes abyssGridBreath {
+    from {
+      opacity: 0.028;
+    }
+    to {
+      opacity: 0.06;
+    }
+  }
+
+  @keyframes abyssGrain {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-2%, 1%, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .login-abyss__base,
+    .login-abyss__fog,
+    .login-abyss__grid,
+    .login-abyss__grain,
+    .login-card,
+    .login-in {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
+
+    .login-abyss__grain {
+      opacity: 0.08;
     }
   }
 </style>
@@ -146,7 +340,7 @@ if (user) {
       errorEl.textContent = error.message || 'No pudimos iniciar sesión.';
       errorEl.classList.remove('hidden');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Entrar al Panel';
+      submitBtn.textContent = 'ENTRAR AL PANEL';
       return;
     }
 

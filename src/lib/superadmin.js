@@ -93,16 +93,21 @@ export function getSuperAdminWriteClient(sessionClient, user) {
  *   nombreComercial: string,
  *   slug: string,
  *   whatsapp?: string,
+ *   direccion?: string,
  *   logoUrl?: string,
  *   hubCoverUrl?: string,
+ *   hubLogoBg?: string,
  * }} input
  */
 export async function createRestauranteAsSuperAdmin(supabase, user, input) {
   const slug = normalizeSlug(input.slug);
   const nombre = input.nombreComercial.trim();
   const whatsapp = (input.whatsapp ?? '').trim() || null;
+  const direccion = (input.direccion ?? '').trim() || null;
   const logoUrl = String(input.logoUrl ?? '').trim() || null;
   const hubCoverUrl = String(input.hubCoverUrl ?? '').trim() || null;
+  const hubLogoBg = String(input.hubLogoBg ?? '').trim() || null;
+  const logoBgOk = hubLogoBg && /^#[0-9A-Fa-f]{6}$/.test(hubLogoBg) ? hubLogoBg : null;
 
   if (!nombre) {
     return { error: 'El nombre comercial es obligatorio' };
@@ -116,47 +121,63 @@ export async function createRestauranteAsSuperAdmin(supabase, user, input) {
 
   const client = getSuperAdminWriteClient(supabase, user);
 
-  const { data, error } = await client
+  /** @type {Record<string, unknown>} */
+  const baseRow = {
+    user_id: input.userId,
+    nombre_comercial: nombre,
+    slug,
+    whatsapp_num: whatsapp,
+    whatsapp_url: whatsapp,
+    direccion,
+    logo_url: logoUrl,
+    gadget_wifi: false,
+    gadget_dividir_cuenta: false,
+  };
+
+  if (hubCoverUrl) baseRow.hub_cover_url = hubCoverUrl;
+  if (logoBgOk) baseRow.hub_logo_bg = logoBgOk;
+
+  let { data, error } = await client
     .from('restaurantes')
-    .insert({
-      user_id: input.userId,
-      nombre_comercial: nombre,
-      slug,
-      whatsapp_num: whatsapp,
-      whatsapp_url: whatsapp,
-      logo_url: logoUrl,
-      hub_cover_url: hubCoverUrl,
-      gadget_wifi: false,
-      gadget_dividir_cuenta: false,
-    })
+    .insert(baseRow)
     .select('id, nombre_comercial, slug')
     .maybeSingle();
+
+  // Reintento sin columnas Hub / direccion si el schema aún no las tiene
+  if (error && /hub_cover_url|hub_logo_bg|direccion|column|schema cache|does not exist/i.test(error.message || '')) {
+    console.warn('[superadmin] createRestaurante: columnas opcionales ausentes; fallback.', error.message);
+    const soft = { ...baseRow };
+    delete soft.hub_cover_url;
+    delete soft.hub_logo_bg;
+    if (/direccion/i.test(error.message || '')) delete soft.direccion;
+
+    const fallback = await client
+      .from('restaurantes')
+      .insert(soft)
+      .select('id, nombre_comercial, slug')
+      .maybeSingle();
+    data = fallback.data;
+    error = fallback.error;
+
+    if (!error && data?.id && (hubCoverUrl || logoBgOk)) {
+      try {
+        const { persistHubInUiEstilo } = await import('./hub-media.js');
+        await persistHubInUiEstilo(client, String(data.id), {
+          coverUrl: hubCoverUrl,
+          logoBg: logoBgOk,
+        });
+      } catch (persistErr) {
+        console.warn(
+          '[superadmin] createRestaurante: no se pudo persistir hub en ui_estilo',
+          persistErr,
+        );
+      }
+    }
+  }
 
   if (error) {
     if (error.code === '23505') {
       return { error: 'Ese slug ya está en uso. Elegí otro.' };
-    }
-    // Fallback si hub_cover_url aún no existe en la DB
-    if (/hub_cover_url|column|schema cache/i.test(error.message || '')) {
-      const fallback = await client
-        .from('restaurantes')
-        .insert({
-          user_id: input.userId,
-          nombre_comercial: nombre,
-          slug,
-          whatsapp_num: whatsapp,
-          whatsapp_url: whatsapp,
-          logo_url: logoUrl,
-          gadget_wifi: false,
-          gadget_dividir_cuenta: false,
-        })
-        .select('id, nombre_comercial, slug')
-        .maybeSingle();
-      if (fallback.error) {
-        console.error('[superadmin] createRestaurante fallback:', fallback.error.message);
-        return { error: fallback.error.message };
-      }
-      return { restaurante: fallback.data };
     }
     console.error('[superadmin] createRestaurante:', error.message);
     return { error: error.message };

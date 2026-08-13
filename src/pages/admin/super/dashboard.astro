@@ -63,6 +63,9 @@ const networkLocalesActivos = restaurantes.filter(
 const xemillaLogo =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
 
+const xemillaWordmark =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
+
 /**
  * @param {string | null | undefined} url
  * @param {string | null | undefined} num
@@ -138,71 +141,67 @@ function resolveMapsEmbed(direccion) {
   description="Panel maestro de restaurantes Xemilla"
   adminPanel={true}
 >
-  <main class="mx-auto min-h-dvh w-full max-w-7xl px-6 pb-20 pt-10 lg:px-10">
-    <header class="solid-obstacle flex flex-wrap items-end justify-between gap-6">
-      <div class="admin-brand-lockup admin-brand-lockup--xemilla">
-        <img
-          src="https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png"
-          alt="Xemilla"
-          width="200"
-          height="88"
-          class="h-7 w-auto object-contain"
-          loading="eager"
-          decoding="async"
-        />
-        <div>
-          <h1 class="font-blacksushi-display text-2xl font-semibold tracking-tight lg:text-3xl">
-            Súper Administrador
-          </h1>
-          <p class="mt-2 text-sm text-zinc-400">
-            {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red · vista escritorio
-          </p>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3">
-        <AdminThemeSwitcher />
-        <a
-          href="/admin/super/nuevo-restaurante"
-          class="admin-action-btn inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 active:scale-95 hover:bg-zinc-100"
-        >
-          Nuevo restaurante
+  <main class="super-admin-dash mx-auto min-h-dvh w-full max-w-[90rem] px-4 pb-20 pt-5 sm:px-6 lg:px-10 lg:pt-8">
+    <!-- Hero Until layout + glassmorphism (sin foto de fondo) -->
+    <section class="super-until-hero solid-obstacle" aria-label="Súper Administrador">
+      <header class="super-until-hero__nav">
+        <a href="/admin/super/dashboard" class="super-until-hero__brand" aria-label="Xemilla">
+          <img
+            src={xemillaWordmark}
+            alt="xemilla"
+            width="160"
+            height="48"
+            class="super-until-hero__brand-img"
+            loading="eager"
+            decoding="async"
+          />
         </a>
-        <form method="POST" action="/api/admin-logout">
-          <button
-            type="submit"
-            class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition hover:border-white/20 hover:text-zinc-300"
-          >
-            Salir
-          </button>
-        </form>
-      </div>
-    </header>
 
-    <nav
-      class="mt-10 flex flex-wrap gap-2 border-b border-white/8 pb-4"
-      role="tablist"
-      aria-label="Secciones SuperAdmin"
-    >
-      <button
-        type="button"
-        role="tab"
-        data-super-tab="locales"
-        aria-selected="true"
-        class="dashboard-tab inline-flex items-center rounded-xl border border-white/15 bg-white px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 ease-out"
-      >
-        Locales
-      </button>
-      <button
-        type="button"
-        role="tab"
-        data-super-tab="metricas"
-        aria-selected="false"
-        class="dashboard-tab inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition-all duration-200 ease-out hover:border-white/20 hover:text-zinc-200"
-      >
-        Métricas
-      </button>
-    </nav>
+        <nav
+          class="super-until-hero__links"
+          role="tablist"
+          aria-label="Secciones SuperAdmin"
+        >
+          <button
+            type="button"
+            role="tab"
+            data-super-tab="locales"
+            aria-selected="true"
+            class="super-until-hero__link"
+          >
+            Locales
+          </button>
+          <button
+            type="button"
+            role="tab"
+            data-super-tab="metricas"
+            aria-selected="false"
+            class="super-until-hero__link"
+          >
+            Métricas
+          </button>
+        </nav>
+
+        <div class="super-until-hero__actions">
+          <AdminThemeSwitcher class="super-until-hero__theme" />
+          <a href="/admin/super/nuevo-restaurante" class="super-until-hero__cta">
+            <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
+            Nuevo restaurante
+          </a>
+          <form method="POST" action="/api/admin-logout" class="super-until-hero__logout">
+            <button type="submit" class="super-until-hero__logout-btn">Salir</button>
+          </form>
+        </div>
+      </header>
+
+      <div class="super-until-hero__copy">
+        <p class="super-until-hero__eyebrow">Súper Administrador</p>
+        <p class="super-until-hero__sub">
+          {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red
+          · {networkLocalesActivos} con acceso activo
+        </p>
+      </div>
+    </section>
 
     <div data-super-panel="locales" class="admin-fade-in-up">
       {
@@ -213,7 +212,48 @@ function resolveMapsEmbed(direccion) {
             </p>
           </div>
         ) : (
-          <ul class="super-visual-grid mt-10">
+          <>
+            <div class="super-hub-search solid-obstacle">
+              <label class="sr-only" for="super-hub-search-input">
+                Buscar restaurante por nombre
+              </label>
+              <span class="super-hub-search__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <path d="m20 20-3.2-3.2"></path>
+                </svg>
+              </span>
+              <input
+                id="super-hub-search-input"
+                type="search"
+                class="super-hub-search__input"
+                placeholder="Buscar por nombre…"
+                autocomplete="off"
+                spellcheck="false"
+                data-hub-search
+              />
+              <button
+                type="button"
+                class="super-hub-search__clear"
+                data-hub-search-clear
+                hidden
+                aria-label="Limpiar búsqueda"
+              >
+                ×
+              </button>
+              <p class="super-hub-search__count" data-hub-search-count aria-live="polite">
+                {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'}
+              </p>
+            </div>
+
+            <p class="super-hub-search__empty" data-hub-search-empty hidden>
+              No hay locales con ese nombre.
+            </p>
+
+            <ul
+              class="super-visual-grid mt-7 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              data-hub-grid
+            >
             {restaurantes.map((r) => {
               const tieneAcceso =
                 localesConAcceso.has(String(r.id)) ||
@@ -230,8 +270,14 @@ function resolveMapsEmbed(direccion) {
               const mapsHref = resolveMapsHref(direccion, coordenadas);
               const mapsEmbed = resolveMapsEmbed(direccion);
               const studioHref = `/admin/dashboard?restaurante=${encodeURIComponent(r.id)}`;
+              const searchKey = `${nombre} ${r.slug || ''}`.toLowerCase();
               return (
-              <li class="super-hub-card group solid-obstacle" data-restaurante-id={r.id}>
+              <li
+                class="super-hub-card group solid-obstacle"
+                data-restaurante-id={r.id}
+                data-hub-name={searchKey}
+                data-hub-slug={String(r.slug || '')}
+              >
                 <div class="super-hub-card__media">
                   {/* Cover 100% */}
                   <div class="absolute inset-0 z-0 overflow-hidden bg-black" data-card-cover-zone>
@@ -540,6 +586,7 @@ function resolveMapsEmbed(direccion) {
               );
             })}
           </ul>
+          </>
         )
       }
     </div>
@@ -574,6 +621,7 @@ function resolveMapsEmbed(direccion) {
         if (!(btn instanceof HTMLElement)) return;
         const on = btn.dataset.superTab === id;
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        btn.classList.toggle('is-active', on);
       });
       panels.forEach((panel) => {
         if (!(panel instanceof HTMLElement)) return;
@@ -1105,6 +1153,9 @@ function resolveMapsEmbed(direccion) {
           const savedLogo = String(data.restaurante?.logo_url || logoUrl || '').trim();
           const savedBg = String(data.restaurante?.hub_logo_bg || logoBg || '').trim();
           const savedName = String(data.restaurante?.nombre_comercial || nombre);
+          if (card instanceof HTMLElement) {
+            card.dataset.hubName = `${savedName} ${card.dataset.hubSlug || ''}`.toLowerCase();
+          }
 
           // Actualizar cover solo si hay URL — nunca vaciar el grid
           if (coverZone instanceof HTMLElement && savedCover) {
@@ -1299,8 +1350,63 @@ function resolveMapsEmbed(direccion) {
     });
   }
 
+  function initHubSearch() {
+    const input = document.querySelector('[data-hub-search]');
+    const clearBtn = document.querySelector('[data-hub-search-clear]');
+    const countEl = document.querySelector('[data-hub-search-count]');
+    const emptyEl = document.querySelector('[data-hub-search-empty]');
+    const cards = document.querySelectorAll('[data-hub-name]');
+    if (!(input instanceof HTMLInputElement) || !cards.length) return;
+    if (input.dataset.bound === 'true') return;
+    input.dataset.bound = 'true';
+
+    /**
+     * @param {string} value
+     */
+    function normalize(value) {
+      return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function applyFilter() {
+      const q = normalize(input.value);
+      let visible = 0;
+
+      cards.forEach((card) => {
+        if (!(card instanceof HTMLElement)) return;
+        const hay = normalize(card.dataset.hubName || '');
+        const show = !q || hay.includes(q);
+        card.hidden = !show;
+        card.style.display = show ? '' : 'none';
+        if (show) visible += 1;
+      });
+
+      if (clearBtn instanceof HTMLElement) {
+        clearBtn.hidden = !q;
+      }
+      if (countEl) {
+        countEl.textContent =
+          visible === 1 ? '1 local' : `${visible} locales`;
+      }
+      if (emptyEl instanceof HTMLElement) {
+        emptyEl.hidden = visible > 0;
+      }
+    }
+
+    input.addEventListener('input', applyFilter);
+    clearBtn?.addEventListener('click', () => {
+      input.value = '';
+      input.focus();
+      applyFilter();
+    });
+  }
+
   function initSuperHub() {
     initSuperTabs();
+    initHubSearch();
     initCardMenus();
     initFichaForms();
     initOperativoForms();
