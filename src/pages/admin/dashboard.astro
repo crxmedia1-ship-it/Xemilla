@@ -801,27 +801,27 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
               {/* Status chips — Shopify-style quick filters (mobile app) */}
               <div
                 id="status-scroll"
-                class="flex overflow-x-auto gap-2 pb-0.5 scrollbar-hide w-full"
+                class="studio-chip-row flex overflow-x-auto gap-2 pb-0.5 scrollbar-hide w-full"
                 role="toolbar"
                 aria-label="Filtrar por estado"
               >
                 <button type="button" data-status-filter="todas" aria-pressed="true" class="status-filter-pill is-on">
                   Todos
                 </button>
-                <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill">
+                <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill status-filter-pill--live">
                   En carta
                 </button>
-                <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill">
+                <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill status-filter-pill--off">
                   Agotados
                 </button>
-                <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill">
+                <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill status-filter-pill--star">
                   Destacados
                 </button>
               </div>
 
               <div
                 id="category-scroll"
-                class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide w-full cursor-grab active:cursor-grabbing"
+                class="studio-chip-row flex overflow-x-auto gap-2 pb-1 scrollbar-hide w-full cursor-grab active:cursor-grabbing"
                 role="toolbar"
                 aria-label="Filtrar por categoría"
               >
@@ -830,7 +830,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                   data-cat-filter="todas"
                   aria-pressed="true"
                   draggable="false"
-                  class="cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-transparent bg-zinc-100 px-3.5 py-2 text-xs font-medium text-black sm:py-1"
+                  class="cat-filter-pill is-on"
                 >
                   Todas
                 </button>
@@ -842,7 +842,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                       data-categoria-id={resolveMenuCategoriaId(catName)}
                       aria-pressed="false"
                       draggable="true"
-                      class="cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-zinc-800 bg-transparent px-3.5 py-2 text-xs font-medium text-zinc-400 sm:py-1"
+                      class="cat-filter-pill"
                     >
                       {catName}
                     </button>
@@ -969,7 +969,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               aria-checked={plato.destacado}
                               data-toggle-destacado
                               title="Destacado"
-                              class:list={['ios-toggle', plato.destacado && 'is-on']}
+                              class:list={['ios-toggle', 'ios-toggle--star', plato.destacado && 'is-on']}
                             >
                               <span class="ios-toggle__knob" aria-hidden="true" />
                             </button>
@@ -981,7 +981,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                               aria-checked={plato.disponible}
                               data-toggle-disponible
                               title={plato.disponible ? 'Disponible' : 'Agotado'}
-                              class:list={['ios-toggle', plato.disponible && 'is-on']}
+                              class:list={['ios-toggle', 'ios-toggle--live', plato.disponible && 'is-on']}
                             >
                               <span class="ios-toggle__knob" aria-hidden="true" />
                             </button>
@@ -2923,41 +2923,88 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     background: rgba(244, 63, 94, 0.08);
   }
 
-  /* iOS-style toggle */
+  /* iOS-style toggle — premium track + semantic accents */
   .ios-toggle {
+    --toggle-off: #3f3f46;
+    --toggle-on: #10b981;
     position: relative;
     display: inline-block;
-    width: 2.75rem;
-    height: 1.55rem;
+    width: 2.9rem;
+    height: 1.7rem;
     border-radius: 9999px;
     border: 0;
     padding: 0;
     cursor: pointer;
-    background: #3f3f46;
-    transition: all 200ms ease-out;
+    background: var(--toggle-off);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    transition: background-color 200ms ease-out, box-shadow 200ms ease-out;
     vertical-align: middle;
+    flex-shrink: 0;
   }
+
   .ios-toggle.is-on {
-    background: #10b981; /* emerald-500 */
+    background: var(--toggle-on);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 0 3px color-mix(in srgb, var(--toggle-on) 18%, transparent);
   }
+
+  .ios-toggle--live {
+    --toggle-on: #059669;
+  }
+
+  .ios-toggle--star {
+    --toggle-on: #d97706;
+  }
+
   .ios-toggle__knob {
     position: absolute;
-    top: 0.15rem;
-    left: 0.15rem;
-    width: 1.25rem;
-    height: 1.25rem;
+    top: 0.16rem;
+    left: 0.16rem;
+    width: 1.38rem;
+    height: 1.38rem;
     border-radius: 9999px;
     background: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-    transition: all 200ms ease-out;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.22),
+      0 4px 10px rgba(0, 0, 0, 0.12);
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease-out;
     transform: translateX(0);
   }
+
   .ios-toggle.is-on .ios-toggle__knob {
     transform: translateX(1.2rem);
   }
+
+  .ios-toggle:active .ios-toggle__knob {
+    width: 1.5rem;
+  }
+
   .ios-toggle:focus-visible {
     outline: 2px solid rgba(255, 255, 255, 0.35);
     outline-offset: 2px;
+  }
+
+  html.admin-panel.light .ios-toggle,
+  html.admin-panel[data-theme='light'] .ios-toggle,
+  html.admin-panel[data-theme='alabastro'] .ios-toggle,
+  html.admin-panel[data-theme='organico'] .ios-toggle {
+    --toggle-off: #e4e4e7;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06);
+  }
+
+  html.admin-panel.light .ios-toggle.is-on,
+  html.admin-panel[data-theme='light'] .ios-toggle.is-on,
+  html.admin-panel[data-theme='alabastro'] .ios-toggle.is-on,
+  html.admin-panel[data-theme='organico'] .ios-toggle.is-on {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+      0 0 0 3px color-mix(in srgb, var(--toggle-on) 16%, transparent);
+  }
+
+  html.admin-panel.light .ios-toggle:focus-visible,
+  html.admin-panel[data-theme='light'] .ios-toggle:focus-visible {
+    outline-color: rgba(24, 24, 27, 0.28);
   }
 
   /* Catálogo de gadgets (Lego modules) */
@@ -3152,26 +3199,94 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
   }
 
-  /* ── Status chips (Shopify-like) ── */
-  .status-filter-pill {
+  /* ── Chips premium (Mobbin: Etsy / Depop / Hyundai) ── */
+  .studio-chip-row {
+    gap: 0.5rem;
+  }
+
+  .status-filter-pill,
+  .cat-filter-pill {
+    appearance: none;
     flex: 0 0 auto;
     white-space: nowrap;
     border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.12)) 100%, transparent);
-    background: transparent;
-    color: var(--text-muted, #a1a1aa);
-    padding: 0.55rem 0.95rem;
-    font-size: 0.78rem;
+    border: 1px solid transparent;
+    font-family: inherit;
     font-weight: 600;
     letter-spacing: -0.01em;
-    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease;
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 120ms ease;
+  }
+
+  .status-filter-pill:active,
+  .cat-filter-pill:active {
+    transform: scale(0.97);
+  }
+
+  .status-filter-pill {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: #a1a1aa;
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .cat-filter-pill {
+    padding: 0.48rem 0.88rem;
+    font-size: 0.76rem;
+    background: rgba(255, 255, 255, 0.045);
+    color: #a1a1aa;
+    border-color: rgba(255, 255, 255, 0.05);
   }
 
   .status-filter-pill.is-on,
-  .status-filter-pill[aria-pressed='true'] {
-    background: var(--text-primary, #fff);
-    color: var(--bg-page, #09090b);
+  .status-filter-pill[aria-pressed='true'],
+  .cat-filter-pill.is-on,
+  .cat-filter-pill[aria-pressed='true'] {
+    background: #fafafa;
+    color: #09090b;
     border-color: transparent;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  }
+
+  .status-filter-pill--live.is-on,
+  .status-filter-pill--live[aria-pressed='true'] {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28);
+  }
+
+  .status-filter-pill--off.is-on,
+  .status-filter-pill--off[aria-pressed='true'] {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.28);
+  }
+
+  .status-filter-pill--star.is-on,
+  .status-filter-pill--star[aria-pressed='true'] {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fcd34d;
+    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.28);
+  }
+
+  html.admin-panel.light .status-filter-pill,
+  html.admin-panel[data-theme='light'] .status-filter-pill,
+  html.admin-panel[data-theme='alabastro'] .status-filter-pill,
+  html.admin-panel[data-theme='organico'] .status-filter-pill,
+  html.admin-panel.light .cat-filter-pill,
+  html.admin-panel[data-theme='light'] .cat-filter-pill,
+  html.admin-panel[data-theme='alabastro'] .cat-filter-pill,
+  html.admin-panel[data-theme='organico'] .cat-filter-pill {
+    background: #ffffff;
+    color: #3f3f46;
+    border-color: #e4e4e7;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
   }
 
   html.admin-panel.light .status-filter-pill.is-on,
@@ -3179,9 +3294,43 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   html.admin-panel[data-theme='alabastro'] .status-filter-pill.is-on,
   html.admin-panel[data-theme='organico'] .status-filter-pill.is-on,
   html.admin-panel.light .status-filter-pill[aria-pressed='true'],
-  html.admin-panel[data-theme='light'] .status-filter-pill[aria-pressed='true'] {
+  html.admin-panel[data-theme='light'] .status-filter-pill[aria-pressed='true'],
+  html.admin-panel.light .cat-filter-pill.is-on,
+  html.admin-panel[data-theme='light'] .cat-filter-pill.is-on,
+  html.admin-panel[data-theme='alabastro'] .cat-filter-pill.is-on,
+  html.admin-panel[data-theme='organico'] .cat-filter-pill.is-on,
+  html.admin-panel.light .cat-filter-pill[aria-pressed='true'],
+  html.admin-panel[data-theme='light'] .cat-filter-pill[aria-pressed='true'] {
     background: #18181b;
     color: #fff;
+    box-shadow: 0 8px 18px rgba(24, 24, 27, 0.14);
+  }
+
+  html.admin-panel.light .status-filter-pill--live.is-on,
+  html.admin-panel[data-theme='light'] .status-filter-pill--live.is-on,
+  html.admin-panel.light .status-filter-pill--live[aria-pressed='true'],
+  html.admin-panel[data-theme='light'] .status-filter-pill--live[aria-pressed='true'] {
+    background: #ecfdf5;
+    color: #047857;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.18), 0 8px 16px rgba(16, 185, 129, 0.08);
+  }
+
+  html.admin-panel.light .status-filter-pill--off.is-on,
+  html.admin-panel[data-theme='light'] .status-filter-pill--off.is-on,
+  html.admin-panel.light .status-filter-pill--off[aria-pressed='true'],
+  html.admin-panel[data-theme='light'] .status-filter-pill--off[aria-pressed='true'] {
+    background: #fff1f2;
+    color: #be123c;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.16), 0 8px 16px rgba(244, 63, 94, 0.07);
+  }
+
+  html.admin-panel.light .status-filter-pill--star.is-on,
+  html.admin-panel[data-theme='light'] .status-filter-pill--star.is-on,
+  html.admin-panel.light .status-filter-pill--star[aria-pressed='true'],
+  html.admin-panel[data-theme='light'] .status-filter-pill--star[aria-pressed='true'] {
+    background: #fffbeb;
+    color: #b45309;
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.18), 0 8px 16px rgba(245, 158, 11, 0.07);
   }
 
   /* ── Bottom dock + FAB (app shell) ── */
@@ -3475,17 +3624,19 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
 
     .platos-cell--destacado .ios-toggle {
-      width: 2.55rem;
-      height: 1.45rem;
+      width: 2.7rem;
+      height: 1.55rem;
     }
 
     .platos-cell--destacado .ios-toggle__knob {
-      width: 1.15rem;
-      height: 1.15rem;
+      width: 1.22rem;
+      height: 1.22rem;
+      top: 0.16rem;
+      left: 0.16rem;
     }
 
     .platos-cell--destacado .ios-toggle.is-on .ios-toggle__knob {
-      transform: translateX(1.05rem);
+      transform: translateX(1.1rem);
     }
 
     .platos-cell--cat {
@@ -3590,8 +3741,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   @media (min-width: 769px) {
     .status-filter-pill {
-      padding: 0.35rem 0.8rem;
-      font-size: 0.72rem;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.78rem;
+    }
+
+    .cat-filter-pill {
+      padding: 0.4rem 0.82rem;
+      font-size: 0.74rem;
     }
 
     .platos-row:hover {
@@ -3601,6 +3757,21 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     .studio-dock,
     .studio-fab {
       display: none !important;
+    }
+
+    /* Desktop table switches: slightly larger hit targets */
+    .platos-table .ios-toggle {
+      width: 2.85rem;
+      height: 1.65rem;
+    }
+
+    .platos-table .ios-toggle__knob {
+      width: 1.32rem;
+      height: 1.32rem;
+    }
+
+    .platos-table .ios-toggle.is-on .ios-toggle__knob {
+      transform: translateX(1.18rem);
     }
   }
 </style>
@@ -3696,10 +3867,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   const opsContactoSave = document.getElementById('ops-contacto-save');
   const opsContactoStatus = document.getElementById('ops-contacto-status');
 
-  const CAT_PILL_ACTIVE =
-    'cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-transparent bg-zinc-100 px-3 py-1 text-xs font-medium text-black';
-  const CAT_PILL_INACTIVE =
-    'cat-filter-pill shrink-0 whitespace-nowrap rounded-full border border-zinc-800 bg-transparent px-3 py-1 text-xs font-medium text-zinc-400';
+  const CAT_PILL_ACTIVE = 'cat-filter-pill is-on';
+  const CAT_PILL_INACTIVE = 'cat-filter-pill';
   const DISH_ORDER_INPUT_CLASS =
     'w-12 bg-transparent text-white/80 font-mono text-center border-b border-white/10 hover:border-white/30 focus:border-white focus:outline-none transition-colors appearance-none p-1 text-sm';
   const CAMERA_ICON_SVG =
@@ -5142,12 +5311,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         </div>
       </td>
       <td class="platos-cell platos-cell--destacado px-3 py-3.5 text-center" data-label="Destacado">
-        <button type="button" role="switch" aria-checked="${Boolean(plato.destacado)}" data-toggle-destacado title="Destacado" class="ios-toggle ${plato.destacado ? 'is-on' : ''}">
+        <button type="button" role="switch" aria-checked="${Boolean(plato.destacado)}" data-toggle-destacado title="Destacado" class="ios-toggle ios-toggle--star ${plato.destacado ? 'is-on' : ''}">
           <span class="ios-toggle__knob" aria-hidden="true"></span>
         </button>
       </td>
       <td class="platos-cell platos-cell--disponible px-3 py-3.5 text-center" data-label="Disponible">
-        <button type="button" role="switch" aria-checked="${Boolean(plato.disponible)}" data-toggle-disponible title="Disponible" class="ios-toggle ${plato.disponible ? 'is-on' : ''}">
+        <button type="button" role="switch" aria-checked="${Boolean(plato.disponible)}" data-toggle-disponible title="Disponible" class="ios-toggle ios-toggle--live ${plato.disponible ? 'is-on' : ''}">
           <span class="ios-toggle__knob" aria-hidden="true"></span>
         </button>
       </td>

@@ -1157,17 +1157,17 @@ html.admin-panel .glass-field:focus {
   outline: none !important;
 }
 
-/* Switches: verde esmeralda en todos los temas + micro-interacción */
+/* Switches: track + knob motion; color comes from --toggle-on variants */
 html.admin-panel .ios-toggle {
   transition: background-color 200ms ease-out, box-shadow 200ms ease-out, opacity 200ms ease-out !important;
 }
 
 html.admin-panel .ios-toggle.is-on {
-  background: #10b981 !important;
+  background: var(--toggle-on, #10b981) !important;
 }
 
 html.admin-panel .ios-toggle__knob {
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out !important;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease-out !important;
 }
 
 /* Botones de acción premium */
