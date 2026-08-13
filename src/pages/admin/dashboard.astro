@@ -611,7 +611,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   </header>
 
   <main class="relative z-10 min-h-[calc(100dvh-4rem)] w-full bg-transparent">
-    <div class="relative z-10 mx-auto w-full max-w-6xl px-4 pb-[max(6rem,calc(env(safe-area-inset-bottom)+4rem))] pt-6 sm:px-6 sm:pb-24 sm:pt-8">
+    <div class="relative z-10 mx-auto w-full max-w-6xl px-4 pb-[max(9.5rem,calc(env(safe-area-inset-bottom)+8rem))] pt-6 sm:px-6 sm:pb-24 sm:pt-8">
     {
       !restaurante ? (
         <div class={`glass-panel ${bounceWallClass} max-w-xl p-8 text-center`}>
@@ -2538,7 +2538,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
     <div
       id="crx-toast"
-      class="crx-toast pointer-events-none fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-white/12 bg-zinc-950/95 px-5 py-3.5 text-center shadow-2xl shadow-black/50 backdrop-blur-xl sm:bottom-6"
+      class="crx-toast pointer-events-none fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-white/12 bg-zinc-950/95 px-5 py-3.5 text-center shadow-2xl shadow-black/50 backdrop-blur-xl sm:bottom-6"
       data-open="false"
       role="status"
       aria-live="polite"
@@ -3426,26 +3426,44 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       gap: 0.35rem;
       padding: 0.45rem;
       border-radius: 0.9rem;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .studio-status-bento {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .studio-cat-bento {
+      /* Avoid max-content blowouts that overflow the viewport */
+      overflow: hidden;
     }
 
     .status-filter-pill {
-      min-height: 2.25rem;
-      padding: 0.42rem 0.28rem;
-      font-size: 0.7rem;
+      min-height: 2.35rem;
+      padding: 0.45rem 0.35rem;
+      font-size: 0.72rem;
       border-radius: 0.48rem;
     }
 
     .cat-filter-pill {
-      min-height: 2.2rem;
-      padding: 0.42rem 0.7rem;
+      flex: 1 1 5.6rem;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 2.3rem;
+      padding: 0.45rem 0.55rem;
       font-size: 0.72rem;
       border-radius: 0.48rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
   }
 
-  @media (max-width: 420px) {
+  @media (min-width: 561px) and (max-width: 768px) {
     .studio-status-bento {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 
@@ -3462,7 +3480,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     .studio-dock {
       position: fixed;
       left: 50%;
-      bottom: max(0.65rem, env(safe-area-inset-bottom));
+      bottom: max(0.55rem, env(safe-area-inset-bottom));
       z-index: 70;
       display: flex;
       width: min(94vw, 26rem);
@@ -3470,7 +3488,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       align-items: stretch;
       justify-content: space-around;
       gap: 0.15rem;
-      padding: 0.45rem 0.4rem;
+      padding: 0.4rem 0.35rem;
       border-radius: 1.45rem;
       border: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.12)) 100%, transparent);
       background: color-mix(in srgb, var(--bg-card, rgba(18, 18, 18, 0.92)) 92%, transparent);
@@ -3479,6 +3497,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       box-shadow:
         0 18px 40px rgba(0, 0, 0, 0.28),
         0 1px 0 rgba(255, 255, 255, 0.06) inset;
+      /* Keep dock above content; content padding clears this height */
+      pointer-events: auto;
     }
 
     html.admin-panel.light .studio-dock,
@@ -3498,7 +3518,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       align-items: center;
       justify-content: center;
       gap: 0.18rem;
-      min-height: 3.15rem;
+      min-height: 3.05rem;
+      min-width: 0;
       border: 0;
       border-radius: 1.05rem;
       background: transparent;
@@ -3506,13 +3527,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       font-size: 0.62rem;
       font-weight: 650;
       letter-spacing: 0.02em;
-      padding: 0.3rem 0.2rem;
+      padding: 0.3rem 0.15rem;
       transition: color 160ms ease, background-color 160ms ease, transform 120ms ease;
     }
 
     .studio-dock__btn svg {
       width: 1.2rem;
       height: 1.2rem;
+      flex-shrink: 0;
     }
 
     .studio-dock__btn.is-active,
@@ -3536,7 +3558,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     .studio-fab {
       position: fixed;
       right: max(1rem, env(safe-area-inset-right));
-      bottom: calc(5.15rem + env(safe-area-inset-bottom));
+      bottom: calc(5.5rem + env(safe-area-inset-bottom));
       z-index: 68;
       display: grid;
       place-items: center;
@@ -3571,22 +3593,25 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
 
     .platos-toolbar {
-      position: sticky;
-      top: calc(env(safe-area-inset-top) + 3.55rem);
-      z-index: 35;
-      margin-inline: -0.85rem;
-      padding: 0.55rem 0.85rem 0.75rem;
-      background: color-mix(in srgb, var(--bg-base, #09090b) 90%, transparent);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.08)) 80%, transparent);
+      position: relative;
+      top: auto;
+      z-index: 5;
+      margin-inline: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 0.35rem 0 0.85rem;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-bottom: 0;
     }
 
     html.admin-panel.light .platos-toolbar,
     html.admin-panel[data-theme='light'] .platos-toolbar,
     html.admin-panel[data-theme='alabastro'] .platos-toolbar,
     html.admin-panel[data-theme='organico'] .platos-toolbar {
-      background: color-mix(in srgb, #f4f6f8 92%, transparent);
+      background: transparent;
     }
 
     .platos-table-wrap {
@@ -3595,15 +3620,23 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       box-shadow: none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
+      overflow: visible !important;
+      max-width: 100%;
+      min-width: 0;
     }
 
     .platos-table-scroll {
       overflow: visible !important;
+      max-width: 100%;
+      min-width: 0;
     }
 
+    /* Break table layout on phones — Safari/WebKit glitches with table+grid mix */
     .platos-table {
+      display: block !important;
       min-width: 0 !important;
       width: 100%;
+      max-width: 100%;
       border-collapse: separate;
       border-spacing: 0;
     }
@@ -3616,20 +3649,26 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
-      padding-bottom: 0.5rem;
+      width: 100%;
+      max-width: 100%;
+      padding-bottom: 1.25rem;
     }
 
     /* Shopify / Zomato style dish card */
     .platos-row {
       position: relative;
       display: grid;
-      grid-template-columns: 5rem minmax(0, 1fr) auto;
+      grid-template-columns: 4.75rem minmax(0, 1fr) auto;
       grid-template-areas:
         'media dish dest'
         'media meta meta'
         'price price avail';
-      gap: 0.4rem 0.75rem;
-      align-items: center;
+      gap: 0.45rem 0.65rem;
+      align-items: start;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      flex-shrink: 0;
       padding: 0.85rem;
       margin: 0;
       border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08)) !important;
@@ -3637,6 +3676,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       background: var(--bg-card, rgba(24, 24, 27, 0.78));
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
       transform: none !important;
+      overflow: hidden;
     }
 
     .platos-row:hover {
@@ -3648,9 +3688,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
 
     .platos-cell {
+      display: block;
       padding: 0 !important;
       width: auto;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
       text-align: left !important;
+      vertical-align: top;
     }
 
     .platos-cell--order {
@@ -3659,6 +3704,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       left: 0.55rem;
       z-index: 2;
       grid-area: auto;
+      width: auto;
     }
 
     .platos-cell--order input[data-dish-order] {
@@ -3676,9 +3722,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     .platos-cell--media {
       grid-area: media;
       align-self: stretch;
+      width: 4.75rem;
+      max-width: 4.75rem;
     }
 
     .platos-cell--media [data-media-actions] {
+      display: flex;
       flex-direction: column;
       align-items: stretch;
       gap: 0.4rem;
@@ -3689,12 +3738,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     .platos-cell--media [data-ver-plato],
     .platos-cell--media label {
       width: 100%;
+      display: block;
     }
 
     .platos-cell--media img,
     .platos-cell--media [data-upload-label] {
       width: 100% !important;
-      height: 5.1rem !important;
+      height: 4.75rem !important;
       border-radius: 0.95rem !important;
       object-fit: cover;
     }
@@ -3706,11 +3756,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     .platos-cell--dish {
       grid-area: dish;
       min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
     }
 
     .platos-cell--dish .field-inline,
     .platos-cell--dish [data-edit-descripcion] {
       max-width: none !important;
+      width: 100%;
     }
 
     .platos-cell--dish .field-inline {
@@ -3718,6 +3771,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       font-weight: 650;
       letter-spacing: -0.02em;
       padding: 0.05rem 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .platos-cell--dish [data-descripcion-preview] {
@@ -3737,6 +3792,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       grid-area: dest;
       align-self: start;
       justify-self: end;
+      width: auto;
+      z-index: 1;
     }
 
     .platos-cell--destacado .ios-toggle {
@@ -3760,13 +3817,16 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       display: inline-flex;
       align-items: center;
       width: auto;
-      max-width: max-content;
+      max-width: 100%;
       padding: 0.28rem 0.55rem !important;
       border-radius: 9999px;
       background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.06)) 100%, transparent);
       font-size: 0.68rem !important;
       font-weight: 600;
       color: var(--text-muted, #a1a1aa) !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .platos-cell--precio {
@@ -3774,6 +3834,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       display: flex;
       align-items: center;
       margin-top: 0.1rem;
+      min-width: 0;
     }
 
     .platos-cell--precio .precio-input {
@@ -3793,6 +3854,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       gap: 0.45rem;
       justify-self: end;
       min-height: 2.6rem;
+      width: auto;
       margin-top: 0.1rem;
       padding: 0.25rem 0.4rem 0.25rem 0.65rem !important;
       border-radius: 9999px;
@@ -3852,6 +3914,18 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     #panel-menu > .mb-5 .hidden.sm\\:flex,
     #panel-menu .space-y-3 > .hidden.sm\\:flex {
       display: none !important;
+    }
+
+    /* Extra clearance under last menu content for dock + FAB */
+    #panel-menu,
+    #panel-metricas,
+    #panel-perfil,
+    #panel-identidad {
+      padding-bottom: 0.5rem;
+    }
+
+    .crx-toast {
+      bottom: calc(6.25rem + env(safe-area-inset-bottom)) !important;
     }
   }
 

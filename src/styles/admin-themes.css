@@ -2769,7 +2769,27 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   html.admin-panel main .max-w-6xl {
     padding-left: 0.85rem;
     padding-right: 0.85rem;
-    padding-bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 5.5rem));
+    padding-bottom: max(9.75rem, calc(env(safe-area-inset-bottom) + 8.25rem));
+  }
+
+  html.admin-panel #dashboard-root {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  html.admin-panel #panel-menu,
+  html.admin-panel #panel-metricas,
+  html.admin-panel #panel-perfil,
+  html.admin-panel #panel-identidad {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  html.admin-panel .admin-xemilla-mark {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
   }
 
   /* Studio app feel: avoid page chrome fighting cards */
