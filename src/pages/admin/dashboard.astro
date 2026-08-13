@@ -798,10 +798,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                 </div>
               </div>
 
-              {/* Status chips — Shopify-style quick filters (mobile app) */}
+              {/* Status chips — full-width glass bento */}
               <div
                 id="status-scroll"
-                class="studio-chip-row flex overflow-x-auto gap-2 pb-0.5 scrollbar-hide w-full"
+                class="studio-status-bento w-full"
                 role="toolbar"
                 aria-label="Filtrar por estado"
               >
@@ -821,7 +821,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
               <div
                 id="category-scroll"
-                class="studio-chip-row flex overflow-x-auto gap-2 pb-1 scrollbar-hide w-full cursor-grab active:cursor-grabbing"
+                class="studio-cat-bento w-full"
                 role="toolbar"
                 aria-label="Filtrar por categoría"
               >
@@ -2954,7 +2954,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   }
 
   .ios-toggle--star {
-    --toggle-on: #d97706;
+    --toggle-on: #c9a227;
   }
 
   .ios-toggle__knob {
@@ -3199,21 +3199,51 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     }
   }
 
-  /* ── Chips premium (Mobbin: Etsy / Depop / Hyundai) ── */
+  /* ── Status + category glass bento ── */
   .studio-chip-row {
     gap: 0.5rem;
+  }
+
+  .studio-status-bento,
+  .studio-cat-bento {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.04) 55%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 10px 28px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  }
+
+  /* 4 status: edge-to-edge inside the rectangle */
+  .studio-status-bento {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  /* Categories: content-sized cells that grow to fill every row */
+  .studio-cat-bento {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
 
   .status-filter-pill,
   .cat-filter-pill {
     appearance: none;
-    flex: 0 0 auto;
     white-space: nowrap;
-    border-radius: 9999px;
     border: 1px solid transparent;
     font-family: inherit;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     cursor: pointer;
     transition:
       background-color 160ms ease,
@@ -3223,25 +3253,52 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       transform 120ms ease;
   }
 
-  .status-filter-pill:active,
-  .cat-filter-pill:active {
-    transform: scale(0.97);
-  }
-
   .status-filter-pill {
-    padding: 0.55rem 0.95rem;
-    font-size: 0.8rem;
-    background: rgba(255, 255, 255, 0.06);
-    color: #a1a1aa;
-    border-color: rgba(255, 255, 255, 0.06);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 2.4rem;
+    padding: 0.5rem 0.4rem;
+    border-radius: 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.07);
+    color: #d4d4d8;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .cat-filter-pill {
-    padding: 0.48rem 0.88rem;
-    font-size: 0.76rem;
-    background: rgba(255, 255, 255, 0.045);
-    color: #a1a1aa;
-    border-color: rgba(255, 255, 255, 0.05);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: max-content;
+    min-height: 2.35rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.07);
+    color: #d4d4d8;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .status-filter-pill:active,
+  .cat-filter-pill:active {
+    transform: scale(0.97);
   }
 
   .status-filter-pill.is-on,
@@ -3252,6 +3309,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     color: #09090b;
     border-color: transparent;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  }
+
+  .cat-filter-pill.is-on,
+  .cat-filter-pill[aria-pressed='true'] {
+    font-weight: 700;
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
 
   .status-filter-pill--live.is-on,
@@ -3270,9 +3335,29 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   .status-filter-pill--star.is-on,
   .status-filter-pill--star[aria-pressed='true'] {
-    background: rgba(245, 158, 11, 0.16);
-    color: #fcd34d;
-    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.28);
+    background: rgba(201, 162, 39, 0.18);
+    color: #e8d48b;
+    box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.35);
+  }
+
+  html.admin-panel.light .studio-status-bento,
+  html.admin-panel[data-theme='light'] .studio-status-bento,
+  html.admin-panel[data-theme='alabastro'] .studio-status-bento,
+  html.admin-panel[data-theme='organico'] .studio-status-bento,
+  html.admin-panel.light .studio-cat-bento,
+  html.admin-panel[data-theme='light'] .studio-cat-bento,
+  html.admin-panel[data-theme='alabastro'] .studio-cat-bento,
+  html.admin-panel[data-theme='organico'] .studio-cat-bento {
+    border-color: rgba(24, 24, 27, 0.08);
+    background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(255, 255, 255, 0.5) 55%,
+      rgba(248, 250, 252, 0.42) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 12px 28px rgba(15, 23, 42, 0.05);
   }
 
   html.admin-panel.light .status-filter-pill,
@@ -3283,10 +3368,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   html.admin-panel[data-theme='light'] .cat-filter-pill,
   html.admin-panel[data-theme='alabastro'] .cat-filter-pill,
   html.admin-panel[data-theme='organico'] .cat-filter-pill {
-    background: #ffffff;
-    color: #3f3f46;
-    border-color: #e4e4e7;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    background: rgba(255, 255, 255, 0.72);
+    color: #27272a;
+    border-color: rgba(24, 24, 27, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
   html.admin-panel.light .status-filter-pill.is-on,
@@ -3328,9 +3415,38 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   html.admin-panel[data-theme='light'] .status-filter-pill--star.is-on,
   html.admin-panel.light .status-filter-pill--star[aria-pressed='true'],
   html.admin-panel[data-theme='light'] .status-filter-pill--star[aria-pressed='true'] {
-    background: #fffbeb;
-    color: #b45309;
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.18), 0 8px 16px rgba(245, 158, 11, 0.07);
+    background: #faf6e8;
+    color: #8a7014;
+    box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 8px 16px rgba(201, 162, 39, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    .studio-status-bento,
+    .studio-cat-bento {
+      gap: 0.35rem;
+      padding: 0.45rem;
+      border-radius: 0.9rem;
+    }
+
+    .status-filter-pill {
+      min-height: 2.25rem;
+      padding: 0.42rem 0.28rem;
+      font-size: 0.7rem;
+      border-radius: 0.48rem;
+    }
+
+    .cat-filter-pill {
+      min-height: 2.2rem;
+      padding: 0.42rem 0.7rem;
+      font-size: 0.72rem;
+      border-radius: 0.48rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .studio-status-bento {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   /* ── Bottom dock + FAB (app shell) ── */
@@ -3741,13 +3857,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   @media (min-width: 769px) {
     .status-filter-pill {
-      padding: 0.45rem 0.9rem;
+      min-height: 2.35rem;
       font-size: 0.78rem;
     }
 
     .cat-filter-pill {
-      padding: 0.4rem 0.82rem;
-      font-size: 0.74rem;
+      min-height: 2.3rem;
+      padding: 0.48rem 0.95rem;
+      font-size: 0.76rem;
     }
 
     .platos-row:hover {
@@ -4443,16 +4560,6 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       applySearchFilter();
     },
     { signal },
-  );
-
-  categoryFilters?.addEventListener(
-    'wheel',
-    (event) => {
-      if (!(categoryFilters instanceof HTMLElement)) return;
-      event.preventDefault();
-      categoryFilters.scrollLeft += event.deltaY;
-    },
-    { signal, passive: false },
   );
 
   tbody?.addEventListener(

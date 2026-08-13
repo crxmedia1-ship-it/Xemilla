@@ -39,7 +39,7 @@ const {
 const fontHref =
   fontHrefProp ||
   (adminPanel
-    ? 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap'
+    ? 'https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap'
     : theme === 'sanza'
       ? 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'
       : theme === 'blacksushi'
@@ -150,10 +150,10 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
             <div class="admin-deep-space__amber"></div>
             <div class="admin-deep-space__grid"></div>
           </div>
-          {/* Light: soft daylight — no logo watermark */}
+          {/* Light: soft daylight — clean, no pattern / watermark */}
           <div
             class="pointer-events-none fixed inset-0 z-[-1] opacity-100 transition-opacity duration-1000 dark:opacity-0 dark:hidden block"
-            style="background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,255,255,0.95), transparent 55%), linear-gradient(180deg, #f5f7fa 0%, #e7ebf0 100%);"
+            style="background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,255,255,0.98), transparent 55%), linear-gradient(180deg, #f7f8fa 0%, #eef1f5 100%);"
             aria-hidden="true"
           ></div>
         </>
