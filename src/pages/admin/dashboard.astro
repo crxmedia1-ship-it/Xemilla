@@ -818,6 +818,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               <h2 class="mt-1 font-blacksushi-display text-2xl font-semibold tracking-tight">
                 Platos cargados
               </h2>
+              {
+                marca.gadget_nutricion ? (
+                  <p class="mt-2 max-w-xl text-[12px] leading-relaxed text-zinc-500">
+                    Gadget nutricional activo. En cada plato, tocá
+                    <span class="font-semibold text-zinc-300"> Nutrición / Alérgenos </span>
+                    para cargar kcal, macros y restricciones. En la WebApp aparecen los filtros debajo de las categorías.
+                  </p>
+                ) : null
+              }
             </div>
 
             <div
@@ -1028,7 +1037,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   <button
                                     type="button"
                                     data-edit-nutricion
-                                    class="mt-0.5 inline-flex max-w-[24rem] items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+                                    class="mt-1 inline-flex max-w-[24rem] items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-200 transition hover:border-white/25 hover:bg-white/[0.08]"
                                     title="Editar ficha nutricional"
                                   >
                                     Nutrición / Alérgenos
@@ -2625,7 +2634,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                 Ficha nutricional
                               </h4>
                               <p class="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                                Macros, alérgenos y filtros en la WebApp. Sin rastro si está apagado.
+                                El switch se guarda al instante. En cada plato, tocá
+                                <span class="text-zinc-300"> Nutrición / Alérgenos</span>
+                                y marcá Carne / No vegano en platos con proteína animal para que el filtro Vegano oculte esos platos.
                               </p>
                             </div>
                           </div>
@@ -6572,7 +6583,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       : `<label class="relative inline-flex cursor-pointer items-center"><input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" /><span data-upload-label title="Subir media" class="flex h-10 w-10 items-center justify-center rounded-md bg-zinc-800/50 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300">${CAMERA_ICON_SVG}</span></label>`;
     const showNut = root instanceof HTMLElement && root.dataset.gadgetNutricion === 'true';
     const nutBtn = showNut
-      ? `<button type="button" data-edit-nutricion class="mt-0.5 inline-flex max-w-[24rem] items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300" title="Editar ficha nutricional">Nutrición / Alérgenos</button>`
+      ? `<button type="button" data-edit-nutricion class="mt-1 inline-flex max-w-[24rem] items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-200 transition hover:border-white/25 hover:bg-white/[0.08]" title="Editar ficha nutricional">Nutrición / Alérgenos</button>`
       : '';
 
     tr.innerHTML = `
@@ -7745,6 +7756,47 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
     input.addEventListener('change', sync, { signal });
     sync();
+
+    if (input.id === 'marca-gadget-nutricion') {
+      input.addEventListener(
+        'change',
+        async () => {
+          if (!restauranteId) return;
+          const prev = !input.checked;
+          input.disabled = true;
+          try {
+            const res = await fetch('/api/update-gadget-nutricion', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                restaurante_id: restauranteId,
+                activo: input.checked,
+              }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error || 'No se pudo guardar el gadget');
+            showToast(
+              json.message ||
+                (input.checked
+                  ? 'Gadget nutricional activo'
+                  : 'Gadget nutricional apagado'),
+              'ok',
+            );
+            window.setTimeout(() => window.location.reload(), 400);
+          } catch (err) {
+            input.checked = prev;
+            sync();
+            showToast(
+              err instanceof Error ? err.message : 'Error al guardar nutrición',
+              'error',
+            );
+          } finally {
+            input.disabled = false;
+          }
+        },
+        { signal },
+      );
+    }
   });
 
   // Mantener --gadget-accent alineado con el color primario del form
@@ -7904,6 +7956,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         json.message || '¡Identidad de marca actualizada con éxito!',
         'ok',
       );
+      window.setTimeout(() => window.location.reload(), 450);
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'Error al guardar';
       // TypeError: Failed to fetch / NetworkError → endpoint caído o sin respuesta

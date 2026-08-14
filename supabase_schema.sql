@@ -92,6 +92,12 @@ COMMENT ON COLUMN public.restaurantes.gadget_nutricion IS
   'Activa ficha nutricional, macros y filtros de alérgenos (admin + WebApp).';
 
 ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS descuento_divisa NUMERIC(5,2) NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.restaurantes.descuento_divisa IS
+  'Legacy. Ya no se usa en la WebApp.';
+
+ALTER TABLE public.restaurantes
   ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 
 COMMENT ON COLUMN public.restaurantes.activo IS

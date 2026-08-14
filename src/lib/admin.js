@@ -7,6 +7,7 @@ import {
 import { createSupabaseServerClient } from './supabase/server.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
 import { getSuperAdminWriteClient } from './superadmin.js';
+import { normalizeAlergias } from '../config/nutricion.js';
 
 const RESTAURANTE_ADMIN_SELECT = [
   'id',
@@ -336,7 +337,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     proteinas: p.proteinas == null ? null : Number(p.proteinas),
     carbs: p.carbs == null ? null : Number(p.carbs),
     grasas: p.grasas == null ? null : Number(p.grasas),
-    alergias: Array.isArray(p.alergias) ? p.alergias : [],
+    alergias: normalizeAlergias(p.alergias),
     ingredientes_detalle: p.ingredientes_detalle ?? '',
   }));
 

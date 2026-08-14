@@ -34,6 +34,10 @@ interface Props {
   fondoGlobal?: { tipo?: string; valor?: string };
   /** Gadget nutrición activo — si false, cero rastro DOM */
   showNutricion?: boolean;
+  /** VES por 1 USD (BCV) */
+  tasaBcv?: number;
+  /** VES por 1 EUR (BCV) */
+  tasaEur?: number;
   estilos: {
     panelColor: string;
     borderColor: string;
@@ -53,6 +57,8 @@ const {
   destacados = [],
   fondoGlobal = { tipo: 'color', valor: '' },
   showNutricion = false,
+  tasaBcv = 766.8603,
+  tasaEur = 885.0795,
   estilos,
 } = Astro.props;
 
@@ -66,6 +72,12 @@ function isVideoUrl(url: string) {
 
 function alergiasCsv(plato: Plato) {
   return Array.isArray(plato.alergias) ? plato.alergias.join(',') : '';
+}
+
+/** Strip currency symbols / whitespace so parseFloat always gets a clean number */
+function precioUsd(precio: string): string {
+  const n = parseFloat(String(precio).replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? '0' : String(n);
 }
 
 const CHIP_BASE =
@@ -85,6 +97,8 @@ const globalBgValor = fondoGlobal.valor || '';
   data-menu-bg-global-type={globalBgType}
   data-menu-bg-global-valor={globalBgValor}
   data-show-nutricion={showNutricion ? 'true' : 'false'}
+  data-tasa-bcv={String(tasaBcv)}
+  data-tasa-eur={String(tasaEur)}
 >
   {/* Capas de fondo dinámico por categoría — morph fluido + fallback global */}
   <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true" data-menu-bg-root>
@@ -202,25 +216,64 @@ const globalBgValor = fondoGlobal.valor || '';
     </nav>
     {
       showNutricion && (
-        <div
-          class="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-hide [-webkit-overflow-scrolling:touch]"
-          data-alergias-filtros
-          aria-label="Filtros por alérgenos"
-        >
-          {NUTRICION_FILTROS_PUBLICOS.map((f) => (
-            <button
-              type="button"
-              data-alergia-filtro={f.id}
-              data-hides-any={f.hidesAny.join(',')}
-              class="shrink-0 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[0.58rem] font-semibold tracking-[0.12em] text-[color:color-mix(in_srgb,var(--color-texto)_70%,transparent)] backdrop-blur-md transition active:scale-95 aria-pressed:border-[color-mix(in_srgb,var(--color-primario)_65%,transparent)] aria-pressed:bg-[var(--color-primario)] aria-pressed:text-white"
-              aria-pressed="false"
-            >
-              <span aria-hidden="true">{f.emoji}</span> {f.label}
-            </button>
-          ))}
+        <div class="alergia-bar" data-alergias-filtros aria-label="Filtros de dieta y alérgenos">
+          {/* Pills */}
+          <div class="alergia-bar__pills" role="group" aria-label="Filtros activos">
+            {NUTRICION_FILTROS_PUBLICOS.map((f) => (
+              <button
+                type="button"
+                data-alergia-filtro={f.id}
+                data-hides-any={f.hidesAny.join(',')}
+                data-hide-unknown={f.hideUnknown ? 'true' : 'false'}
+                class="alergia-pill"
+                aria-pressed="false"
+              >
+                <span class="alergia-pill__emoji" aria-hidden="true">{f.emoji}</span>
+                <span class="alergia-pill__label">{f.label}</span>
+              </button>
+            ))}
+          </div>
+          {/* Reset — always rendered, JS shows/hides */}
+          <button
+            type="button"
+            class="alergia-reset hidden"
+            data-alergia-reset
+            aria-label="Quitar todos los filtros"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-3" aria-hidden="true">
+              <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+            </svg>
+            Limpiar
+          </button>
         </div>
       )
     }
+
+    {/* —— Selector de Divisas —— */}
+    <div
+      class="currency-bar"
+      data-currency-switcher
+      data-tasa-bcv={String(tasaBcv)}
+      data-tasa-eur={String(tasaEur)}
+    >
+      <span class="currency-bar__label" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3.5 opacity-60">
+          <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.33.576Z" />
+          <path fill-rule="evenodd" d="M9.99 1.375a8.625 8.625 0 1 0 0 17.25 8.625 8.625 0 0 0 0-17.25ZM9.24 4a.75.75 0 0 1 .75.75v.628a4.56 4.56 0 0 1 1.794.574c.428.26.909.756.909 1.548 0 .69-.35 1.226-.787 1.554-.25.185-.54.324-.837.406v2.884a3.93 3.93 0 0 0 .88-.36c.303-.186.477-.395.477-.644a.75.75 0 0 1 1.5 0c0 .76-.433 1.38-.915 1.72-.537.378-1.21.605-1.942.667V15a.75.75 0 0 1-1.5 0v-.61a4.907 4.907 0 0 1-1.84-.636c-.479-.291-.962-.8-.962-1.554 0-.76.436-1.28.878-1.576.24-.162.495-.28.754-.36V7.995a2.29 2.29 0 0 0-.469.166c-.16.08-.265.17-.317.236a.75.75 0 1 1-1.17-.94c.27-.336.65-.578 1.01-.739.27-.12.567-.21.946-.267V4.75A.75.75 0 0 1 9.24 4Z" clip-rule="evenodd" />
+        </svg>
+        Precios
+      </span>
+
+      <div class="currency-pill-group" role="group" aria-label="Divisa de visualización">
+        <button type="button" class="cpill cpill--active" data-currency-btn="USD" aria-pressed="true">USD</button>
+        <button type="button" class="cpill" data-currency-btn="BS" aria-pressed="false">BS</button>
+        <button type="button" class="cpill" data-currency-btn="EUR" aria-pressed="false">EUR</button>
+      </div>
+
+      <span class="currency-bar__rate" data-currency-rate aria-live="polite">
+        Tasa BCV
+      </span>
+    </div>
   </div>
 
   {
@@ -251,6 +304,7 @@ const globalBgValor = fondoGlobal.valor || '';
                 data-goto-plato={plato.id}
                 data-goto-cat={catId}
                 data-alergias={alergiasCsv(plato)}
+                data-plato-nombre={plato.nombre}
                 aria-label={`Ir a ${plato.nombre} en ${catName}`}
               >
                 <div class="menu-media relative mb-3.5 w-full overflow-hidden bg-black/40 aspect-[16/10]">
@@ -282,7 +336,7 @@ const globalBgValor = fondoGlobal.valor || '';
                   {plato.nombre}
                 </h4>
                 <p class="mt-1.5 text-[1.05rem] font-semibold tabular-nums text-[color:var(--color-texto)] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
-                  ${plato.precio}
+                  <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${plato.precio}</span>
                 </p>
               </button>
             );
@@ -297,26 +351,31 @@ const globalBgValor = fondoGlobal.valor || '';
       categorias.map((cat) => (
         <section
           id={`menu-cat-${cat.id}`}
+          aria-labelledby={`menu-cat-heading-${cat.id}`}
           data-menu-cat={cat.id}
           data-cat-bg-type={cat.bgType || ''}
           data-cat-bg-valor={cat.bgValor || ''}
-          class="menu-cat-section scroll-mt-28"
+          class="menu-cat-section scroll-mt-36"
         >
-          <h3 class="mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]">
+          <h3
+            id={`menu-cat-heading-${cat.id}`}
+            class="mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]"
+          >
             {cat.nombre}
           </h3>
 
-          <ul class="menu-items">
+          <ul class="menu-items" role="list">
             {cat.platos.map((plato) => {
               const mediaUrl = plato.imagenUrl?.trim() || '';
               const hasNut = showNutricion && platoHasNutricionData(plato);
               return (
                 <li
                   id={`plato-${plato.id}`}
-                  class="menu-plato-item group scroll-mt-32"
+                  class="menu-plato-item group scroll-mt-40"
                   data-reveal
                   data-plato-id={plato.id}
                   data-alergias={alergiasCsv(plato)}
+                  data-plato-nombre={plato.nombre}
                 >
                   <div class="flex items-baseline gap-1">
                     <h4 class="shrink max-w-[58%] text-[1.02rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
@@ -324,7 +383,7 @@ const globalBgValor = fondoGlobal.valor || '';
                     </h4>
                     <span class="menu-leader" aria-hidden="true" />
                     <span class="shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide text-[color:var(--color-texto)] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
-                      ${plato.precio}
+                      <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${plato.precio}</span>
                     </span>
                   </div>
 
@@ -334,7 +393,7 @@ const globalBgValor = fondoGlobal.valor || '';
                     </p>
                   )}
 
-                  {hasMedia(mediaUrl) && (
+                  {hasMedia(mediaUrl) || hasNut ? (
                     <button
                       type="button"
                       data-open-detalle
@@ -352,9 +411,9 @@ const globalBgValor = fondoGlobal.valor || '';
                       data-plato-has-nut={hasNut ? 'true' : 'false'}
                       class="menu-btn mt-3 border border-white/15 bg-white/5 px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase text-[color:var(--color-texto)] shadow-inner backdrop-blur-md active:scale-95"
                     >
-                      Ver detalle
+                      {hasMedia(mediaUrl) ? 'Ver detalle' : 'Ficha nutricional'}
                     </button>
-                  )}
+                  ) : null}
                 </li>
               );
             })}
@@ -363,6 +422,9 @@ const globalBgValor = fondoGlobal.valor || '';
       ))
     }
   </div>
+  <p class="menu-empty-filtros hidden px-5 pt-8 text-center text-[0.8rem] text-[color:color-mix(in_srgb,var(--color-texto)_45%,transparent)]" data-menu-empty-filtros>
+    Ningún plato coincide con esos filtros.
+  </p>
   </div>
 </div>
 
@@ -467,11 +529,202 @@ const globalBgValor = fondoGlobal.valor || '';
     .menu-chip,
     .menu-featured,
     .menu-btn,
-    .menu-plato-item {
+    .menu-plato-item,
+    .precio-dinamico,
+    .cpill,
+    .alergia-pill {
       transition: none !important;
       opacity: 1 !important;
       transform: none !important;
     }
+  }
+
+  /* ── Currency Bar ────────────────────────────────────────── */
+  .currency-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .currency-bar__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 45%, transparent);
+    user-select: none;
+  }
+
+  .currency-pill-group {
+    display: inline-flex;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    overflow: hidden;
+  }
+
+  .cpill {
+    padding: 0.28rem 0.72rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 48%, transparent);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    line-height: 1.7;
+    transition:
+      background-color 160ms ease,
+      color 140ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .cpill + .cpill {
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cpill:active {
+    opacity: 0.7;
+  }
+
+  .cpill--active {
+    background: var(--color-primario);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .currency-bar__rate {
+    font-size: 0.6rem;
+    color: color-mix(in srgb, var(--color-texto) 40%, transparent);
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+
+  .currency-bar__rate strong {
+    font-weight: 600;
+    color: color-mix(in srgb, var(--color-texto) 65%, transparent);
+  }
+
+  /* ── Allergen Bar ────────────────────────────────────────── */
+  .alergia-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 1rem 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .alergia-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .alergia-bar__pills {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .alergia-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.28rem 0.65rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 120ms ease;
+    user-select: none;
+  }
+
+  .alergia-pill__emoji {
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+
+  .alergia-pill__label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 65%, transparent);
+    transition: color 150ms ease;
+  }
+
+  .alergia-pill:active {
+    transform: scale(0.95);
+  }
+
+  .alergia-pill[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--color-primario) 90%, transparent);
+    border-color: var(--color-primario);
+  }
+
+  .alergia-pill[aria-pressed="true"] .alergia-pill__label {
+    color: #fff;
+  }
+
+  .alergia-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 45%, transparent);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    padding: 0.28rem 0.6rem;
+    cursor: pointer;
+    transition: opacity 150ms ease, background-color 150ms ease;
+    white-space: nowrap;
+  }
+
+  .alergia-reset:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .alergia-reset:active {
+    opacity: 0.65;
+  }
+
+  /* ── Category section collapsed by allergen filter ────────── */
+  .menu-cat-section.is-alergia-empty,
+  [data-destacados].is-alergia-empty {
+    display: none;
+  }
+
+  /* ── Dynamic price fade ──────────────────────────────────── */
+  .precio-dinamico {
+    display: inline-block;
+    transition: opacity 130ms ease;
+  }
+
+  .precio-dinamico.is-converting {
+    opacity: 0;
   }
 </style>
 
@@ -611,7 +864,7 @@ const globalBgValor = fondoGlobal.valor || '';
     target.classList.remove('is-focus-plato');
     void target.offsetWidth;
     target.classList.add('is-focus-plato');
-    window.setTimeout(() => {
+    setTimeout(() => {
       target.classList.remove('is-focus-plato');
     }, HIGHLIGHT_MS);
   }
@@ -771,47 +1024,6 @@ const globalBgValor = fondoGlobal.valor || '';
         });
       });
 
-      // Filtros en vivo por alérgeno (solo si el gadget está activo en DOM)
-      const alergiaFiltros = panel.querySelector('[data-alergias-filtros]');
-      if (alergiaFiltros instanceof HTMLElement) {
-        const applyAlergiaFilters = () => {
-          const active = Array.from(
-            alergiaFiltros.querySelectorAll('[data-alergia-filtro][aria-pressed="true"]'),
-          );
-          /** @type {string[][]} */
-          const hideSets = active.map((pill) => {
-            if (!(pill instanceof HTMLElement)) return [];
-            return String(pill.dataset.hidesAny || '')
-              .split(',')
-              .map((s) => s.trim().toLowerCase())
-              .filter(Boolean);
-          });
-
-          panel.querySelectorAll('.menu-plato-item, .menu-featured').forEach((item) => {
-            if (!(item instanceof HTMLElement)) return;
-            const alergias = String(item.dataset.alergias || '')
-              .split(',')
-              .map((s) => s.trim().toLowerCase())
-              .filter(Boolean);
-            const hide =
-              hideSets.length > 0 &&
-              hideSets.some((hides) => hides.some((id) => alergias.includes(id)));
-            item.classList.toggle('is-alergia-hidden', hide);
-            item.setAttribute('aria-hidden', hide ? 'true' : 'false');
-          });
-        };
-
-        alergiaFiltros.addEventListener('click', (e) => {
-          const t = e.target;
-          if (!(t instanceof Element)) return;
-          const pill = t.closest('[data-alergia-filtro]');
-          if (!(pill instanceof HTMLElement) || !alergiaFiltros.contains(pill)) return;
-          const next = pill.getAttribute('aria-pressed') !== 'true';
-          pill.setAttribute('aria-pressed', next ? 'true' : 'false');
-          applyAlergiaFilters();
-        });
-      }
-
       panel.querySelectorAll('[data-goto-plato]').forEach((card) => {
         card.addEventListener('click', () => {
           if (!(card instanceof HTMLElement)) return;
@@ -830,6 +1042,246 @@ const globalBgValor = fondoGlobal.valor || '';
     });
   }
 
-  initMenuPanels();
-  document.addEventListener('astro:page-load', initMenuPanels);
+  // ── Currency Conversion Engine ─────────────────────────────────────────────
+
+  /**
+   * Round to n decimal places using integer math to avoid float drift.
+   * e.g. roundTo(10.005, 2) = 10.01 (correct), while toFixed alone may not be.
+   */
+  function roundTo(n: number, decimals: number): number {
+    const factor = Math.pow(10, decimals);
+    return Math.round((n + Number.EPSILON) * factor) / factor;
+  }
+
+  /** "1.234,56 Bs." — Venezuelan thousand-dot, comma-decimal format */
+  function formatBS(amount: number): string {
+    const fixed = roundTo(amount, 2).toFixed(2);
+    const [intPart, decPart] = fixed.split('.');
+    const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${intFormatted},${decPart} Bs.`;
+  }
+
+  /** "1.234,56 €" — Euro comma-decimal format */
+  function formatEUR(amount: number): string {
+    const fixed = roundTo(amount, 2).toFixed(2);
+    const [intPart, decPart] = fixed.split('.');
+    const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${intFormatted},${decPart} €`;
+  }
+
+  /** "$1,234.56" — standard US dollar format */
+  function formatUSD(amount: number): string {
+    const fixed = roundTo(amount, 2).toFixed(2);
+    const [intPart, decPart] = fixed.split('.');
+    const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `$${intFormatted}.${decPart}`;
+  }
+
+  function initCurrencyEngine(panel: HTMLElement) {
+    const switcher = panel.querySelector<HTMLElement>('[data-currency-switcher]');
+    if (!switcher) return;
+
+    let usdVes = parseFloat(switcher.dataset.tasaBcv || panel.dataset.tasaBcv || '766.8603');
+    let eurVes = parseFloat(switcher.dataset.tasaEur || panel.dataset.tasaEur || '885.0795');
+    if (!Number.isFinite(usdVes) || usdVes < 1) usdVes = 766.8603;
+    if (!Number.isFinite(eurVes) || eurVes < 1) eurVes = 885.0795;
+
+    const rateEl = switcher.querySelector<HTMLElement>('[data-currency-rate]');
+    let current = 'USD';
+
+    const usdToEur = (usd: number) => usd * (usdVes / eurVes);
+
+    const setRateHint = (currency: string) => {
+      if (!rateEl) return;
+      if (currency === 'EUR') {
+        rateEl.innerHTML = `$1 ≈ <strong>${formatEUR(usdToEur(1))}</strong>`;
+      } else {
+        rateEl.innerHTML = `$1 = <strong>${formatBS(usdVes)}</strong>`;
+      }
+    };
+
+    const convertAll = (currency: string) => {
+      const spans = panel.querySelectorAll<HTMLElement>('.precio-dinamico');
+      spans.forEach((el) => el.classList.add('is-converting'));
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          spans.forEach((el) => {
+            el.classList.remove('is-converting');
+            const usd = parseFloat(el.dataset.precioUsd ?? '');
+            if (!Number.isFinite(usd) || usd < 0) return;
+            if (currency === 'BS') {
+              el.textContent = formatBS(usd * usdVes);
+            } else if (currency === 'EUR') {
+              el.textContent = formatEUR(usdToEur(usd));
+            } else {
+              el.textContent = formatUSD(usd);
+            }
+          });
+          setRateHint(currency);
+        });
+      });
+    };
+
+    setRateHint('USD');
+
+    void fetch('/api/tasas-cambio')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !data.ok) return;
+        const nextUsd = Number(data.usdVes);
+        const nextEur = Number(data.eurVes);
+        if (Number.isFinite(nextUsd) && nextUsd > 1) usdVes = nextUsd;
+        if (Number.isFinite(nextEur) && nextEur > 1) eurVes = nextEur;
+        switcher.dataset.tasaBcv = String(usdVes);
+        switcher.dataset.tasaEur = String(eurVes);
+        panel.dataset.tasaBcv = String(usdVes);
+        panel.dataset.tasaEur = String(eurVes);
+        if (current !== 'USD') convertAll(current);
+        else setRateHint(current);
+      })
+      .catch(() => {});
+
+    switcher.addEventListener('click', (e) => {
+      const btn = (e.target as Element)?.closest<HTMLElement>('[data-currency-btn]');
+      if (!btn) return;
+      const currency = btn.dataset.currencyBtn ?? '';
+      if (!currency || currency === current) return;
+      current = currency;
+
+      switcher.querySelectorAll<HTMLElement>('[data-currency-btn]').forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle('cpill--active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+
+      convertAll(currency);
+    });
+  }
+
+  function initAlergiaEngine(panel: HTMLElement) {
+    const bar = panel.querySelector<HTMLElement>('[data-alergias-filtros]');
+    if (!bar) return;
+
+    const pills = bar.querySelectorAll<HTMLElement>('[data-alergia-filtro]');
+    const resetBtn = bar.querySelector<HTMLElement>('[data-alergia-reset]');
+    const sections = panel.querySelectorAll<HTMLElement>('[data-menu-cat]');
+    const featuredSection = panel.querySelector<HTMLElement>('[data-destacados]');
+    const emptyEl = panel.querySelector<HTMLElement>('[data-menu-empty-filtros]');
+
+    const toIds = (raw: string): Set<string> => {
+      return new Set(
+        raw
+          .split(',')
+          .map((s) => s.trim().toLowerCase().replace(/\s+/g, '_'))
+          .filter(Boolean),
+      );
+    };
+
+    const looksAnimal = (nombre: string) =>
+      /res\b|jam[oó]n|hamburg|ribeye|steak|pork|belly|carne|pollo|cerdo|chorizo|bacon|lomo|filete|pescado|at[uú]n|salm[oó]n|camar[oó]n|marisco|calamar|pulpo|langost|ternera|cordero|pavo|nugget|alita|costilla|tocino|mortadela|chicharr[oó]n|ib[eé]rico|smash|carpaccio/i.test(
+        nombre,
+      );
+
+    const apply = () => {
+      const activePills = Array.from(pills).filter(
+        (p) => p.getAttribute('aria-pressed') === 'true',
+      );
+      const hasActive = activePills.length > 0;
+      if (resetBtn) resetBtn.classList.toggle('hidden', !hasActive);
+
+      const allItems = panel.querySelectorAll<HTMLElement>(
+        '.menu-plato-item, .menu-featured',
+      );
+      allItems.forEach((item) => {
+        const itemAlergias = toIds(item.dataset.alergias ?? '');
+        const nombre = item.dataset.platoNombre || item.dataset.gotoPlato || '';
+        let hide = false;
+        if (hasActive) {
+          hide = activePills.some((pill) => {
+            const hides = toIds(pill.dataset.hidesAny ?? '');
+            const hideUnknown = pill.dataset.hideUnknown === 'true';
+            const isVegan = pill.dataset.alergiaFiltro === 'vegano';
+            if (hideUnknown && itemAlergias.size === 0) return true;
+            if (isVegan && looksAnimal(nombre)) return true;
+            for (const id of hides) {
+              if (itemAlergias.has(id)) return true;
+            }
+            return false;
+          });
+        }
+        item.classList.toggle('is-alergia-hidden', hide);
+        item.setAttribute('aria-hidden', hide ? 'true' : 'false');
+      });
+
+      sections.forEach((section) => {
+        if (section.classList.contains('is-hidden')) return;
+        const items = section.querySelectorAll<HTMLElement>('.menu-plato-item');
+        const allHidden =
+          items.length > 0 &&
+          Array.from(items).every((it) => it.classList.contains('is-alergia-hidden'));
+        section.classList.toggle('is-alergia-empty', allHidden);
+      });
+
+      if (featuredSection) {
+        const featuredItems = featuredSection.querySelectorAll<HTMLElement>('.menu-featured');
+        const allHidden =
+          featuredItems.length > 0 &&
+          Array.from(featuredItems).every((it) => it.classList.contains('is-alergia-hidden'));
+        featuredSection.classList.toggle('is-alergia-empty', allHidden);
+      }
+
+      if (emptyEl) {
+        const visible = Array.from(allItems).some((item) => {
+          if (item.classList.contains('is-alergia-hidden')) return false;
+          const section = item.closest('[data-menu-cat], [data-destacados]');
+          if (section instanceof HTMLElement && section.classList.contains('is-hidden')) {
+            return false;
+          }
+          return true;
+        });
+        emptyEl.classList.toggle('hidden', !hasActive || visible);
+      }
+    };
+
+    bar.addEventListener('click', (e) => {
+      const pill = (e.target as Element)?.closest<HTMLElement>('[data-alergia-filtro]');
+      if (pill && bar.contains(pill)) {
+        const next = pill.getAttribute('aria-pressed') !== 'true';
+        pill.setAttribute('aria-pressed', next ? 'true' : 'false');
+        apply();
+        return;
+      }
+      const reset = (e.target as Element)?.closest<HTMLElement>('[data-alergia-reset]');
+      if (reset) {
+        pills.forEach((p) => p.setAttribute('aria-pressed', 'false'));
+        apply();
+      }
+    });
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+
+  function initAllEngines() {
+    document.querySelectorAll<HTMLElement>('[data-menu-panel]').forEach((panel) => {
+      // Currency engine (idempotent via flag)
+      if (panel.dataset.currencyReady !== 'true') {
+        panel.dataset.currencyReady = 'true';
+        initCurrencyEngine(panel);
+      }
+      // Allergen engine (idempotent via flag)
+      if (panel.dataset.alergiaReady !== 'true') {
+        panel.dataset.alergiaReady = 'true';
+        initAlergiaEngine(panel);
+      }
+    });
+  }
+
+  function boot() {
+    initMenuPanels();
+    initAllEngines();
+  }
+
+  boot();
+  document.addEventListener('astro:page-load', boot);
 </script>

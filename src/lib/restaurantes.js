@@ -22,6 +22,7 @@ import {
 } from './layout-themes.js';
 import { resolveMediaUrl } from './cloudinary.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
+import { normalizeAlergias } from '../config/nutricion.js';
 
 /**
  * Formatea el precio NUMERIC de Postgres para la UI móvil.
@@ -620,7 +621,7 @@ export async function getRestauranteBySlug(slug) {
       proteinas: plato.proteinas == null ? null : Number(plato.proteinas),
       carbs: plato.carbs == null ? null : Number(plato.carbs),
       grasas: plato.grasas == null ? null : Number(plato.grasas),
-      alergias: Array.isArray(plato.alergias) ? plato.alergias : [],
+      alergias: normalizeAlergias(plato.alergias),
       ingredientesDetalle: plato.ingredientes_detalle ?? '',
     };
 

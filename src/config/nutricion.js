@@ -17,12 +17,13 @@ export const ALERGENOS_OPTIONS = [
   { id: 'soja', label: 'Soja' },
   { id: 'sesamo', label: 'Sésamo' },
   { id: 'picante', label: 'Picante' },
+  { id: 'carne', label: 'Carne' },
   { id: 'no_vegano', label: 'No vegano' },
 ];
 
 /**
  * Píldoras públicas: ocultan platos que contengan alguno de `hidesAny`.
- * @type {Array<{ id: string, label: string, emoji: string, hidesAny: string[] }>}
+ * @type {Array<{ id: string, label: string, emoji: string, hidesAny: string[], hideUnknown?: boolean }>}
  */
 export const NUTRICION_FILTROS_PUBLICOS = [
   { id: 'sin_gluten', label: 'Sin Gluten', emoji: '🌾', hidesAny: ['gluten'] },
@@ -30,7 +31,8 @@ export const NUTRICION_FILTROS_PUBLICOS = [
     id: 'vegano',
     label: 'Vegano',
     emoji: '🌱',
-    hidesAny: ['lacteos', 'huevo', 'mariscos', 'pescado', 'no_vegano'],
+    hidesAny: ['lacteos', 'huevo', 'mariscos', 'pescado', 'carne', 'no_vegano'],
+    hideUnknown: true,
   },
   { id: 'sin_lacteos', label: 'Sin Lácteos', emoji: '🥛', hidesAny: ['lacteos'] },
   {
@@ -102,7 +104,9 @@ export function platoHasNutricionData(plato) {
     return Number.isFinite(n) && n >= 0;
   });
   const alergias = normalizeAlergias(plato.alergias).length > 0;
-  const ingredientes = String(plato.ingredientes_detalle || '').trim().length > 0;
+  const ingredientes = String(
+    plato.ingredientes_detalle || plato.ingredientesDetalle || '',
+  ).trim().length > 0;
   return macros || alergias || ingredientes;
 }
 

@@ -20,6 +20,7 @@ import {
 } from '../../lib/layout-themes.js';
 import { resolveMediaUrl } from '../../lib/cloudinary.js';
 import { resolveSafeHomeProps } from '../../lib/home-safe-props.js';
+import { fetchTasasCambio } from '../../lib/tasas-cambio.js';
 import {
   scopeCssAvanzado,
   normalizeEstiloNavegacion,
@@ -46,6 +47,7 @@ const showReservas = Boolean(gadgets?.reservas);
 const showLlamarMesero = Boolean(gadgets?.llamarMesero);
 const showBoutique = Boolean(gadgets?.boutique);
 const showNutricion = Boolean(gadgets?.nutricion);
+const tasasCambio = await fetchTasasCambio();
 const boutiqueProductos = Array.isArray(restaurante?.boutique?.productos)
   ? restaurante.boutique.productos
   : [];
@@ -487,6 +489,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         destacados={menu?.destacados ?? []}
         fondoGlobal={fondoMenu}
         showNutricion={showNutricion}
+        tasaBcv={tasasCambio.usdVes}
+        tasaEur={tasasCambio.eurVes}
         estilos={estilos}
       />
     </OverlayPanel>
@@ -897,6 +901,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     soja: 'Soja',
     sesamo: 'Sésamo',
     picante: 'Picante',
+    carne: 'Carne',
     no_vegano: 'No vegano',
   };
 
@@ -1002,7 +1007,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     const titleEl = app.querySelector('[data-detalle-title]');
     const imgEl = app.querySelector('[data-detalle-img]');
     const videoEl = app.querySelector('[data-detalle-video]');
-    if (!(modal instanceof HTMLElement) || !url) return;
+    if (!(modal instanceof HTMLElement)) return;
+    if (!url && !meta?.hasNut) return;
 
     clearDetalleMedia(app);
     if (titleEl) titleEl.textContent = title || 'Plato';
@@ -1068,7 +1074,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       void videoEl.play().catch(() => {
         /* autoplay bloqueado — silencioso */
       });
-    } else if (imgEl instanceof HTMLImageElement) {
+    } else if (url && imgEl instanceof HTMLImageElement) {
       imgEl.src = url;
       imgEl.alt = title || 'Plato';
       imgEl.classList.remove('hidden');
@@ -1178,7 +1184,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           const title = detalleBtn.dataset.mediaTitle || 'Plato';
           const platoId = detalleBtn.dataset.platoId || '';
           const platoNombre = detalleBtn.dataset.platoNombre || title;
-          if (url) {
+          if (url || detalleBtn.dataset.platoHasNut === 'true') {
             openDetalle(root, url, title, platoId, platoNombre, {
               desc: detalleBtn.dataset.platoDesc || '',
               hasNut: detalleBtn.dataset.platoHasNut === 'true',
