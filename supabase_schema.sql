@@ -85,6 +85,22 @@ COMMENT ON COLUMN public.restaurantes.gadget_boutique IS
 COMMENT ON COLUMN public.restaurantes.config_boutique IS
   'JSON: { "productos": [{ "id", "nombre", "precio", "imagen_url", "activo" }] }.';
 
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS gadget_nutricion BOOLEAN NOT NULL DEFAULT FALSE;
+
+COMMENT ON COLUMN public.restaurantes.gadget_nutricion IS
+  'Activa ficha nutricional, macros y filtros de alérgenos (admin + WebApp).';
+
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+
+COMMENT ON COLUMN public.restaurantes.activo IS
+  'Si FALSE, el local queda fuera de la WebApp pública (impago / pausa). SuperAdmin puede reactivar.';
+
+CREATE INDEX IF NOT EXISTS idx_restaurantes_activo
+  ON public.restaurantes (activo)
+  WHERE activo = TRUE;
+
 -- Backfill desde columnas legacy / JSON
 UPDATE public.restaurantes
 SET gadget_mesero = TRUE
@@ -296,6 +312,22 @@ ALTER TABLE public.platos
 
 COMMENT ON COLUMN public.platos.orden IS
   'Posición del plato dentro de su categoría (orden visual del menú / admin).';
+
+-- Ficha nutricional opcional (gadget_nutricion)
+ALTER TABLE public.platos
+  ADD COLUMN IF NOT EXISTS calorias INTEGER,
+  ADD COLUMN IF NOT EXISTS proteinas INTEGER,
+  ADD COLUMN IF NOT EXISTS carbs INTEGER,
+  ADD COLUMN IF NOT EXISTS grasas INTEGER,
+  ADD COLUMN IF NOT EXISTS alergias TEXT[] DEFAULT '{}'::text[],
+  ADD COLUMN IF NOT EXISTS ingredientes_detalle TEXT;
+
+COMMENT ON COLUMN public.platos.calorias IS 'kcal por porción (opcional, gadget nutrición).';
+COMMENT ON COLUMN public.platos.proteinas IS 'Proteínas en gramos (opcional).';
+COMMENT ON COLUMN public.platos.carbs IS 'Carbohidratos en gramos (opcional).';
+COMMENT ON COLUMN public.platos.grasas IS 'Grasas en gramos (opcional).';
+COMMENT ON COLUMN public.platos.alergias IS 'Códigos de alérgenos/restricciones (text[]).';
+COMMENT ON COLUMN public.platos.ingredientes_detalle IS 'Desglose de ingredientes para ficha nutricional.';
 
 CREATE INDEX IF NOT EXISTS idx_platos_restaurante_categoria_orden
   ON public.platos (restaurante_id, categoria_id, orden);

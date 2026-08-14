@@ -273,10 +273,14 @@ function resolveMapsEmbed(direccion) {
               const searchKey = `${nombre} ${r.slug || ''}`.toLowerCase();
               return (
               <li
-                class="super-hub-card group solid-obstacle"
+                class:list={[
+                  'super-hub-card group solid-obstacle',
+                  r.activo === false && 'super-hub-card--paused',
+                ]}
                 data-restaurante-id={r.id}
                 data-hub-name={searchKey}
                 data-hub-slug={String(r.slug || '')}
+                data-hub-activo={r.activo === false ? 'false' : 'true'}
               >
                 <div class="super-hub-card__media">
                   {/* Cover 100% */}
@@ -320,7 +324,16 @@ function resolveMapsEmbed(direccion) {
                     )}
                   </div>
 
-                  <div class="absolute left-3 top-3 z-20">
+                  <div class="absolute left-3 top-3 z-20 flex flex-col gap-1.5">
+                    {r.activo === false ? (
+                      <span
+                        data-estado-badge
+                        class="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-black/55 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-amber-300 backdrop-blur-md"
+                      >
+                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true"></span>
+                        Desactivado
+                      </span>
+                    ) : null}
                     {tieneAcceso ? (
                       <span
                         data-access-badge
@@ -404,6 +417,46 @@ function resolveMapsEmbed(direccion) {
                           <span class="super-card-menu__hint">/{r.slug}</span>
                         </span>
                       </a>
+                      <div class="super-card-menu__divider" aria-hidden="true"></div>
+                      <button
+                        type="button"
+                        data-toggle-activo
+                        data-activo={r.activo === false ? 'false' : 'true'}
+                        class="super-card-menu__item"
+                        role="menuitem"
+                      >
+                        <span class="super-card-menu__icon" aria-hidden="true">
+                          {r.activo === false ? (
+                            <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>
+                          )}
+                        </span>
+                        <span class="super-card-menu__copy">
+                          <span class="super-card-menu__label" data-toggle-activo-label>
+                            {r.activo === false ? 'Reactivar local' : 'Desactivar local'}
+                          </span>
+                          <span class="super-card-menu__hint" data-toggle-activo-hint>
+                            {r.activo === false
+                              ? 'Volver a publicar la WebApp'
+                              : 'Pausar sin borrar (impago)'}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        data-delete-restaurante
+                        class="super-card-menu__item super-card-menu__item--danger"
+                        role="menuitem"
+                      >
+                        <span class="super-card-menu__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12"/><path d="M10 11v6M14 11v6"/></svg>
+                        </span>
+                        <span class="super-card-menu__copy">
+                          <span class="super-card-menu__label">Eliminar permanentemente</span>
+                          <span class="super-card-menu__hint">Borra menú y datos · irreversible</span>
+                        </span>
+                      </button>
                     </div>
                   </details>
 
@@ -798,6 +851,45 @@ function resolveMapsEmbed(direccion) {
   }
 
   function initCardMenus() {
+    /**
+     * @param {HTMLElement} card
+     * @param {boolean} activo
+     * @param {HTMLElement} [toggleBtn]
+     */
+    function paintHubActivo(card, activo, toggleBtn) {
+      card.dataset.hubActivo = activo ? 'true' : 'false';
+      card.classList.toggle('super-hub-card--paused', !activo);
+
+      let badge = card.querySelector('[data-estado-badge]');
+      const badgeHost = card.querySelector('.absolute.left-3.top-3');
+      if (!activo) {
+        if (!(badge instanceof HTMLElement) && badgeHost instanceof HTMLElement) {
+          badge = document.createElement('span');
+          badge.setAttribute('data-estado-badge', '');
+          badge.className =
+            'inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-black/55 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-amber-300 backdrop-blur-md';
+          badge.innerHTML =
+            '<span class="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true"></span>Desactivado';
+          badgeHost.prepend(badge);
+        }
+      } else if (badge instanceof HTMLElement) {
+        badge.remove();
+      }
+
+      const btn = toggleBtn || card.querySelector('[data-toggle-activo]');
+      if (btn instanceof HTMLElement) {
+        btn.dataset.activo = activo ? 'true' : 'false';
+        const label = btn.querySelector('[data-toggle-activo-label]');
+        const hint = btn.querySelector('[data-toggle-activo-hint]');
+        if (label) label.textContent = activo ? 'Desactivar local' : 'Reactivar local';
+        if (hint) {
+          hint.textContent = activo
+            ? 'Pausar sin borrar (impago)'
+            : 'Volver a publicar la WebApp';
+        }
+      }
+    }
+
     document.querySelectorAll('[data-card-menu]').forEach((details) => {
       if (!(details instanceof HTMLDetailsElement)) return;
       if (details.dataset.bound === 'true') return;
@@ -859,6 +951,96 @@ function resolveMapsEmbed(direccion) {
             toggleOverlayPanel(infoPanel instanceof HTMLElement ? infoPanel : null, true);
           });
         });
+        root.querySelectorAll('[data-toggle-activo]').forEach((btn) => {
+          if (!(btn instanceof HTMLElement) || btn.dataset.boundAction === 'true') return;
+          btn.dataset.boundAction = 'true';
+          btn.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const cardEl = details.closest('li.super-hub-card');
+            if (!(cardEl instanceof HTMLElement)) return;
+            const id = cardEl.dataset.restauranteId || '';
+            const slug = cardEl.dataset.hubSlug || '';
+            const currentlyActive = cardEl.dataset.hubActivo !== 'false';
+            const nextActivo = !currentlyActive;
+            const nombre = slug || 'este local';
+            const ok = window.confirm(
+              nextActivo
+                ? `¿Reactivar «${nombre}»?\nLa WebApp pública volverá a estar disponible.`
+                : `¿Desactivar «${nombre}»?\nLa WebApp pública quedará fuera de línea. Los datos se conservan.`,
+            );
+            if (!ok) return;
+            closeCardMenu(details, panel);
+            btn.setAttribute('disabled', 'true');
+            try {
+              const res = await fetch('/api/update-restaurante-estado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, activo: nextActivo }),
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(json.error || 'No se pudo actualizar');
+              paintHubActivo(cardEl, nextActivo, btn);
+            } catch (err) {
+              window.alert(err instanceof Error ? err.message : 'Error al actualizar');
+            } finally {
+              btn.removeAttribute('disabled');
+            }
+          });
+        });
+        root.querySelectorAll('[data-delete-restaurante]').forEach((btn) => {
+          if (!(btn instanceof HTMLElement) || btn.dataset.boundAction === 'true') return;
+          btn.dataset.boundAction = 'true';
+          btn.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const cardEl = details.closest('li.super-hub-card');
+            if (!(cardEl instanceof HTMLElement)) return;
+            const id = cardEl.dataset.restauranteId || '';
+            const slug = String(cardEl.dataset.hubSlug || '').trim();
+            if (!slug) {
+              window.alert('Este local no tiene slug; no se puede confirmar la eliminación.');
+              return;
+            }
+            const typed = window.prompt(
+              `Esto BORRA el restaurante, su menú y datos de forma permanente.\n\nEscribí el slug para confirmar:\n${slug}`,
+              '',
+            );
+            if (typed == null) return;
+            if (String(typed).trim().toLowerCase() !== slug.toLowerCase()) {
+              window.alert('Slug incorrecto. Eliminación cancelada.');
+              return;
+            }
+            closeCardMenu(details, panel);
+            btn.setAttribute('disabled', 'true');
+            try {
+              const res = await fetch('/api/delete-restaurante', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, confirm: slug }),
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(json.error || 'No se pudo eliminar');
+              cardEl.remove();
+              const countEl = document.querySelector('[data-hub-search-count]');
+              const cardsLeft = document.querySelectorAll(
+                'li.super-hub-card[data-restaurante-id]',
+              ).length;
+              if (countEl) {
+                countEl.textContent =
+                  cardsLeft === 1 ? '1 local' : `${cardsLeft} locales`;
+              }
+              const emptyEl = document.querySelector('[data-hub-search-empty]');
+              if (emptyEl instanceof HTMLElement) {
+                emptyEl.hidden = cardsLeft > 0;
+              }
+            } catch (err) {
+              window.alert(err instanceof Error ? err.message : 'Error al eliminar');
+            } finally {
+              btn.removeAttribute('disabled');
+            }
+          });
+        });
       };
 
       bindPanelActions(panel);
@@ -871,7 +1053,9 @@ function resolveMapsEmbed(direccion) {
         if (
           item.hasAttribute('data-open-ficha') ||
           item.hasAttribute('data-open-creds') ||
-          item.hasAttribute('data-open-info')
+          item.hasAttribute('data-open-info') ||
+          item.hasAttribute('data-toggle-activo') ||
+          item.hasAttribute('data-delete-restaurante')
         ) {
           return;
         }

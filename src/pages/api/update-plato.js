@@ -1,5 +1,6 @@
 import { isSuperAdminUser } from '../../config/superadmin.js';
 import { uploadPlatoImage } from '../../lib/platos-admin.js';
+import { applyNutricionPatch } from '../../lib/platos-nutricion.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
 
@@ -42,6 +43,12 @@ export async function POST({ request, cookies }) {
         destacado: form.get('destacado'),
         imagen_url: form.get('imagen_url'),
         restaurante_id: form.get('restaurante_id'),
+        calorias: form.get('calorias'),
+        proteinas: form.get('proteinas'),
+        carbs: form.get('carbs'),
+        grasas: form.get('grasas'),
+        alergias: form.get('alergias'),
+        ingredientes_detalle: form.get('ingredientes_detalle'),
       };
       const file = form.get('imagen');
       if (file instanceof File && file.size > 0) imagenFile = file;
@@ -103,6 +110,8 @@ export async function POST({ request, cookies }) {
     }
   }
 
+  applyNutricionPatch(raw, patch);
+
   if (imagenFile) {
     let restauranteId = String(raw.restaurante_id ?? '').trim();
     if (!restauranteId) {
@@ -132,8 +141,56 @@ export async function POST({ request, cookies }) {
     .from('platos')
     .update(patch)
     .eq('id', id)
-    .select('id, nombre, descripcion, precio, disponible, destacado, imagen_url')
+    .select(
+      'id, nombre, descripcion, precio, disponible, destacado, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
+    )
     .maybeSingle();
+
+  if (
+    error &&
+    /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle|column|schema cache/i.test(
+      error.message || '',
+    )
+  ) {
+    console.warn('[api/update-plato] nutrición no disponible; patch sin macros.', error.message);
+    const legacy = { ...patch };
+    delete legacy.calorias;
+    delete legacy.proteinas;
+    delete legacy.carbs;
+    delete legacy.grasas;
+    delete legacy.alergias;
+    delete legacy.ingredientes_detalle;
+    if (Object.keys(legacy).length === 0) {
+      return json({
+        error:
+          'Columnas de nutrición no existen aún en Supabase. Ejecutá supabase_nutricion.sql.',
+      }, 400);
+    }
+    const retry = await writeClient
+      .from('platos')
+      .update(legacy)
+      .eq('id', id)
+      .select('id, nombre, descripcion, precio, disponible, destacado, imagen_url')
+      .maybeSingle();
+    if (retry.error) {
+      console.error('[api/update-plato]', retry.error.message);
+      return json({ error: retry.error.message }, 400);
+    }
+    if (!retry.data) {
+      return json(
+        {
+          error: isSuperAdminUser(user)
+            ? 'Plato no encontrado. Revisá RLS / service role.'
+            : 'Plato no encontrado o sin permiso',
+        },
+        404,
+      );
+    }
+    return json({
+      ok: true,
+      plato: { ...retry.data, precio: Number(retry.data.precio) },
+    });
+  }
 
   if (error) {
     console.error('[api/update-plato]', error.message);

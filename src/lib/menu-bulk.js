@@ -4,7 +4,17 @@
  * Categoría | Nombre | Descripción | Precio | Destacado | ImagenURL
  *
  * Campos faltantes / inválidos se rellenan con defaults (no bloquean el lote).
+ * La columna Categoría es la fuente de verdad; aliases conocidos se canonicizan
+ * vía menu-macros (ej. Guarniciones → Contornos).
  */
+
+import {
+  canonicalizeCategoryName,
+  getMacroById,
+  MENU_MACROS,
+  resolveMacroId,
+} from '../config/menu-macros.js';
+
 
 /**
  * Destacado: SI/sí/true/1 → true; NO/vacío/resto → false.
@@ -146,7 +156,7 @@ export function parseMenuBulkText(text) {
       continue;
     }
 
-    const categoria = catRaw.trim() || 'General';
+    const categoria = canonicalizeCategoryName(catRaw.trim() || 'General');
     const descripcion = descRaw.trim();
     const precio = parsePrecio(precioRaw);
     const destacado = parseDestacado(destacadoRaw);
@@ -164,6 +174,43 @@ export function parseMenuBulkText(text) {
   }
 
   return { rows, errors };
+}
+
+/**
+ * Preview client/server: filas parseadas + macro UI donde caerá cada una.
+ * @param {string} text
+ * @returns {{
+ *   rows: Array<ParsedPlatoRow & { macroId: string, macroLabel: string }>,
+ *   errors: string[],
+ *   summary: Array<{ id: string, label: string, count: number }>,
+ * }}
+ */
+export function previewMenuBulkText(text) {
+  const { rows, errors } = parseMenuBulkText(text);
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+
+  const enriched = rows.map((row) => {
+    const macroId = resolveMacroId(row.categoria);
+    const macro = getMacroById(macroId);
+    const macroLabel = macro?.label || (macroId === 'otros' ? 'Otros' : macroId);
+    counts.set(macroId, (counts.get(macroId) || 0) + 1);
+    return { ...row, macroId, macroLabel };
+  });
+
+  const order = [...MENU_MACROS.map((m) => m.id), 'otros'];
+  const summary = order
+    .filter((id) => counts.has(id))
+    .map((id) => {
+      const macro = getMacroById(id);
+      return {
+        id,
+        label: macro?.label || (id === 'otros' ? 'Otros' : id),
+        count: counts.get(id) || 0,
+      };
+    });
+
+  return { rows: enriched, errors, summary };
 }
 
 /**

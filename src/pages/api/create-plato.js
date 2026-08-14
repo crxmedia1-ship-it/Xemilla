@@ -4,6 +4,7 @@ import {
   getOrCreateDefaultCategoria,
   uploadPlatoImage,
 } from '../../lib/platos-admin.js';
+import { pickNutricionInsert } from '../../lib/platos-nutricion.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
 
@@ -51,6 +52,12 @@ export async function POST({ request, cookies }) {
         categoria_id: form.get('categoria_id'),
         categoria: form.get('categoria'),
         imagen_url: form.get('imagen_url'),
+        calorias: form.get('calorias'),
+        proteinas: form.get('proteinas'),
+        carbs: form.get('carbs'),
+        grasas: form.get('grasas'),
+        alergias: form.get('alergias'),
+        ingredientes_detalle: form.get('ingredientes_detalle'),
       };
       const file = form.get('imagen');
       if (file instanceof File && file.size > 0) imagenFile = file;
@@ -134,22 +141,44 @@ export async function POST({ request, cookies }) {
     if (uploaded.url) imagenUrl = uploaded.url;
   }
 
-  const { data, error } = await writeClient
+  const nutricion = pickNutricionInsert(raw);
+
+  const baseRow = {
+    restaurante_id: restauranteId,
+    categoria_id: categoriaId,
+    nombre,
+    descripcion,
+    precio,
+    imagen_url: imagenUrl,
+    disponible: true,
+    destacado,
+  };
+
+  let { data, error } = await writeClient
     .from('platos')
-    .insert({
-      restaurante_id: restauranteId,
-      categoria_id: categoriaId,
-      nombre,
-      descripcion,
-      precio,
-      imagen_url: imagenUrl,
-      disponible: true,
-      destacado,
-    })
+    .insert({ ...baseRow, ...nutricion })
     .select(
-      'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id',
+      'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
     )
     .maybeSingle();
+
+  if (
+    error &&
+    /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle|column|schema cache/i.test(
+      error.message || '',
+    )
+  ) {
+    console.warn('[api/create-plato] nutrición no disponible; insert sin macros.', error.message);
+    const retry = await writeClient
+      .from('platos')
+      .insert(baseRow)
+      .select(
+        'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id',
+      )
+      .maybeSingle();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error || !data) {
     console.error('[api/create-plato]', error?.message);

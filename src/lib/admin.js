@@ -39,6 +39,7 @@ const RESTAURANTE_ADMIN_SELECT = [
   'gadget_reservas',
   'gadget_llamar_mesero',
   'gadget_boutique',
+  'gadget_nutricion',
   'config_wifi',
   'config_reservas',
   'config_boutique',
@@ -222,6 +223,8 @@ export async function getAdminDashboardData(ctx, opts = {}) {
 
   const readClient = isSuper ? writeClient : operativoReadClient;
 
+  const platosSelectWithNutricion =
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, categorias(nombre)';
   const platosSelectWithOrden =
     'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, categorias(nombre)';
   const platosSelectBase =
@@ -230,7 +233,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
   const [{ data: platosRaw, error: platosError }, catResult] = await Promise.all([
     readClient
       .from('platos')
-      .select(platosSelectWithOrden)
+      .select(platosSelectWithNutricion)
       .eq('restaurante_id', restaurante.id)
       .order('orden', { ascending: true })
       .order('id', { ascending: true }),
@@ -244,22 +247,34 @@ export async function getAdminDashboardData(ctx, opts = {}) {
   let platos = platosRaw;
   let platosLoadError = platosError;
   if (platosLoadError) {
-    const missingOrden = /orden|column|does not exist|schema cache/i.test(
-      platosLoadError.message || '',
-    );
-    if (missingOrden) {
-      console.warn(
-        '[admin] platos.orden no disponible; SELECT/ORDER fallback.',
-        platosLoadError.message,
-      );
+    const msg = platosLoadError.message || '';
+    const missingNutricion = /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle/i.test(msg);
+    const missingOrden = /\borden\b/i.test(msg);
+    const missingColumn = /column|does not exist|schema cache/i.test(msg);
+    if (missingColumn || missingNutricion || missingOrden) {
+      console.warn('[admin] platos SELECT fallback.', msg);
+      let fallbackSelect = platosSelectWithOrden;
+      if (missingOrden && !missingNutricion) fallbackSelect = platosSelectBase;
+      else if (missingNutricion && missingOrden) fallbackSelect = platosSelectBase;
       const fallback = await readClient
         .from('platos')
-        .select(platosSelectBase)
+        .select(fallbackSelect)
         .eq('restaurante_id', restaurante.id)
-        .order('categoria_id', { ascending: true })
+        .order(fallbackSelect.includes('orden') ? 'orden' : 'categoria_id', { ascending: true })
         .order('id', { ascending: true });
-      platos = fallback.data;
-      platosLoadError = fallback.error;
+      if (fallback.error && fallbackSelect !== platosSelectBase) {
+        const baseFallback = await readClient
+          .from('platos')
+          .select(platosSelectBase)
+          .eq('restaurante_id', restaurante.id)
+          .order('categoria_id', { ascending: true })
+          .order('id', { ascending: true });
+        platos = baseFallback.data;
+        platosLoadError = baseFallback.error;
+      } else {
+        platos = fallback.data;
+        platosLoadError = fallback.error;
+      }
     }
   }
 
@@ -317,6 +332,12 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     categoria_id: p.categoria_id,
     orden: Number.isFinite(Number(p.orden)) ? Number(p.orden) : index + 1,
     categoria_nombre: p.categorias?.nombre ?? 'Sin categoría',
+    calorias: p.calorias == null ? null : Number(p.calorias),
+    proteinas: p.proteinas == null ? null : Number(p.proteinas),
+    carbs: p.carbs == null ? null : Number(p.carbs),
+    grasas: p.grasas == null ? null : Number(p.grasas),
+    alergias: Array.isArray(p.alergias) ? p.alergias : [],
+    ingredientes_detalle: p.ingredientes_detalle ?? '',
   }));
 
   platosMapped.sort((a, b) => {

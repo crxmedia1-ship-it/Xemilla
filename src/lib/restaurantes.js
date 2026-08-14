@@ -145,6 +145,7 @@ const RESTAURANTE_SELECT_FULL = [
   'gadget_mesero',
   'gadget_cuenta',
   'gadget_boutique',
+  'gadget_nutricion',
   'color_primario',
   'color_fondo',
   'color_texto',
@@ -501,6 +502,9 @@ export async function getRestauranteBySlug(slug) {
   }
   if (!row) return null;
 
+  // Local desactivado (impago / pausa): no exponer WebApp pública
+  if (row.activo === false) return null;
+
   console.log('[getRestauranteBySlug] fila Supabase (completa):', row);
   console.log(
     '[getRestauranteBySlug] raw home_theme:',
@@ -509,7 +513,7 @@ export async function getRestauranteBySlug(slug) {
     row.ubicacion_theme,
   );
 
-  const [{ data: categoriasRaw, error: catError }, { data: platos, error: platosError }] =
+  const [{ data: categoriasRaw, error: catError }, platosResult] =
     await Promise.all([
       supabase
         .from('categorias')
@@ -519,12 +523,50 @@ export async function getRestauranteBySlug(slug) {
       supabase
         .from('platos')
         .select(
-          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado',
+          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
         )
         .eq('restaurante_id', row.id)
         .eq('disponible', true)
+        .order('orden', { ascending: true })
         .order('id', { ascending: true }),
     ]);
+
+  let platos = platosResult.data;
+  let platosError = platosResult.error;
+  if (platosError) {
+    const msg = platosError.message || '';
+    const missingNutricion = /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle/i.test(msg);
+    const missingOrden = /\borden\b/i.test(msg);
+    const missingColumn = /column|does not exist|schema cache/i.test(msg);
+    if (missingColumn || missingNutricion || missingOrden) {
+      console.warn('[supabase] platos SELECT fallback.', msg);
+      const select =
+        missingOrden && !missingNutricion
+          ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado'
+          : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden';
+      const fallback = await supabase
+        .from('platos')
+        .select(select)
+        .eq('restaurante_id', row.id)
+        .eq('disponible', true)
+        .order(select.includes('orden') ? 'orden' : 'id', { ascending: true })
+        .order('id', { ascending: true });
+      platos = fallback.data;
+      platosError = fallback.error;
+      if (platosError && select.includes('orden')) {
+        const base = await supabase
+          .from('platos')
+          .select(
+            'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado',
+          )
+          .eq('restaurante_id', row.id)
+          .eq('disponible', true)
+          .order('id', { ascending: true });
+        platos = base.data;
+        platosError = base.error;
+      }
+    }
+  }
 
   let categorias = categoriasRaw;
   if (catError) {
@@ -574,6 +616,12 @@ export async function getRestauranteBySlug(slug) {
       destacado: Boolean(plato.destacado),
       categoriaId: String(plato.categoria_id),
       categoriaNombre: catNombreById.get(plato.categoria_id) ?? 'Menú',
+      calorias: plato.calorias == null ? null : Number(plato.calorias),
+      proteinas: plato.proteinas == null ? null : Number(plato.proteinas),
+      carbs: plato.carbs == null ? null : Number(plato.carbs),
+      grasas: plato.grasas == null ? null : Number(plato.grasas),
+      alergias: Array.isArray(plato.alergias) ? plato.alergias : [],
+      ingredientesDetalle: plato.ingredientes_detalle ?? '',
     };
 
     platosByCategoria.get(key).push(mapped);
@@ -720,6 +768,7 @@ export async function getRestauranteBySlug(slug) {
       llamarMesero:
         Boolean(row.gadget_mesero) || Boolean(row.gadget_llamar_mesero),
       boutique: Boolean(row.gadget_boutique),
+      nutricion: Boolean(row.gadget_nutricion),
     },
     wifi: {
       ssid: wifiSsid,

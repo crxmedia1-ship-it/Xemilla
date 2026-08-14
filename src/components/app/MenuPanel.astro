@@ -1,4 +1,9 @@
 ---
+import {
+  NUTRICION_FILTROS_PUBLICOS,
+  platoHasNutricionData,
+} from '../../config/nutricion.js';
+
 interface Plato {
   id?: number;
   nombre: string;
@@ -8,6 +13,12 @@ interface Plato {
   destacado?: boolean;
   categoriaId?: string;
   categoriaNombre?: string;
+  calorias?: number | null;
+  proteinas?: number | null;
+  carbs?: number | null;
+  grasas?: number | null;
+  alergias?: string[];
+  ingredientesDetalle?: string;
 }
 
 interface Props {
@@ -21,6 +32,8 @@ interface Props {
   destacados?: Plato[];
   /** Fondo global del menú (fallback) */
   fondoGlobal?: { tipo?: string; valor?: string };
+  /** Gadget nutrición activo — si false, cero rastro DOM */
+  showNutricion?: boolean;
   estilos: {
     panelColor: string;
     borderColor: string;
@@ -35,7 +48,13 @@ interface Props {
   };
 }
 
-const { categorias, destacados = [], fondoGlobal = { tipo: 'color', valor: '' }, estilos } = Astro.props;
+const {
+  categorias,
+  destacados = [],
+  fondoGlobal = { tipo: 'color', valor: '' },
+  showNutricion = false,
+  estilos,
+} = Astro.props;
 
 function hasMedia(url: string | null | undefined) {
   return Boolean(url && String(url).trim());
@@ -43,6 +62,10 @@ function hasMedia(url: string | null | undefined) {
 
 function isVideoUrl(url: string) {
   return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
+}
+
+function alergiasCsv(plato: Plato) {
+  return Array.isArray(plato.alergias) ? plato.alergias.join(',') : '';
 }
 
 const CHIP_BASE =
@@ -61,6 +84,7 @@ const globalBgValor = fondoGlobal.valor || '';
   data-menu-panel
   data-menu-bg-global-type={globalBgType}
   data-menu-bg-global-valor={globalBgValor}
+  data-show-nutricion={showNutricion ? 'true' : 'false'}
 >
   {/* Capas de fondo dinámico por categoría — morph fluido + fallback global */}
   <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true" data-menu-bg-root>
@@ -176,6 +200,27 @@ const globalBgValor = fondoGlobal.valor || '';
         }
       </div>
     </nav>
+    {
+      showNutricion && (
+        <div
+          class="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-hide [-webkit-overflow-scrolling:touch]"
+          data-alergias-filtros
+          aria-label="Filtros por alérgenos"
+        >
+          {NUTRICION_FILTROS_PUBLICOS.map((f) => (
+            <button
+              type="button"
+              data-alergia-filtro={f.id}
+              data-hides-any={f.hidesAny.join(',')}
+              class="shrink-0 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[0.58rem] font-semibold tracking-[0.12em] text-[color:color-mix(in_srgb,var(--color-texto)_70%,transparent)] backdrop-blur-md transition active:scale-95 aria-pressed:border-[color-mix(in_srgb,var(--color-primario)_65%,transparent)] aria-pressed:bg-[var(--color-primario)] aria-pressed:text-white"
+              aria-pressed="false"
+            >
+              <span aria-hidden="true">{f.emoji}</span> {f.label}
+            </button>
+          ))}
+        </div>
+      )
+    }
   </div>
 
   {
@@ -205,6 +250,7 @@ const globalBgValor = fondoGlobal.valor || '';
                 data-reveal
                 data-goto-plato={plato.id}
                 data-goto-cat={catId}
+                data-alergias={alergiasCsv(plato)}
                 aria-label={`Ir a ${plato.nombre} en ${catName}`}
               >
                 <div class="menu-media relative mb-3.5 w-full overflow-hidden bg-black/40 aspect-[16/10]">
@@ -263,12 +309,14 @@ const globalBgValor = fondoGlobal.valor || '';
           <ul class="menu-items">
             {cat.platos.map((plato) => {
               const mediaUrl = plato.imagenUrl?.trim() || '';
+              const hasNut = showNutricion && platoHasNutricionData(plato);
               return (
                 <li
                   id={`plato-${plato.id}`}
                   class="menu-plato-item group scroll-mt-32"
                   data-reveal
                   data-plato-id={plato.id}
+                  data-alergias={alergiasCsv(plato)}
                 >
                   <div class="flex items-baseline gap-1">
                     <h4 class="shrink max-w-[58%] text-[1.02rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
@@ -294,6 +342,14 @@ const globalBgValor = fondoGlobal.valor || '';
                       data-media-title={plato.nombre}
                       data-plato-id={plato.id}
                       data-plato-nombre={plato.nombre}
+                      data-plato-desc={plato.descripcion || ''}
+                      data-plato-calorias={hasNut && plato.calorias != null ? String(plato.calorias) : ''}
+                      data-plato-proteinas={hasNut && plato.proteinas != null ? String(plato.proteinas) : ''}
+                      data-plato-carbs={hasNut && plato.carbs != null ? String(plato.carbs) : ''}
+                      data-plato-grasas={hasNut && plato.grasas != null ? String(plato.grasas) : ''}
+                      data-plato-alergias={hasNut ? alergiasCsv(plato) : ''}
+                      data-plato-ingredientes={hasNut ? (plato.ingredientesDetalle || '') : ''}
+                      data-plato-has-nut={hasNut ? 'true' : 'false'}
                       class="menu-btn mt-3 border border-white/15 bg-white/5 px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase text-[color:var(--color-texto)] shadow-inner backdrop-blur-md active:scale-95"
                     >
                       Ver detalle
@@ -352,6 +408,11 @@ const globalBgValor = fondoGlobal.valor || '';
   .menu-cat-section.is-hidden,
   [data-destacados].is-hidden {
     display: none;
+  }
+
+  .menu-plato-item.is-alergia-hidden,
+  .menu-featured.is-alergia-hidden {
+    display: none !important;
   }
 
   .menu-plato-item {
@@ -709,6 +770,47 @@ const globalBgValor = fondoGlobal.valor || '';
           }
         });
       });
+
+      // Filtros en vivo por alérgeno (solo si el gadget está activo en DOM)
+      const alergiaFiltros = panel.querySelector('[data-alergias-filtros]');
+      if (alergiaFiltros instanceof HTMLElement) {
+        const applyAlergiaFilters = () => {
+          const active = Array.from(
+            alergiaFiltros.querySelectorAll('[data-alergia-filtro][aria-pressed="true"]'),
+          );
+          /** @type {string[][]} */
+          const hideSets = active.map((pill) => {
+            if (!(pill instanceof HTMLElement)) return [];
+            return String(pill.dataset.hidesAny || '')
+              .split(',')
+              .map((s) => s.trim().toLowerCase())
+              .filter(Boolean);
+          });
+
+          panel.querySelectorAll('.menu-plato-item, .menu-featured').forEach((item) => {
+            if (!(item instanceof HTMLElement)) return;
+            const alergias = String(item.dataset.alergias || '')
+              .split(',')
+              .map((s) => s.trim().toLowerCase())
+              .filter(Boolean);
+            const hide =
+              hideSets.length > 0 &&
+              hideSets.some((hides) => hides.some((id) => alergias.includes(id)));
+            item.classList.toggle('is-alergia-hidden', hide);
+            item.setAttribute('aria-hidden', hide ? 'true' : 'false');
+          });
+        };
+
+        alergiaFiltros.addEventListener('click', (e) => {
+          const t = e.target;
+          if (!(t instanceof Element)) return;
+          const pill = t.closest('[data-alergia-filtro]');
+          if (!(pill instanceof HTMLElement) || !alergiaFiltros.contains(pill)) return;
+          const next = pill.getAttribute('aria-pressed') !== 'true';
+          pill.setAttribute('aria-pressed', next ? 'true' : 'false');
+          applyAlergiaFilters();
+        });
+      }
 
       panel.querySelectorAll('[data-goto-plato]').forEach((card) => {
         card.addEventListener('click', () => {

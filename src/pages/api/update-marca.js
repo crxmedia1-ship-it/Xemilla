@@ -250,6 +250,7 @@ async function handleUpdateMarca({ request, cookies }) {
 
   // Boutique / merch
   patch.gadget_boutique = toBool(raw.gadget_boutique);
+  patch.gadget_nutricion = toBool(raw.gadget_nutricion);
   let boutiqueProductos = null;
   if (Array.isArray(raw.boutique_productos)) {
     boutiqueProductos = raw.boutique_productos;
@@ -307,6 +308,7 @@ async function handleUpdateMarca({ request, cookies }) {
         'gadget_reservas',
         'gadget_llamar_mesero',
         'gadget_boutique',
+        'gadget_nutricion',
         'config_wifi',
         'config_reservas',
         'config_boutique',
@@ -317,7 +319,7 @@ async function handleUpdateMarca({ request, cookies }) {
   if (error) {
     // Si faltan columnas nuevas en Supabase, reintentar sin ellas (legacy)
     const missingNew =
-      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|config_boutique|home_theme|ubicacion_theme|column|schema cache/i.test(
+      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|gadget_nutricion|config_boutique|home_theme|ubicacion_theme|column|schema cache/i.test(
         error.message || '',
       );
     if (missingNew) {
@@ -331,6 +333,7 @@ async function handleUpdateMarca({ request, cookies }) {
       delete legacyPatch.gadget_mesero;
       delete legacyPatch.gadget_cuenta;
       delete legacyPatch.gadget_boutique;
+      delete legacyPatch.gadget_nutricion;
       delete legacyPatch.config_boutique;
       delete legacyPatch.home_theme;
       delete legacyPatch.ubicacion_theme;

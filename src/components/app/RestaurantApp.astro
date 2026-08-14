@@ -45,6 +45,7 @@ const showDividir = Boolean(gadgets?.dividirCuenta);
 const showReservas = Boolean(gadgets?.reservas);
 const showLlamarMesero = Boolean(gadgets?.llamarMesero);
 const showBoutique = Boolean(gadgets?.boutique);
+const showNutricion = Boolean(gadgets?.nutricion);
 const boutiqueProductos = Array.isArray(restaurante?.boutique?.productos)
   ? restaurante.boutique.productos
   : [];
@@ -485,6 +486,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         categorias={menu?.categorias || []}
         destacados={menu?.destacados ?? []}
         fondoGlobal={fondoMenu}
+        showNutricion={showNutricion}
         estilos={estilos}
       />
     </OverlayPanel>
@@ -600,46 +602,86 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         aria-modal="true"
         aria-labelledby="detalle-modal-title"
       >
-        <div class="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
-          <h3
-            id="detalle-modal-title"
-            class={`truncate pr-3 text-[0.68rem] font-semibold tracking-[0.22em] uppercase ${estilos?.displayClass || ''} text-[color:var(--color-texto)]`}
-            data-detalle-title
-          >
-            Plato
-          </h3>
-          <button
-            type="button"
-            data-detalle-close
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/5 text-zinc-400 transition-all duration-200 active:scale-95 hover:text-white"
-            aria-label="Cerrar"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              class="h-3.5 w-3.5"
+        <div class="relative max-h-[min(88vh,40rem)] overflow-y-auto">
+          <div class="relative h-64 overflow-hidden bg-black/50">
+            <img
+              data-detalle-img
+              src=""
+              alt=""
+              class="absolute inset-0 hidden size-full object-cover object-center rounded-t-2xl"
+            />
+            <video
+              data-detalle-video
+              class="absolute inset-0 hidden size-full object-cover object-center rounded-t-2xl"
+              autoplay
+              loop
+              muted
+              playsinline
+            ></video>
+            <button
+              type="button"
+              data-detalle-close
+              class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-black/45 text-zinc-200 backdrop-blur-md transition-all duration-200 active:scale-95 hover:text-white"
+              aria-label="Cerrar"
             >
-              <path d="M6 6l12 12M18 6L6 18"></path>
-            </svg>
-          </button>
-        </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                class="h-3.5 w-3.5"
+              >
+                <path d="M6 6l12 12M18 6L6 18"></path>
+              </svg>
+            </button>
+          </div>
 
-        <div class="relative aspect-[4/3] overflow-hidden bg-black/50">
-          <img
-            data-detalle-img
-            src=""
-            alt=""
-            class="absolute inset-0 hidden size-full object-cover object-center"
-          />
-          <video
-            data-detalle-video
-            class="absolute inset-0 hidden size-full object-contain object-center"
-            controls
-            playsinline
-          ></video>
+          <div class="space-y-3 px-5 py-4">
+            <h3
+              id="detalle-modal-title"
+              class={`text-[1.05rem] font-semibold leading-snug ${estilos?.displayClass || ''} text-[color:var(--color-texto)]`}
+              data-detalle-title
+            >
+              Plato
+            </h3>
+            <p
+              class="hidden text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]"
+              data-detalle-desc
+            ></p>
+            {
+              showNutricion && (
+                <div
+                  class="hidden font-mono text-xs bg-zinc-900/60 p-3 rounded-xl border border-white/10 space-y-2.5"
+                  data-detalle-nutricion
+                >
+                  <div class="grid grid-cols-4 gap-2 text-center" data-detalle-macros>
+                    <div>
+                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">kcal</p>
+                      <p class="tabular-nums text-zinc-100" data-detalle-kcal>—</p>
+                    </div>
+                    <div>
+                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">Prot</p>
+                      <p class="tabular-nums text-zinc-100" data-detalle-prot>—</p>
+                    </div>
+                    <div>
+                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">Carbs</p>
+                      <p class="tabular-nums text-zinc-100" data-detalle-carbs>—</p>
+                    </div>
+                    <div>
+                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">Grasas</p>
+                      <p class="tabular-nums text-zinc-100" data-detalle-grasas>—</p>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5" data-detalle-alergias-badges></div>
+                  <p
+                    class="hidden text-[0.65rem] leading-relaxed text-zinc-400"
+                    data-detalle-ingredientes
+                  ></p>
+                </div>
+              )
+            }
+          </div>
         </div>
       </div>
     </div>
@@ -844,6 +886,20 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     setAppTabsActive(app, null);
   }
 
+  const ALERGENO_LABELS: Record<string, string> = {
+    gluten: 'Gluten',
+    lacteos: 'Lácteos',
+    huevo: 'Huevo',
+    mani: 'Maní',
+    frutos_secos: 'Frutos secos',
+    mariscos: 'Mariscos',
+    pescado: 'Pescado',
+    soja: 'Soja',
+    sesamo: 'Sésamo',
+    picante: 'Picante',
+    no_vegano: 'No vegano',
+  };
+
   function clearDetalleMedia(app: HTMLElement) {
     const imgEl = app.querySelector('[data-detalle-img]');
     const videoEl = app.querySelector('[data-detalle-video]');
@@ -857,6 +913,22 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       videoEl.classList.add('hidden');
       videoEl.removeAttribute('src');
       videoEl.load();
+    }
+    const descEl = app.querySelector('[data-detalle-desc]');
+    if (descEl instanceof HTMLElement) {
+      descEl.textContent = '';
+      descEl.classList.add('hidden');
+    }
+    const nutEl = app.querySelector('[data-detalle-nutricion]');
+    if (nutEl instanceof HTMLElement) {
+      nutEl.classList.add('hidden');
+    }
+    const badges = app.querySelector('[data-detalle-alergias-badges]');
+    if (badges instanceof HTMLElement) badges.innerHTML = '';
+    const ingEl = app.querySelector('[data-detalle-ingredientes]');
+    if (ingEl instanceof HTMLElement) {
+      ingEl.textContent = '';
+      ingEl.classList.add('hidden');
     }
   }
 
@@ -892,12 +964,39 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
   }
 
+  /**
+   * @param {HTMLElement} app
+   * @param {string} url
+   * @param {string} title
+   * @param {string} [platoId]
+   * @param {string} [platoNombre]
+   * @param {{
+   *   desc?: string,
+   *   hasNut?: boolean,
+   *   calorias?: string,
+   *   proteinas?: string,
+   *   carbs?: string,
+   *   grasas?: string,
+   *   alergias?: string,
+   *   ingredientes?: string,
+   * }} [meta]
+   */
   function openDetalle(
     app: HTMLElement,
     url: string,
     title: string,
     platoId?: string,
     platoNombre?: string,
+    meta?: {
+      desc?: string;
+      hasNut?: boolean;
+      calorias?: string;
+      proteinas?: string;
+      carbs?: string;
+      grasas?: string;
+      alergias?: string;
+      ingredientes?: string;
+    },
   ) {
     const modal = app.querySelector('[data-detalle-modal]');
     const titleEl = app.querySelector('[data-detalle-title]');
@@ -908,9 +1007,67 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     clearDetalleMedia(app);
     if (titleEl) titleEl.textContent = title || 'Plato';
 
+    const descEl = app.querySelector('[data-detalle-desc]');
+    const desc = String(meta?.desc || '').trim();
+    if (descEl instanceof HTMLElement) {
+      if (desc) {
+        descEl.textContent = desc;
+        descEl.classList.remove('hidden');
+      } else {
+        descEl.classList.add('hidden');
+      }
+    }
+
+    const nutEl = app.querySelector('[data-detalle-nutricion]');
+    if (nutEl instanceof HTMLElement && meta?.hasNut) {
+      const setMacro = (sel: string, val?: string) => {
+        const el = app.querySelector(sel);
+        if (el) el.textContent = val && val !== '' ? val : '—';
+      };
+      setMacro('[data-detalle-kcal]', meta.calorias);
+      setMacro('[data-detalle-prot]', meta.proteinas);
+      setMacro('[data-detalle-carbs]', meta.carbs);
+      setMacro('[data-detalle-grasas]', meta.grasas);
+
+      const badges = app.querySelector('[data-detalle-alergias-badges]');
+      if (badges instanceof HTMLElement) {
+        badges.innerHTML = '';
+        const ids = String(meta.alergias || '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        for (const id of ids) {
+          const span = document.createElement('span');
+          span.className =
+            'rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-[0.55rem] uppercase tracking-wider text-zinc-300';
+          span.textContent = ALERGENO_LABELS[id] || id;
+          badges.appendChild(span);
+        }
+      }
+
+      const ingEl = app.querySelector('[data-detalle-ingredientes]');
+      const ingredientes = String(meta.ingredientes || '').trim();
+      if (ingEl instanceof HTMLElement) {
+        if (ingredientes) {
+          ingEl.textContent = ingredientes;
+          ingEl.classList.remove('hidden');
+        } else {
+          ingEl.classList.add('hidden');
+        }
+      }
+
+      nutEl.classList.remove('hidden');
+    }
+
     if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
       videoEl.src = url;
+      videoEl.muted = true;
+      videoEl.loop = true;
+      videoEl.playsInline = true;
       videoEl.classList.remove('hidden');
+      void videoEl.play().catch(() => {
+        /* autoplay bloqueado — silencioso */
+      });
     } else if (imgEl instanceof HTMLImageElement) {
       imgEl.src = url;
       imgEl.alt = title || 'Plato';
@@ -1021,7 +1178,18 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           const title = detalleBtn.dataset.mediaTitle || 'Plato';
           const platoId = detalleBtn.dataset.platoId || '';
           const platoNombre = detalleBtn.dataset.platoNombre || title;
-          if (url) openDetalle(root, url, title, platoId, platoNombre);
+          if (url) {
+            openDetalle(root, url, title, platoId, platoNombre, {
+              desc: detalleBtn.dataset.platoDesc || '',
+              hasNut: detalleBtn.dataset.platoHasNut === 'true',
+              calorias: detalleBtn.dataset.platoCalorias || '',
+              proteinas: detalleBtn.dataset.platoProteinas || '',
+              carbs: detalleBtn.dataset.platoCarbs || '',
+              grasas: detalleBtn.dataset.platoGrasas || '',
+              alergias: detalleBtn.dataset.platoAlergias || '',
+              ingredientes: detalleBtn.dataset.platoIngredientes || '',
+            });
+          }
           return;
         }
 
