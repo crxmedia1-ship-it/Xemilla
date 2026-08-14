@@ -114,6 +114,15 @@ const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
 const hubLogoBg = resolveHubLogoBg(restaurante || {});
 const hubNombre = String(restaurante?.nombre_comercial || nombre || '').trim();
+const brandInitials = hubNombre
+  .split(/\s+/)
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((w) => w.charAt(0))
+  .join('')
+  .toUpperCase() || 'R';
+const xemillaWordmark =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 const menuCategoryNames = [
   ...new Set(
     [
@@ -417,11 +426,7 @@ const userInitials = (() => {
   }
   return (local.slice(0, 2) || 'AD').toUpperCase();
 })();
-const studioContextLabel = isSuperAdmin
-  ? 'SuperAdmin Studio'
-  : nombre && nombre !== 'Sin restaurante'
-    ? nombre
-    : 'Admin Operativo';
+const brandEyebrow = isSuperAdmin ? 'SuperAdmin' : 'Studio';
 
 const sampleBulk = isSuperAdmin
   ? `Categoría | Nombre | Descripción | Precio | Destacado | Imagen
@@ -442,30 +447,35 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   >
     {/* Top row: brand + actions */}
     <div class="flex min-w-0 items-center justify-between gap-2 sm:contents">
-      <div class="flex min-w-0 items-center gap-2">
+      <div class="flex min-w-0 items-center gap-2.5">
         <a
           href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
-          class="admin-brand-pill shrink-0"
+          class="admin-studio-brand shrink-0"
+          aria-label={hubNombre ? `Studio · ${hubNombre}` : 'Studio Xemilla'}
         >
-          <img
-            src="https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png"
-            class="h-6 w-auto object-contain sm:h-7"
-            alt="Xemilla"
-          />
+          {
+            hubLogoUrl ? (
+              <span
+                class="admin-studio-brand__plate"
+                style={hubLogoBg ? `--studio-brand-plate:${hubLogoBg}` : undefined}
+              >
+                <img src={hubLogoUrl} alt="" class="admin-studio-brand__logo" width="40" height="40" />
+              </span>
+            ) : restaurante ? (
+              <span class="admin-studio-brand__plate admin-studio-brand__plate--mono" aria-hidden="true">
+                <span class="admin-studio-brand__initials">{brandInitials}</span>
+              </span>
+            ) : (
+              <span class="admin-studio-brand__plate admin-studio-brand__plate--xemilla">
+                <img src={xemillaWordmark} alt="" class="admin-studio-brand__logo admin-studio-brand__logo--word" width="88" height="28" />
+              </span>
+            )
+          }
+          <span class="admin-studio-brand__copy">
+            <span class="admin-studio-brand__eyebrow">{brandEyebrow}</span>
+            <span class="admin-studio-brand__title">{hubNombre || 'Xemilla'}</span>
+          </span>
         </a>
-        <span class="hidden text-white/20 sm:inline" aria-hidden="true">/</span>
-        <span
-          class="min-w-0 truncate text-sm font-medium text-white/80 max-w-[9.5rem] sm:hidden"
-          title={nombre}
-        >
-          {nombre}
-        </span>
-        <span
-          class="hidden truncate text-sm font-medium text-white/80 sm:inline max-w-[10rem] md:max-w-[16rem]"
-          title={studioContextLabel}
-        >
-          {studioContextLabel}
-        </span>
       </div>
 
       <div class="flex shrink-0 items-center gap-2 sm:order-3 sm:gap-4">
@@ -915,14 +925,32 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
                           </td>
                           <td class="platos-cell platos-cell--dish px-4 py-3 text-left" data-label="Plato">
                             <div class="flex flex-col gap-1">
-                              <input
-                                type="text"
-                                value={plato.nombre}
-                                data-field="nombre"
-                                data-original={plato.nombre}
-                                class="field-inline w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15"
-                                aria-label="Nombre del plato"
-                              />
+                              <div class="dish-name-stack">
+                                <button
+                                  type="button"
+                                  data-edit-nombre
+                                  class="dish-name-btn"
+                                  title="Editar nombre"
+                                  aria-label={`Editar nombre: ${plato.nombre}`}
+                                >
+                                  <span class="dish-name-marquee" data-nombre-preview>
+                                    <span class="dish-name-marquee__track">
+                                      <span data-nombre-text>{plato.nombre}</span>
+                                      <span class="dish-name-marquee__clone" aria-hidden="true" data-nombre-clone>
+                                        {plato.nombre}
+                                      </span>
+                                    </span>
+                                  </span>
+                                </button>
+                                <input
+                                  type="text"
+                                  value={plato.nombre}
+                                  data-field="nombre"
+                                  data-original={plato.nombre}
+                                  class="field-inline dish-name-input w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15"
+                                  aria-label="Nombre del plato"
+                                />
+                              </div>
                               <button
                                 type="button"
                                 data-edit-descripcion
@@ -2520,7 +2548,21 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       )
     }
 
-    <AdminXemillaMark />
+    {
+      restaurante && hubLogoUrl ? (
+        <footer class="admin-studio-foot-brand" aria-label={hubNombre}>
+          <span
+            class="admin-studio-foot-brand__plate"
+            style={hubLogoBg ? `--studio-brand-plate:${hubLogoBg}` : undefined}
+          >
+            <img src={hubLogoUrl} alt="" width="96" height="96" loading="lazy" decoding="async" />
+          </span>
+          <p class="admin-studio-foot-brand__name">{hubNombre}</p>
+        </footer>
+      ) : (
+        <AdminXemillaMark />
+      )
+    }
     </div>
 
     <div
@@ -2760,6 +2802,55 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     </div>
   </div>
 
+  {/* Modal nombre (móvil: misma UX que descripción) */}
+  <div
+    id="nombre-modal"
+    class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="nombre-modal-title"
+    data-open="false"
+    aria-hidden="true"
+  >
+    <div data-modal-card class={`modal-card glass-panel ${bounceWallClass} w-full max-w-lg overflow-hidden p-0 shadow-2xl`}>
+      <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
+        <div class="min-w-0">
+          <p class="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            Nombre
+          </p>
+          <h3 id="nombre-modal-title" class="mt-1 font-blacksushi-display text-xl font-semibold">
+            Editar plato
+          </h3>
+        </div>
+        <button
+          type="button"
+          id="nombre-modal-close"
+          class="rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div class="space-y-4 px-5 py-5">
+        <label for="nombre-modal-text" class="sr-only">Nombre del plato</label>
+        <input
+          id="nombre-modal-text"
+          type="text"
+          maxlength="120"
+          placeholder="Nombre del plato…"
+          class="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3.5 text-base font-semibold tracking-tight text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
+        />
+        <p id="nombre-modal-error" class="hidden text-xs text-rose-400" role="alert"></p>
+        <button
+          type="button"
+          id="nombre-modal-save"
+          class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95"
+        >
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+
   {/* Modal Nuevo Plato — exclusivo SuperAdmin (no render en admin de restaurante) */}
   {
     isSuperAdmin && (
@@ -2921,6 +3012,34 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   .field-inline.is-error {
     box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.5);
     background: rgba(244, 63, 94, 0.08);
+  }
+
+  /* Dish name: desktop keeps input; mobile uses marquee + modal */
+  .dish-name-stack {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dish-name-btn {
+    display: none;
+  }
+
+  @keyframes studio-dish-marquee {
+    0%,
+    12% {
+      transform: translateX(0);
+    }
+    88%,
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dish-name-marquee.is-overflow .dish-name-marquee__track {
+      animation: none !important;
+    }
   }
 
   /* iOS-style toggle — premium track + semantic accents */
@@ -3766,6 +3885,70 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       width: 100%;
     }
 
+    .dish-name-stack {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .dish-name-btn {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+      padding: 0.05rem 0;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      color: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .dish-name-input {
+      display: none !important;
+    }
+
+    .dish-name-marquee {
+      display: block;
+      overflow: hidden;
+      width: 100%;
+      mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+    }
+
+    .dish-name-marquee__track {
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      max-width: none;
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.25;
+      color: var(--text-primary, #fff);
+      white-space: nowrap;
+      will-change: transform;
+    }
+
+    .dish-name-marquee__track > span {
+      padding-right: 1.85rem;
+    }
+
+    .dish-name-marquee.is-overflow .dish-name-marquee__track {
+      animation-name: studio-dish-marquee;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+    }
+
+    .dish-name-marquee:not(.is-overflow) .dish-name-marquee__clone {
+      display: none;
+    }
+
+    .dish-name-btn:active .dish-name-marquee__track {
+      opacity: 0.72;
+    }
+
     .platos-cell--dish .field-inline {
       font-size: 1.02rem;
       font-weight: 650;
@@ -3977,6 +4160,8 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   /** @type {ReturnType<typeof setTimeout> | null} */
   let descCloseTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
+  let nombreCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let nuevoCloseTimer = null;
 
   function teardownAdminDashboard() {
@@ -3991,6 +4176,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     if (descCloseTimer) {
       clearTimeout(descCloseTimer);
       descCloseTimer = null;
+    }
+    if (nombreCloseTimer) {
+      clearTimeout(nombreCloseTimer);
+      nombreCloseTimer = null;
     }
     if (nuevoCloseTimer) {
       clearTimeout(nuevoCloseTimer);
@@ -4092,6 +4281,12 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   const descModalClose = document.getElementById('desc-modal-close');
   const descModalSave = document.getElementById('desc-modal-save');
   const descModalError = document.getElementById('desc-modal-error');
+  const nombreModal = document.getElementById('nombre-modal');
+  const nombreModalTitle = document.getElementById('nombre-modal-title');
+  const nombreModalText = document.getElementById('nombre-modal-text');
+  const nombreModalClose = document.getElementById('nombre-modal-close');
+  const nombreModalSave = document.getElementById('nombre-modal-save');
+  const nombreModalError = document.getElementById('nombre-modal-error');
 
   const bulkToggle = document.getElementById('bulk-toggle');
   const bulkToggleMobile = document.getElementById('bulk-toggle-mobile');
@@ -4119,6 +4314,73 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   let activeMediaRow = null;
   /** @type {HTMLElement | null} */
   let activeDescRow = null;
+  /** @type {HTMLElement | null} */
+  let activeNombreRow = null;
+
+  /**
+   * @param {HTMLElement} row
+   */
+  function getRowNombre(row) {
+    const input = row.querySelector('[data-field="nombre"]');
+    if (input instanceof HTMLInputElement && String(input.value || '').trim()) {
+      return String(input.value).trim();
+    }
+    const text = row.querySelector('[data-nombre-text]');
+    if (text?.textContent) return String(text.textContent).trim();
+    return String(row.dataset.nombre || 'Plato').trim() || 'Plato';
+  }
+
+  /**
+   * @param {HTMLElement} row
+   * @param {string} value
+   */
+  function setRowNombreUi(row, value) {
+    const input = row.querySelector('[data-field="nombre"]');
+    if (input instanceof HTMLInputElement) {
+      input.value = value;
+      input.dataset.original = value;
+    }
+    const text = row.querySelector('[data-nombre-text]');
+    const clone = row.querySelector('[data-nombre-clone]');
+    if (text) text.textContent = value;
+    if (clone) clone.textContent = value;
+    const btn = row.querySelector('[data-edit-nombre]');
+    if (btn instanceof HTMLElement) {
+      btn.setAttribute('aria-label', `Editar nombre: ${value}`);
+    }
+    row.dataset.nombre = value;
+    syncDishNameMarquee(row);
+  }
+
+  /**
+   * @param {HTMLElement} row
+   */
+  function syncDishNameMarquee(row) {
+    const preview = row.querySelector('[data-nombre-preview]');
+    const track = preview?.querySelector('.dish-name-marquee__track');
+    if (!(preview instanceof HTMLElement) || !(track instanceof HTMLElement)) return;
+    preview.classList.remove('is-overflow');
+    // Force layout, then compare text width vs visible width
+    requestAnimationFrame(() => {
+      const text = track.querySelector('[data-nombre-text]');
+      if (!(text instanceof HTMLElement)) return;
+      const needs = text.scrollWidth > preview.clientWidth + 2;
+      preview.classList.toggle('is-overflow', needs);
+      if (needs) {
+        const distance = Math.max(40, text.scrollWidth);
+        const seconds = Math.min(28, Math.max(12, distance / 18));
+        track.style.animationDuration = `${seconds}s`;
+      } else {
+        track.style.removeProperty('animation-duration');
+      }
+    });
+  }
+
+  function syncAllDishNameMarquees() {
+    for (const row of allRows()) {
+      if (row instanceof HTMLElement) syncDishNameMarquee(row);
+    }
+  }
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -4176,6 +4438,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     renumberDishOrderInputs();
     refreshCategoryPills();
     applySearchFilter();
+    syncAllDishNameMarquees();
   }
 
   function renumberDishOrderInputs() {
@@ -5066,6 +5329,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       await updatePlato(id, patch);
       input.dataset.original = value;
       input.classList.add('is-saved');
+      if (field === 'nombre') setRowNombreUi(row, value);
       refreshSearchIndex(row);
       if (savedHint instanceof HTMLElement) {
         savedHint.style.opacity = '1';
@@ -5102,7 +5366,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   /**
    * @param {HTMLElement | null} overlay
    * @param {() => void} [after]
-   * @param {{ timerRef: 'modal' | 'desc' | 'nuevo' }} opts
+   * @param {{ timerRef: 'modal' | 'desc' | 'nombre' | 'nuevo' }} opts
    */
   function closeOverlay(overlay, after, opts) {
     if (!(overlay instanceof HTMLElement)) return;
@@ -5119,6 +5383,10 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
         clearTimeout(descCloseTimer);
         descCloseTimer = null;
       }
+      if (opts.timerRef === 'nombre' && nombreCloseTimer) {
+        clearTimeout(nombreCloseTimer);
+        nombreCloseTimer = null;
+      }
       if (opts.timerRef === 'nuevo' && nuevoCloseTimer) {
         clearTimeout(nuevoCloseTimer);
         nuevoCloseTimer = null;
@@ -5130,11 +5398,13 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       after?.();
       if (opts.timerRef === 'modal') modalCloseTimer = null;
       else if (opts.timerRef === 'desc') descCloseTimer = null;
+      else if (opts.timerRef === 'nombre') nombreCloseTimer = null;
       else nuevoCloseTimer = null;
     }, 220);
 
     if (opts.timerRef === 'modal') modalCloseTimer = timer;
     else if (opts.timerRef === 'desc') descCloseTimer = timer;
+    else if (opts.timerRef === 'nombre') nombreCloseTimer = timer;
     else nuevoCloseTimer = timer;
   }
 
@@ -5284,11 +5554,7 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
 
   function openDescModal(row) {
     activeDescRow = row;
-    const nombreEl = row.querySelector('[data-field="nombre"]');
-    const nombre =
-      nombreEl instanceof HTMLInputElement
-        ? nombreEl.value
-        : row.dataset.nombre || 'Plato';
+    const nombre = getRowNombre(row);
     const btn = row.querySelector('[data-edit-descripcion]');
     const current =
       btn instanceof HTMLElement ? btn.dataset.descripcion || '' : '';
@@ -5319,6 +5585,38 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
     );
   }
 
+  function openNombreModal(row) {
+    activeNombreRow = row;
+    const current = getRowNombre(row);
+    if (nombreModalTitle) nombreModalTitle.textContent = 'Editar nombre';
+    if (nombreModalText instanceof HTMLInputElement) {
+      nombreModalText.value = current;
+    }
+    nombreModalError?.classList.add('hidden');
+    if (nombreModalError) nombreModalError.textContent = '';
+    if (nombreCloseTimer) {
+      clearTimeout(nombreCloseTimer);
+      nombreCloseTimer = null;
+    }
+    openOverlay(nombreModal);
+    requestAnimationFrame(() => {
+      if (nombreModalText instanceof HTMLInputElement) {
+        nombreModalText.focus();
+        nombreModalText.select();
+      }
+    });
+  }
+
+  function closeNombreModal() {
+    closeOverlay(
+      nombreModal,
+      () => {
+        activeNombreRow = null;
+      },
+      { timerRef: 'nombre' },
+    );
+  }
+
   modalClose?.addEventListener('click', closeModal, { signal });
   modal?.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
@@ -5327,10 +5625,84 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   descModal?.addEventListener('click', (e) => {
     if (e.target === descModal) closeDescModal();
   }, { signal });
+  nombreModalClose?.addEventListener('click', closeNombreModal, { signal });
+  nombreModal?.addEventListener('click', (e) => {
+    if (e.target === nombreModal) closeNombreModal();
+  }, { signal });
+  nombreModalText?.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        nombreModalSave?.click();
+      }
+    },
+    { signal },
+  );
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (descModal?.dataset.open === 'true') closeDescModal();
+    if (nombreModal?.dataset.open === 'true') closeNombreModal();
+    else if (descModal?.dataset.open === 'true') closeDescModal();
     else if (modal?.dataset.open === 'true') closeModal();
+  }, { signal });
+
+  nombreModalSave?.addEventListener('click', async () => {
+    if (!(activeNombreRow instanceof HTMLElement)) return;
+    const row = activeNombreRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+
+    const input = row.querySelector('[data-field="nombre"]');
+    const original =
+      input instanceof HTMLInputElement ? String(input.dataset.original || '') : getRowNombre(row);
+    const value =
+      nombreModalText instanceof HTMLInputElement
+        ? nombreModalText.value.trim()
+        : '';
+
+    if (!value) {
+      if (nombreModalError) {
+        nombreModalError.textContent = 'El nombre no puede quedar vacío.';
+        nombreModalError.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (value === original) {
+      closeNombreModal();
+      return;
+    }
+
+    nombreModalError?.classList.add('hidden');
+    if (nombreModalSave instanceof HTMLButtonElement) {
+      nombreModalSave.disabled = true;
+      nombreModalSave.textContent = 'Guardando…';
+    }
+
+    try {
+      await updatePlato(id, { nombre: value });
+      setRowNombreUi(row, value);
+      refreshSearchIndex(row);
+      const savedHint = row.querySelector('[data-field-saved]');
+      if (savedHint instanceof HTMLElement) {
+        savedHint.style.opacity = '1';
+        window.setTimeout(() => {
+          savedHint.style.opacity = '0';
+        }, 900);
+      }
+      closeNombreModal();
+    } catch (err) {
+      if (nombreModalError) {
+        nombreModalError.textContent =
+          err instanceof Error ? err.message : 'Error al guardar';
+        nombreModalError.classList.remove('hidden');
+      }
+    } finally {
+      if (nombreModalSave instanceof HTMLButtonElement) {
+        nombreModalSave.disabled = false;
+        nombreModalSave.textContent = 'Guardar';
+      }
+    }
   }, { signal });
 
   descModalSave?.addEventListener('click', async () => {
@@ -5474,8 +5846,18 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       </td>
       <td class="platos-cell platos-cell--dish px-4 py-3 text-left" data-label="Plato">
         <div class="flex flex-col gap-1">
-          <input type="text" value="${escapeHtml(plato.nombre)}" data-field="nombre" data-original="${escapeHtml(plato.nombre)}"
-            class="field-inline w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15" />
+          <div class="dish-name-stack">
+            <button type="button" data-edit-nombre class="dish-name-btn" title="Editar nombre" aria-label="Editar nombre: ${escapeHtml(plato.nombre)}">
+              <span class="dish-name-marquee" data-nombre-preview>
+                <span class="dish-name-marquee__track">
+                  <span data-nombre-text>${escapeHtml(plato.nombre)}</span>
+                  <span class="dish-name-marquee__clone" aria-hidden="true" data-nombre-clone>${escapeHtml(plato.nombre)}</span>
+                </span>
+              </span>
+            </button>
+            <input type="text" value="${escapeHtml(plato.nombre)}" data-field="nombre" data-original="${escapeHtml(plato.nombre)}"
+              class="field-inline dish-name-input w-full max-w-[24rem] rounded-md bg-transparent px-1.5 py-1 text-[0.95rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15" aria-label="Nombre del plato" />
+          </div>
           <button type="button" data-edit-descripcion data-descripcion="${escapeHtml(plato.descripcion || '')}"
             class="group max-w-[24rem] rounded-md px-1.5 py-0.5 text-left transition hover:bg-white/[0.04]" title="Editar descripción">
             <span data-descripcion-preview class="line-clamp-2 text-xs leading-snug transition group-hover:text-zinc-300 ${plato.descripcion ? 'text-zinc-500' : 'text-zinc-700 italic'}">${escapeHtml(plato.descripcion || 'Sin descripción · clic para editar')}</span>
@@ -5855,6 +6237,11 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
       return;
     }
 
+    if (target.closest('[data-edit-nombre]')) {
+      openNombreModal(row);
+      return;
+    }
+
     if (target.closest('[data-edit-descripcion]')) {
       openDescModal(row);
       return;
@@ -6033,6 +6420,14 @@ Rolls | California | Cangrejo, palta y pepino | 12.00 | NO | https://res.cloudin
   }
 
   initAdminTopNavTabs();
+  syncAllDishNameMarquees();
+  window.addEventListener(
+    'resize',
+    () => {
+      syncAllDishNameMarquees();
+    },
+    { signal },
+  );
 
   // ── Toast premium ──
   const toastEl = document.getElementById('crx-toast');
