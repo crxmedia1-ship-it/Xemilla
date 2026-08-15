@@ -3250,26 +3250,41 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       vertical-align: middle;
     }
 
-    .dish-identity {
-      display: flex;
+    .platos-cell--dish {
+      display: grid;
+      grid-template-columns: 11.5rem minmax(0, 1fr);
+      column-gap: 1.7rem;
+      row-gap: 0.4rem;
       align-items: center;
-      gap: 0.9rem;
-      min-width: 0;
+    }
+
+    .dish-identity {
+      display: contents;
     }
 
     .dish-thumb-slot {
-      flex: 0 0 7.5rem;
-      width: 7.5rem;
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      width: 11.5rem;
       aspect-ratio: 4 / 3;
       height: auto;
     }
 
     .dish-copy {
       display: flex;
+      grid-column: 2;
+      grid-row: 1;
       min-width: 0;
-      flex: 1 1 auto;
       flex-direction: column;
       gap: 0.08rem;
+    }
+
+    .platos-cell--dish > .nut-edit-btn {
+      grid-column: 2;
+      grid-row: 2;
+      margin-top: 0;
+      width: 100%;
+      max-width: 22rem;
     }
 
     .dish-name-input,
@@ -3293,10 +3308,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     position: relative;
     display: block;
     box-sizing: border-box;
-    width: 7.5rem;
+    width: 100%;
     height: auto;
-    min-width: 7.5rem;
-    max-width: 7.5rem;
+    min-width: 0;
+    max-width: none;
     min-height: 0;
     max-height: none;
     aspect-ratio: 4 / 3;
@@ -4135,24 +4150,24 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     .dish-identity {
       display: flex;
       align-items: flex-start;
-      gap: 0.75rem;
+      gap: 1.15rem;
       min-width: 0;
     }
 
     .dish-thumb-slot {
-      flex: 0 0 6.75rem;
-      width: 6.75rem;
+      flex: 0 0 8.5rem;
+      width: 8.5rem;
       aspect-ratio: 4 / 3;
       height: auto;
     }
 
     .dish-thumb,
     .dish-thumb--empty {
-      width: 6.75rem;
+      width: 100%;
       height: auto;
-      min-width: 6.75rem;
+      min-width: 0;
       min-height: 0;
-      max-width: 6.75rem;
+      max-width: none;
       max-height: none;
       aspect-ratio: 4 / 3;
       border-radius: 0.95rem;
