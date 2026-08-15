@@ -678,11 +678,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             muted
             playsinline
           ></video>
-          <div
-            data-detalle-ar
-            class="absolute inset-0 z-[8] hidden bg-zinc-950/80"
-            style="touch-action: pan-y;"
-          ></div>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 md:px-6 md:py-6">
@@ -734,6 +729,23 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         </div>
       </div>
     </div>
+  </div>
+
+  <div
+    class="ar-screen"
+    data-ar-screen
+    aria-hidden="true"
+  >
+    <header class="ar-screen__bar">
+      <button type="button" class="ar-screen__back" data-ar-back>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Volver
+      </button>
+      <p class="ar-screen__title" data-ar-screen-title>AR</p>
+    </header>
+    <div class="ar-screen__stage" data-ar-screen-stage></div>
   </div>
 </div>
 
@@ -832,6 +844,69 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     display: none;
   }
 
+  .ar-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: none;
+    flex-direction: column;
+    background: #050508;
+    pointer-events: none;
+  }
+  .ar-screen.is-open {
+    display: flex;
+    pointer-events: auto;
+  }
+  .ar-screen__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding: max(0.75rem, env(safe-area-inset-top)) 1rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: #050508;
+  }
+  .ar-screen__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.4rem;
+    padding: 0.4rem 0.85rem 0.4rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .ar-screen__title {
+    margin: 0;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.82);
+  }
+  .ar-screen__stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: #050508;
+  }
+  .ar-screen__stage :global(model-viewer) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #050508;
+  }
+
   .detalle-ar-btn {
     display: inline-flex;
     align-items: center;
@@ -849,21 +924,37 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     letter-spacing: 0.14em;
     text-transform: uppercase;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 5;
   }
   .detalle-ar-btn.is-on {
     background: linear-gradient(180deg, rgba(139, 92, 246, 0.55), rgba(109, 40, 217, 0.38));
     border-color: rgba(221, 214, 254, 0.55);
     color: #fff;
   }
+  .detalle-ar-btn.hidden {
+    display: none;
+  }
   .detalle-ar-native {
     position: absolute;
     bottom: 1rem;
     left: 50%;
     transform: translateX(-50%);
-    display: none;
-  }
-  .detalle-ar-btn.hidden {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.4rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.92);
+    color: #111;
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
   .detalle-nut-chip,
@@ -942,7 +1033,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 <script>
   import { syncMesaSession, hasValidMesaSession, getStoredMesa } from '../../lib/mesa-session.js';
 
-  const OPEN_CLASSES = ['translate-y-0', 'opacity-100', 'pointer-events-auto'];
+  const OPEN_CLASSES = ['opacity-100', 'pointer-events-auto'];
   const CLOSED_CLASSES = ['translate-y-full', 'opacity-0', 'pointer-events-none'];
   const MESA_GATED_SECTIONS = new Set(['mesero', 'dividir']);
 
@@ -1151,7 +1242,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   function clearDetalleMedia(app: HTMLElement) {
     const imgEl = app.querySelector('[data-detalle-img]');
     const videoEl = app.querySelector('[data-detalle-video]');
-    const arEl = app.querySelector('[data-detalle-ar]');
     const mediaStdEl = app.querySelector('[data-detalle-media-std]');
     if (imgEl instanceof HTMLImageElement) {
       imgEl.classList.add('hidden');
@@ -1164,10 +1254,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       videoEl.removeAttribute('src');
       videoEl.load();
     }
-    if (arEl instanceof HTMLElement) {
-      arEl.innerHTML = '';
-      arEl.classList.add('hidden');
-    }
+    hideDetalleArViewer(app);
     const arBtn = app.querySelector('[data-detalle-ar-btn]');
     if (arBtn instanceof HTMLElement) {
       arBtn.classList.add('hidden');
@@ -1386,17 +1473,18 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     const showAr = app.dataset.showAr === 'true';
     const modelo3dUrl = String(meta?.modelo3dUrl || '').trim();
-    const arEl = app.querySelector('[data-detalle-ar]');
     const arChip = app.querySelector('[data-detalle-ar-btn]');
     const mediaStdEl = app.querySelector('[data-detalle-media-std]');
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
 
     if (showAr && modelo3dUrl && arChip instanceof HTMLElement) {
+      app.dataset.detalleArSrc = modelo3dUrl;
       arChip.dataset.arSrc = modelo3dUrl;
       arChip.dataset.arTitle = title || 'Modelo 3D';
       arChip.classList.remove('hidden', 'is-on');
       arChip.textContent = 'Ver en AR';
     } else if (arChip instanceof HTMLElement) {
+      app.dataset.detalleArSrc = '';
       arChip.classList.add('hidden');
     }
 
@@ -1413,11 +1501,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       imgEl.src = url;
       imgEl.alt = title || 'Plato';
       imgEl.classList.remove('hidden');
-    }
-
-    if (arEl instanceof HTMLElement) {
-      arEl.innerHTML = '';
-      arEl.classList.add('hidden');
     }
 
     modal.classList.add('is-open');
@@ -1443,11 +1526,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   }
 
   function hideDetalleArViewer(app: HTMLElement) {
-    const arEl = app.querySelector('[data-detalle-ar]');
+    const screen = app.querySelector('[data-ar-screen]');
+    const stage = app.querySelector('[data-ar-screen-stage]');
     const arChip = app.querySelector('[data-detalle-ar-btn]');
-    if (arEl instanceof HTMLElement) {
-      arEl.innerHTML = '';
-      arEl.classList.add('hidden');
+    if (stage instanceof HTMLElement) stage.innerHTML = '';
+    if (screen instanceof HTMLElement) {
+      screen.classList.remove('is-open');
+      screen.setAttribute('aria-hidden', 'true');
     }
     if (arChip instanceof HTMLElement) {
       arChip.classList.remove('is-on');
@@ -1458,13 +1543,27 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   function launchDetalleAr(app: HTMLElement) {
     if (app.dataset.showAr !== 'true') return;
     ensureModelViewerLoaded();
-    const arEl = app.querySelector('[data-detalle-ar]');
+    const screen = app.querySelector('[data-ar-screen]');
+    const stage = app.querySelector('[data-ar-screen-stage]');
+    const titleEl = app.querySelector('[data-ar-screen-title]');
     const arChip = app.querySelector('[data-detalle-ar-btn]');
-    if (!(arEl instanceof HTMLElement) || !(arChip instanceof HTMLElement)) return;
-    const src = String(arChip.dataset.arSrc || '').trim();
+    if (!(screen instanceof HTMLElement) || !(stage instanceof HTMLElement)) return;
+    const src = String(
+      (arChip instanceof HTMLElement ? arChip.dataset.arSrc : '') ||
+        app.dataset.detalleArSrc ||
+        '',
+    ).trim();
     if (!src) return;
 
-    let mv = arEl.querySelector('model-viewer') as
+    const title =
+      (arChip instanceof HTMLElement ? arChip.dataset.arTitle : '') || 'Modelo 3D';
+    if (titleEl) titleEl.textContent = title;
+    if (arChip instanceof HTMLElement) arChip.classList.add('is-on');
+
+    screen.classList.add('is-open');
+    screen.setAttribute('aria-hidden', 'false');
+
+    let mv = stage.querySelector('model-viewer') as
       | (HTMLElement & { activateAR?: () => Promise<void> })
       | null;
 
@@ -1473,43 +1572,34 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         activateAR?: () => Promise<void>;
       };
       mv.setAttribute('src', src);
-      mv.setAttribute('alt', arChip.dataset.arTitle || 'Modelo 3D');
+      mv.setAttribute('alt', title);
       mv.setAttribute('ar', '');
       mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
       mv.setAttribute('camera-controls', '');
       mv.setAttribute('auto-rotate', '');
-      mv.setAttribute('shadow-intensity', '1.5');
+      mv.setAttribute('shadow-intensity', '1');
+      mv.setAttribute('exposure', '1');
       mv.setAttribute('touch-action', 'pan-y');
       mv.setAttribute('reveal', 'auto');
-      mv.style.cssText =
-        'width:100%;height:100%;background:transparent;touch-action:pan-y;display:block;';
+      mv.style.cssText = 'width:100%;height:100%;display:block;background:#050508;';
 
       const nativeAr = document.createElement('button');
       nativeAr.setAttribute('slot', 'ar-button');
       nativeAr.className = 'detalle-ar-native';
-      nativeAr.textContent = 'Ver en AR';
+      nativeAr.textContent = 'Ver en tu mesa';
       mv.appendChild(nativeAr);
 
-      arEl.innerHTML = '';
-      arEl.appendChild(mv);
-      arEl.classList.remove('hidden');
+      stage.replaceChildren(mv);
     }
 
-    arChip.classList.add('is-on');
-    arChip.textContent = 'Ver en AR';
-
-    const tryActivate = () => {
+    const activate = () => {
       if (typeof mv?.activateAR === 'function') {
-        void mv.activateAR().catch(() => {
-          /* PC sin WebXR: queda el modelo 3D girando */
-        });
+        void mv.activateAR().catch(() => {});
       }
     };
-
-    if (customElements.get('model-viewer')) {
-      tryActivate();
-    } else {
-      customElements.whenDefined('model-viewer').then(tryActivate).catch(() => {});
+    activate();
+    if (!customElements.get('model-viewer')) {
+      customElements.whenDefined('model-viewer').then(activate).catch(() => {});
     }
   }
 
@@ -1520,6 +1610,15 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       if (root.dataset.showAr === 'true') ensureModelViewerLoaded();
       root.dataset.navReady = 'true';
       void hydrateWebappNutricion(root);
+
+      const arLaunchBtn = root.querySelector('[data-detalle-ar-btn]');
+      if (arLaunchBtn instanceof HTMLElement) {
+        arLaunchBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          launchDetalleAr(root);
+        });
+      }
 
       // Hamburguesa Alchemist — overlay fullscreen
       const burger = root.querySelector('[data-app-nav-burger]');
@@ -1615,6 +1714,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           return;
         }
 
+        if (target.closest('[data-ar-back]')) {
+          event.preventDefault();
+          event.stopPropagation();
+          hideDetalleArViewer(root);
+          return;
+        }
+
         const arChipBtn = target.closest('[data-detalle-ar-btn]');
         if (arChipBtn instanceof HTMLElement && root.contains(arChipBtn)) {
           event.preventDefault();
@@ -1646,29 +1752,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           closeBoutique(root);
         }
       });
-
-      // Parallax ligero: solo transform3d en el scroll del panel de menú
-      const parallaxLayer = root.querySelector('[data-parallax-layer]');
-      const menuScroll = root
-        .querySelector('[data-section="menu"]')
-        ?.querySelector('.overflow-y-auto');
-
-      if (
-        parallaxLayer instanceof HTMLElement &&
-        menuScroll instanceof HTMLElement
-      ) {
-        let ticking = false;
-        const onScroll = () => {
-          if (ticking) return;
-          ticking = true;
-          requestAnimationFrame(() => {
-            const y = menuScroll.scrollTop * 0.22;
-            parallaxLayer.style.transform = `translate3d(0, ${y}px, 0)`;
-            ticking = false;
-          });
-        };
-        menuScroll.addEventListener('scroll', onScroll, { passive: true });
-      }
     });
   }
 

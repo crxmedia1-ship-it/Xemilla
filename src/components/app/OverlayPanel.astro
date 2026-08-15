@@ -57,7 +57,7 @@ const sheetStyle = [
   data-section={sectionId}
   data-open="false"
   class:list={[
-    'panel-sheet pointer-events-none fixed inset-0 z-50 mx-auto flex w-full translate-y-full flex-col opacity-0 transition-all duration-300 ease-out will-change-transform',
+    'panel-sheet pointer-events-none fixed inset-0 z-50 mx-auto flex w-full translate-y-full flex-col opacity-0 transition-[transform,opacity] duration-300 ease-out',
     !hasAtmosphere && !containerBg && estilos.panelColor,
     estilos.textColor,
   ]}
@@ -68,7 +68,7 @@ const sheetStyle = [
 
   <header
     class:list={[
-      'sticky top-0 z-20 flex items-center justify-between border-b border-white/10 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md',
+      'sticky top-0 z-20 flex items-center justify-between border-b border-white/10 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]',
       !hasAtmosphere && !containerBg && estilos.panelColor,
       estilos.borderColor,
     ]}

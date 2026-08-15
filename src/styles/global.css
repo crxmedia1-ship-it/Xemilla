@@ -518,7 +518,8 @@
 [data-section][data-open='true'] {
   pointer-events: auto;
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
+  will-change: auto;
 }
 
 .theme-blacksushi [data-section] {
