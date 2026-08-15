@@ -692,35 +692,32 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             class="mt-2 hidden text-[0.88rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_62%,transparent)]"
             data-detalle-desc
           ></p>
-          <div class="detalle-ar-wrap hidden" data-detalle-ar-container>
-            <model-viewer
-              data-detalle-ar-viewer
-              class="detalle-ar-mv"
-              ar
-              ar-modes="webxr scene-viewer quick-look"
-              ar-placement="floor"
-              ar-scale="auto"
-              shadow-intensity="1"
-              xr-environment
-              camera-controls
-              touch-action="pan-y"
-              reveal="auto"
-              loading="eager"
-              alt="Modelo 3D del plato"
-            >
-              <button
-                slot="ar-button"
-                data-detalle-ar-btn
-                class="detalle-ar-btn"
-                type="button"
-                aria-label="Ver en realidad aumentada"
-              >Ver en AR</button>
-            </model-viewer>
-            <p class="detalle-ar-hint">Pellizca para ajustar el tamaño</p>
-            <p class="detalle-ar-safari hidden" data-detalle-ar-safari>
-              La cámara AR solo funciona en Safari. Tocá Compartir → Abrir en Safari.
-            </p>
-          </div>
+          <button
+            type="button"
+            data-detalle-ar-btn
+            class="detalle-ar-btn hidden"
+            aria-label="Ver en realidad aumentada"
+          >
+            Ver en AR
+          </button>
+          <p class="detalle-ar-safari hidden" data-detalle-ar-safari>
+            La cámara AR solo funciona en Safari. Tocá Compartir → Abrir en Safari.
+          </p>
+          <model-viewer
+            data-detalle-ar-viewer
+            class="detalle-ar-mv is-preload hidden"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            ar-placement="floor"
+            ar-scale="auto"
+            shadow-intensity="1"
+            xr-environment
+            camera-controls
+            touch-action="pan-y"
+            reveal="auto"
+            loading="eager"
+            alt="Modelo 3D del plato"
+          ></model-viewer>
           {
             showNutricion && (
               <div class="detalle-nut mt-4 hidden" data-detalle-nutricion>
@@ -948,25 +945,28 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     display: block;
   }
 
-  .detalle-ar-wrap {
-    margin-top: 1rem;
-  }
-  .detalle-ar-wrap.hidden {
-    display: none;
-  }
   .detalle-ar-mv {
     display: block;
     width: 100%;
     height: 12rem;
+    margin-top: 0.85rem;
     border-radius: 1rem;
     background: #111;
     --poster-color: #111;
   }
-  .detalle-ar-hint {
-    margin: 0.45rem 0 0;
-    font-size: 0.67rem;
-    text-align: center;
-    color: color-mix(in srgb, var(--color-texto) 46%, transparent);
+  .detalle-ar-mv.hidden {
+    display: none;
+  }
+  .detalle-ar-mv.is-preload {
+    position: fixed;
+    left: -100vmax;
+    top: 0;
+    display: block;
+    width: 320px;
+    height: 320px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
   }
   .detalle-ar-safari {
     margin: 0.4rem 0 0;
@@ -983,8 +983,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 2.4rem;
-    padding: 0.55rem 1rem;
+    min-height: 2.65rem;
+    margin-top: 1rem;
+    padding: 0.7rem 1rem;
     border-radius: 999px;
     border: 1px solid rgba(196, 181, 253, 0.45);
     background: linear-gradient(180deg, rgba(139, 92, 246, 0.42), rgba(109, 40, 217, 0.28));
@@ -995,6 +996,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     text-transform: uppercase;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     cursor: pointer;
+  }
+  .detalle-ar-btn.hidden {
+    display: none;
   }
   .detalle-ar-native {
     position: absolute;
@@ -1314,10 +1318,16 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       videoEl.load();
     }
     hideDetalleArViewer(app);
-    const arContainer = app.querySelector('[data-detalle-ar-container]');
+    const arBtn = app.querySelector('[data-detalle-ar-btn]');
     const arViewer = app.querySelector('[data-detalle-ar-viewer]');
-    if (arContainer instanceof HTMLElement) arContainer.classList.add('hidden');
-    if (arViewer instanceof HTMLElement) arViewer.removeAttribute('src');
+    const safariHint = app.querySelector('[data-detalle-ar-safari]');
+    if (arBtn instanceof HTMLElement) arBtn.classList.add('hidden');
+    if (arViewer instanceof HTMLElement) {
+      arViewer.classList.add('hidden', 'is-preload');
+      arViewer.removeAttribute('src');
+      arViewer.removeAttribute('scale');
+    }
+    if (safariHint instanceof HTMLElement) safariHint.classList.add('hidden');
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
     const descEl = app.querySelector('[data-detalle-desc]');
     if (descEl instanceof HTMLElement) {
@@ -1529,26 +1539,31 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     const showAr = app.dataset.showAr === 'true';
     const modelo3dUrl = String(meta?.modelo3dUrl || '').trim();
-    const arContainer = app.querySelector('[data-detalle-ar-container]');
+    const arBtn = app.querySelector('[data-detalle-ar-btn]');
     const arViewer = app.querySelector('[data-detalle-ar-viewer]');
     const safariHint = app.querySelector('[data-detalle-ar-safari]');
     const mediaStdEl = app.querySelector('[data-detalle-media-std]');
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
 
-    if (showAr && modelo3dUrl && arContainer instanceof HTMLElement && arViewer instanceof HTMLElement) {
+    if (showAr && modelo3dUrl && arBtn instanceof HTMLElement && arViewer instanceof HTMLElement) {
       ensureModelViewerLoaded();
       app.dataset.detalleArSrc = modelo3dUrl;
-      arContainer.classList.remove('hidden');
+      arBtn.classList.remove('hidden');
+      arViewer.classList.remove('hidden');
+      arViewer.classList.add('is-preload');
       arViewer.setAttribute('alt', title || 'Modelo 3D');
       arViewer.setAttribute('src', modelo3dUrl);
-      patchArButtonSlot(arViewer);
+      bindDishScale(arViewer);
       if (safariHint instanceof HTMLElement) {
         safariHint.classList.toggle('hidden', !isIosThirdPartyBrowser());
       }
-    } else if (arContainer instanceof HTMLElement) {
+    } else {
       app.dataset.detalleArSrc = '';
-      arContainer.classList.add('hidden');
-      if (arViewer instanceof HTMLElement) arViewer.removeAttribute('src');
+      if (arBtn instanceof HTMLElement) arBtn.classList.add('hidden');
+      if (arViewer instanceof HTMLElement) {
+        arViewer.classList.add('hidden', 'is-preload');
+        arViewer.removeAttribute('src');
+      }
       if (safariHint instanceof HTMLElement) safariHint.classList.add('hidden');
     }
 
@@ -1631,31 +1646,50 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     window.location.href = intent;
   }
 
-  function patchArButtonSlot(viewer: HTMLElement) {
-    const inject = () => {
-      const sr = viewer.shadowRoot;
-      if (!sr || sr.querySelector('style[data-xem-ar]')) return;
-      const s = document.createElement('style');
-      s.setAttribute('data-xem-ar', '');
-      // Stretch the ar-button slot to full width at the bottom of the viewer
-      s.textContent = `
-        .slot.ar-button {
-          position: absolute !important;
-          left: 0.75rem !important;
-          right: 0.75rem !important;
-          bottom: 0.75rem !important;
-          top: auto !important;
-          width: auto !important;
-          transform: none !important;
-        }
-      `;
-      sr.appendChild(s);
+  const DISH_AR_METERS = 0.16;
+
+  function fitDishScale(viewer: HTMLElement) {
+    const mv = viewer as HTMLElement & {
+      getDimensions?: () => { x: number; y: number; z: number };
+      scale?: string;
     };
-    inject();
-    viewer.addEventListener('load', inject, { once: true });
-    if (!viewer.shadowRoot) {
-      customElements.whenDefined('model-viewer').then(() => requestAnimationFrame(inject)).catch(() => {});
+    const dim = typeof mv.getDimensions === 'function' ? mv.getDimensions() : null;
+    if (!dim) return;
+    const max = Math.max(Number(dim.x) || 0, Number(dim.y) || 0, Number(dim.z) || 0);
+    if (!(max > 0)) return;
+    const s = DISH_AR_METERS / max;
+    if (s >= 0.999) return;
+    const value = `${s} ${s} ${s}`;
+    mv.scale = value;
+    viewer.setAttribute('scale', value);
+  }
+
+  function bindDishScale(viewer: HTMLElement) {
+    const onLoad = () => fitDishScale(viewer);
+    viewer.addEventListener('load', onLoad, { once: true });
+    const mv = viewer as HTMLElement & { loaded?: boolean };
+    if (mv.loaded) onLoad();
+  }
+
+  function launchDetalleAr(app: HTMLElement) {
+    if (app.dataset.showAr !== 'true') return;
+    const viewer = app.querySelector('[data-detalle-ar-viewer]') as
+      | (HTMLElement & { activateAR?: () => Promise<void>; canActivateAR?: boolean })
+      | null;
+    if (!viewer) return;
+    fitDishScale(viewer);
+
+    if (isIosUa() || isAndroidUa()) {
+      if (typeof viewer.activateAR === 'function') {
+        void viewer.activateAR().catch(() => {
+          const src = String(app.dataset.detalleArSrc || '').trim();
+          if (src && isAndroidUa()) openSceneViewerAr(src, 'Plato');
+        });
+      }
+      return;
     }
+
+    viewer.classList.remove('is-preload', 'hidden');
   }
 
   function initRestaurantApps() {
@@ -1666,7 +1700,14 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       root.dataset.navReady = 'true';
       void hydrateWebappNutricion(root);
 
-      // AR button is slot="ar-button" inside model-viewer; clicks are handled natively.
+      const arLaunchBtn = root.querySelector('[data-detalle-ar-btn]');
+      if (arLaunchBtn instanceof HTMLElement) {
+        arLaunchBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          launchDetalleAr(root);
+        });
+      }
 
       // Hamburguesa Alchemist — overlay fullscreen
       const burger = root.querySelector('[data-app-nav-burger]');
@@ -1769,7 +1810,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           return;
         }
 
-        // [data-detalle-ar-btn] is slot="ar-button" inside model-viewer; handled natively.
+        const arChipBtn = target.closest('[data-detalle-ar-btn]');
+        if (arChipBtn instanceof HTMLElement && root.contains(arChipBtn)) {
+          event.preventDefault();
+          event.stopPropagation();
+          launchDetalleAr(root);
+          return;
+        }
 
         if (
           target.closest('[data-detalle-close]') ||
