@@ -2,6 +2,8 @@
 /**
  * Ubicación Split Map — cabecera mapa + tabs Horarios / Contacto.
  */
+import { googleMapsEmbedSrc, mapsOpenHref } from '../../../lib/maps-preview.js';
+
 interface Props {
   direccion: string;
   ciudad: string;
@@ -50,13 +52,11 @@ const waHref = /^https?:\/\//i.test(waRaw)
     : '';
 
 const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
-const addressLine = mapsQuery;
 const mapsHref =
-  mapaUrl && !/maps\.google\.com\/?$/i.test(mapaUrl)
-    ? mapaUrl
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery || 'restaurante')}`;
+  mapsOpenHref(mapaUrl, mapsQuery) ||
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery || 'restaurante')}`;
 const wazeHref = `https://waze.com/ul?q=${encodeURIComponent(mapsQuery || 'restaurante')}&navigate=yes`;
-const mapsEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(mapsQuery || 'restaurante')}&z=15&output=embed`;
+const mapsEmbed = googleMapsEmbedSrc(mapaUrl, mapsQuery);
 
 function parseHorariosTexto(text: string) {
   return text
@@ -89,17 +89,22 @@ const horariosJson = JSON.stringify(horarioFilas);
 >
   <header class="overflow-hidden rounded-3xl border border-white/12 bg-white/[0.03]">
     <div class="relative aspect-[16/10] w-full overflow-hidden bg-black/40">
-      <iframe
-        title="Mapa del restaurante"
-        src={mapsEmbed}
-        class="absolute inset-0 h-full w-full border-0 grayscale-[30%] contrast-110"
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"
-      >
-      </iframe>
-      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20"
-      >
-      </div>
+      {
+        mapsEmbed ? (
+          <iframe
+            title="Mapa del restaurante"
+            src={mapsEmbed}
+            class="absolute inset-0 h-full w-full border-0 grayscale-[30%] contrast-110"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          />
+        ) : (
+          <div class="absolute inset-0 grid place-items-center px-6 text-center text-sm text-white/50">
+            Mapa no configurado
+          </div>
+        )
+      }
+      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20"></div>
       <div
         class="live-badge absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/55 px-2.5 py-1.5 backdrop-blur-md"
         data-live-badge
@@ -115,12 +120,6 @@ const horariosJson = JSON.stringify(horarioFilas);
         </span>
       </div>
     </div>
-
-    {
-      addressLine && (
-        <p class={`px-4 py-3.5 text-sm leading-relaxed ${estilos.textColor}`}>{addressLine}</p>
-      )
-    }
   </header>
 
   <div

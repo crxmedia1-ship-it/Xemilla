@@ -1,4 +1,6 @@
 ---
+import { googleMapsEmbedSrc, mapsOpenHref } from '../../lib/maps-preview.js';
+
 interface Props {
   direccion: string;
   ciudad: string;
@@ -6,7 +8,7 @@ interface Props {
   email?: string;
   instagram?: string;
   whatsapp?: string;
-  redes?: Array<{ red: string; url: string }>;
+  redes?: Array<{ red: string; url: string; activo?: boolean }>;
   mapaLabel: string;
   mapaUrl: string;
   horarios: string | Array<{ dia: string; horas: string }>;
@@ -58,7 +60,7 @@ const waHref = /^https?:\/\//i.test(waRaw)
 
 const redesActivas =
   Array.isArray(redes) && redes.length > 0
-    ? redes.filter((r) => r?.red && r?.url)
+    ? redes.filter((r) => r?.red && r?.url && r?.activo !== false)
     : instagram.trim()
       ? [
           {
@@ -71,13 +73,12 @@ const redesActivas =
       : [];
 
 const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
-const addressLine = [direccion, ciudad].filter(Boolean).join(', ');
 const mapsHref =
-  mapaUrl && !/maps\.google\.com\/?$/i.test(mapaUrl)
-    ? mapaUrl
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery || 'restaurante')}`;
+  mapsOpenHref(mapaUrl, mapsQuery) ||
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery || 'restaurante')}`;
+const mapsEmbed = googleMapsEmbedSrc(mapaUrl, mapsQuery);
 
-const wazeHref = `https://waze.com/ul?q=${encodeURIComponent(mapsQuery || addressLine || 'restaurante')}&navigate=yes`;
+const wazeHref = `https://waze.com/ul?q=${encodeURIComponent(mapsQuery || mapsHref || 'restaurante')}&navigate=yes`;
 
 const horariosIsText = typeof horarios === 'string';
 const horariosTexto = horariosIsText ? horarios.trim() : '';
@@ -305,13 +306,26 @@ const socialMeta: Record<string, { label: string; path: string }> = {
     </h3>
 
     {
-      addressLine && (
-        <p
-          class={`mt-5 w-full max-w-sm text-center text-base leading-relaxed ${estilos.displayClass} ${estilos.textColor}`}
-        >
-          {addressLine}
-        </p>
-      )
+      mapsEmbed ? (
+        <div class="mt-5 w-full overflow-hidden rounded-2xl">
+          <div class="relative aspect-[16/9] w-full overflow-hidden bg-black/20">
+            <iframe
+              title="Mapa del restaurante"
+              src={mapsEmbed}
+              class="pointer-events-none absolute inset-0 h-full w-full border-0"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+            />
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="absolute inset-0 z-10"
+              aria-label="Abrir en Google Maps"
+            />
+          </div>
+        </div>
+      ) : null
     }
 
     <div class="mt-6 grid w-full grid-cols-2 gap-3">

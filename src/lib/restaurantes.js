@@ -408,8 +408,11 @@ function buildUbicacion(row, brand) {
       redes.length > 0
         ? redes
         : legacyIg
-          ? [{ red: 'instagram', url: legacyIg }]
+          ? [{ red: 'instagram', url: legacyIg, activo: true }]
           : [];
+    const redesPublicas = redesFinal.filter((r) => r.activo !== false);
+    const igPublica =
+      redesPublicas.find((r) => r.red === 'instagram')?.url || '';
 
     return {
       titulo: 'UBICACIÓN Y HORARIOS',
@@ -421,9 +424,9 @@ function buildUbicacion(row, brand) {
       horariosRows: normalizeHorarios(horariosRaw),
       telefono: whatsapp,
       email: '',
-      instagram: legacyIg || redesFinal.find((r) => r.red === 'instagram')?.url || '',
+      instagram: igPublica,
       whatsapp,
-      redes: redesFinal,
+      redes: redesPublicas,
     };
   }
 
@@ -525,7 +528,7 @@ export async function getRestauranteBySlug(slug) {
       (createSupabaseServiceClient() || supabase)
         .from('platos')
         .select(
-          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
+          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
         )
         .eq('restaurante_id', row.id)
         .eq('disponible', true)
@@ -541,8 +544,8 @@ export async function getRestauranteBySlug(slug) {
     const platosClient = createSupabaseServiceClient() || supabase;
     const missingOrden = /\borden\b/i.test(msg);
     const nutSelect = missingOrden
-      ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle'
-      : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle';
+      ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url'
+      : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
     const nutRetry = await platosClient
       .from('platos')
       .select(nutSelect)
@@ -623,6 +626,7 @@ export async function getRestauranteBySlug(slug) {
       grasas: plato.grasas == null ? null : Number(plato.grasas),
       alergias: normalizeAlergias(plato.alergias),
       ingredientesDetalle: plato.ingredientes_detalle ?? '',
+      modelo3dUrl: asText(plato.modelo_3d_url),
     };
 
     platosByCategoria.get(key).push(mapped);
@@ -770,6 +774,7 @@ export async function getRestauranteBySlug(slug) {
         Boolean(row.gadget_mesero) || Boolean(row.gadget_llamar_mesero),
       boutique: Boolean(row.gadget_boutique),
       nutricion: Boolean(row.gadget_nutricion),
+      ar: Boolean(row.gadget_ar),
     },
     wifi: {
       ssid: wifiSsid,

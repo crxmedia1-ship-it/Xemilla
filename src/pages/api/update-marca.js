@@ -180,15 +180,17 @@ async function handleUpdateMarca({ request, cookies }) {
     });
   }
 
-  // Ubicación + redes
-  patch.direccion = normalizeText(raw.direccion);
+  // Ubicación + redes (dirección ya no se edita aquí; no borrar si no viene)
+  if (raw.direccion !== undefined) {
+    patch.direccion = normalizeText(raw.direccion);
+  }
   patch.coordenadas_maps = normalizeUrlOrText(raw.coordenadas_maps);
   patch.horarios = normalizeText(raw.horarios, { keepNewlines: true });
 
   const redes = buildRedesSocialesFromBody(raw);
   patch.redes_sociales = redes;
-  const ig = redes.find((r) => r.red === 'instagram');
-  patch.instagram_url = ig?.url || normalizeUrlOrText(raw.instagram_url);
+  const igPublica = redes.find((r) => r.red === 'instagram' && r.activo !== false);
+  patch.instagram_url = igPublica?.url || null;
 
   const whatsapp = normalizeWhatsapp(raw.whatsapp_url);
   patch.whatsapp_url = whatsapp;
@@ -251,6 +253,7 @@ async function handleUpdateMarca({ request, cookies }) {
   // Boutique / merch
   patch.gadget_boutique = toBool(raw.gadget_boutique);
   patch.gadget_nutricion = toBool(raw.gadget_nutricion);
+  patch.gadget_ar = toBool(raw.gadget_ar);
   let boutiqueProductos = null;
   if (Array.isArray(raw.boutique_productos)) {
     boutiqueProductos = raw.boutique_productos;
@@ -309,6 +312,7 @@ async function handleUpdateMarca({ request, cookies }) {
         'gadget_llamar_mesero',
         'gadget_boutique',
         'gadget_nutricion',
+        'gadget_ar',
         'config_wifi',
         'config_reservas',
         'config_boutique',
@@ -334,6 +338,7 @@ async function handleUpdateMarca({ request, cookies }) {
       delete legacyPatch.gadget_cuenta;
       delete legacyPatch.gadget_boutique;
       delete legacyPatch.gadget_nutricion;
+      delete legacyPatch.gadget_ar;
       delete legacyPatch.config_boutique;
       delete legacyPatch.home_theme;
       delete legacyPatch.ubicacion_theme;

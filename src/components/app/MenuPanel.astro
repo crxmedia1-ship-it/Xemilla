@@ -19,6 +19,7 @@ interface Plato {
   grasas?: number | null;
   alergias?: string[];
   ingredientesDetalle?: string;
+  modelo3dUrl?: string;
 }
 
 interface Props {
@@ -34,9 +35,13 @@ interface Props {
   fondoGlobal?: { tipo?: string; valor?: string };
   /** Gadget nutrición activo — si false, cero rastro DOM */
   showNutricion?: boolean;
-  /** VES por 1 USD (BCV) */
+  /** Gadget AR activo — si true, emite data-plato-modelo3d-url en cada botón */
+  showAr?: boolean;
+  /** VES por 1 USD (BCV) — fallback visual si no hay tasa en vivo */
   tasaBcv?: number;
-  /** VES por 1 EUR (BCV) */
+  /** EUR por 1 USD — fallback visual */
+  tasaEurUsd?: number;
+  /** VES por 1 EUR (BCV) — opcional, solo para hint de tasa */
   tasaEur?: number;
   estilos: {
     panelColor: string;
@@ -57,8 +62,10 @@ const {
   destacados = [],
   fondoGlobal = { tipo: 'color', valor: '' },
   showNutricion = false,
-  tasaBcv = 766.8603,
-  tasaEur = 885.0795,
+  showAr = false,
+  tasaBcv = 36.5,
+  tasaEurUsd = 0.92,
+  tasaEur = 0,
   estilos,
 } = Astro.props;
 
@@ -82,10 +89,14 @@ function alergiasLabels(plato: Plato) {
     .filter(Boolean);
 }
 
-/** Strip currency symbols / whitespace so parseFloat always gets a clean number */
+/** Valor base USD limpio para data-precio-usd */
 function precioUsd(precio: string): string {
-  const n = parseFloat(String(precio).replace(/[^0-9.]/g, ''));
-  return isNaN(n) ? '0' : String(n);
+  const raw = String(precio ?? '').trim();
+  if (!raw) return '0.00';
+  const normalized =
+    raw.includes(',') && !raw.includes('.') ? raw.replace(',', '.') : raw;
+  const n = Number.parseFloat(normalized.replace(/[^0-9.]/g, ''));
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 }
 
 const CHIP_BASE =
@@ -106,7 +117,8 @@ const globalBgValor = fondoGlobal.valor || '';
   data-menu-bg-global-valor={globalBgValor}
   data-show-nutricion={showNutricion ? 'true' : 'false'}
   data-tasa-bcv={String(tasaBcv)}
-  data-tasa-eur={String(tasaEur)}
+  data-tasa-eur-usd={String(tasaEurUsd)}
+  data-tasa-eur={String(tasaEur || '')}
 >
   {/* Capas de fondo dinámico por categoría — morph fluido + fallback global */}
   <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true" data-menu-bg-root>
@@ -257,18 +269,15 @@ const globalBgValor = fondoGlobal.valor || '';
       )
     }
 
-    {/* —— Selector de Divisas —— */}
+    {/* —— Selector de Divisas (visual, client-side) —— */}
     <div
       class="currency-bar"
       data-currency-switcher
       data-tasa-bcv={String(tasaBcv)}
-      data-tasa-eur={String(tasaEur)}
+      data-tasa-eur-usd={String(tasaEurUsd)}
+      data-tasa-eur={String(tasaEur || '')}
     >
       <span class="currency-bar__label" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3.5 opacity-60">
-          <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.33.576Z" />
-          <path fill-rule="evenodd" d="M9.99 1.375a8.625 8.625 0 1 0 0 17.25 8.625 8.625 0 0 0 0-17.25ZM9.24 4a.75.75 0 0 1 .75.75v.628a4.56 4.56 0 0 1 1.794.574c.428.26.909.756.909 1.548 0 .69-.35 1.226-.787 1.554-.25.185-.54.324-.837.406v2.884a3.93 3.93 0 0 0 .88-.36c.303-.186.477-.395.477-.644a.75.75 0 0 1 1.5 0c0 .76-.433 1.38-.915 1.72-.537.378-1.21.605-1.942.667V15a.75.75 0 0 1-1.5 0v-.61a4.907 4.907 0 0 1-1.84-.636c-.479-.291-.962-.8-.962-1.554 0-.76.436-1.28.878-1.576.24-.162.495-.28.754-.36V7.995a2.29 2.29 0 0 0-.469.166c-.16.08-.265.17-.317.236a.75.75 0 1 1-1.17-.94c.27-.336.65-.578 1.01-.739.27-.12.567-.21.946-.267V4.75A.75.75 0 0 1 9.24 4Z" clip-rule="evenodd" />
-        </svg>
         Precios
       </span>
 
@@ -345,7 +354,7 @@ const globalBgValor = fondoGlobal.valor || '';
                   {plato.nombre}
                 </h4>
                 <p class="mt-1.5 text-[1.05rem] font-semibold tabular-nums text-[color:var(--color-texto)] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
-                  <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${plato.precio}</span>
+                  <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                 </p>
               </button>
             );
@@ -392,7 +401,7 @@ const globalBgValor = fondoGlobal.valor || '';
                     </h4>
                     <span class="menu-leader" aria-hidden="true" />
                     <span class="shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide text-[color:var(--color-texto)] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
-                      <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${plato.precio}</span>
+                      <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                     </span>
                   </div>
 
@@ -410,7 +419,7 @@ const globalBgValor = fondoGlobal.valor || '';
                     </p>
                   )}
 
-                  {hasMedia(mediaUrl) || showNutricion ? (
+                  {hasMedia(mediaUrl) || showNutricion || showAr ? (
                     <button
                       type="button"
                       data-open-detalle
@@ -424,11 +433,12 @@ const globalBgValor = fondoGlobal.valor || '';
                       data-plato-carbs={showNutricion ? String(plato.carbs ?? '') : ''}
                       data-plato-grasas={showNutricion ? String(plato.grasas ?? '') : ''}
                       data-plato-alergias={showNutricion ? alergiasCsv(plato) : ''}
-                      data-plato-ingredientes={showNutricion ? (plato.ingredientesDetalle || '') : ''}
                       data-plato-has-nut={showNutricion ? 'true' : 'false'}
-                      class="menu-btn mt-3 border border-white/15 bg-white/5 px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase text-[color:var(--color-texto)] shadow-inner backdrop-blur-md active:scale-95"
+                      data-plato-modelo3d-url={showAr ? (plato.modelo3dUrl || '') : ''}
+                      class="menu-btn menu-btn--detalle mt-3"
                     >
                       Ver detalle
+                      <span aria-hidden="true">›</span>
                     </button>
                   ) : null}
                 </li>
@@ -465,6 +475,28 @@ const globalBgValor = fondoGlobal.valor || '';
   .menu-btn {
     border-radius: var(--radius-button, 9999px);
     transition: transform var(--motion-spring, 220ms ease), opacity 200ms ease;
+  }
+
+  .menu-btn--detalle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.52rem 0.95rem 0.52rem 1.05rem;
+    border: 1px solid color-mix(in srgb, var(--color-texto) 16%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 8%, transparent);
+    color: var(--color-texto);
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+  }
+
+  .menu-btn--detalle span {
+    font-size: 1.05rem;
+    line-height: 1;
+    opacity: 0.7;
   }
 
   .menu-featured {
@@ -561,9 +593,17 @@ const globalBgValor = fondoGlobal.valor || '';
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
-    padding: 0.5rem 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 0.45rem 0.7rem;
+    margin: 0.35rem 0.85rem 0.7rem;
+    padding: 0.4rem 0.5rem 0.4rem 0.85rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--color-texto) 14%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--color-texto) 10%, transparent),
+      0 10px 28px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
   }
 
   .currency-bar__label {
@@ -724,14 +764,14 @@ const globalBgValor = fondoGlobal.valor || '';
     display: inline-flex;
     align-items: center;
     border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--color-texto) 14%, transparent);
-    background: color-mix(in srgb, var(--color-texto) 6%, transparent);
-    padding: 0.12rem 0.45rem;
-    font-size: 0.52rem;
+    border: 1px solid color-mix(in srgb, var(--color-texto) 16%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+    padding: 0.22rem 0.55rem;
+    font-size: 0.58rem;
     font-weight: 650;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-texto) 55%, transparent);
+    color: color-mix(in srgb, var(--color-texto) 72%, transparent);
   }
 
   .alergia-reset:active {
@@ -747,7 +787,7 @@ const globalBgValor = fondoGlobal.valor || '';
   /* ── Dynamic price fade ──────────────────────────────────── */
   .precio-dinamico {
     display: inline-block;
-    transition: opacity 130ms ease;
+    transition: opacity 180ms ease;
   }
 
   .precio-dinamico.is-converting {
@@ -1105,25 +1145,30 @@ const globalBgValor = fondoGlobal.valor || '';
   }
 
   function initCurrencyEngine(panel: HTMLElement) {
+    const TASA_BCV = 36.5;
+    const TASA_EUR = 0.92;
+
     const switcher = panel.querySelector<HTMLElement>('[data-currency-switcher]');
     if (!switcher) return;
 
-    let usdVes = parseFloat(switcher.dataset.tasaBcv || panel.dataset.tasaBcv || '766.8603');
-    let eurVes = parseFloat(switcher.dataset.tasaEur || panel.dataset.tasaEur || '885.0795');
-    if (!Number.isFinite(usdVes) || usdVes < 1) usdVes = 766.8603;
-    if (!Number.isFinite(eurVes) || eurVes < 1) eurVes = 885.0795;
+    let usdVes = parseFloat(switcher.dataset.tasaBcv || panel.dataset.tasaBcv || String(TASA_BCV));
+    let eurPerUsd = parseFloat(
+      switcher.dataset.tasaEurUsd || panel.dataset.tasaEurUsd || String(TASA_EUR),
+    );
+    if (!Number.isFinite(usdVes) || usdVes <= 0) usdVes = TASA_BCV;
+    if (!Number.isFinite(eurPerUsd) || eurPerUsd <= 0) eurPerUsd = TASA_EUR;
 
     const rateEl = switcher.querySelector<HTMLElement>('[data-currency-rate]');
     let current = 'USD';
 
-    const usdToEur = (usd: number) => usd * (usdVes / eurVes);
-
     const setRateHint = (currency: string) => {
       if (!rateEl) return;
       if (currency === 'EUR') {
-        rateEl.innerHTML = `$1 ≈ <strong>${formatEUR(usdToEur(1))}</strong>`;
-      } else {
+        rateEl.innerHTML = `$1 ≈ <strong>${formatEUR(eurPerUsd)}</strong>`;
+      } else if (currency === 'BS') {
         rateEl.innerHTML = `$1 = <strong>${formatBS(usdVes)}</strong>`;
+      } else {
+        rateEl.innerHTML = `USD · BCV <strong>${formatBS(usdVes)}</strong>`;
       }
     };
 
@@ -1131,19 +1176,22 @@ const globalBgValor = fondoGlobal.valor || '';
       const spans = panel.querySelectorAll<HTMLElement>('.precio-dinamico');
       spans.forEach((el) => el.classList.add('is-converting'));
 
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           spans.forEach((el) => {
-            el.classList.remove('is-converting');
-            const usd = parseFloat(el.dataset.precioUsd ?? '');
-            if (!Number.isFinite(usd) || usd < 0) return;
+            const usd = Number.parseFloat(el.dataset.precioUsd ?? '');
+            if (!Number.isFinite(usd) || usd < 0) {
+              el.classList.remove('is-converting');
+              return;
+            }
             if (currency === 'BS') {
               el.textContent = formatBS(usd * usdVes);
             } else if (currency === 'EUR') {
-              el.textContent = formatEUR(usdToEur(usd));
+              el.textContent = formatEUR(usd * eurPerUsd);
             } else {
               el.textContent = formatUSD(usd);
             }
+            el.classList.remove('is-converting');
           });
           setRateHint(currency);
         });
@@ -1157,15 +1205,16 @@ const globalBgValor = fondoGlobal.valor || '';
       .then((data) => {
         if (!data || !data.ok) return;
         const nextUsd = Number(data.usdVes);
-        const nextEur = Number(data.eurVes);
+        const nextEurVes = Number(data.eurVes);
         if (Number.isFinite(nextUsd) && nextUsd > 1) usdVes = nextUsd;
-        if (Number.isFinite(nextEur) && nextEur > 1) eurVes = nextEur;
+        if (Number.isFinite(nextUsd) && Number.isFinite(nextEurVes) && nextEurVes > 1) {
+          eurPerUsd = nextUsd / nextEurVes;
+        }
         switcher.dataset.tasaBcv = String(usdVes);
-        switcher.dataset.tasaEur = String(eurVes);
+        switcher.dataset.tasaEurUsd = String(eurPerUsd);
         panel.dataset.tasaBcv = String(usdVes);
-        panel.dataset.tasaEur = String(eurVes);
-        if (current !== 'USD') convertAll(current);
-        else setRateHint(current);
+        panel.dataset.tasaEurUsd = String(eurPerUsd);
+        convertAll(current);
       })
       .catch(() => {});
 

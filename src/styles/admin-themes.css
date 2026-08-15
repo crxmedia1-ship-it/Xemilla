@@ -282,6 +282,21 @@ html.admin-panel .font-sanza {
   letter-spacing: -0.025em;
 }
 
+html.admin-panel h1.studio-resto-title,
+html.admin-panel .studio-resto-title {
+  margin: 0;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(2.15rem, 4.6vw, 3.45rem);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  color: var(--text-primary);
+  font-variation-settings: 'SOFT' 70, 'WONK' 1;
+  text-wrap: balance;
+}
+
 /* Remap hardcoded zinc/white utilities inside admin */
 html.admin-panel .text-white {
   color: var(--text-primary) !important;
@@ -1842,28 +1857,36 @@ html.admin-panel[data-theme='light'] .admin-studio-foot-brand__plate--logo {
   transition: opacity 200ms ease, transform 280ms ease;
 }
 
+.admin-mode-toggle__icon--sun {
+  display: none;
+}
+
+.admin-mode-toggle__icon--moon {
+  display: grid;
+}
+
 html.admin-panel.dark .admin-mode-toggle__icon--sun,
 html.admin-panel[data-theme='dark'] .admin-mode-toggle__icon--sun,
 html.admin-panel[data-theme='onyx'] .admin-mode-toggle__icon--sun {
-  display: grid;
+  display: none;
 }
 html.admin-panel.dark .admin-mode-toggle__icon--moon,
 html.admin-panel[data-theme='dark'] .admin-mode-toggle__icon--moon,
 html.admin-panel[data-theme='onyx'] .admin-mode-toggle__icon--moon {
-  display: none;
+  display: grid;
 }
 
 html.admin-panel.light .admin-mode-toggle__icon--sun,
 html.admin-panel[data-theme='light'] .admin-mode-toggle__icon--sun,
 html.admin-panel[data-theme='alabastro'] .admin-mode-toggle__icon--sun,
 html.admin-panel[data-theme='organico'] .admin-mode-toggle__icon--sun {
-  display: none;
+  display: grid;
 }
 html.admin-panel.light .admin-mode-toggle__icon--moon,
 html.admin-panel[data-theme='light'] .admin-mode-toggle__icon--moon,
 html.admin-panel[data-theme='alabastro'] .admin-mode-toggle__icon--moon,
 html.admin-panel[data-theme='organico'] .admin-mode-toggle__icon--moon {
-  display: grid;
+  display: none;
 }
 
 /* Wide logo pedestal — Identidad & Marca */
@@ -3256,6 +3279,7 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  margin-top: 1.15rem;
 }
 
 .status-filter-pill,

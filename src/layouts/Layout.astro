@@ -39,7 +39,7 @@ const {
 const fontHref =
   fontHrefProp ||
   (adminPanel
-    ? 'https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap'
+    ? 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap'
     : theme === 'sanza'
       ? 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'
       : theme === 'blacksushi'
@@ -103,6 +103,9 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
     <meta name="twitter:description" content={description} />
     {shareImage ? <meta name="twitter:image" content={shareImage} /> : null}
     <title>{title}</title>
+    {!adminPanel && (
+      <Fragment set:html='<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>' />
+    )}
     <ClientRouter />
     {
       adminPanel && (

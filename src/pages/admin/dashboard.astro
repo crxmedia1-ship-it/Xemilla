@@ -5,12 +5,12 @@ import Layout from '../../layouts/Layout.astro';
 import AdminXemillaMark from '../../components/admin/AdminXemillaMark.astro';
 import AdminMetricsPanel from '../../components/admin/AdminMetricsPanel.astro';
 import AdminThemeSwitcher from '../../components/admin/AdminThemeSwitcher.astro';
+import PerfilLocalCard from '../../components/admin/PerfilLocalCard.astro';
 import { getAdminDashboardData } from '../../lib/admin.js';
 import { fetchMetricsSnapshot, emptyMetricsSnapshot } from '../../lib/metrics.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import {
   getSuperAdminWriteClient,
-  listAllRestaurantes,
 } from '../../lib/superadmin.js';
 import { parseBoutiqueConfig } from '../../lib/boutique.js';
 import {
@@ -19,6 +19,10 @@ import {
 } from '../../lib/layout-themes.js';
 import { macrosPresentIn, resolveMacroId } from '../../config/menu-macros.js';
 import { platoFillUrl } from '../../lib/plato-media-url.js';
+import {
+  parseHorarioSemana,
+  previewHorarioHoy,
+} from '../../lib/horarios-semana.js';
 import { ALERGENOS_OPTIONS } from '../../config/nutricion.js';
 import {
   parseUiEstilo,
@@ -28,6 +32,7 @@ import {
   normalizeFondoAnimacion,
   normalizeEfectoEntrada,
   normalizeOverlayEstilo,
+  parseRedesSociales,
 } from '../../lib/secciones-ui.js';
 import {
   TYPOGRAPHY_COMBO_OPTIONS,
@@ -40,6 +45,10 @@ import {
   ADMIN_ROLE_SUPER,
 } from '../../config/superadmin.js';
 import { resolveHubCoverUrl, resolveHubLogoBg } from '../../lib/hub-media.js';
+import {
+  googleMapsEmbedSrc,
+  mapsOpenHref,
+} from '../../lib/maps-preview.js';
 
 const restauranteId =
   Astro.url.searchParams.get('restaurante') ||
@@ -89,23 +98,20 @@ if (!isSuperAdmin) {
     return Astro.redirect('/admin/dashboard');
   }
 } else if (!restauranteId && !restauranteSlug) {
-  // SuperAdmin sin query: default al primer local activo (nunca vista vacía).
-  const supabaseForList = createSupabaseServerClient({
-    request: Astro.request,
-    cookies: Astro.cookies,
-  });
-  const locales = await listAllRestaurantes(supabaseForList, user);
-  const firstId = locales[0]?.id;
-  if (firstId) {
-    return Astro.redirect(
-      `/admin/dashboard?restaurante=${encodeURIComponent(firstId)}`,
-    );
-  }
+  // SuperAdmin sin restaurante en la URL → hub de locales (un solo dueño, muchos locales).
   return Astro.redirect('/admin/super/dashboard');
 }
 
 const nombre = restaurante?.nombre_comercial ?? 'Sin restaurante';
 const restId = restaurante?.id ?? '';
+if (isSuperAdmin && restId) {
+  const urlToken = String(restauranteId || restauranteSlug || '').trim();
+  if (urlToken && urlToken !== restId) {
+    return Astro.redirect(
+      `/admin/dashboard?restaurante=${encodeURIComponent(restId)}`,
+    );
+  }
+}
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
 const publicWebAppUrl = publicSlug ? `/${publicSlug}` : '';
 const categoriasJson = JSON.stringify(categorias);
@@ -113,6 +119,8 @@ const opsTelefono = String(
   restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
 ).trim();
 const opsHorario = String(restaurante?.horarios || '').trim();
+const horarioSemana = parseHorarioSemana(opsHorario);
+const horarioHoy = previewHorarioHoy(horarioSemana);
 const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
 const hubLogoBg = resolveHubLogoBg(restaurante || {});
@@ -235,21 +243,31 @@ if (nosotrosBloques.length === 0) {
   nosotrosBloques = [{ titulo: '', texto: '', media_url: '', alineacion: 'alternada' }];
 }
 
-const redesRaw = parseJsonArray(restaurante?.redes_sociales);
-const redesMap = Object.fromEntries(
-  redesRaw
-    .filter((r) => r?.red && r?.url)
-    .map((r) => [String(r.red).toLowerCase(), String(r.url)]),
-);
-if (!redesMap.instagram && restaurante?.instagram_url) {
-  redesMap.instagram = restaurante.instagram_url;
+const redesParsed = parseRedesSociales(restaurante?.redes_sociales);
+const redesById = Object.fromEntries(redesParsed.map((r) => [r.red, r]));
+if (!redesById.instagram && restaurante?.instagram_url) {
+  redesById.instagram = {
+    red: 'instagram',
+    url: String(restaurante.instagram_url).trim(),
+    activo: true,
+  };
 }
 
-const opsInstagram = String(
-  redesMap.instagram || restaurante?.instagram_url || '',
-).trim();
-const opsSocialAlt = String(
-  redesMap.facebook || redesMap.tiktok || '',
+function redField(id) {
+  const row = redesById[id];
+  const url = String(row?.url || '').trim();
+  return { url, on: Boolean(url) && row?.activo !== false };
+}
+
+const opsInstagram = redField('instagram');
+const opsFacebook = redField('facebook');
+const opsTiktok = redField('tiktok');
+const opsTripadvisor = redField('tripadvisor');
+const opsMaps = String(restaurante?.coordenadas_maps || '').trim();
+const opsMapsEmbed = googleMapsEmbedSrc(opsMaps);
+const opsMapsOpen = mapsOpenHref(opsMaps);
+const opsWifiSsid = String(
+  restaurante?.gadget_wifi_ssid || configWifi?.ssid || '',
 ).trim();
 
 const fondoHome = fondoSeccion(
@@ -344,10 +362,10 @@ const marca = {
   nosotros_bloques: nosotrosBloques,
   direccion: restaurante?.direccion || '',
   coordenadas_maps: restaurante?.coordenadas_maps || '',
-  redes_instagram: redesMap.instagram || '',
-  redes_facebook: redesMap.facebook || '',
-  redes_tiktok: redesMap.tiktok || '',
-  redes_tripadvisor: redesMap.tripadvisor || '',
+  redes_instagram: redesById.instagram?.url || '',
+  redes_facebook: redesById.facebook?.url || '',
+  redes_tiktok: redesById.tiktok?.url || '',
+  redes_tripadvisor: redesById.tripadvisor?.url || '',
   whatsapp_url:
     restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
   horarios: restaurante?.horarios || '',
@@ -371,6 +389,7 @@ const marca = {
     restaurante?.gadget_wifi_clave || configWifi.password || '',
   gadget_boutique: Boolean(restaurante?.gadget_boutique),
   gadget_nutricion: Boolean(restaurante?.gadget_nutricion),
+  gadget_ar: Boolean(restaurante?.gadget_ar),
   boutique_productos: boutiqueConfig.productos,
   home_theme: normalizeHomeTheme(restaurante?.home_theme),
   ubicacion_theme: normalizeUbicacionTheme(restaurante?.ubicacion_theme),
@@ -446,8 +465,6 @@ const userInitials = (() => {
   }
   return (local.slice(0, 2) || 'AD').toUpperCase();
 })();
-const brandEyebrow = isSuperAdmin ? 'SuperAdmin' : 'Studio';
-
 const sampleBulk = isSuperAdmin
   ? `Categoría | Nombre | Descripción | Precio | Destacado | Imagen
 Crudos | Edamame | Salteado con sal marina | 6.50 | SI | https://res.cloudinary.com/demo/image/upload/sample.jpg
@@ -473,7 +490,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         <a
           href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
           class="admin-studio-brand shrink-0"
-          aria-label={hubNombre ? `Studio · ${hubNombre}` : 'Studio Xemilla'}
+          aria-label="Xemilla Studio"
         >
           {
             hubLogoUrl ? (
@@ -500,8 +517,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             )
           }
           <span class="admin-studio-brand__copy">
-            <span class="admin-studio-brand__eyebrow">{brandEyebrow}</span>
-            <span class="admin-studio-brand__title">{hubNombre || 'Xemilla'}</span>
+            <span class="admin-studio-brand__eyebrow">Xemilla</span>
+            <span class="admin-studio-brand__title">Studio</span>
           </span>
         </a>
       </div>
@@ -655,11 +672,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         <div class={`glass-panel ${bounceWallClass} max-w-xl p-8 text-center`}>
           <p class="text-sm text-zinc-400">
             {
-              assignedRestauranteId
+              isSuperAdmin
+                ? 'No encontramos ese restaurante. Volvé al hub de SuperAdmin y abrí un local.'
+                : assignedRestauranteId
                 ? 'Tu restaurante asignado ya no existe en la base. Pedile al SuperAdmin que te reasigne.'
                 : 'No tenés un restaurante asignado. Pedile al SuperAdmin que cree tus credenciales operativas.'
             }
           </p>
+          {
+            isSuperAdmin ? (
+              <a
+                href="/admin/super/dashboard"
+                class="mt-4 inline-flex text-sm font-semibold text-white underline"
+              >
+                Ir al hub
+              </a>
+            ) : null
+          }
         </div>
       ) : (
         <div
@@ -668,16 +697,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           data-categorias={categoriasJson}
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
           data-gadget-nutricion={marca.gadget_nutricion ? 'true' : 'false'}
+          data-gadget-ar={marca.gadget_ar ? 'true' : 'false'}
         >
           <div class="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
             <div class="min-w-0">
-              <p class="text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                {managingAsSuperAdmin || isSuperAdmin ? 'SuperAdmin' : 'Panel Xemilla'}
-              </p>
-              <h1 class="mt-1.5 font-blacksushi-display text-[1.85rem] font-semibold tracking-tight sm:mt-2 sm:text-4xl">
+              <h1 class="studio-resto-title">
                 {nombre}
               </h1>
-              <p class="mt-1 text-sm text-zinc-500 sm:mt-1.5">
+              <p class="mt-1.5 text-sm text-zinc-500 sm:mt-2">
                 <span id="platos-count">{platos.length}</span> platos · edición en vivo
               </p>
             </div>
@@ -871,9 +898,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       Carga masiva nutricional
                     </h2>
                     <p class="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
-                      Pegá JSON o filas
-                      <span class="font-mono text-zinc-400"> nombre | kcal | prot | carbs | grasas | alergias | ingredientes</span>.
-                      El match es por nombre de plato.
+                      Pegá un array JSON. El match es por <span class="text-zinc-300">nombre</span> de plato.
+                      Campos:
+                      <span class="font-mono text-zinc-400">nombre, calorias, proteinas, carbs, grasas, alergias[], ingredientes_detalle</span>.
                     </p>
                     <textarea
                       id="nutricion-bulk-text"
@@ -937,7 +964,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   aria-pressed="true"
                   class="macro-filter-pill is-on"
                 >
-                  Todos
+                  Menú completo
                 </button>
                 {
                   presentMacros.map((macro) => (
@@ -966,7 +993,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               <div id="category-scroll" class="sr-only" aria-hidden="true"></div>
 
               {/* Search below filters (Workable / Xero pattern) */}
-              <div class="studio-search-row flex w-full flex-wrap items-center gap-3">
+              <div class="studio-search-row mt-4 flex w-full flex-wrap items-center gap-3 sm:mt-5">
                 <div class="relative min-w-0 w-full flex-1">
                   <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" aria-hidden="true">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -1015,7 +1042,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       <th class="w-12 px-2 py-3" aria-label="Orden"></th>
                       <th class="px-3 py-3 text-left font-semibold">Plato</th>
                       <th class="w-[8.5rem] px-2 py-3 text-left font-semibold">Categoría</th>
-                      <th class="w-[7rem] px-2 py-3 text-right font-semibold">Precio</th>
+                      <th class="w-[7rem] px-2 py-3 text-center font-semibold">Precio</th>
                       <th class="w-[5.75rem] px-2 py-3 text-center font-semibold">Destacado</th>
                       <th class="w-[5.75rem] px-2 py-3 text-center font-semibold">Disponible</th>
                       <th class="w-12 px-2 py-3 text-right font-semibold"><span class="sr-only">Acciones</span></th>
@@ -1042,6 +1069,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           data-grasas={plato.grasas ?? ''}
                           data-alergias={JSON.stringify(plato.alergias || [])}
                           data-ingredientes-detalle={plato.ingredientes_detalle || ''}
+                          data-modelo3d-url={plato.modelo_3d_url || ''}
                           data-search={`${plato.nombre} ${plato.categoria_nombre} ${plato.descripcion || ''}`.toLowerCase()}
                         >
                           <td class="platos-cell platos-cell--order px-2 py-3.5 text-center" data-label="#">
@@ -1094,11 +1122,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               }
                               </div>
                               <div class="dish-copy">
+                              <div class="dish-edit-field">
+                                <span class="dish-edit-field__label">Nombre</span>
+                              <div class="dish-name-row">
                               <div class="dish-name-stack">
                                 <button
                                   type="button"
                                   data-edit-nombre
-                                  class="dish-name-btn"
+                                  class="dish-name-btn dish-edit-hit"
                                   title="Editar nombre"
                                   aria-label={`Editar nombre: ${plato.nombre}`}
                                 >
@@ -1116,64 +1147,87 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   value={plato.nombre}
                                   data-field="nombre"
                                   data-original={plato.nombre}
-                                  class="field-inline dish-name-input w-full rounded-md bg-transparent px-1.5 py-1 text-[0.8125rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15"
+                                  class="field-inline dish-name-input dish-edit-hit w-full text-[0.9375rem] font-semibold tracking-tight text-white outline-none"
                                   aria-label="Nombre del plato"
                                 />
                               </div>
+                              {
+                                isSuperAdmin ? (
+                                  <button
+                                    type="button"
+                                    data-edit-ar
+                                    data-shows-when-ar
+                                    class:list={[
+                                      'ar-chip',
+                                      plato.modelo_3d_url && 'is-on',
+                                      !marca.gadget_ar && 'hidden',
+                                    ]}
+                                    title={plato.modelo_3d_url ? 'Editar modelo AR' : 'Cargar URL de AR'}
+                                    aria-label="Modelo AR 3D"
+                                  >
+                                    AR
+                                  </button>
+                                ) : null
+                              }
+                              </div>
+                              </div>
+                              <div class="dish-edit-field">
+                                <span class="dish-edit-field__label">Descripción</span>
                               <button
                                 type="button"
                                 data-edit-descripcion
                                 data-descripcion={plato.descripcion || ''}
-                                class="group rounded-md px-1.5 py-0.5 text-left transition hover:bg-white/[0.04]"
+                                class="dish-edit-hit group text-left"
                                 title="Editar descripción"
                               >
                                 <span
                                   data-descripcion-preview
                                   class:list={[
-                                    'line-clamp-2 text-[11px] leading-snug transition group-hover:text-zinc-300',
-                                    plato.descripcion ? 'text-zinc-500' : 'text-zinc-700 italic',
+                                    'line-clamp-2 text-[12px] leading-snug',
+                                    plato.descripcion ? 'text-zinc-500' : 'text-zinc-600 italic',
                                   ]}
                                 >
                                   {plato.descripcion || 'Sin descripción · clic para editar'}
                                 </span>
                               </button>
+                              </div>
+                              <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
+                              </div>
+                            </div>
+                              <div class="dish-gadget-stack">
                               <button
                                 type="button"
                                 data-edit-nutricion
                                 data-shows-when-nutricion
                                 class:list={[
-                                  'nut-edit-btn mt-1 inline-flex flex-col items-start gap-0.5 rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-left transition hover:border-white/25 hover:bg-white/[0.08]',
+                                  'nut-edit-btn',
                                   !marca.gadget_nutricion && 'hidden',
                                 ]}
                                 title="Editar ficha nutricional"
                               >
-                                <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-200">
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-3 opacity-60">
-                                    <path d="M2.5 4.25a.75.75 0 0 1 .75-.75h9.5a.75.75 0 0 1 0 1.5H3.25a.75.75 0 0 1-.75-.75ZM3.25 7.5a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5ZM3.25 11a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5h-4Z" />
-                                  </svg>
-                                  Nutrición / Alérgenos
+                                <span class="nut-edit-btn__top">
+                                  <span class="nut-edit-btn__title">Nutrición</span>
+                                  <span class="nut-edit-btn__go" aria-hidden="true">›</span>
                                 </span>
                                 <span
                                   data-nutricion-preview
                                   class:list={[
-                                    'text-[11px] leading-snug',
+                                    'nut-edit-btn__preview',
                                     plato.calorias != null || (plato.alergias && plato.alergias.length)
-                                      ? 'text-zinc-500'
-                                      : 'text-zinc-600 italic',
+                                      ? 'is-filled'
+                                      : 'is-empty',
                                   ]}
                                 >
                                   {formatNutricionPreview(plato)}
                                 </span>
                               </button>
-                              <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
                               </div>
-                            </div>
                           </td>
                           <td class="platos-cell platos-cell--cat px-2 py-3.5 text-left text-xs text-zinc-400" data-label="Categoría" data-categoria>
                             {plato.categoria_nombre}
                           </td>
-                          <td class="platos-cell platos-cell--precio px-3 py-3.5 text-right" data-label="Precio">
-                            <div class="inline-flex items-center justify-end gap-1">
+                          <td class="platos-cell platos-cell--precio px-3 py-3.5 text-center" data-label="Precio">
+                            <div class="inline-flex items-center justify-center gap-1">
                               <span class="text-xs text-zinc-600">$</span>
                               <input
                                 type="number"
@@ -1254,7 +1308,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               brandName={nombre}
               brandLogoUrl={hubLogoUrl}
               brandTagline={String(restaurante?.eslogan || '').trim() || `Operación · ${nombre}`}
-              allowLogoUpload={true}
+              allowLogoUpload={isSuperAdmin}
               restauranteId={restId}
             />
           </div>
@@ -1264,176 +1318,100 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             role="tabpanel"
             aria-labelledby="tab-perfil"
             data-tab-panel="perfil"
-            class="hidden space-y-6"
+            class="hidden"
             hidden
           >
-            <section
-              id="hub-datos-card"
-              class="rounded-2xl border border-zinc-800/50 bg-zinc-900/40 p-4"
-              data-hub-datos
-            >
-              <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <section id="ops-contacto-card" class="perfil-studio" data-ops-contacto>
+              <header class="perfil-studio__hero">
                 <div class="min-w-0">
-                  <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
-                    Ficha del local
-                  </p>
-                  <h2 class="mt-1 font-blacksushi-display text-lg font-semibold tracking-tight text-zinc-100">
-                    Editar datos
-                  </h2>
-                  <p class="mt-1 text-xs text-zinc-500">
-                    Nombre, teléfono, logo y foto de la tarjeta del Hub. El fondo de la WebApp se edita en Identidad.
+                  <p class="perfil-studio__kicker">Perfil del restaurante</p>
+                  <h2 class="perfil-studio__title">{hubNombre || 'Restaurante'}</h2>
+                  <p class="perfil-studio__lead">
+                    Horario, mapa y redes que ve el comensal.
+                    {isSuperAdmin
+                      ? ' Nombre, logo y teléfono se editan en el inicio de SuperAdmin.'
+                      : ' Nombre, logo y teléfono los define SuperAdmin.'}
                   </p>
                 </div>
-                <p id="hub-datos-status" class="text-[10px] text-zinc-600" role="status"></p>
-              </div>
+                <div class="perfil-studio__status-wrap">
+                  <span
+                    id="ops-open-badge"
+                    class:list={['perfil-status', horarioHoy.open ? 'is-open' : 'is-closed']}
+                  >
+                    {horarioHoy.text}
+                  </span>
+                  <p id="ops-contacto-status" class="perfil-studio__hint" role="status"></p>
+                </div>
+              </header>
 
-              <div class="grid gap-4 sm:grid-cols-2">
-                <label class="block min-w-0 sm:col-span-2">
-                  <span class={labelClass}>Nombre comercial</span>
-                  <input
-                    type="text"
-                    id="hub-nombre"
-                    value={hubNombre}
-                    class={`${fieldClass} mt-1.5`}
-                  />
-                </label>
-                <label class="block min-w-0 sm:col-span-2">
-                  <span class={labelClass}>Teléfono / WhatsApp</span>
-                  <input
-                    type="text"
-                    id="hub-telefono"
-                    value={opsTelefono}
-                    placeholder="+58…"
-                    class={`${fieldClass} mt-1.5`}
-                  />
-                </label>
+              <PerfilLocalCard
+                scope="perfil"
+                mapsInputId="ops-maps"
+                horarioHiddenId="ops-horario"
+                horarioText={opsHorario}
+                horarioSemana={horarioSemana}
+                horarioHoy={horarioHoy}
+                mapsUrl={opsMaps}
+                mapsEmbed={opsMapsEmbed}
+                mapsOpen={opsMapsOpen}
+                instagram={opsInstagram}
+                facebook={opsFacebook}
+                tiktok={opsTiktok}
+                tripadvisor={opsTripadvisor}
+                socialIdPrefix="ops-"
+              />
 
-                <div class="space-y-2">
-                  <span class={labelClass}>Logo</span>
-                  <div class="mt-1.5 flex items-center gap-3">
-                    <div
-                      id="hub-logo-preview"
-                      class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/40"
-                    >
-                      {hubLogoUrl ? (
-                        <img src={hubLogoUrl} alt="" class="h-full w-full object-cover" />
-                      ) : (
-                        <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Logo</span>
-                      )}
-                    </div>
-                    <div class="min-w-0 flex-1 space-y-2">
-                      <input type="hidden" id="hub-logo-url" value={hubLogoUrl} />
-                      <input type="hidden" id="hub-logo-bg" value={hubLogoBg} />
-                      <input
-                        id="hub-logo-file"
-                        type="file"
-                        accept="image/*"
-                        class="block w-full text-[0.65rem] text-zinc-400 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-[0.55rem] file:font-semibold file:uppercase file:text-white"
-                      />
-                    </div>
+              <div class="perfil-group">
+                <div class="perfil-group__head">
+                  <div>
+                    <h3>Accesos</h3>
+                    <p class="perfil-group__sub">Datos del local · no se editan aquí</p>
                   </div>
                 </div>
-
-                <div class="space-y-2">
-                  <span class={labelClass}>Foto portada Hub</span>
-                  <p class="text-[10px] text-zinc-600">
-                    Solo tarjeta SuperAdmin — no cambia el fondo de la WebApp.
-                  </p>
-                  <div class="mt-1 overflow-hidden rounded-xl border border-white/10 bg-black/40">
-                    <div id="hub-cover-preview" class="flex aspect-[4/3] items-center justify-center">
-                      {hubCoverUrl ? (
-                        <img src={hubCoverUrl} alt="" class="h-full w-full object-cover" />
-                      ) : (
-                        <span class="text-[0.55rem] uppercase tracking-wider text-zinc-600">Portada</span>
-                      )}
+                <ul class="perfil-list">
+                  <li class="perfil-meta">
+                    <span>Teléfono</span>
+                    <div class="perfil-meta__value">
+                      <strong>{opsTelefono || '—'}</strong>
+                      {
+                        opsTelefono ? (
+                          <button type="button" class="perfil-mini" data-copy={opsTelefono}>Copiar</button>
+                        ) : null
+                      }
                     </div>
-                  </div>
-                  <input type="hidden" id="hub-cover-url" value={hubCoverUrl} />
-                  <input
-                    id="hub-cover-file"
-                    type="file"
-                    accept="image/*"
-                    class="block w-full text-[0.65rem] text-zinc-400 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-[0.55rem] file:font-semibold file:uppercase file:text-white"
-                  />
-                </div>
+                  </li>
+                  {
+                    opsWifiSsid ? (
+                      <li class="perfil-meta">
+                        <span>Wi‑Fi</span>
+                        <strong>{opsWifiSsid}</strong>
+                      </li>
+                    ) : null
+                  }
+                  {
+                    publicWebAppUrl ? (
+                      <li class="perfil-meta">
+                        <span>WebApp</span>
+                        <div class="perfil-meta__value">
+                          <a href={publicWebAppUrl} target="_blank" rel="noopener noreferrer">{publicWebAppUrl}</a>
+                          <button type="button" class="perfil-mini" data-copy={publicWebAppUrl} data-copy-abs>
+                            Copiar enlace
+                          </button>
+                        </div>
+                      </li>
+                    ) : null
+                  }
+                </ul>
               </div>
 
-              <div class="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  id="hub-datos-save"
-                  data-restaurante-id={restId}
-                  class="admin-action-btn inline-flex items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
-                >
-                  Guardar datos
-                </button>
-              </div>
-            </section>
-
-            <section
-              id="ops-contacto-card"
-              class="rounded-2xl border border-zinc-800/50 bg-zinc-900/40 p-4"
-              data-ops-contacto
-            >
-              <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[0.58rem] font-semibold uppercase tracking-[0.24em] text-zinc-600">
-                    Operaciones
-                  </p>
-                  <h2 class="mt-1 font-blacksushi-display text-lg font-semibold tracking-tight text-zinc-100">
-                    Perfil del Restaurante
-                  </h2>
-                  <p class="mt-1 text-xs text-zinc-500">
-                    Horario y redes — no altera identidad ni diseño.
-                  </p>
-                </div>
-                <p id="ops-contacto-status" class="text-[10px] text-zinc-600" role="status"></p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <label class="block min-w-0 sm:col-span-2">
-                  <span class={labelClass}>Horario de Atención</span>
-                  <input
-                    type="text"
-                    id="ops-horario"
-                    name="ops_horario"
-                    value={opsHorario}
-                    placeholder="Lun a Dom: 12:00 pm - 11:00 pm"
-                    class={`${fieldClass} mt-1.5`}
-                  />
-                </label>
-                <label class="block min-w-0">
-                  <span class={labelClass}>Enlace de Instagram</span>
-                  <input
-                    type="url"
-                    id="ops-instagram"
-                    name="ops_instagram"
-                    value={opsInstagram}
-                    placeholder="https://instagram.com/…"
-                    autocomplete="off"
-                    class="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50"
-                  />
-                </label>
-                <label class="block min-w-0">
-                  <span class={labelClass}>Enlace de TikTok / Facebook</span>
-                  <input
-                    type="url"
-                    id="ops-social-alt"
-                    name="ops_social_alt"
-                    value={opsSocialAlt}
-                    placeholder="https://tiktok.com/@… o https://facebook.com/…"
-                    autocomplete="off"
-                    class="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50"
-                  />
-                </label>
-              </div>
-              <div class="mt-3 flex justify-end">
+              <div class="perfil-studio__footer">
                 <button
                   type="button"
                   id="ops-contacto-save"
                   data-restaurante-id={restId}
-                  class="admin-action-btn inline-flex items-center justify-center rounded-xl border border-white/10 bg-white px-4 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95 disabled:opacity-50"
+                  class="perfil-save"
                 >
-                  Guardar contacto
+                  Guardar perfil
                 </button>
               </div>
             </section>
@@ -2319,44 +2297,29 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         <span class={labelClass}>Color Cuerpo</span>
                         <input type="text" id="marca-ubicacion-color-cuerpo" name="ubicacion_color_cuerpo" value={marca.ubicacion_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
                       </label>
-                      <label class="block space-y-1.5 lg:col-span-2">
-                        <span class={labelClass}>Dirección</span>
-                        <input type="text" id="marca-direccion" name="direccion" value={marca.direccion} class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5 lg:col-span-2">
-                        <span class={labelClass}>Coordenadas Maps</span>
-                        <input type="url" id="marca-coordenadas" name="coordenadas_maps" value={marca.coordenadas_maps} placeholder="https://maps.google.com/…" class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5 lg:col-span-2">
-                        <span class={labelClass}>Horarios</span>
-                        <textarea id="marca-horarios" name="horarios" rows="3" spellcheck="false" placeholder={'Lunes a Viernes: 12:00 – 22:00\nSábado: 12:00 – 23:00'} class={fieldClass}>{marca.horarios}</textarea>
-                      </label>
                       <label class="block space-y-1.5">
                         <span class={labelClass}>WhatsApp</span>
                         <input type="text" id="marca-whatsapp" name="whatsapp_url" value={marca.whatsapp_url} placeholder="+58…" class={fieldClass} />
                       </label>
                     </div>
 
-                    <div class="border-t border-white/5 pt-3 space-y-3">
-                      <p class={labelClass}>Redes Sociales</p>
-                      <div class="grid gap-3 lg:grid-cols-2">
-                        <label class="block space-y-1.5">
-                          <span class={labelClass}>Instagram</span>
-                          <input type="url" id="marca-redes-instagram" name="redes_instagram" value={marca.redes_instagram} placeholder="https://instagram.com/…" class={fieldClass} />
-                        </label>
-                        <label class="block space-y-1.5">
-                          <span class={labelClass}>Facebook</span>
-                          <input type="url" id="marca-redes-facebook" name="redes_facebook" value={marca.redes_facebook} placeholder="https://facebook.com/…" class={fieldClass} />
-                        </label>
-                        <label class="block space-y-1.5">
-                          <span class={labelClass}>TikTok</span>
-                          <input type="url" id="marca-redes-tiktok" name="redes_tiktok" value={marca.redes_tiktok} placeholder="https://tiktok.com/@…" class={fieldClass} />
-                        </label>
-                        <label class="block space-y-1.5">
-                          <span class={labelClass}>TripAdvisor</span>
-                          <input type="url" id="marca-redes-tripadvisor" name="redes_tripadvisor" value={marca.redes_tripadvisor} placeholder="https://tripadvisor.com/…" class={fieldClass} />
-                        </label>
-                      </div>
+                    <div class="marca-local-ops">
+                      <PerfilLocalCard
+                        scope="marca"
+                        mapsInputId="marca-coordenadas"
+                        horarioHiddenId="marca-horarios"
+                        horarioText={opsHorario}
+                        horarioSemana={horarioSemana}
+                        horarioHoy={horarioHoy}
+                        mapsUrl={opsMaps}
+                        mapsEmbed={opsMapsEmbed}
+                        mapsOpen={opsMapsOpen}
+                        instagram={opsInstagram}
+                        facebook={opsFacebook}
+                        tiktok={opsTiktok}
+                        tripadvisor={opsTripadvisor}
+                        socialIdPrefix="marca-redes-"
+                      />
                     </div>
                   </div>
 
@@ -2591,6 +2554,46 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
+                      {/* ── Realidad Aumentada (AR 3D) ── full-width */}
+                      <article
+                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300 sm:col-span-2', marca.gadget_ar && 'gadget-card--on']}
+                        data-gadget-card
+                        data-gadget-id="ar"
+                        style="--gadget-accent: #7c3aed;"
+                      >
+                        <div class="flex items-start gap-3 p-4">
+                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                            </svg>
+                          </span>
+                          <div class="min-w-0 flex-1 pt-0.5">
+                            <div class="flex items-center gap-2">
+                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Realidad Aumentada (AR 3D)</h4>
+                              <span class="gadget-status" data-gadget-status>{marca.gadget_ar ? 'Activo' : 'Inactivo'}</span>
+                            </div>
+                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Permite proyectar platos estrella en 3D sobre la mesa del comensal.</p>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Realidad Aumentada AR 3D">
+                            <input type="checkbox" id="marca-gadget-ar" name="gadget_ar" checked={marca.gadget_ar} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_ar ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_ar && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-ar" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+
+                        <div class:list={['gadget-card__config', marca.gadget_ar && 'is-open']} data-gadget-config aria-hidden={marca.gadget_ar ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner space-y-4 px-4 pb-5">
+                            <div class="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-3">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-violet-400 opacity-80">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
+                              </svg>
+                              <p class="text-[11px] leading-relaxed text-zinc-400">
+                                Activa el botón chico <span class="mx-1 inline-flex items-center rounded-full border border-violet-400/30 bg-violet-500/15 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-[10px] text-violet-200">AR</span> junto al nombre de cada plato. Al tocarlo se abre un modal para pegar la URL <strong class="text-zinc-300">.glb / .usdz</strong>.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+
                     </div>
                   </div>
 
@@ -2759,6 +2762,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             >
               Ajustar recorte
             </button>
+            <button
+              type="button"
+              id="modal-remove-image"
+              class="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-rose-300 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-rose-400/50 hover:bg-rose-500/15 hover:text-rose-200"
+            >
+              Eliminar foto
+            </button>
             <label class="relative inline-flex cursor-pointer items-center">
               <input
                 id="modal-replace-file"
@@ -2869,6 +2879,71 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     </div>
   </div>
 
+  {
+    isSuperAdmin && (
+      <div
+        id="ar-modal"
+        class="modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ar-modal-title"
+        data-open="false"
+        aria-hidden="true"
+      >
+        <div data-modal-card class={`modal-card glass-panel ${bounceWallClass} w-full max-w-lg overflow-hidden p-0 shadow-2xl`}>
+          <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
+            <div class="min-w-0">
+              <p class="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-violet-300">
+                Realidad aumentada
+              </p>
+              <h3 id="ar-modal-title" class="mt-1 truncate font-blacksushi-display text-xl font-semibold">
+                Plato
+              </h3>
+            </div>
+            <button
+              type="button"
+              id="ar-modal-close"
+              class="rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+            >
+              Cerrar
+            </button>
+          </div>
+          <div class="space-y-4 px-5 py-5">
+            <label for="ar-modal-url" class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              URL del modelo 3D (.glb / .usdz)
+            </label>
+            <input
+              id="ar-modal-url"
+              type="url"
+              placeholder="https://res.cloudinary.com/.../modelo.glb"
+              class="w-full rounded-xl border border-violet-500/20 bg-violet-500/[0.04] px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20"
+            />
+            <p class="text-[0.68rem] leading-relaxed text-zinc-500">
+              Pegá la URL del archivo 3D. Si queda vacío, la WebApp usa un modelo de prueba.
+            </p>
+            <p id="ar-modal-error" class="hidden text-xs text-rose-400" role="alert"></p>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                id="ar-modal-save"
+                class="admin-action-btn inline-flex flex-1 items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:bg-zinc-100 active:scale-95"
+              >
+                Guardar URL
+              </button>
+              <button
+                type="button"
+                id="ar-modal-remove"
+                class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition hover:text-white active:scale-95"
+              >
+                Quitar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   <div
         id="nutricion-modal"
         class="modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
@@ -2896,49 +2971,41 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               Cerrar
             </button>
           </div>
-          <div class="max-h-[min(70vh,32rem)] space-y-4 overflow-y-auto px-5 py-5">
+          <div class="max-h-[min(70vh,32rem)] space-y-5 overflow-y-auto px-5 py-5">
             <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              <div>
-                <label for="nut-calorias" class="mb-1 block text-[10px] text-zinc-500">Calorías (kcal)</label>
-                <input id="nut-calorias" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+              <div class="nut-metric">
+                <label for="nut-calorias">kcal</label>
+                <input id="nut-calorias" type="number" min="0" step="1" inputmode="numeric" />
               </div>
-              <div>
-                <label for="nut-proteinas" class="mb-1 block text-[10px] text-zinc-500">Proteínas (g)</label>
-                <input id="nut-proteinas" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+              <div class="nut-metric">
+                <label for="nut-proteinas">Prot</label>
+                <input id="nut-proteinas" type="number" min="0" step="1" inputmode="numeric" />
               </div>
-              <div>
-                <label for="nut-carbs" class="mb-1 block text-[10px] text-zinc-500">Carbohidratos (g)</label>
-                <input id="nut-carbs" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+              <div class="nut-metric">
+                <label for="nut-carbs">Carbs</label>
+                <input id="nut-carbs" type="number" min="0" step="1" inputmode="numeric" />
               </div>
-              <div>
-                <label for="nut-grasas" class="mb-1 block text-[10px] text-zinc-500">Grasas (g)</label>
-                <input id="nut-grasas" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+              <div class="nut-metric">
+                <label for="nut-grasas">Grasas</label>
+                <input id="nut-grasas" type="number" min="0" step="1" inputmode="numeric" />
               </div>
             </div>
             <div>
-              <p class="mb-1.5 text-[10px] text-zinc-500">Alérgenos</p>
-              <p class="mb-2 text-[11px] leading-relaxed text-zinc-500">
-                <strong class="text-zinc-300">Sin gluten</strong> en la WebApp oculta solo platos con Gluten.
-                Lácteos, huevo u otros no los sacan de ese filtro.
-              </p>
+              <p class="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">Alérgenos</p>
               <div id="nut-alergias" class="flex flex-wrap gap-2">
                 {ALERGENOS_OPTIONS.map((opt) => (
-                  <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-300">
-                    <input type="checkbox" value={opt.id} data-nut-alergeno class="size-3.5 rounded border-white/20 bg-black/40" />
+                  <label class="nut-chip">
+                    <input type="checkbox" value={opt.id} data-nut-alergeno class="sr-only" />
                     {opt.label}
                   </label>
                 ))}
               </div>
             </div>
-            <div>
-              <label for="nut-ingredientes" class="mb-1 block text-[10px] text-zinc-500">Ingredientes (detalle)</label>
-              <textarea id="nut-ingredientes" rows="3" placeholder="Desglose de ingredientes…" class="w-full resize-y rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-white/25"></textarea>
-            </div>
             <p id="nutricion-modal-error" class="hidden text-xs text-rose-400" role="alert"></p>
             <button
               type="button"
               id="nutricion-modal-save"
-              class="admin-action-btn inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-950 transition-all duration-200 hover:opacity-90 hover:bg-zinc-100 active:scale-95"
+              class="admin-action-btn nut-save-btn"
             >
               Guardar nutrición
             </button>
@@ -3131,37 +3198,33 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 Ficha nutricional
               </p>
               <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <div>
-                  <label for="np-calorias" class="mb-1 block text-[10px] text-zinc-500">Calorías (kcal)</label>
-                  <input id="np-calorias" name="calorias" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+                <div class="nut-metric">
+                  <label for="np-calorias">kcal</label>
+                  <input id="np-calorias" name="calorias" type="number" min="0" step="1" inputmode="numeric" />
                 </div>
-                <div>
-                  <label for="np-proteinas" class="mb-1 block text-[10px] text-zinc-500">Proteínas (g)</label>
-                  <input id="np-proteinas" name="proteinas" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+                <div class="nut-metric">
+                  <label for="np-proteinas">Prot</label>
+                  <input id="np-proteinas" name="proteinas" type="number" min="0" step="1" inputmode="numeric" />
                 </div>
-                <div>
-                  <label for="np-carbs" class="mb-1 block text-[10px] text-zinc-500">Carbohidratos (g)</label>
-                  <input id="np-carbs" name="carbs" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+                <div class="nut-metric">
+                  <label for="np-carbs">Carbs</label>
+                  <input id="np-carbs" name="carbs" type="number" min="0" step="1" inputmode="numeric" />
                 </div>
-                <div>
-                  <label for="np-grasas" class="mb-1 block text-[10px] text-zinc-500">Grasas (g)</label>
-                  <input id="np-grasas" name="grasas" type="number" min="0" step="1" inputmode="numeric" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm tabular-nums text-white outline-none focus:border-white/25" />
+                <div class="nut-metric">
+                  <label for="np-grasas">Grasas</label>
+                  <input id="np-grasas" name="grasas" type="number" min="0" step="1" inputmode="numeric" />
                 </div>
               </div>
               <div>
-                <p class="mb-1.5 text-[10px] text-zinc-500">Alérgenos</p>
+                <p class="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">Alérgenos</p>
                 <div class="flex flex-wrap gap-2">
                   {ALERGENOS_OPTIONS.map((opt) => (
-                    <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-300">
-                      <input type="checkbox" name="alergias" value={opt.id} class="size-3.5 rounded border-white/20 bg-black/40" />
+                    <label class="nut-chip">
+                      <input type="checkbox" name="alergias" value={opt.id} class="sr-only" />
                       {opt.label}
                     </label>
                   ))}
                 </div>
-              </div>
-              <div>
-                <label for="np-ingredientes" class="mb-1 block text-[10px] text-zinc-500">Ingredientes (detalle)</label>
-                <textarea id="np-ingredientes" name="ingredientes_detalle" rows="2" placeholder="Desglose de ingredientes…" class="w-full resize-y rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-white/25"></textarea>
               </div>
             </div>
 
@@ -3202,14 +3265,152 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   /* Dish name: desktop keeps input; mobile uses marquee + modal */
+  .dish-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    width: 100%;
+  }
+
   .dish-name-stack {
     position: relative;
-    width: 100%;
+    flex: 1;
+    width: auto;
     min-width: 0;
+  }
+
+  .ar-chip {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.55rem;
+    min-width: 2.2rem;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    background: rgba(139, 92, 246, 0.14);
+    color: #ddd6fe;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .ar-chip:hover {
+    border-color: rgba(167, 139, 250, 0.7);
+    background: rgba(139, 92, 246, 0.28);
+    color: #fff;
+  }
+
+  .ar-chip.is-on {
+    border-color: rgba(196, 181, 253, 0.85);
+    background: rgba(139, 92, 246, 0.42);
+    color: #fff;
   }
 
   .dish-name-btn {
     display: none;
+  }
+
+  .dish-copy {
+    gap: 0.7rem;
+  }
+
+  .dish-edit-field {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.28rem;
+    min-width: 0;
+  }
+
+  .dish-edit-field__label {
+    padding-left: 0.1rem;
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-soft, #71717a) 78%, transparent);
+    line-height: 1;
+  }
+
+  .dish-name-input.dish-edit-hit,
+  .dish-name-btn.dish-edit-hit {
+    color: var(--text-primary, #fafafa);
+  }
+
+  .dish-copy [data-descripcion-preview] {
+    color: var(--text-muted, #a1a1aa) !important;
+  }
+
+  .dish-copy [data-descripcion-preview].is-empty,
+  .dish-copy [data-descripcion-preview].italic {
+    color: color-mix(in srgb, var(--text-muted, #a1a1aa) 72%, transparent) !important;
+  }
+
+  .dish-edit-hit {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0.42rem 0.15rem 0.5rem;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-primary, #fafafa) 14%, transparent);
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .dish-name-input.dish-edit-hit {
+    cursor: text;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .dish-edit-hit:hover {
+    border-bottom-color: color-mix(in srgb, var(--text-primary, #fafafa) 38%, transparent);
+    background: transparent;
+  }
+
+  .dish-edit-hit:focus,
+  .dish-edit-hit:focus-visible,
+  .dish-edit-hit:focus-within {
+    outline: none;
+    border-bottom-color: var(--text-primary, #fafafa);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  html.admin-panel.light .dish-edit-hit,
+  html.admin-panel[data-theme='light'] .dish-edit-hit,
+  html.admin-panel[data-theme='alabastro'] .dish-edit-hit,
+  html.admin-panel[data-theme='organico'] .dish-edit-hit {
+    border-bottom-color: rgba(24, 24, 27, 0.12);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  html.admin-panel.light .dish-edit-hit:hover,
+  html.admin-panel[data-theme='light'] .dish-edit-hit:hover,
+  html.admin-panel[data-theme='alabastro'] .dish-edit-hit:hover,
+  html.admin-panel[data-theme='organico'] .dish-edit-hit:hover,
+  html.admin-panel.light .dish-edit-hit:focus,
+  html.admin-panel[data-theme='light'] .dish-edit-hit:focus,
+  html.admin-panel[data-theme='alabastro'] .dish-edit-hit:focus,
+  html.admin-panel[data-theme='organico'] .dish-edit-hit:focus {
+    border-bottom-color: rgba(24, 24, 27, 0.45);
+    background: transparent;
   }
 
   /* Squarespace / Wix: thumb + identity grouped; controls tight on the right */
@@ -3224,38 +3425,148 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       width: 3.25rem;
     }
 
+    .platos-table thead tr {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted, #a1a1aa);
+    }
+
+    .platos-table thead th {
+      padding-top: 0.95rem;
+      padding-bottom: 0.95rem;
+    }
+
     .platos-table th:nth-child(3),
     .platos-table td.platos-cell--cat {
-      width: 8.5rem;
+      width: 11rem;
     }
 
     .platos-table th:nth-child(4),
     .platos-table td.platos-cell--precio {
-      width: 7rem;
+      width: 9.75rem;
+      text-align: center;
     }
 
     .platos-table th:nth-child(5),
     .platos-table td.platos-cell--destacado,
     .platos-table th:nth-child(6),
     .platos-table td.platos-cell--disponible {
-      width: 5.75rem;
+      width: 7.25rem;
     }
 
     .platos-table th:nth-child(7),
     .platos-table td.platos-cell--media {
-      width: 2.75rem;
+      width: 4rem;
     }
 
     .platos-row td {
       vertical-align: middle;
     }
 
+    .platos-cell--cat,
+    .platos-cell--precio,
+    .platos-cell--destacado,
+    .platos-cell--disponible,
+    .platos-cell--media {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
+    }
+
+    .platos-cell--cat {
+      white-space: nowrap;
+      font-size: 0.95rem;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--text-secondary, #d4d4d8);
+      padding-left: 1.35rem;
+    }
+
+    .platos-cell--precio {
+      text-align: center;
+    }
+
+    .platos-cell--precio .inline-flex {
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+    }
+
+    .platos-cell--precio .text-xs {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-muted, #a1a1aa);
+    }
+
+    .platos-cell--precio .precio-input {
+      width: 7.5rem;
+      min-height: 2.55rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    html.admin-panel.light .platos-cell--precio .precio-input,
+    html.admin-panel[data-theme='light'] .platos-cell--precio .precio-input,
+    html.admin-panel[data-theme='alabastro'] .platos-cell--precio .precio-input,
+    html.admin-panel[data-theme='organico'] .platos-cell--precio .precio-input {
+      border-color: rgba(24, 24, 27, 0.12);
+      background: rgba(24, 24, 27, 0.04);
+    }
+
+    .platos-cell--destacado,
+    .platos-cell--disponible {
+      text-align: center;
+    }
+
+    .platos-row .ios-toggle {
+      width: 3.5rem;
+      height: 2.05rem;
+    }
+
+    .platos-row .ios-toggle__knob {
+      top: 0.18rem;
+      left: 0.18rem;
+      width: 1.69rem;
+      height: 1.69rem;
+    }
+
+    .platos-row .ios-toggle.is-on .ios-toggle__knob {
+      transform: translateX(1.45rem);
+    }
+
+    .platos-row .ios-toggle:active .ios-toggle__knob {
+      width: 1.85rem;
+    }
+
+    .platos-cell--media [data-delete] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.55rem;
+      height: 2.55rem;
+      padding: 0;
+      border-radius: 0.85rem;
+      color: #a1a1aa;
+    }
+
+    .platos-cell--media [data-delete] svg {
+      width: 1.3rem;
+      height: 1.3rem;
+      stroke-width: 1.85;
+    }
+
     .platos-cell--dish {
       display: grid;
-      grid-template-columns: 11.5rem minmax(0, 1fr);
-      column-gap: 1.7rem;
-      row-gap: 0.4rem;
+      grid-template-columns: 11.5rem minmax(0, 23rem);
+      justify-content: start;
+      column-gap: 1.5rem;
+      row-gap: 0.55rem;
       align-items: center;
+      padding-right: 2.5rem;
     }
 
     .dish-identity {
@@ -3275,31 +3586,38 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       grid-column: 2;
       grid-row: 1;
       min-width: 0;
+      max-width: 23rem;
       flex-direction: column;
-      gap: 0.08rem;
+      gap: 0.75rem;
     }
 
-    .platos-cell--dish > .nut-edit-btn {
+    .platos-cell--dish > .dish-gadget-stack {
       grid-column: 2;
       grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
       margin-top: 0;
       width: 100%;
-      max-width: 22rem;
+      max-width: 23rem;
+    }
+
+    .platos-cell--dish .nut-edit-btn {
+      margin-top: 0;
+      width: 100%;
+      max-width: none;
     }
 
     .dish-name-input,
     .platos-cell--dish .dish-name-input {
-      font-size: 0.8125rem;
+      font-size: 0.98rem;
+      font-weight: 600;
       line-height: 1.3;
     }
 
     .dish-copy [data-descripcion-preview] {
-      font-size: 0.6875rem;
-      line-height: 1.35;
-    }
-
-    .platos-cell--cat {
-      white-space: nowrap;
+      font-size: 0.8rem;
+      line-height: 1.4;
     }
   }
 
@@ -3347,6 +3665,80 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     align-items: center;
     justify-content: center;
     color: #71717a;
+  }
+
+  .nut-edit-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.12rem;
+    width: 100%;
+    max-width: 22rem;
+    min-width: 0;
+    margin-top: 0.45rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.04);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nut-edit-btn:hover,
+  .nut-edit-btn:active {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .nut-edit-btn__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .nut-edit-btn__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-primary, #fafafa);
+  }
+
+  .nut-edit-btn__go {
+    font-size: 1.05rem;
+    line-height: 1;
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  .nut-edit-btn__preview {
+    min-width: 0;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .nut-edit-btn__preview.is-filled {
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  .nut-edit-btn__preview.is-empty {
+    color: #71717a;
+    font-style: italic;
+  }
+
+  html.admin-panel.light .nut-edit-btn,
+  html.admin-panel[data-theme='light'] .nut-edit-btn,
+  html.admin-panel[data-theme='alabastro'] .nut-edit-btn,
+  html.admin-panel[data-theme='organico'] .nut-edit-btn {
+    border-color: rgba(24, 24, 27, 0.1);
+    background: rgba(24, 24, 27, 0.04);
   }
 
   @keyframes studio-dish-marquee {
@@ -3528,9 +3920,82 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   #nut-alergias label:has(input:checked),
-  [data-np-nutricion] label:has(input[name='alergias']:checked) {
+  [data-np-nutricion] label:has(input[name='alergias']:checked),
+  .nut-chip:has(input:checked) {
     border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 45%, transparent);
     background: color-mix(in srgb, var(--gadget-accent, #9f1239) 14%, transparent);
+    color: #fafafa;
+  }
+
+  .nut-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    min-width: 0;
+    padding: 0.7rem 0.75rem 0.8rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fafafa) 12%, transparent);
+    background: color-mix(in srgb, var(--text-primary, #fafafa) 4.5%, transparent);
+  }
+
+  .nut-metric label {
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-soft, #71717a);
+  }
+
+  .nut-metric input {
+    width: 100%;
+    margin: 0;
+    padding: 0.15rem 0 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary, #fafafa);
+    font-size: 1.15rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+  }
+
+  .nut-chip {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fafafa) 12%, transparent);
+    background: color-mix(in srgb, var(--text-primary, #fafafa) 4%, transparent);
+    padding: 0.42rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 550;
+    color: var(--text-muted, #a1a1aa);
+    transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+  }
+
+  .nut-save-btn {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: var(--text-primary, #fafafa);
+    padding: 0.95rem 1.1rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #09090b;
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+
+  .nut-save-btn:hover {
+    opacity: 0.92;
+  }
+
+  html.admin-panel.light .nut-save-btn,
+  html.admin-panel[data-theme='light'] .nut-save-btn {
+    background: #18181b;
     color: #fafafa;
   }
 
@@ -4141,10 +4606,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
 
     .platos-cell--dish {
-      grid-area: dish;
+      grid-column: 1 / -1;
+      grid-row: 1;
       min-width: 0;
       max-width: 100%;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .dish-identity {
@@ -4152,6 +4618,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       align-items: flex-start;
       gap: 1.15rem;
       min-width: 0;
+      padding-right: 3.1rem;
     }
 
     .dish-thumb-slot {
@@ -4178,7 +4645,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       min-width: 0;
       flex: 1 1 auto;
       flex-direction: column;
-      gap: 0.15rem;
+      gap: 0.65rem;
     }
 
     .platos-cell--dish .field-inline,
@@ -4198,10 +4665,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       width: 100%;
       min-width: 0;
       margin: 0;
-      padding: 0.05rem 0;
-      border: 0;
-      background: transparent;
-      text-align: left;
       cursor: pointer;
       color: inherit;
       -webkit-tap-highlight-color: transparent;
@@ -4273,12 +4736,41 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       display: none;
     }
 
+    .nut-edit-btn {
+      position: relative;
+      z-index: 4;
+      width: 100%;
+      max-width: none;
+      min-height: 2.85rem;
+      margin-top: 0;
+      padding: 0.7rem 0.85rem;
+      border-radius: 0.95rem;
+      pointer-events: auto;
+    }
+
+    .dish-gadget-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      width: 100%;
+      margin-top: 0.7rem;
+    }
+
+    .nut-edit-btn__title {
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+    }
+
+    .nut-edit-btn__preview {
+      font-size: 0.78rem;
+    }
+
     .platos-cell--destacado {
       grid-area: dest;
       align-self: start;
       justify-self: end;
       width: auto;
-      z-index: 1;
+      z-index: 5;
     }
 
     .platos-cell--destacado .ios-toggle {
@@ -4371,6 +4863,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       color: #fb7185;
     }
 
+    #nutricion-modal {
+      z-index: 120;
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    #nutricion-modal .modal-card {
+      max-height: min(92dvh, 40rem);
+      border-radius: 1.35rem 1.35rem 0 0;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
     .platos-row[data-disponible='false'] {
       opacity: 0.78;
     }
@@ -4450,6 +4954,441 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       transform: translateX(1.18rem);
     }
   }
+
+  .marca-local-ops {
+    margin-top: 0.35rem;
+  }
+
+  .marca-local-ops .perfil-group {
+    background: color-mix(in srgb, var(--bg-card, #18181b) 88%, transparent);
+  }
+
+  .perfil-studio__hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.35rem;
+  }
+
+  .perfil-studio__kicker {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-studio__title {
+    margin: 0.35rem 0 0;
+    font-family: var(--font-admin-display, inherit);
+    font-size: 1.65rem;
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+  }
+
+  .perfil-studio__lead {
+    margin: 0.45rem 0 0;
+    max-width: 28rem;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-studio__hint {
+    margin: 0.4rem 0 0;
+    min-height: 1rem;
+    font-size: 0.7rem;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.42rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .perfil-status.is-open {
+    background: rgba(16, 185, 129, 0.14);
+    color: #059669;
+  }
+
+  .perfil-status.is-closed {
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-group {
+    margin-bottom: 1.15rem;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+  }
+
+  .perfil-group__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.95rem 1.1rem 0.55rem;
+  }
+
+  .perfil-group__head h3 {
+    margin: 0;
+    font-size: 0.94rem;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+  }
+
+  .perfil-group__sub {
+    margin: 0.18rem 0 0;
+    font-size: 0.7rem;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .perfil-chip {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.32rem 0.65rem;
+    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+    color: var(--text-primary);
+    font-size: 0.68rem;
+    font-weight: 650;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .perfil-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .perfil-day,
+  .perfil-meta,
+  .perfil-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.72rem 1.1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .perfil-day__name,
+  .perfil-meta span,
+  .perfil-field span {
+    font-size: 0.92rem;
+    font-weight: 550;
+    letter-spacing: -0.02em;
+    min-width: 5.5rem;
+  }
+
+  .perfil-day__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .perfil-day__times {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .perfil-day__to {
+    font-size: 0.72rem;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-day input[type='time'],
+  .perfil-field input {
+    border: 0;
+    border-radius: 0.7rem;
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.55rem;
+    min-width: 6.4rem;
+    color-scheme: inherit;
+  }
+
+  .perfil-field {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .perfil-field input {
+    width: 100%;
+    min-width: 0;
+    font-size: 0.84rem;
+  }
+
+  .perfil-day.is-today .perfil-day__name {
+    font-weight: 700;
+  }
+
+  .perfil-day__name em {
+    margin-left: 0.4rem;
+    font-style: normal;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #059669;
+  }
+
+  .perfil-day__closed-label {
+    display: none;
+    font-size: 0.82rem;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-day[data-closed='true'] .perfil-day__times {
+    display: none;
+  }
+
+  .perfil-day[data-closed='true'] .perfil-day__closed-label {
+    display: inline;
+  }
+
+  .perfil-meta__value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .perfil-mini {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.28rem 0.55rem;
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.65rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .perfil-meta strong,
+  .perfil-meta a {
+    font-size: 0.82rem;
+    font-weight: 550;
+    text-align: right;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-meta a:hover {
+    color: var(--text-primary);
+  }
+
+  .perfil-footnote {
+    margin: 0;
+    padding: 0.55rem 1.1rem 0.95rem;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-studio__footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.25rem 0 1rem;
+  }
+
+  .perfil-save {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.78rem 1.35rem;
+    background: var(--text-primary);
+    color: var(--bg-page, #fff);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .perfil-map {
+    padding: 0 0 0.35rem;
+  }
+
+  .perfil-map__frame {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    margin: 0.15rem 0.9rem 0.35rem;
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  .perfil-map__frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    pointer-events: none;
+  }
+
+  .perfil-map__hit {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .perfil-map__empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    font-size: 0.82rem;
+    color: var(--text-muted, #71717a);
+    text-align: center;
+  }
+
+  .perfil-field--map {
+    padding-top: 0.55rem;
+  }
+
+  .perfil-social {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.8rem 1.1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .perfil-social__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .perfil-social__bar span {
+    font-size: 0.92rem;
+    font-weight: 550;
+    letter-spacing: -0.02em;
+  }
+
+  .perfil-social input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    border-radius: 0.7rem;
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.84rem;
+    padding: 0.5rem 0.7rem;
+    color-scheme: inherit;
+  }
+
+  .perfil-social[data-on='false'] input {
+    opacity: 0.4;
+  }
+
+  @media (max-width: 768px) {
+    .perfil-studio {
+      max-width: none;
+      padding: 0.1rem 0 5.5rem;
+    }
+
+    .perfil-studio__title {
+      font-size: 1.35rem;
+    }
+
+    .perfil-studio__lead {
+      font-size: 0.78rem;
+    }
+
+    .perfil-group__head {
+      padding: 0.8rem 0.85rem 0.4rem;
+    }
+
+    .perfil-day,
+    .perfil-meta,
+    .perfil-field,
+    .perfil-social {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
+    }
+
+    .perfil-day {
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.6rem;
+    }
+
+    .perfil-day__name {
+      min-width: 0;
+      flex: 1 1 auto;
+      font-size: 0.88rem;
+    }
+
+    .perfil-day__controls {
+      flex: 1 1 auto;
+      justify-content: flex-end;
+      min-width: 0;
+    }
+
+    .perfil-day input[type='time'] {
+      min-width: 5.15rem;
+      font-size: 0.75rem;
+      padding: 0.32rem 0.4rem;
+    }
+
+    .perfil-map__frame {
+      margin-left: 0.75rem;
+      margin-right: 0.75rem;
+      border-radius: 0.85rem;
+    }
+
+    .perfil-studio__footer {
+      justify-content: stretch;
+    }
+
+    .perfil-save {
+      width: 100%;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .perfil-studio {
+      max-width: 36rem;
+    }
+
+    .perfil-day input[type='time'] {
+      min-width: 5.6rem;
+    }
+  }
+
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-save {
+    color: #09090b;
+  }
 </style>
 
 <script>
@@ -4467,6 +5406,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     uploadPlatoMediaFile,
   } from '../../lib/plato-image-crop.js';
   import { platoFillUrl } from '../../lib/plato-media-url.js';
+  import {
+    previewHorarioHoy,
+    serializeHorarioSemana,
+  } from '../../lib/horarios-semana.js';
+  import { googleMapsEmbedSrc, mapsOpenHref } from '../../lib/maps-preview.js';
 
   const MACRO_ID_ORDER = [...MENU_MACROS.map((m) => m.id), 'otros'];
   const PLATOS_COLSPAN = 7;
@@ -4485,6 +5429,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   let nuevoCloseTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let nutricionCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let arCloseTimer = null;
 
   function teardownAdminDashboard() {
     __dashboardAc?.abort();
@@ -4510,6 +5456,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (nutricionCloseTimer) {
       clearTimeout(nutricionCloseTimer);
       nutricionCloseTimer = null;
+    }
+    if (arCloseTimer) {
+      clearTimeout(arCloseTimer);
+      arCloseTimer = null;
     }
   }
 
@@ -4582,7 +5532,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const opsTelefonoInput = document.getElementById('hub-telefono');
   const opsHorarioInput = document.getElementById('ops-horario');
   const opsInstagramInput = document.getElementById('ops-instagram');
-  const opsSocialAltInput = document.getElementById('ops-social-alt');
+  const opsFacebookInput = document.getElementById('ops-facebook');
+  const opsTiktokInput = document.getElementById('ops-tiktok');
+  const opsTripadvisorInput = document.getElementById('ops-tripadvisor');
+  const opsMapsInput = document.getElementById('ops-maps');
   const hubDatosSave = document.getElementById('hub-datos-save');
   const hubDatosStatus = document.getElementById('hub-datos-status');
   const hubNombreInput = document.getElementById('hub-nombre');
@@ -4624,6 +5577,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const modalReplaceBusy = document.getElementById('modal-replace-busy');
   const modalReplaceError = document.getElementById('modal-replace-error');
   const modalAdjustImage = document.getElementById('modal-adjust-image');
+  const modalRemoveImage = document.getElementById('modal-remove-image');
 
   const descModal = document.getElementById('desc-modal');
   const descModalTitle = document.getElementById('desc-modal-title');
@@ -5092,7 +6046,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const todas = document.createElement('button');
     todas.type = 'button';
     todas.dataset.macroFilter = 'todas';
-    todas.textContent = 'Todos';
+    todas.textContent = 'Menú completo';
     setMacroPillActive(todas, current === 'todas');
     macroFilters.appendChild(todas);
 
@@ -5650,30 +6604,330 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     { signal },
   );
 
+  function collectHorarioSemana(week) {
+    /** @type {Record<string, { closed: boolean, open: string, close: string }>} */
+    const days = {};
+    const root = week instanceof HTMLElement ? week : document.querySelector('[data-hours-week]');
+    if (!(root instanceof HTMLElement)) return days;
+    root.querySelectorAll('[data-day]').forEach((row) => {
+      if (!(row instanceof HTMLElement)) return;
+      const id = row.dataset.day || '';
+      const open = row.querySelector('[data-hours-open]');
+      const close = row.querySelector('[data-hours-close]');
+      days[id] = {
+        closed: row.dataset.closed === 'true',
+        open: open instanceof HTMLInputElement ? open.value || '12:00' : '12:00',
+        close: close instanceof HTMLInputElement ? close.value || '22:00' : '22:00',
+      };
+    });
+    return days;
+  }
+
+  function weekRoot(scope) {
+    return document.querySelector(`[data-hours-week="${scope}"]`) ||
+      document.querySelector('[data-hours-week]');
+  }
+
+  function localOps(scope) {
+    return document.querySelector(`[data-local-ops="${scope}"]`);
+  }
+
+  function syncHorarioHidden(scope) {
+    const week = scope ? weekRoot(scope) : document.querySelector('[data-hours-week="perfil"]') || document.querySelector('[data-hours-week]');
+    if (!(week instanceof HTMLElement)) return;
+    const days = collectHorarioSemana(week);
+    const serialized = serializeHorarioSemana(days);
+    const box = week.closest('[data-local-ops]');
+    const hidden = box?.querySelector('[data-horario-hidden]');
+    if (hidden instanceof HTMLInputElement) hidden.value = serialized;
+    if (box?.getAttribute('data-local-ops') === 'perfil' || !scope || scope === 'perfil') {
+      const badge = document.getElementById('ops-open-badge');
+      if (badge) {
+        const preview = previewHorarioHoy(days);
+        badge.textContent = preview.text;
+        badge.classList.toggle('is-open', preview.open);
+        badge.classList.toggle('is-closed', !preview.open);
+      }
+    }
+  }
+
+  function setDayClosed(row, closed) {
+    if (!(row instanceof HTMLElement)) return;
+    row.dataset.closed = closed ? 'true' : 'false';
+    const toggle = row.querySelector('[data-hours-toggle]');
+    if (toggle instanceof HTMLElement) {
+      toggle.setAttribute('aria-checked', String(!closed));
+      toggle.classList.toggle('is-on', !closed);
+      toggle.title = closed ? 'Cerrado' : 'Abierto';
+    }
+    row.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((el) => {
+      if (el instanceof HTMLInputElement) el.disabled = closed;
+    });
+  }
+
+  function applyHoursPreset(kind, week) {
+    const root = week instanceof HTMLElement ? week : weekRoot('perfil');
+    if (!(root instanceof HTMLElement)) return;
+    const rows = [...root.querySelectorAll('[data-day]')];
+    const firstOpen = rows.find((row) => row instanceof HTMLElement && row.dataset.closed !== 'true');
+    const sampleOpen =
+      firstOpen instanceof HTMLElement
+        ? firstOpen.querySelector('[data-hours-open]')
+        : null;
+    const sampleClose =
+      firstOpen instanceof HTMLElement
+        ? firstOpen.querySelector('[data-hours-close]')
+        : null;
+    const openVal = sampleOpen instanceof HTMLInputElement ? sampleOpen.value : '12:00';
+    const closeVal = sampleClose instanceof HTMLInputElement ? sampleClose.value : '22:00';
+    const weekday = new Set(['lun', 'mar', 'mie', 'jue', 'vie']);
+    const weekend = new Set(['sab', 'dom']);
+
+    for (const row of rows) {
+      if (!(row instanceof HTMLElement)) continue;
+      const id = row.dataset.day || '';
+      const open = row.querySelector('[data-hours-open]');
+      const close = row.querySelector('[data-hours-close]');
+      if (kind === 'cerrados') {
+        setDayClosed(row, true);
+        continue;
+      }
+      if (kind === 'todos') {
+        setDayClosed(row, false);
+        if (open instanceof HTMLInputElement) open.value = openVal;
+        if (close instanceof HTMLInputElement) close.value = closeVal;
+        continue;
+      }
+      const inSet = kind === 'finde' ? weekend.has(id) : weekday.has(id);
+      if (inSet) {
+        setDayClosed(row, false);
+        if (open instanceof HTMLInputElement) open.value = openVal;
+        if (close instanceof HTMLInputElement) close.value = closeVal;
+      }
+    }
+    const scope = root.getAttribute('data-hours-week') || '';
+    syncHorarioHidden(scope);
+  }
+
+  function copyHoursWeek(fromScope, toScope) {
+    const from = weekRoot(fromScope);
+    const to = weekRoot(toScope);
+    if (!(from instanceof HTMLElement) || !(to instanceof HTMLElement) || from === to) return;
+    const days = collectHorarioSemana(from);
+    to.querySelectorAll('[data-day]').forEach((row) => {
+      if (!(row instanceof HTMLElement)) return;
+      const d = days[row.dataset.day || ''];
+      if (!d) return;
+      setDayClosed(row, Boolean(d.closed));
+      const open = row.querySelector('[data-hours-open]');
+      const close = row.querySelector('[data-hours-close]');
+      if (open instanceof HTMLInputElement) open.value = d.open;
+      if (close instanceof HTMLInputElement) close.value = d.close;
+    });
+    syncHorarioHidden(toScope);
+  }
+
+  function copySocials(fromScope, toScope) {
+    const from = localOps(fromScope);
+    const to = localOps(toScope);
+    if (!(from instanceof HTMLElement) || !(to instanceof HTMLElement) || from === to) return;
+    from.querySelectorAll('[data-social]').forEach((row) => {
+      if (!(row instanceof HTMLElement)) return;
+      const id = row.dataset.social || '';
+      const dest = to.querySelector(`[data-social="${id}"]`);
+      if (!(dest instanceof HTMLElement)) return;
+      setSocialOn(dest, row.dataset.on === 'true');
+      const srcInput = row.querySelector('input[type="url"]');
+      const destInput = dest.querySelector('input[type="url"]');
+      if (srcInput instanceof HTMLInputElement && destInput instanceof HTMLInputElement) {
+        destInput.value = srcInput.value;
+      }
+    });
+  }
+
+  function copyMaps(fromScope, toScope) {
+    const from = localOps(fromScope);
+    const to = localOps(toScope);
+    if (!(from instanceof HTMLElement) || !(to instanceof HTMLElement) || from === to) return;
+    const src = from.querySelector('[data-maps-url]');
+    const dest = to.querySelector('[data-maps-url]');
+    if (src instanceof HTMLInputElement && dest instanceof HTMLInputElement) {
+      dest.value = src.value;
+      refreshMapsPreview(to.querySelector('[data-maps-preview]'));
+    }
+  }
+
+  function syncLocalOps(fromScope) {
+    const other = fromScope === 'perfil' ? 'marca' : 'perfil';
+    if (!localOps(other)) return;
+    copyHoursWeek(fromScope, other);
+    copySocials(fromScope, other);
+    copyMaps(fromScope, other);
+  }
+
+  document.querySelectorAll('[data-hours-week]').forEach((week) => {
+    week.addEventListener(
+      'click',
+      (event) => {
+        const btn = event.target instanceof Element ? event.target.closest('[data-hours-toggle]') : null;
+        if (!btn) return;
+        const row = btn.closest('[data-day]');
+        if (!(row instanceof HTMLElement)) return;
+        setDayClosed(row, row.dataset.closed !== 'true');
+        syncHorarioHidden(week.getAttribute('data-hours-week') || '');
+      },
+      { signal },
+    );
+    week.addEventListener(
+      'change',
+      () => syncHorarioHidden(week.getAttribute('data-hours-week') || ''),
+      { signal },
+    );
+  });
+
+  document.querySelectorAll('[data-hours-preset]').forEach((btn) => {
+    btn.addEventListener(
+      'click',
+      () => {
+        if (!(btn instanceof HTMLElement)) return;
+        const week = btn.closest('[data-local-ops]')?.querySelector('[data-hours-week]');
+        applyHoursPreset(btn.dataset.hoursPreset || '', week instanceof HTMLElement ? week : null);
+      },
+      { signal },
+    );
+  });
+
+  function fieldValue(el) {
+    return el instanceof HTMLInputElement ? el.value.trim() : '';
+  }
+
+  function socialOn(id, scope = 'perfil') {
+    const root = localOps(scope) || document;
+    const row = root.querySelector(`[data-social="${id}"]`);
+    return row instanceof HTMLElement && row.dataset.on === 'true';
+  }
+
+  function setSocialOn(row, on) {
+    if (!(row instanceof HTMLElement)) return;
+    row.dataset.on = on ? 'true' : 'false';
+    const toggle = row.querySelector('[data-social-toggle]');
+    if (toggle instanceof HTMLElement) {
+      toggle.setAttribute('aria-checked', String(on));
+      toggle.classList.toggle('is-on', on);
+      toggle.title = on ? 'Visible en la WebApp' : 'Oculta en la WebApp';
+    }
+    const input = row.querySelector('input');
+    if (input instanceof HTMLInputElement) input.disabled = !on;
+  }
+
+  document.querySelectorAll('[data-local-ops]').forEach((root) => {
+    root.addEventListener(
+      'click',
+      (event) => {
+        const btn = event.target instanceof Element ? event.target.closest('[data-social-toggle]') : null;
+        if (!btn) return;
+        const row = btn.closest('[data-social]');
+        if (!(row instanceof HTMLElement)) return;
+        setSocialOn(row, row.dataset.on !== 'true');
+      },
+      { signal },
+    );
+  });
+
+  function refreshMapsPreview(preview) {
+    const box = preview instanceof HTMLElement
+      ? preview
+      : document.querySelector('[data-maps-preview]');
+    if (!(box instanceof HTMLElement)) return;
+    const input = box.querySelector('[data-maps-url]');
+    const url = input instanceof HTMLInputElement ? input.value.trim() : '';
+    const embed = googleMapsEmbedSrc(url);
+    const open = mapsOpenHref(url);
+    const frame = box.querySelector('.perfil-map__frame');
+    const hit = box.querySelector('[data-map-open]');
+    if (!(frame instanceof HTMLElement)) return;
+    let iframe = box.querySelector('[data-map-embed]');
+    let empty = box.querySelector('[data-map-empty]');
+    if (embed) {
+      if (!(iframe instanceof HTMLIFrameElement)) {
+        empty?.remove();
+        iframe = document.createElement('iframe');
+        iframe.setAttribute('data-map-embed', '');
+        iframe.title = 'Mapa del restaurante';
+        iframe.loading = 'lazy';
+        iframe.referrerPolicy = 'no-referrer-when-downgrade';
+        frame.prepend(iframe);
+      }
+      iframe.src = embed;
+    } else if (!empty) {
+      iframe?.remove();
+      empty = document.createElement('span');
+      empty.className = 'perfil-map__empty';
+      empty.setAttribute('data-map-empty', '');
+      empty.textContent = 'Pegá el enlace de Google Maps';
+      frame.prepend(empty);
+    }
+    if (hit instanceof HTMLAnchorElement) {
+      hit.href = open || '#';
+      hit.hidden = !open;
+    }
+  }
+
+  document.querySelectorAll('[data-maps-url]').forEach((input) => {
+    const preview = input.closest('[data-maps-preview]');
+    input.addEventListener('change', () => refreshMapsPreview(preview), { signal });
+    input.addEventListener(
+      'input',
+      () => {
+        window.clearTimeout(input._mapsTimer);
+        input._mapsTimer = window.setTimeout(() => refreshMapsPreview(preview), 450);
+      },
+      { signal },
+    );
+  });
+
+  document.querySelector('#panel-perfil')?.addEventListener(
+    'click',
+    async (event) => {
+      const btn = event.target instanceof Element ? event.target.closest('[data-copy]') : null;
+      if (!(btn instanceof HTMLElement)) return;
+      let text = btn.dataset.copy || '';
+      if (btn.hasAttribute('data-copy-abs') && text.startsWith('/')) {
+        text = `${window.location.origin}${text}`;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        const prev = btn.textContent;
+        btn.textContent = 'Copiado';
+        window.setTimeout(() => {
+          btn.textContent = prev;
+        }, 1400);
+      } catch {
+        if (typeof showToast === 'function') showToast('No se pudo copiar', 'error');
+      }
+    },
+    { signal },
+  );
+
   opsContactoSave?.addEventListener(
     'click',
     async () => {
       if (!(opsContactoSave instanceof HTMLButtonElement)) return;
       if (!requireRestauranteId()) return;
-      const horario =
-        opsHorarioInput instanceof HTMLInputElement
-          ? opsHorarioInput.value.trim()
-          : '';
-      const instagramUrl =
-        opsInstagramInput instanceof HTMLInputElement
-          ? opsInstagramInput.value.trim()
-          : '';
-      const socialAltUrl =
-        opsSocialAltInput instanceof HTMLInputElement
-          ? opsSocialAltInput.value.trim()
-          : '';
+      syncHorarioHidden('perfil');
+      const horario = fieldValue(opsHorarioInput);
+      const instagramUrl = fieldValue(opsInstagramInput);
+      const facebookUrl = fieldValue(opsFacebookInput);
+      const tiktokUrl = fieldValue(opsTiktokInput);
+      const tripadvisorUrl = fieldValue(opsTripadvisorInput);
+      const coordenadasMaps = fieldValue(opsMapsInput);
 
       opsContactoSave.disabled = true;
       const prevLabel = opsContactoSave.textContent;
       opsContactoSave.textContent = 'Guardando…';
       if (opsContactoStatus) {
         opsContactoStatus.textContent = '';
-        opsContactoStatus.className = 'text-[10px] text-zinc-600';
+        opsContactoStatus.className = 'perfil-studio__hint';
       }
 
       try {
@@ -5683,29 +6937,53 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           body: JSON.stringify({
             restaurante_id: restauranteId,
             horario,
+            coordenadas_maps: coordenadasMaps,
             instagram_url: instagramUrl,
-            facebook_url: socialAltUrl,
+            facebook_url: facebookUrl,
+            tiktok_url: tiktokUrl,
+            tripadvisor_url: tripadvisorUrl,
+            instagram_activo: socialOn('instagram', 'perfil'),
+            facebook_activo: socialOn('facebook', 'perfil'),
+            tiktok_activo: socialOn('tiktok', 'perfil'),
+            tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
           }),
         });
         const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.error || 'No se pudo guardar contacto');
+        if (!res.ok) throw new Error(json.error || 'No se pudo guardar el perfil');
 
+        const saved = json.restaurante || {};
         if (opsHorarioInput instanceof HTMLInputElement) {
-          opsHorarioInput.value = json.restaurante?.horarios || horario;
+          opsHorarioInput.value = saved.horarios || horario;
         }
         if (opsInstagramInput instanceof HTMLInputElement) {
-          opsInstagramInput.value =
-            json.restaurante?.instagram_url || instagramUrl;
+          opsInstagramInput.value = saved.instagram_url || instagramUrl;
         }
-        if (opsSocialAltInput instanceof HTMLInputElement) {
-          opsSocialAltInput.value =
-            json.restaurante?.facebook_url ||
-            json.restaurante?.tiktok_url ||
-            socialAltUrl;
+        if (opsFacebookInput instanceof HTMLInputElement) {
+          opsFacebookInput.value = saved.facebook_url || facebookUrl;
         }
+        if (opsTiktokInput instanceof HTMLInputElement) {
+          opsTiktokInput.value = saved.tiktok_url || tiktokUrl;
+        }
+        if (opsTripadvisorInput instanceof HTMLInputElement) {
+          opsTripadvisorInput.value = saved.tripadvisor_url || tripadvisorUrl;
+        }
+        if (opsMapsInput instanceof HTMLInputElement) {
+          opsMapsInput.value = saved.coordenadas_maps || coordenadasMaps;
+        }
+        const applyActivo = (id, flag) => {
+          const row = localOps('perfil')?.querySelector(`[data-social="${id}"]`);
+          if (row instanceof HTMLElement && typeof flag === 'boolean') {
+            setSocialOn(row, flag);
+          }
+        };
+        applyActivo('instagram', saved.instagram_activo);
+        applyActivo('facebook', saved.facebook_activo);
+        applyActivo('tiktok', saved.tiktok_activo);
+        applyActivo('tripadvisor', saved.tripadvisor_activo);
+        refreshMapsPreview(localOps('perfil')?.querySelector('[data-maps-preview]'));
+        syncLocalOps('perfil');
         if (opsContactoStatus) {
-          opsContactoStatus.textContent = '✓ guardado';
-          opsContactoStatus.className = 'text-[10px] text-emerald-400';
+          opsContactoStatus.textContent = 'Guardado';
         }
         if (typeof showToast === 'function') {
           showToast('Perfil del restaurante guardado', 'ok');
@@ -5714,13 +6992,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         const msg = err instanceof Error ? err.message : 'Error al guardar';
         if (opsContactoStatus) {
           opsContactoStatus.textContent = msg;
-          opsContactoStatus.className = 'text-[10px] text-rose-400';
         }
         if (typeof showToast === 'function') showToast(msg, 'error');
         else alert(msg);
       } finally {
         opsContactoSave.disabled = false;
-        opsContactoSave.textContent = prevLabel || 'Guardar contacto';
+        opsContactoSave.textContent = prevLabel || 'Guardar perfil';
       }
     },
     { signal },
@@ -6059,7 +7336,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   /**
    * @param {HTMLElement | null} overlay
    * @param {() => void} [after]
-   * @param {{ timerRef: 'modal' | 'desc' | 'nombre' | 'nuevo' | 'nutricion' }} opts
+   * @param {{ timerRef: 'modal' | 'desc' | 'nombre' | 'nuevo' | 'nutricion' | 'ar' }} opts
    */
   function closeOverlay(overlay, after, opts) {
     if (!(overlay instanceof HTMLElement)) return;
@@ -6088,6 +7365,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         clearTimeout(nutricionCloseTimer);
         nutricionCloseTimer = null;
       }
+      if (opts.timerRef === 'ar' && arCloseTimer) {
+        clearTimeout(arCloseTimer);
+        arCloseTimer = null;
+      }
     };
     clearExisting();
 
@@ -6097,14 +7378,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       else if (opts.timerRef === 'desc') descCloseTimer = null;
       else if (opts.timerRef === 'nombre') nombreCloseTimer = null;
       else if (opts.timerRef === 'nuevo') nuevoCloseTimer = null;
-      else nutricionCloseTimer = null;
+      else if (opts.timerRef === 'nutricion') nutricionCloseTimer = null;
+      else arCloseTimer = null;
     }, 220);
 
     if (opts.timerRef === 'modal') modalCloseTimer = timer;
     else if (opts.timerRef === 'desc') descCloseTimer = timer;
     else if (opts.timerRef === 'nombre') nombreCloseTimer = timer;
     else if (opts.timerRef === 'nuevo') nuevoCloseTimer = timer;
-    else nutricionCloseTimer = timer;
+    else if (opts.timerRef === 'nutricion') nutricionCloseTimer = timer;
+    else arCloseTimer = timer;
   }
 
   function showModalShell() {
@@ -6166,6 +7449,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (modalAdjustImage instanceof HTMLElement) {
       modalAdjustImage.classList.toggle('hidden', !url || isVideoUrl(url));
     }
+    if (modalRemoveImage instanceof HTMLElement) {
+      modalRemoveImage.classList.toggle('hidden', !url);
+    }
     showModalShell();
   }
 
@@ -6208,6 +7494,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       renderPreviewMedia(url, row.dataset.nombre || 'Plato');
       if (modalAdjustImage instanceof HTMLElement) {
         modalAdjustImage.classList.toggle('hidden', isVideoUrl(url));
+      }
+      if (modalRemoveImage instanceof HTMLElement) {
+        modalRemoveImage.classList.toggle('hidden', !url);
       }
     } catch (err) {
       if (modalReplaceError) {
@@ -6258,6 +7547,144 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (modalAdjustImage instanceof HTMLButtonElement) {
         modalAdjustImage.disabled = false;
         modalAdjustImage.textContent = 'Ajustar recorte';
+      }
+    }
+  }, { signal });
+
+  modalRemoveImage?.addEventListener('click', async () => {
+    if (!(activeMediaRow instanceof HTMLElement)) return;
+    const row = activeMediaRow;
+    const id = Number(row.dataset.platoId);
+    const url = row.dataset.imagen || '';
+    if (!Number.isFinite(id) || !url) return;
+    if (!window.confirm('¿Eliminar la foto de este plato?')) return;
+
+    modalReplaceError?.classList.add('hidden');
+    if (modalReplaceError) modalReplaceError.textContent = '';
+    if (modalRemoveImage instanceof HTMLButtonElement) {
+      modalRemoveImage.disabled = true;
+      modalRemoveImage.textContent = 'Eliminando…';
+    }
+
+    try {
+      await updatePlato(id, { imagen_url: '' });
+      setRowMediaUrl(row, '');
+      openAttachModal(row);
+    } catch (err) {
+      if (modalReplaceError) {
+        modalReplaceError.textContent =
+          err instanceof Error ? err.message : 'No se pudo eliminar la foto';
+        modalReplaceError.classList.remove('hidden');
+      }
+    } finally {
+      if (modalRemoveImage instanceof HTMLButtonElement) {
+        modalRemoveImage.disabled = false;
+        modalRemoveImage.textContent = 'Eliminar foto';
+      }
+    }
+  }, { signal });
+
+  const arModal = document.getElementById('ar-modal');
+  const arModalTitle = document.getElementById('ar-modal-title');
+  const arModalClose = document.getElementById('ar-modal-close');
+  const arModalUrl = document.getElementById('ar-modal-url');
+  const arModalSave = document.getElementById('ar-modal-save');
+  const arModalRemove = document.getElementById('ar-modal-remove');
+  const arModalError = document.getElementById('ar-modal-error');
+  /** @type {HTMLElement | null} */
+  let activeArRow = null;
+
+  function syncArChip(row) {
+    const chip = row.querySelector('[data-edit-ar]');
+    if (!(chip instanceof HTMLElement)) return;
+    const url = String(row.dataset.modelo3dUrl || '').trim();
+    chip.classList.toggle('is-on', Boolean(url));
+    chip.title = url ? 'Editar modelo AR' : 'Cargar URL de AR';
+  }
+
+  function openArEditor(row) {
+    if (!(arModal instanceof HTMLElement) || !(row instanceof HTMLElement)) return;
+    activeArRow = row;
+    if (arModalTitle) arModalTitle.textContent = row.dataset.nombre || 'Plato';
+    if (arModalUrl instanceof HTMLInputElement) arModalUrl.value = row.dataset.modelo3dUrl || '';
+    if (arModalError instanceof HTMLElement) {
+      arModalError.textContent = '';
+      arModalError.classList.add('hidden');
+    }
+    if (arCloseTimer) {
+      clearTimeout(arCloseTimer);
+      arCloseTimer = null;
+    }
+    openOverlay(arModal);
+    window.setTimeout(() => {
+      if (arModalUrl instanceof HTMLInputElement) arModalUrl.focus();
+    }, 80);
+  }
+
+  function closeArModal() {
+    closeOverlay(
+      arModal,
+      () => {
+        activeArRow = null;
+      },
+      { timerRef: 'ar' },
+    );
+  }
+
+  arModalClose?.addEventListener('click', closeArModal, { signal });
+  arModal?.addEventListener('click', (e) => {
+    if (e.target === arModal) closeArModal();
+  }, { signal });
+
+  arModalSave?.addEventListener('click', async () => {
+    if (!(activeArRow instanceof HTMLElement)) return;
+    const row = activeArRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+    const url = arModalUrl instanceof HTMLInputElement ? arModalUrl.value.trim() : '';
+    if (arModalError instanceof HTMLElement) {
+      arModalError.textContent = '';
+      arModalError.classList.add('hidden');
+    }
+    if (arModalSave instanceof HTMLButtonElement) {
+      arModalSave.disabled = true;
+      arModalSave.textContent = 'Guardando…';
+    }
+    try {
+      await updatePlato(id, { modelo_3d_url: url || null });
+      row.dataset.modelo3dUrl = url;
+      syncArChip(row);
+      showToast(url ? 'Modelo 3D guardado' : 'URL 3D eliminada', 'ok');
+      closeArModal();
+    } catch (err) {
+      if (arModalError instanceof HTMLElement) {
+        arModalError.textContent = err instanceof Error ? err.message : 'Error al guardar URL 3D';
+        arModalError.classList.remove('hidden');
+      }
+    } finally {
+      if (arModalSave instanceof HTMLButtonElement) {
+        arModalSave.disabled = false;
+        arModalSave.textContent = 'Guardar URL';
+      }
+    }
+  }, { signal });
+
+  arModalRemove?.addEventListener('click', async () => {
+    if (!(activeArRow instanceof HTMLElement)) return;
+    const row = activeArRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+    if (arModalUrl instanceof HTMLInputElement) arModalUrl.value = '';
+    try {
+      await updatePlato(id, { modelo_3d_url: null });
+      row.dataset.modelo3dUrl = '';
+      syncArChip(row);
+      showToast('Modelo 3D eliminado', 'ok');
+      closeArModal();
+    } catch (err) {
+      if (arModalError instanceof HTMLElement) {
+        arModalError.textContent = err instanceof Error ? err.message : 'Error al quitar modelo 3D';
+        arModalError.classList.remove('hidden');
       }
     }
   }, { signal });
@@ -6371,7 +7798,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const nutProteinas = document.getElementById('nut-proteinas');
   const nutCarbs = document.getElementById('nut-carbs');
   const nutGrasas = document.getElementById('nut-grasas');
-  const nutIngredientes = document.getElementById('nut-ingredientes');
   const ALERGENO_LABELS = {
     lacteos: 'Lácteos',
     gluten: 'Gluten',
@@ -6389,6 +7815,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const sw = document.getElementById('marca-gadget-nutricion');
     if (sw instanceof HTMLInputElement) return sw.checked;
     return root instanceof HTMLElement && root.dataset.gadgetNutricion === 'true';
+  }
+
+  function isArGadgetOn() {
+    const sw = document.getElementById('marca-gadget-ar');
+    if (sw instanceof HTMLInputElement) return sw.checked;
+    return root instanceof HTMLElement && root.dataset.gadgetAr === 'true';
   }
 
   function formatNutricionPreviewFromRow(row) {
@@ -6417,6 +7849,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const text = formatNutricionPreviewFromRow(row);
     preview.textContent = text;
     const filled = String(row.dataset.calorias || '').trim() !== '' || text !== 'Sin ficha · clic para editar';
+    preview.classList.toggle('is-filled', filled);
+    preview.classList.toggle('is-empty', !filled);
     preview.classList.toggle('italic', !filled);
     preview.classList.toggle('text-zinc-500', filled);
     preview.classList.toggle('text-zinc-600', !filled);
@@ -6441,9 +7875,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (nutProteinas instanceof HTMLInputElement) nutProteinas.value = row.dataset.proteinas || '';
     if (nutCarbs instanceof HTMLInputElement) nutCarbs.value = row.dataset.carbs || '';
     if (nutGrasas instanceof HTMLInputElement) nutGrasas.value = row.dataset.grasas || '';
-    if (nutIngredientes instanceof HTMLTextAreaElement) {
-      nutIngredientes.value = row.dataset.ingredientesDetalle || '';
-    }
     /** @type {string[]} */
     let alergias = [];
     try {
@@ -6477,7 +7908,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   function openNutricionModal(row) {
     if (!(nutricionModal instanceof HTMLElement)) return;
-    if (!isNutricionGadgetOn()) return;
+    if (!(row instanceof HTMLElement)) return;
     activeNutricionRow = row;
     fillNutricionModalFromRow(row);
     nutricionModalError?.classList.add('hidden');
@@ -6539,18 +7970,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         carbs: nutCarbs instanceof HTMLInputElement ? nutCarbs.value : null,
         grasas: nutGrasas instanceof HTMLInputElement ? nutGrasas.value : null,
         alergias,
-        ingredientes_detalle:
-          nutIngredientes instanceof HTMLTextAreaElement
-            ? nutIngredientes.value.trim() || null
-            : null,
       });
       row.dataset.calorias = nutCalorias instanceof HTMLInputElement ? nutCalorias.value : '';
       row.dataset.proteinas = nutProteinas instanceof HTMLInputElement ? nutProteinas.value : '';
       row.dataset.carbs = nutCarbs instanceof HTMLInputElement ? nutCarbs.value : '';
       row.dataset.grasas = nutGrasas instanceof HTMLInputElement ? nutGrasas.value : '';
       row.dataset.alergias = JSON.stringify(alergias);
-      row.dataset.ingredientesDetalle =
-        nutIngredientes instanceof HTMLTextAreaElement ? nutIngredientes.value.trim() : '';
       syncNutricionPreview(row);
       const savedHint = row.querySelector('[data-field-saved]');
       if (savedHint instanceof HTMLElement) {
@@ -6661,7 +8086,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   );
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (nutricionModal?.dataset.open === 'true') closeNutricionModal();
+    if (arModal?.dataset.open === 'true') closeArModal();
+    else if (nutricionModal?.dataset.open === 'true') closeNutricionModal();
     else if (nombreModal?.dataset.open === 'true') closeNombreModal();
     else if (descModal?.dataset.open === 'true') closeDescModal();
     else if (modal?.dataset.open === 'true') closeModal();
@@ -6858,6 +8284,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     tr.dataset.grasas = plato.grasas == null ? '' : String(plato.grasas);
     tr.dataset.alergias = JSON.stringify(Array.isArray(plato.alergias) ? plato.alergias : []);
     tr.dataset.ingredientesDetalle = plato.ingredientes_detalle || '';
+    tr.dataset.modelo3dUrl = typeof plato.modelo_3d_url === 'string' ? plato.modelo_3d_url : '';
     tr.dataset.search =
       `${plato.nombre} ${plato.categoria_nombre || ''} ${plato.descripcion || ''}`.toLowerCase();
     const precio = Number(plato.precio).toFixed(2);
@@ -6872,7 +8299,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       : `<label class="dish-thumb dish-thumb--empty"><input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" /><span data-upload-label title="Subir media" class="dish-thumb__placeholder">${CAMERA_ICON_SVG}</span></label>`;
     const nutHidden = isNutricionGadgetOn() ? '' : ' hidden';
     const nutPreview = formatNutricionPreviewFromRow(tr);
-    const nutBtn = `<button type="button" data-edit-nutricion data-shows-when-nutricion class="nut-edit-btn mt-1 inline-flex flex-col items-start gap-0.5 rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-left transition hover:border-white/25 hover:bg-white/[0.08]${nutHidden}" title="Editar ficha nutricional"><span class="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-200">Nutrición / Alérgenos</span><span data-nutricion-preview class="text-[11px] leading-snug ${nutPreview === 'Sin ficha · clic para editar' ? 'text-zinc-600 italic' : 'text-zinc-500'}">${escapeHtml(nutPreview)}</span></button>`;
+    const nutFilled = nutPreview !== 'Sin ficha · clic para editar';
+    const nutBtn = `<button type="button" data-edit-nutricion data-shows-when-nutricion class="nut-edit-btn${nutHidden}" title="Editar ficha nutricional"><span class="nut-edit-btn__top"><span class="nut-edit-btn__title">Nutrición</span><span class="nut-edit-btn__go" aria-hidden="true">›</span></span><span data-nutricion-preview class="nut-edit-btn__preview ${nutFilled ? 'is-filled' : 'is-empty'}">${escapeHtml(nutPreview)}</span></button>`;
+    const isSuper = root instanceof HTMLElement && root.dataset.isSuperAdmin === 'true';
+    const arOn = isArGadgetOn();
+    const arUrl = String(tr.dataset.modelo3dUrl || '').trim();
+    const arBtn = isSuper
+      ? `<button type="button" data-edit-ar data-shows-when-ar class="ar-chip${arUrl ? ' is-on' : ''}${arOn ? '' : ' hidden'}" title="${arUrl ? 'Editar modelo AR' : 'Cargar URL de AR'}" aria-label="Modelo AR 3D">AR</button>`
+      : '';
+    const gadgetStack = `<div class="dish-gadget-stack">${nutBtn}</div>`;
 
     tr.innerHTML = `
       <td class="platos-cell platos-cell--order px-2 py-3.5 text-center" data-label="#">
@@ -6882,8 +8317,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         <div class="dish-identity">
           <div class="dish-thumb-slot" data-media-actions>${mediaCell}</div>
           <div class="dish-copy">
+          <div class="dish-edit-field">
+            <span class="dish-edit-field__label">Nombre</span>
+          <div class="dish-name-row">
           <div class="dish-name-stack">
-            <button type="button" data-edit-nombre class="dish-name-btn" title="Editar nombre" aria-label="Editar nombre: ${escapeHtml(plato.nombre)}">
+            <button type="button" data-edit-nombre class="dish-name-btn dish-edit-hit" title="Editar nombre" aria-label="Editar nombre: ${escapeHtml(plato.nombre)}">
               <span class="dish-name-marquee" data-nombre-preview>
                 <span class="dish-name-marquee__track">
                   <span data-nombre-text>${escapeHtml(plato.nombre)}</span>
@@ -6892,20 +8330,26 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               </span>
             </button>
             <input type="text" value="${escapeHtml(plato.nombre)}" data-field="nombre" data-original="${escapeHtml(plato.nombre)}"
-              class="field-inline dish-name-input w-full rounded-md bg-transparent px-1.5 py-1 text-[0.8125rem] font-medium tracking-tight text-white outline-none transition focus:bg-white/[0.05] focus:ring-1 focus:ring-white/15" aria-label="Nombre del plato" />
+              class="field-inline dish-name-input dish-edit-hit w-full text-[0.9375rem] font-semibold tracking-tight text-white outline-none" aria-label="Nombre del plato" />
           </div>
+          ${arBtn}
+          </div>
+          </div>
+          <div class="dish-edit-field">
+            <span class="dish-edit-field__label">Descripción</span>
           <button type="button" data-edit-descripcion data-descripcion="${escapeHtml(plato.descripcion || '')}"
-            class="group rounded-md px-1.5 py-0.5 text-left transition hover:bg-white/[0.04]" title="Editar descripción">
-            <span data-descripcion-preview class="line-clamp-2 text-[11px] leading-snug transition group-hover:text-zinc-300 ${plato.descripcion ? 'text-zinc-500' : 'text-zinc-700 italic'}">${escapeHtml(plato.descripcion || 'Sin descripción · clic para editar')}</span>
+            class="dish-edit-hit group text-left" title="Editar descripción">
+            <span data-descripcion-preview class="line-clamp-2 text-[12px] leading-snug ${plato.descripcion ? 'text-zinc-500' : 'text-zinc-600 italic'}">${escapeHtml(plato.descripcion || 'Sin descripción · clic para editar')}</span>
           </button>
-          ${nutBtn}
+          </div>
           <span data-field-saved class="h-3 text-[10px] text-emerald-400 opacity-0 transition-opacity">✓ guardado</span>
           </div>
         </div>
+        ${gadgetStack}
       </td>
       <td class="platos-cell platos-cell--cat px-2 py-3.5 text-left text-xs text-zinc-400" data-label="Categoría" data-categoria>${escapeHtml(plato.categoria_nombre || '—')}</td>
-      <td class="platos-cell platos-cell--precio px-2 py-3.5 text-right" data-label="Precio">
-        <div class="inline-flex items-center justify-end gap-1">
+      <td class="platos-cell platos-cell--precio px-2 py-3.5 text-center" data-label="Precio">
+        <div class="inline-flex items-center justify-center gap-1">
           <span class="text-xs text-zinc-600">$</span>
           <input type="number" inputmode="decimal" min="0" step="0.01" value="${precio}" data-field="precio" data-original="${precio}"
             class="field-inline precio-input w-[5.25rem] rounded-lg border border-transparent bg-white/[0.04] px-2 py-1.5 text-right text-sm tabular-nums text-zinc-100 outline-none transition focus:border-white/20 focus:bg-black/50" />
@@ -7250,7 +8694,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             carbs: fd.get('carbs') || null,
             grasas: fd.get('grasas') || null,
             alergias,
-            ingredientes_detalle: String(fd.get('ingredientes_detalle') || '').trim() || null,
           }),
         });
         const json = await res.json().catch(() => ({}));
@@ -7390,6 +8833,26 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   tbody?.addEventListener('click', async (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+    const nutBtn = target.closest('[data-edit-nutricion]');
+    if (nutBtn) {
+      const nutRow = nutBtn.closest('tr[data-plato-id]');
+      if (nutRow instanceof HTMLElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        openNutricionModal(nutRow);
+      }
+      return;
+    }
+    const arBtn = target.closest('[data-edit-ar]');
+    if (arBtn) {
+      const arRow = arBtn.closest('tr[data-plato-id]');
+      if (arRow instanceof HTMLElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        openArEditor(arRow);
+      }
+      return;
+    }
     const row = target.closest('tr[data-plato-id]');
     if (!(row instanceof HTMLElement)) return;
     const id = Number(row.dataset.platoId);
@@ -7407,11 +8870,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
     if (target.closest('[data-edit-descripcion]')) {
       openDescModal(row);
-      return;
-    }
-
-    if (target.closest('[data-edit-nutricion]')) {
-      openNutricionModal(row);
       return;
     }
 
@@ -8109,6 +9567,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (root instanceof HTMLElement) root.dataset.gadgetNutricion = on ? 'true' : 'false';
         if (!on) setNutricionBulkPanelOpen(false);
       }
+
+      // AR gadget: sync root attr + plato modal AR section visibility
+      if (input.id === 'marca-gadget-ar') {
+        if (root instanceof HTMLElement) root.dataset.gadgetAr = on ? 'true' : 'false';
+        document.querySelectorAll('[data-shows-when-ar]').forEach((el) => {
+          if (!(el instanceof HTMLElement)) return;
+          el.classList.toggle('hidden', !on);
+          el.hidden = !on;
+        });
+      }
     };
 
     input.addEventListener('click', (e) => e.stopPropagation(), { signal });
@@ -8277,15 +9745,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           fondo_ubicacion_tipo: val('marca-fondo-ubicacion-tipo'),
           fondo_ubicacion_valor: val('marca-fondo-ubicacion-valor'),
           nosotros_bloques: collectNosotrosBloques(),
-          direccion: val('marca-direccion'),
           coordenadas_maps: val('marca-coordenadas'),
           redes_instagram: val('marca-redes-instagram'),
           redes_facebook: val('marca-redes-facebook'),
           redes_tiktok: val('marca-redes-tiktok'),
           redes_tripadvisor: val('marca-redes-tripadvisor'),
+          redes_instagram_activo: socialOn('instagram', 'marca'),
+          redes_facebook_activo: socialOn('facebook', 'marca'),
+          redes_tiktok_activo: socialOn('tiktok', 'marca'),
+          redes_tripadvisor_activo: socialOn('tripadvisor', 'marca'),
           instagram_url: val('marca-redes-instagram'),
           whatsapp_url: val('marca-whatsapp'),
-          horarios: val('marca-horarios'),
+          horarios: (() => {
+            syncHorarioHidden('marca');
+            return val('marca-horarios');
+          })(),
           categorias_fondos: collectCategoriasFondos(),
           gadget_reservas: checked('marca-gadget-reservas'),
           reservas_label: val('marca-reservas-label'),
@@ -8302,6 +9776,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           wifi_password: val('marca-wifi-password'),
           gadget_boutique: checked('marca-gadget-boutique'),
           gadget_nutricion: checked('marca-gadget-nutricion'),
+          gadget_ar: checked('marca-gadget-ar'),
           boutique_productos: collectBoutiqueProductos(),
           home_theme: val('marca-home-theme') || 'editorial',
           ubicacion_theme: val('marca-ubicacion-theme') || 'modal',
@@ -8311,15 +9786,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (!res.ok) throw new Error(json.error || `No se pudo guardar (${res.status})`);
 
       if (root instanceof HTMLElement) {
-        root.dataset.gadgetNutricion = checked('marca-gadget-nutricion')
-          ? 'true'
-          : 'false';
+        root.dataset.gadgetNutricion = checked('marca-gadget-nutricion') ? 'true' : 'false';
+        root.dataset.gadgetAr = checked('marca-gadget-ar') ? 'true' : 'false';
       }
+      document.querySelectorAll('[data-shows-when-ar]').forEach((el) => {
+        if (!(el instanceof HTMLElement)) return;
+        const on = checked('marca-gadget-ar');
+        el.classList.toggle('hidden', !on);
+        el.hidden = !on;
+      });
 
       showToast(
         json.message || '¡Identidad de marca actualizada con éxito!',
         'ok',
       );
+      syncLocalOps('marca');
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'Error al guardar';
       // TypeError: Failed to fetch / NetworkError → endpoint caído o sin respuesta

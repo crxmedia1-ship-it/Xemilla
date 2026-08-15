@@ -47,6 +47,7 @@ const showReservas = Boolean(gadgets?.reservas);
 const showLlamarMesero = Boolean(gadgets?.llamarMesero);
 const showBoutique = Boolean(gadgets?.boutique);
 const showNutricion = Boolean(gadgets?.nutricion);
+const showAr = Boolean(gadgets?.ar);
 const tasasCambio = await fetchTasasCambio();
 const boutiqueProductos = Array.isArray(restaurante?.boutique?.productos)
   ? restaurante.boutique.productos
@@ -266,6 +267,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   data-estilo-navegacion={estiloNavegacion}
   data-fondo-home-tipo={fondoHome.tipo || 'color'}
   data-show-nutricion={showNutricion ? 'true' : 'false'}
+  data-show-ar={showAr ? 'true' : 'false'}
   style={cssVars}
 >
   {
@@ -514,7 +516,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         destacados={menu?.destacados ?? []}
         fondoGlobal={fondoMenu}
         showNutricion={showNutricion}
+        showAr={showAr}
         tasaBcv={tasasCambio.usdVes}
+        tasaEurUsd={
+          Number(tasasCambio.usdVes) > 0 && Number(tasasCambio.eurVes) > 0
+            ? Number(tasasCambio.usdVes) / Number(tasasCambio.eurVes)
+            : 0.92
+        }
         tasaEur={tasasCambio.eurVes}
         estilos={estilos}
       />
@@ -631,8 +639,28 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         aria-modal="true"
         aria-labelledby="detalle-modal-title"
       >
+        {/* Close button: fixed at top-right above the scroll area, always visible */}
+        <button
+          type="button"
+          data-detalle-close
+          class="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-black/45 text-zinc-200 backdrop-blur-md transition-all duration-200 active:scale-95 hover:text-white"
+          aria-label="Cerrar"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            class="h-3.5 w-3.5"
+          >
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+
         <div class="relative max-h-[min(88dvh,36rem)] overflow-y-auto overscroll-contain">
-          <div class="relative aspect-[4/3] overflow-hidden bg-black/50">
+          {/* Standard image/video — hidden when AR viewer is active */}
+          <div class="relative aspect-[4/3] overflow-hidden bg-black/50" data-detalle-media-std>
             <img
               data-detalle-img
               src=""
@@ -647,24 +675,10 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               muted
               playsinline
             ></video>
-            <button
-              type="button"
-              data-detalle-close
-              class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-black/45 text-zinc-200 backdrop-blur-md transition-all duration-200 active:scale-95 hover:text-white"
-              aria-label="Cerrar"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                class="h-3.5 w-3.5"
-              >
-                <path d="M6 6l12 12M18 6L6 18"></path>
-              </svg>
-            </button>
           </div>
+
+          {/* AR 3D viewer — injected dynamically; shown instead of standard media */}
+          <div data-detalle-ar class="hidden"></div>
 
           <div class="space-y-3 px-5 py-4">
             <h3
@@ -678,35 +692,28 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               class="hidden text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]"
               data-detalle-desc
             ></p>
-            {
+              {
               showNutricion && (
-                <div
-                  class="hidden font-mono text-xs bg-zinc-900/60 p-3 rounded-xl border border-white/10 space-y-2.5"
-                  data-detalle-nutricion
-                >
-                  <div class="grid grid-cols-4 gap-2 text-center" data-detalle-macros>
-                    <div>
-                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">kcal</p>
-                      <p class="tabular-nums text-zinc-100" data-detalle-kcal>—</p>
+                <div class="detalle-nut hidden" data-detalle-nutricion>
+                  <div class="detalle-nut__macros" data-detalle-macros>
+                    <div class="detalle-nut__metric">
+                      <p class="detalle-nut__k">kcal</p>
+                      <p class="detalle-nut__v" data-detalle-kcal>—</p>
                     </div>
-                    <div>
-                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">Prot</p>
-                      <p class="tabular-nums text-zinc-100" data-detalle-prot>—</p>
+                    <div class="detalle-nut__metric">
+                      <p class="detalle-nut__k">Prot</p>
+                      <p class="detalle-nut__v" data-detalle-prot>—</p>
                     </div>
-                    <div>
-                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">Carbs</p>
-                      <p class="tabular-nums text-zinc-100" data-detalle-carbs>—</p>
+                    <div class="detalle-nut__metric">
+                      <p class="detalle-nut__k">Carbs</p>
+                      <p class="detalle-nut__v" data-detalle-carbs>—</p>
                     </div>
-                    <div>
-                      <p class="text-[0.55rem] uppercase tracking-wider text-zinc-500">Grasas</p>
-                      <p class="tabular-nums text-zinc-100" data-detalle-grasas>—</p>
+                    <div class="detalle-nut__metric">
+                      <p class="detalle-nut__k">Grasas</p>
+                      <p class="detalle-nut__v" data-detalle-grasas>—</p>
                     </div>
                   </div>
-                  <div class="flex flex-wrap gap-1.5" data-detalle-alergias-badges></div>
-                  <p
-                    class="hidden text-[0.65rem] leading-relaxed text-zinc-400"
-                    data-detalle-ingredientes
-                  ></p>
+                  <div class="detalle-nut__tags" data-detalle-alergias-badges></div>
                 </div>
               )
             }
@@ -725,6 +732,69 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   .detalle-modal.is-open .detalle-modal__card {
     transform: scale(1);
     opacity: 1;
+  }
+
+  .detalle-nut {
+    padding: 0.8rem;
+    border-radius: 1.15rem;
+    border: 1px solid color-mix(in srgb, var(--color-texto) 12%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 5.5%, transparent);
+  }
+
+  .detalle-nut__macros {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .detalle-nut__metric {
+    min-width: 0;
+    padding: 0.55rem 0.15rem 0.6rem;
+    border-radius: 0.85rem;
+    background: color-mix(in srgb, var(--color-texto) 6%, transparent);
+    text-align: center;
+  }
+
+  .detalle-nut__k {
+    margin: 0;
+    font-size: 0.52rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 42%, transparent);
+  }
+
+  .detalle-nut__v {
+    margin: 0.18rem 0 0;
+    font-size: 0.95rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-texto);
+  }
+
+  .detalle-nut__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.7rem;
+  }
+
+  .detalle-nut__tags:empty {
+    display: none;
+  }
+
+  .detalle-nut-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--color-texto) 16%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+    padding: 0.28rem 0.62rem;
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 78%, transparent);
   }
 
   [data-app-nav-overlay].is-open {
@@ -933,6 +1003,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   function clearDetalleMedia(app: HTMLElement) {
     const imgEl = app.querySelector('[data-detalle-img]');
     const videoEl = app.querySelector('[data-detalle-video]');
+    const arEl = app.querySelector('[data-detalle-ar]');
+    const mediaStdEl = app.querySelector('[data-detalle-media-std]');
     if (imgEl instanceof HTMLImageElement) {
       imgEl.classList.add('hidden');
       imgEl.removeAttribute('src');
@@ -944,6 +1016,12 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       videoEl.removeAttribute('src');
       videoEl.load();
     }
+    if (arEl instanceof HTMLElement) {
+      arEl.innerHTML = '';
+      arEl.classList.add('hidden');
+    }
+    // Restore the standard media container after AR is cleared
+    if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
     const descEl = app.querySelector('[data-detalle-desc]');
     if (descEl instanceof HTMLElement) {
       descEl.textContent = '';
@@ -955,11 +1033,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
     const badges = app.querySelector('[data-detalle-alergias-badges]');
     if (badges instanceof HTMLElement) badges.innerHTML = '';
-    const ingEl = app.querySelector('[data-detalle-ingredientes]');
-    if (ingEl instanceof HTMLElement) {
-      ingEl.textContent = '';
-      ingEl.classList.add('hidden');
-    }
   }
 
   function closeDetalle(app: HTMLElement) {
@@ -1090,6 +1163,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       grasas?: string;
       alergias?: string;
       ingredientes?: string;
+      modelo3dUrl?: string;
     },
   ) {
     const modal = app.querySelector('[data-detalle-modal]');
@@ -1097,7 +1171,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     const imgEl = app.querySelector('[data-detalle-img]');
     const videoEl = app.querySelector('[data-detalle-video]');
     if (!(modal instanceof HTMLElement)) return;
-    if (!url && !meta?.hasNut) return;
+    // hasArContent is true whenever AR gadget is on — the demo URL handles empty modelo3dUrl
+    const hasArContent = app.dataset.showAr === 'true';
+    if (!url && !meta?.hasNut && !hasArContent) return;
 
     clearDetalleMedia(app);
     if (titleEl) titleEl.textContent = title || 'Plato';
@@ -1134,21 +1210,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           .filter(Boolean);
         for (const id of ids) {
           const span = document.createElement('span');
-          span.className =
-            'rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-[0.55rem] uppercase tracking-wider text-zinc-300';
+          span.className = 'detalle-nut-chip';
           span.textContent = ALERGENO_LABELS[id] || id;
           badges.appendChild(span);
-        }
-      }
-
-      const ingEl = app.querySelector('[data-detalle-ingredientes]');
-      const ingredientes = String(merged.ingredientes || '').trim();
-      if (ingEl instanceof HTMLElement) {
-        if (ingredientes) {
-          ingEl.textContent = ingredientes;
-          ingEl.classList.remove('hidden');
-        } else {
-          ingEl.classList.add('hidden');
         }
       }
 
@@ -1175,17 +1239,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
                 .filter(Boolean);
               for (const id of ids) {
                 const span = document.createElement('span');
-                span.className =
-                  'rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-[0.55rem] uppercase tracking-wider text-zinc-300';
+                span.className = 'detalle-nut-chip';
                 span.textContent = ALERGENO_LABELS[id] || id;
                 badges.appendChild(span);
-              }
-            }
-            if (ingEl instanceof HTMLElement) {
-              const ing = String(fresh.ingredientes || '').trim();
-              if (ing) {
-                ingEl.textContent = ing;
-                ingEl.classList.remove('hidden');
               }
             }
           })
@@ -1193,7 +1249,51 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       }
     }
 
-    if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
+    const showAr = app.dataset.showAr === 'true';
+    const modelo3dUrl = String(meta?.modelo3dUrl || '').trim();
+    // Demo model for initial testing — replace with real .glb URL per-dish in production
+    const AR_DEMO_URL =
+      'https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb';
+    const resolvedArUrl = modelo3dUrl || (showAr ? AR_DEMO_URL : '');
+
+    const arEl = app.querySelector('[data-detalle-ar]');
+    const mediaStdEl = app.querySelector('[data-detalle-media-std]');
+
+    if (showAr && resolvedArUrl && arEl instanceof HTMLElement) {
+      // Hide the standard image/video section while AR is active
+      if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.add('hidden');
+
+      // Glassmorphism wrapper matching the design spec
+      const glassWrapper = document.createElement('div');
+      glassWrapper.className =
+        'relative w-full h-72 overflow-hidden bg-zinc-900/40 border-b border-white/10';
+
+      // model-viewer: touch-action pan-y lets vertical swipes scroll the modal instead of rotating
+      const mv = document.createElement('model-viewer') as HTMLElement & Record<string, unknown>;
+      mv.setAttribute('src', resolvedArUrl);
+      mv.setAttribute('alt', title || 'Modelo 3D');
+      mv.setAttribute('ar', '');
+      mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+      mv.setAttribute('camera-controls', '');
+      mv.setAttribute('auto-rotate', '');
+      mv.setAttribute('shadow-intensity', '1.5');
+      mv.style.cssText =
+        'width:100%;height:100%;background:transparent;touch-action:pan-y;display:block;';
+
+      const arBtn = document.createElement('button');
+      arBtn.setAttribute('slot', 'ar-button');
+      arBtn.style.cssText =
+        'position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:0.5rem;';
+      arBtn.className =
+        'bg-white/90 text-black font-semibold text-xs px-4 py-2.5 rounded-full shadow-2xl border border-white/20 backdrop-blur-md active:scale-95 transition-all';
+      arBtn.innerHTML = '<span>👀 Ver en tu mesa (AR)</span>';
+      mv.appendChild(arBtn);
+
+      glassWrapper.appendChild(mv);
+      arEl.innerHTML = '';
+      arEl.appendChild(glassWrapper);
+      arEl.classList.remove('hidden');
+    } else if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
       videoEl.src = url;
       videoEl.muted = true;
       videoEl.loop = true;
@@ -1313,7 +1413,10 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           const title = detalleBtn.dataset.mediaTitle || 'Plato';
           const platoId = detalleBtn.dataset.platoId || '';
           const platoNombre = detalleBtn.dataset.platoNombre || title;
-          if (url || detalleBtn.dataset.platoHasNut === 'true') {
+          const modelo3dUrl = detalleBtn.dataset.platoModelo3dUrl?.trim() || '';
+          // AR demo URL handles dishes with empty modelo3dUrl when gadget is on
+          const hasAr = root.dataset.showAr === 'true';
+          if (url || detalleBtn.dataset.platoHasNut === 'true' || hasAr) {
             openDetalle(root, url, title, platoId, platoNombre, {
               desc: detalleBtn.dataset.platoDesc || '',
               hasNut: detalleBtn.dataset.platoHasNut === 'true',
@@ -1323,6 +1426,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               grasas: detalleBtn.dataset.platoGrasas || '',
               alergias: detalleBtn.dataset.platoAlergias || '',
               ingredientes: detalleBtn.dataset.platoIngredientes || '',
+              modelo3dUrl,
             });
           }
           return;

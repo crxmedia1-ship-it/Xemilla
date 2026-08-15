@@ -167,7 +167,7 @@ const REDES_ALLOWED = new Set(['instagram', 'facebook', 'tiktok', 'tripadvisor']
 
 /**
  * @param {unknown} value
- * @returns {Array<{ red: string, url: string }>}
+ * @returns {Array<{ red: string, url: string, activo: boolean }>}
  */
 export function parseRedesSociales(value) {
   let raw = value;
@@ -188,7 +188,10 @@ export function parseRedesSociales(value) {
         .toLowerCase();
       const url = String(item.url || item.href || '').trim();
       if (!REDES_ALLOWED.has(red) || !url) return null;
-      return { red, url: normalizeSocialUrl(red, url) };
+      const flag = item.activo ?? item.active ?? item.enabled ?? item.on;
+      const activo =
+        flag === undefined ? true : flag !== false && flag !== 'false' && flag !== 0;
+      return { red, url: normalizeSocialUrl(red, url), activo };
     })
     .filter(Boolean);
 }
@@ -220,12 +223,15 @@ export function buildRedesSocialesFromBody(raw) {
     return parseRedesSociales(raw.redes_sociales);
   }
 
-  /** @type {Array<{ red: string, url: string }>} */
+  /** @type {Array<{ red: string, url: string, activo: boolean }>} */
   const list = [];
   for (const red of REDES_ALLOWED) {
-    const key = `redes_${red}`;
-    const url = String(raw[key] ?? '').trim();
-    if (url) list.push({ red, url: normalizeSocialUrl(red, url) });
+    const url = String(raw[`redes_${red}`] ?? '').trim();
+    if (!url) continue;
+    const flag = raw[`redes_${red}_activo`];
+    const activo =
+      flag === undefined ? true : flag !== false && flag !== 'false' && flag !== 0;
+    list.push({ red, url: normalizeSocialUrl(red, url), activo });
   }
   return list;
 }

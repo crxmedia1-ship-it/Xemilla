@@ -1,0 +1,210 @@
+---
+import { DIAS_SEMANA } from '../../lib/horarios-semana.js';
+
+/**
+ * Horario + mapa + redes (mismo bloque en Perfil y en Identidad → Horarios).
+ * @typedef {{ url: string, on: boolean }} RedState
+ */
+interface Props {
+  scope: string;
+  mapsInputId: string;
+  horarioHiddenId: string;
+  horarioSemana: Record<string, { closed?: boolean; open?: string; close?: string }>;
+  horarioHoy: { id: string; open: boolean; text: string };
+  mapsUrl: string;
+  mapsEmbed: string;
+  mapsOpen: string;
+  horarioText: string;
+  instagram: RedState;
+  facebook: RedState;
+  tiktok: RedState;
+  tripadvisor: RedState;
+  socialIdPrefix: string;
+}
+
+const {
+  scope,
+  mapsInputId,
+  horarioHiddenId,
+  horarioSemana,
+  horarioHoy,
+  mapsUrl,
+  mapsEmbed,
+  mapsOpen,
+  horarioText,
+  instagram,
+  facebook,
+  tiktok,
+  tripadvisor,
+  socialIdPrefix,
+} = Astro.props;
+
+const redes = [
+  { id: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/', state: instagram },
+  { id: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/', state: facebook },
+  { id: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@', state: tiktok },
+  { id: 'tripadvisor', label: 'Tripadvisor', placeholder: 'https://tripadvisor.com/', state: tripadvisor },
+];
+---
+
+<div class="perfil-local-ops" data-local-ops={scope}>
+  <div class="perfil-group">
+    <div class="perfil-group__head">
+      <div>
+        <h3>Horario de atención</h3>
+        <p class="perfil-group__sub">Hoy resaltado · el interruptor cierra el día</p>
+      </div>
+      <div class="perfil-chips" role="group" aria-label="Atajos de horario">
+        <button type="button" class="perfil-chip" data-hours-preset="lv">Lun–Vie</button>
+        <button type="button" class="perfil-chip" data-hours-preset="finde">Fin de semana</button>
+        <button type="button" class="perfil-chip" data-hours-preset="todos">Todos</button>
+        <button type="button" class="perfil-chip" data-hours-preset="cerrados">Cerrar</button>
+      </div>
+    </div>
+    <ul class="perfil-list" data-hours-week={scope}>
+      {
+        DIAS_SEMANA.map((dia) => {
+          const row = horarioSemana[dia.id];
+          const closed = Boolean(row?.closed);
+          const isToday = dia.id === horarioHoy.id;
+          return (
+            <li
+              class:list={['perfil-day', isToday && 'is-today']}
+              data-day={dia.id}
+              data-closed={closed ? 'true' : 'false'}
+            >
+              <span class="perfil-day__name">
+                {dia.label}
+                {isToday ? <em>Hoy</em> : null}
+              </span>
+              <div class="perfil-day__controls">
+                <span class="perfil-day__closed-label">Cerrado</span>
+                <span class="perfil-day__times">
+                  <input
+                    type="time"
+                    data-hours-open
+                    value={row?.open || '12:00'}
+                    disabled={closed}
+                    aria-label={`Apertura ${dia.label}`}
+                  />
+                  <span class="perfil-day__to">–</span>
+                  <input
+                    type="time"
+                    data-hours-close
+                    value={row?.close || '22:00'}
+                    disabled={closed}
+                    aria-label={`Cierre ${dia.label}`}
+                  />
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!closed}
+                  data-hours-toggle
+                  title={closed ? 'Cerrado' : 'Abierto'}
+                  class:list={['ios-toggle', 'ios-toggle--live', !closed && 'is-on']}
+                >
+                  <span class="ios-toggle__knob" aria-hidden="true"></span>
+                </button>
+              </div>
+            </li>
+          );
+        })
+      }
+    </ul>
+    <p class="perfil-footnote">
+      Lun–Vie y Fin de semana copian el horario del primer día abierto. Se publica en la WebApp de este restaurante.
+    </p>
+    <input type="hidden" id={horarioHiddenId} value={horarioText} data-horario-hidden />
+  </div>
+
+  <div class="perfil-group">
+    <div class="perfil-group__head">
+      <div>
+        <h3>Mapa</h3>
+        <p class="perfil-group__sub">Vista de Google Maps en la WebApp</p>
+      </div>
+    </div>
+    <div class="perfil-map" data-maps-preview>
+      <div class="perfil-map__frame">
+        {
+          mapsEmbed ? (
+            <iframe
+              title="Mapa del restaurante"
+              src={mapsEmbed}
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              data-map-embed
+            />
+          ) : (
+            <span class="perfil-map__empty" data-map-empty>
+              Pegá el enlace de Google Maps
+            </span>
+          )
+        }
+        <a
+          class="perfil-map__hit"
+          href={mapsOpen || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Abrir en Google Maps"
+          data-map-open
+          hidden={!mapsOpen}
+        />
+      </div>
+      <label class="perfil-field perfil-field--map">
+        <span>Enlace de Google Maps</span>
+        <input
+          type="url"
+          id={mapsInputId}
+          value={mapsUrl}
+          placeholder="https://maps.google.com/"
+          autocomplete="off"
+          data-maps-url
+        />
+      </label>
+    </div>
+  </div>
+
+  <div class="perfil-group">
+    <div class="perfil-group__head">
+      <div>
+        <h3>Redes</h3>
+        <p class="perfil-group__sub">El interruptor las muestra u oculta en la WebApp</p>
+      </div>
+    </div>
+    <ul class="perfil-list">
+      {
+        redes.map((net) => (
+          <li
+            class="perfil-social"
+            data-social={net.id}
+            data-on={net.state.on ? 'true' : 'false'}
+          >
+            <div class="perfil-social__bar">
+              <span>{net.label}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={net.state.on}
+                data-social-toggle
+                title={net.state.on ? 'Visible en la WebApp' : 'Oculta en la WebApp'}
+                class:list={['ios-toggle', 'ios-toggle--live', net.state.on && 'is-on']}
+              >
+                <span class="ios-toggle__knob" aria-hidden="true"></span>
+              </button>
+            </div>
+            <input
+              type="url"
+              id={`${socialIdPrefix}${net.id}`}
+              value={net.state.url}
+              placeholder={net.placeholder}
+              autocomplete="off"
+              disabled={!net.state.on}
+            />
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</div>

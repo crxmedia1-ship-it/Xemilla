@@ -110,6 +110,17 @@ export async function POST({ request, cookies }) {
     }
   }
 
+  if ('modelo_3d_url' in raw) {
+    const url3d = raw.modelo_3d_url;
+    if (url3d === null || url3d === '' || url3d === undefined) {
+      patch.modelo_3d_url = null;
+    } else if (typeof url3d === 'string' && /^https?:\/\//i.test(url3d.trim())) {
+      patch.modelo_3d_url = url3d.trim();
+    } else {
+      return json({ error: 'URL de modelo 3D inválida' }, 400);
+    }
+  }
+
   applyNutricionPatch(raw, patch);
 
   if (imagenFile) {
@@ -142,13 +153,13 @@ export async function POST({ request, cookies }) {
     .update(patch)
     .eq('id', id)
     .select(
-      'id, nombre, descripcion, precio, disponible, destacado, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
+      'id, nombre, descripcion, precio, disponible, destacado, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
     )
     .maybeSingle();
 
   if (
     error &&
-    /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle|column|schema cache/i.test(
+    /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle|modelo_3d_url|column|schema cache/i.test(
       error.message || '',
     )
   ) {
@@ -160,6 +171,7 @@ export async function POST({ request, cookies }) {
     delete legacy.grasas;
     delete legacy.alergias;
     delete legacy.ingredientes_detalle;
+    delete legacy.modelo_3d_url;
     if (Object.keys(legacy).length === 0) {
       return json({
         error:

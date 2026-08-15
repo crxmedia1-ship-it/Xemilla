@@ -23,16 +23,20 @@ export async function POST({ request, cookies }) {
     return json({ error: 'Importador nutricional solo disponible para SuperAdmin' }, 403);
   }
 
-  /** @type {Record<string, unknown>} */
-  let body = {};
+  /** @type {unknown} */
+  let rawBody = {};
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return json({ error: 'Cuerpo inválido' }, 400);
   }
 
+  const body =
+    rawBody && typeof rawBody === 'object' && !Array.isArray(rawBody)
+      ? /** @type {Record<string, unknown>} */ (rawBody)
+      : {};
   const restauranteId = String(body.restaurante_id || '').trim();
-  const text = String(body.text || '').trim();
+  const text = extractNutricionBulkText(rawBody);
   if (!restauranteId) return json({ error: 'restaurante_id requerido' }, 400);
   if (!text) return json({ error: 'Pegá el JSON o la lista nutricional' }, 400);
 
@@ -109,8 +113,28 @@ export async function POST({ request, cookies }) {
 }
 
 /**
- * @param {string} text
+ * Acepta `{ text }`, `{ platos: [...] }`, `{ items: [...] }` o un array JSON directo.
+ * @param {unknown} raw
  */
+function extractNutricionBulkText(raw) {
+  if (typeof raw === 'string') return raw.trim();
+  if (Array.isArray(raw)) return JSON.stringify(raw);
+  if (!raw || typeof raw !== 'object') return '';
+  const body = /** @type {Record<string, unknown>} */ (raw);
+  if (typeof body.text === 'string' && body.text.trim()) return body.text.trim();
+  if (Array.isArray(body.platos)) return JSON.stringify(body.platos);
+  if (Array.isArray(body.items)) return JSON.stringify(body.items);
+  if (Array.isArray(body.json)) return JSON.stringify(body.json);
+  return '';
+}
+
+/**
+ * @param {Record<string, unknown>} item
+ */
+function jsonNombre(item) {
+  return String(item.nombre || item.name || item.plato || item.title || '').trim();
+}
+
 function parseNutricionBulkText(text) {
   /** @type {string[]} */
   const errors = [];
@@ -134,7 +158,7 @@ function parseNutricionBulkText(text) {
       const list = Array.isArray(parsed) ? parsed : [parsed];
       for (const item of list) {
         if (!item || typeof item !== 'object') continue;
-        const nombre = String(item.nombre || item.name || '').trim();
+        const nombre = jsonNombre(item);
         if (!nombre) {
           errors.push('Fila JSON sin nombre — omitida.');
           continue;
@@ -145,7 +169,7 @@ function parseNutricionBulkText(text) {
           proteinas: parseMacroInt(item.proteinas ?? item.protein),
           carbs: parseMacroInt(item.carbs ?? item.carbohidratos),
           grasas: parseMacroInt(item.grasas ?? item.fat),
-          alergias: normalizeAlergias(item.alergias ?? item.allergens),
+          alergias: normalizeAlergias(item.alergias ?? item.alergenos ?? item.allergens),
           ingredientes_detalle:
             String(item.ingredientes_detalle ?? item.ingredientes ?? '').trim() || null,
         });

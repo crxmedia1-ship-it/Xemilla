@@ -41,6 +41,7 @@ const RESTAURANTE_ADMIN_SELECT = [
   'gadget_llamar_mesero',
   'gadget_boutique',
   'gadget_nutricion',
+  'gadget_ar',
   'config_wifi',
   'config_reservas',
   'config_boutique',
@@ -225,11 +226,11 @@ export async function getAdminDashboardData(ctx, opts = {}) {
   const readClient = isSuper ? writeClient : operativoReadClient;
 
   const platosSelectWithNutricion =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, categorias(nombre)';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
   const platosSelectNutNoOrden =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, categorias(nombre)';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
   const platosSelectNutNoJoin =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
   const platosSelectWithOrden =
     'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, categorias(nombre)';
   const platosSelectBase =
@@ -348,6 +349,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     grasas: p.grasas == null ? null : Number(p.grasas),
     alergias: normalizeAlergias(p.alergias),
     ingredientes_detalle: p.ingredientes_detalle ?? '',
+    modelo_3d_url: typeof p.modelo_3d_url === 'string' ? p.modelo_3d_url.trim() : '',
   }));
 
   platosMapped.sort((a, b) => {
