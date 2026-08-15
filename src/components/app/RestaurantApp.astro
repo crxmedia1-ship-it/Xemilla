@@ -746,6 +746,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       <p class="ar-screen__title" data-ar-screen-title>AR</p>
     </header>
     <div class="ar-screen__stage" data-ar-screen-stage></div>
+    <p class="ar-screen__hint" data-ar-hint>Apuntá la cámara al suelo o a la mesa para colocar el plato.</p>
   </div>
 </div>
 
@@ -905,6 +906,25 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     width: 100%;
     height: 100%;
     background: #050508;
+  }
+  .ar-screen__hint {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: max(1.25rem, env(safe-area-inset-bottom));
+    z-index: 4;
+    margin: 0;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.9rem;
+    background: rgba(0, 0, 0, 0.62);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    text-align: center;
+    pointer-events: none;
+  }
+  .ar-screen.is-open .ar-screen__hint {
+    display: block;
   }
 
   .detalle-ar-btn {
@@ -1540,12 +1560,33 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
   }
 
+  function isAndroidUa() {
+    return /Android/i.test(navigator.userAgent || '');
+  }
+
+  function isIosUa() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function openSceneViewerAr(glbUrl: string, title: string) {
+    const file = encodeURIComponent(glbUrl);
+    const name = encodeURIComponent(title || 'Plato');
+    const web = `https://arvr.google.com/scene-viewer/1.0?file=${file}&mode=ar_preferred&title=${name}`;
+    const intent =
+      `intent://arvr.google.com/scene-viewer/1.0?file=${file}&mode=ar_preferred&title=${name}#Intent;` +
+      `scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;` +
+      `S.browser_fallback_url=${encodeURIComponent(web)};end;`;
+    window.location.href = intent;
+  }
+
   function launchDetalleAr(app: HTMLElement) {
     if (app.dataset.showAr !== 'true') return;
     ensureModelViewerLoaded();
     const screen = app.querySelector('[data-ar-screen]');
     const stage = app.querySelector('[data-ar-screen-stage]');
     const titleEl = app.querySelector('[data-ar-screen-title]');
+    const hintEl = app.querySelector('[data-ar-hint]');
     const arChip = app.querySelector('[data-detalle-ar-btn]');
     if (!(screen instanceof HTMLElement) || !(stage instanceof HTMLElement)) return;
     const src = String(
@@ -1560,46 +1601,54 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     if (titleEl) titleEl.textContent = title;
     if (arChip instanceof HTMLElement) arChip.classList.add('is-on');
 
-    screen.classList.add('is-open');
-    screen.setAttribute('aria-hidden', 'false');
-
-    let mv = stage.querySelector('model-viewer') as
-      | (HTMLElement & { activateAR?: () => Promise<void> })
-      | null;
-
-    if (!mv) {
-      mv = document.createElement('model-viewer') as HTMLElement & {
-        activateAR?: () => Promise<void>;
-      };
-      mv.setAttribute('src', src);
-      mv.setAttribute('alt', title);
-      mv.setAttribute('ar', '');
-      mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-      mv.setAttribute('camera-controls', '');
-      mv.setAttribute('auto-rotate', '');
-      mv.setAttribute('shadow-intensity', '1');
-      mv.setAttribute('exposure', '1');
-      mv.setAttribute('touch-action', 'pan-y');
-      mv.setAttribute('reveal', 'auto');
-      mv.style.cssText = 'width:100%;height:100%;display:block;background:#050508;';
-
-      const nativeAr = document.createElement('button');
-      nativeAr.setAttribute('slot', 'ar-button');
-      nativeAr.className = 'detalle-ar-native';
-      nativeAr.textContent = 'Ver en tu mesa';
-      mv.appendChild(nativeAr);
-
-      stage.replaceChildren(mv);
+    // Android: Scene Viewer abre la cámara y apoya el .glb en el suelo/mesa.
+    if (isAndroidUa()) {
+      if (hintEl instanceof HTMLElement) {
+        hintEl.textContent = 'Abriendo la cámara… apuntá al suelo o a la mesa.';
+      }
+      openSceneViewerAr(src, title);
+      return;
     }
 
-    const activate = () => {
-      if (typeof mv?.activateAR === 'function') {
+    if (hintEl instanceof HTMLElement) {
+      hintEl.textContent = isIosUa()
+        ? 'Permití la cámara y tocá la mesa para apoyar el plato.'
+        : 'La AR de mesa (cámara + plato en la mesa) se abre en el celular. En la computadora no hay cámara AR.';
+    }
+
+    screen.classList.add('is-open');
+    screen.setAttribute('aria-hidden', 'false');
+    stage.replaceChildren();
+
+    const mv = document.createElement('model-viewer') as HTMLElement & {
+      activateAR?: () => Promise<void>;
+    };
+    mv.setAttribute('src', src);
+    mv.setAttribute('alt', title);
+    mv.setAttribute('ar', '');
+    mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+    mv.setAttribute('ar-placement', 'floor');
+    mv.setAttribute('ar-scale', 'auto');
+    mv.setAttribute('camera-controls', '');
+    mv.setAttribute('touch-action', 'pan-y');
+    mv.setAttribute('reveal', 'auto');
+    mv.setAttribute('shadow-intensity', '1');
+    mv.setAttribute('xr-environment', '');
+    if (src.toLowerCase().includes('.usdz')) mv.setAttribute('ios-src', src);
+    mv.style.cssText = 'width:100%;height:100%;display:block;background:#111;';
+
+    const nativeAr = document.createElement('button');
+    nativeAr.setAttribute('slot', 'ar-button');
+    nativeAr.className = 'detalle-ar-native';
+    nativeAr.textContent = 'Colocar en la mesa';
+    mv.appendChild(nativeAr);
+    stage.appendChild(mv);
+
+    if (isIosUa()) {
+      nativeAr.click();
+      if (typeof mv.activateAR === 'function') {
         void mv.activateAR().catch(() => {});
       }
-    };
-    activate();
-    if (!customElements.get('model-viewer')) {
-      customElements.whenDefined('model-viewer').then(activate).catch(() => {});
     }
   }
 
