@@ -103,9 +103,6 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
     <meta name="twitter:description" content={description} />
     {shareImage ? <meta name="twitter:image" content={shareImage} /> : null}
     <title>{title}</title>
-    {!adminPanel && (
-      <Fragment set:html='<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>' />
-    )}
     <ClientRouter />
     {
       adminPanel && (

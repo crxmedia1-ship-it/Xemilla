@@ -23,7 +23,13 @@ Astro.response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
 Astro.response.headers.set('Pragma', 'no-cache');
 
 const { slug } = Astro.params;
-const restauranteRaw = await getRestauranteBySlug(slug ?? '');
+let restauranteRaw = null;
+try {
+  restauranteRaw = await getRestauranteBySlug(slug ?? '');
+} catch (err) {
+  console.error('[slug] getRestauranteBySlug crash:', err);
+  restauranteRaw = null;
+}
 
 const homeThemeRawDb = restauranteRaw?.home_theme ?? null;
 const sanitizedHomeTheme = sanitizeTheme(homeThemeRawDb);
@@ -87,8 +93,8 @@ const ogUrl = restaurante ? `${siteOrigin}/${restaurante.slug}` : '';
     </Layout>
   ) : (
     <Layout
-      title={restaurante.nombre}
-      description={`${restaurante.nombre} · ${restaurante.tagline}`}
+      title={restaurante.nombre || 'Menú'}
+      description={`${restaurante.nombre || 'Restaurante'} · ${restaurante.tagline || ''}`}
       theme={layoutTheme}
       themeColor={brandTheme.colorFondo}
       fontHref={brandTheme.googleFontsHref || dna.fonts.googleHref}

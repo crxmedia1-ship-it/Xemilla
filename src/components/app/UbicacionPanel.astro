@@ -48,7 +48,7 @@ const bodyColor = (sectionColors.color_cuerpo || '').trim();
 const titleStyle = titleColor ? `color:${titleColor}` : undefined;
 const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
 
-const telHref = telefono.replace(/[^\d+]/g, '');
+const telHref = String(telefono || '').replace(/[^\d+]/g, '');
 const emailHref = email.trim();
 const waRaw = String(whatsapp || telefono).trim();
 const waDigits = waRaw.replace(/\D/g, '');

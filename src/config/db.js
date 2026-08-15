@@ -7,19 +7,32 @@ import { createClient } from '@supabase/supabase-js';
  * Auth del Dashboard: `src/lib/supabase/server.js` (SSR) y
  * `src/lib/supabase/browser.js` (login en el cliente).
  *
- * cache: 'no-store' evita respuestas stale (CDN / fetch) al cambiar
- * home_theme / ubicacion_theme desde el Admin.
+ * Nunca lanzar en import: si faltan env vars devolvemos null y la
+ * WebApp pública responde 404 controlado en vez de 500.
  */
-export const supabase = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
-  {
-    global: {
-      fetch: (input, init = {}) =>
-        fetch(input, {
-          ...init,
-          cache: 'no-store',
-        }),
-    },
-  },
-);
+function createPublicSupabaseClient() {
+  const url = String(import.meta.env.PUBLIC_SUPABASE_URL || '').trim();
+  const key = String(import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '').trim();
+  if (!url || !key) {
+    console.error(
+      '[supabase] Faltan PUBLIC_SUPABASE_URL o PUBLIC_SUPABASE_ANON_KEY',
+    );
+    return null;
+  }
+  try {
+    return createClient(url, key, {
+      global: {
+        fetch: (input, init = {}) =>
+          fetch(input, {
+            ...init,
+            cache: 'no-store',
+          }),
+      },
+    });
+  } catch (err) {
+    console.error('[supabase] no se pudo crear el cliente público:', err);
+    return null;
+  }
+}
+
+export const supabase = createPublicSupabaseClient();

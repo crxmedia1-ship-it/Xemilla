@@ -186,6 +186,7 @@ const RESTAURANTE_SELECT_FULL = [
  * @returns {Promise<string[]>}
  */
 export async function listRestauranteSlugs() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('restaurantes').select('slug').order('slug');
 
   if (error) {
@@ -268,6 +269,10 @@ async function enrichThemesWithServiceRole(row) {
  * @param {string} slug
  */
 async function fetchRestauranteRow(slug) {
+  if (!supabase) {
+    return { data: null, error: { message: 'Supabase client unavailable' } };
+  }
+  try {
   const withFull = await supabase
     .from('restaurantes')
     .select('*')
@@ -317,6 +322,13 @@ async function fetchRestauranteRow(slug) {
 
   merged = await enrichThemesWithServiceRole(merged);
   return { data: merged, error: null };
+  } catch (err) {
+    console.error('[restaurantes] fetchRestauranteRow:', err);
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
 }
 
 /**
@@ -484,7 +496,24 @@ function buildIdentity(row, brand, hasBrandProfile) {
  * @returns {Promise<object | null>}
  */
 export async function getRestauranteBySlug(slug) {
+  try {
+    return await loadRestauranteBySlug(slug);
+  } catch (err) {
+    console.error('[getRestauranteBySlug] crash:', err);
+    return null;
+  }
+}
+
+/**
+ * @param {string} slug
+ * @returns {Promise<object | null>}
+ */
+async function loadRestauranteBySlug(slug) {
   if (!slug) return null;
+  if (!supabase) {
+    console.error('[getRestauranteBySlug] cliente Supabase no disponible');
+    return null;
+  }
 
   let row = null;
   let restError = null;
@@ -519,8 +548,11 @@ export async function getRestauranteBySlug(slug) {
     row.ubicacion_theme,
   );
 
-  const [{ data: categoriasRaw, error: catError }, platosResult] =
-    await Promise.all([
+  let categoriasRaw = [];
+  let catError = null;
+  let platosResult = { data: [], error: null };
+  try {
+    const [catRes, platosRes] = await Promise.all([
       supabase
         .from('categorias')
         .select('id, nombre, orden, bg_type, bg_valor')
@@ -529,13 +561,20 @@ export async function getRestauranteBySlug(slug) {
       (createSupabaseServiceClient() || supabase)
         .from('platos')
         .select(
-          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
+          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
         )
         .eq('restaurante_id', row.id)
         .eq('disponible', true)
-        .order('orden', { ascending: true })
         .order('id', { ascending: true }),
     ]);
+    categoriasRaw = catRes.data;
+    catError = catRes.error;
+    platosResult = platosRes;
+  } catch (err) {
+    console.error('[supabase] categorias/platos crash:', err);
+    categoriasRaw = [];
+    platosResult = { data: [], error: null };
+  }
 
   let platos = platosResult.data;
   let platosError = platosResult.error;
@@ -783,8 +822,10 @@ export async function getRestauranteBySlug(slug) {
     },
     reservas,
     boutique: {
-      productos: boutique.productos.filter((p) => p.activo),
-      catalogo: boutique.productos,
+      productos: Array.isArray(boutique?.productos)
+        ? boutique.productos.filter((p) => p?.activo)
+        : [],
+      catalogo: Array.isArray(boutique?.productos) ? boutique.productos : [],
     },
     nosotros,
     ubicacion,

@@ -1,4 +1,3 @@
-import { loadEnv } from 'vite';
 import { v2 as cloudinary } from 'cloudinary';
 
 /**
@@ -14,16 +13,6 @@ export function resolveCloudinaryUrl() {
   for (const value of candidates) {
     const url = String(value ?? '').trim();
     if (url) return stripQuotes(url);
-  }
-
-  // Fallback: leer .env del cwd (Astro/Vite a veces no inyecta vars privadas en process.env)
-  try {
-    const mode = process.env.NODE_ENV || 'development';
-    const loaded = loadEnv(mode, process.cwd(), '');
-    const fromFile = String(loaded.CLOUDINARY_URL ?? '').trim();
-    if (fromFile) return stripQuotes(fromFile);
-  } catch (err) {
-    console.error('[cloudinary] loadEnv fallback failed:', err);
   }
 
   return '';

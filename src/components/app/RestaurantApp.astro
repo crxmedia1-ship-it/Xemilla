@@ -39,8 +39,8 @@ interface Props {
 
 const { restaurante, homeTheme: homeThemeProp, ubicacionTheme: ubicacionThemeProp } = Astro.props;
 const theme = restaurante?.theme ?? DEFAULT_THEME;
-const gadgets = restaurante?.gadgets ?? {};
-const uiEstilo = restaurante?.uiEstilo ?? {};
+const gadgets = restaurante?.gadgets || {};
+const uiEstilo = restaurante?.uiEstilo || {};
 const showWifi = Boolean(gadgets?.wifi);
 const showDividir = Boolean(gadgets?.dividirCuenta);
 const showReservas = Boolean(gadgets?.reservas);
@@ -48,7 +48,12 @@ const showLlamarMesero = Boolean(gadgets?.llamarMesero);
 const showBoutique = Boolean(gadgets?.boutique);
 const showNutricion = Boolean(gadgets?.nutricion);
 const showAr = Boolean(gadgets?.ar);
-const tasasCambio = await fetchTasasCambio();
+let tasasCambio = { usdVes: 36.5, eurVes: 40, fuente: 'fallback', fecha: null };
+try {
+  tasasCambio = (await fetchTasasCambio()) || tasasCambio;
+} catch (err) {
+  console.error('[RestaurantApp] tasas de cambio:', err);
+}
 const boutiqueProductos = Array.isArray(restaurante?.boutique?.productos)
   ? restaurante.boutique.productos
   : [];
@@ -272,7 +277,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 >
   {
     showNutricion ? (
-      <script is:inline type="application/json" data-menu-nutricion-json set:html={JSON.stringify(menuNutricionById)} />
+      <script is:inline type="application/json" data-menu-nutricion-json set:html={JSON.stringify(menuNutricionById || {})} />
     ) : null
   }
   {/*
@@ -1366,6 +1371,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   }
 
   function toggleDetalleAr(app: HTMLElement) {
+    ensureModelViewerLoaded();
     const arEl = app.querySelector('[data-detalle-ar]');
     const arChip = app.querySelector('[data-detalle-ar-btn]');
     if (!(arEl instanceof HTMLElement) || !(arChip instanceof HTMLElement)) return;
@@ -1417,6 +1423,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     document.querySelectorAll('[data-restaurant-app]').forEach((root) => {
       if (!(root instanceof HTMLElement)) return;
       if (root.dataset.navReady === 'true') return;
+      if (root.dataset.showAr === 'true') ensureModelViewerLoaded();
       root.dataset.navReady = 'true';
       void hydrateWebappNutricion(root);
 
@@ -1569,6 +1576,17 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         menuScroll.addEventListener('scroll', onScroll, { passive: true });
       }
     });
+  }
+
+  function ensureModelViewerLoaded() {
+    if (typeof customElements === 'undefined') return;
+    if (customElements.get('model-viewer')) return;
+    if (document.querySelector('script[data-model-viewer]')) return;
+    const s = document.createElement('script');
+    s.type = 'module';
+    s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js';
+    s.setAttribute('data-model-viewer', 'true');
+    document.head.appendChild(s);
   }
 
   initRestaurantApps();

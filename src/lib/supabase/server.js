@@ -7,9 +7,16 @@ import { createServerClient, parseCookieHeader } from '@supabase/ssr';
  * @param {{ request: Request, cookies: import('astro').AstroCookies }} ctx
  */
 export function createSupabaseServerClient({ request, cookies }) {
+  const url = String(import.meta.env.PUBLIC_SUPABASE_URL || '').trim();
+  const key = String(import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '').trim();
+  if (!url || !key) {
+    throw new Error(
+      '[supabase] Faltan PUBLIC_SUPABASE_URL o PUBLIC_SUPABASE_ANON_KEY',
+    );
+  }
   return createServerClient(
-    import.meta.env.PUBLIC_SUPABASE_URL,
-    import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+    url,
+    key,
     {
       cookies: {
         getAll() {

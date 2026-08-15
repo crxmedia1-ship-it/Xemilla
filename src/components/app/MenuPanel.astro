@@ -58,7 +58,7 @@ interface Props {
 }
 
 const {
-  categorias,
+  categorias = [],
   destacados = [],
   fondoGlobal = { tipo: 'color', valor: '' },
   showNutricion = false,
@@ -160,7 +160,7 @@ const globalBgValor = fondoGlobal.valor || '';
     </div>
 
     {
-      categorias.map((cat) => {
+      (categorias || []).map((cat) => {
         const tipo = (cat.bgType || 'color').toLowerCase();
         const valor = (cat.bgValor || '').trim();
         if (!valor || (tipo !== 'image' && tipo !== 'video' && tipo !== 'color')) return null;
@@ -219,7 +219,7 @@ const globalBgValor = fondoGlobal.valor || '';
           Todos
         </button>
         {
-          categorias.map((cat) => (
+          (categorias || []).map((cat) => (
             <button
               type="button"
               data-cat-btn={cat.id}
@@ -366,7 +366,7 @@ const globalBgValor = fondoGlobal.valor || '';
 
   <div class="menu-list px-5 pt-7" data-menu-list>
     {
-      categorias.map((cat) => (
+      (categorias || []).map((cat) => (
         <section
           id={`menu-cat-${cat.id}`}
           aria-labelledby={`menu-cat-heading-${cat.id}`}
@@ -383,7 +383,7 @@ const globalBgValor = fondoGlobal.valor || '';
           </h3>
 
           <ul class="menu-items" role="list">
-            {cat.platos.map((plato) => {
+            {(cat.platos || []).map((plato) => {
               const mediaUrl = plato.imagenUrl?.trim() || '';
               return (
                 <li
