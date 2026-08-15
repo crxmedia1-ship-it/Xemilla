@@ -80,7 +80,7 @@ const animClass =
 
 /** Size/color only — public layout ignores X/Y offsets */
 const logoBoxStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); width: var(--logo-size, var(--home-logo-size, ${logoSizePx}px));`;
-const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); max-width: 85vw; width: auto; object-fit: contain;`;
+const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); max-width: min(100%, 18rem); width: auto; object-fit: contain;`;
 const logoFallbackStyle = `font-size: calc(var(--logo-size, var(--home-logo-size, ${logoSizePx}px)) * 0.28); color:var(--color-text, var(--color-texto))`;
 const tituloColorCss = `var(--titulo-color, ${tituloColor || 'var(--color-text, var(--color-texto))'})`;
 const esloganColorCss = `var(--eslogan-color, ${esloganColor || 'var(--home-subtitulo-color, var(--color-primary, var(--color-primario)))'})`;
@@ -118,7 +118,7 @@ const tileStyle =
 
 <div
   class:list={[
-    'home-bento linktree-home relative z-10 flex min-h-dvh flex-col items-center bg-transparent px-4 pb-8 pt-10 font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
+    'home-bento linktree-home relative z-10 flex min-h-dvh w-full flex-col items-center bg-transparent px-4 pb-8 pt-[max(2.5rem,env(safe-area-inset-top))] font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
     immersiveLogoOnly && 'justify-center',
     navAppTabs && 'pb-24',
     !immersiveLogoOnly && navFrontal && 'justify-start',
@@ -150,7 +150,7 @@ const tileStyle =
             <img
               src={logoUrl}
               alt=""
-              class="max-w-[85vw] object-contain"
+              class="max-w-full object-contain"
               data-home-logo
               style={logoImgStyle}
             />

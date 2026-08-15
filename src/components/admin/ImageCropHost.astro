@@ -3,7 +3,7 @@
  * Recorte tipo Apple Photos para el Hub:
  * - cover → 100% del grid (16:9), modo Llenar
  * - logo  → placa inferior (~5.5:1): Encajar (default) o Llenar + color de fondo
- * API: window.XemillaImageCrop.open({ file, aspect:'logo'|'cover', fit?, background?, onConfirm })
+ * API: window.XemillaImageCrop.open({ file?, url?, aspect:'logo'|'cover'|'plato', fit?, background?, onConfirm })
  */
 ---
 
@@ -86,6 +86,7 @@
   :root {
     --hub-crop-cover-aspect: 1.77778; /* 16 / 9 full card */
     --hub-crop-logo-aspect: 5.5; /* glass label plate */
+    --hub-crop-plato-aspect: 1.33333; /* 4 / 3 admin + detalle */
   }
 
   .hub-crop {
@@ -328,6 +329,22 @@
     aspect-ratio: var(--hub-crop-logo-aspect);
   }
 
+  .hub-crop__stage[data-aspect='plato'] {
+    aspect-ratio: var(--hub-crop-plato-aspect);
+  }
+
+  .hub-crop.is-plato .hub-crop__guide {
+    display: none;
+  }
+
+  .hub-crop.is-plato .hub-crop__bg {
+    display: none;
+  }
+
+  .hub-crop.is-plato .hub-crop__toolbar {
+    justify-content: flex-start;
+  }
+
   .hub-crop__canvas {
     position: absolute;
     inset: 0;
@@ -524,9 +541,23 @@
 <script>
   import { samplePlateColorFromUrl } from '../../lib/hub-plate-color.js';
 
-  /** Cover = full 16:9 · Logo = bottom plate ~5.5:1 */
+  /** Cover = full 16:9 · Logo = bottom plate ~5.5:1 · Plato = 4:3 admin + detalle */
   const COVER_ASPECT = 16 / 9;
   const LOGO_ASPECT = 5.5;
+  const PLATO_ASPECT = 4 / 3;
+
+  /**
+   * @param {string} url
+   * @returns {Promise}
+   */
+  async function fileFromUrl(url) {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error('No se pudo cargar la imagen para ajustar');
+    const blob = await res.blob();
+    const rawName = url.split('/').pop()?.split('?')[0] || 'plato.jpg';
+    const name = rawName.includes('.') ? rawName : `${rawName}.jpg`;
+    return new File([blob], name, { type: blob.type || 'image/jpeg' });
+  }
   const ZOOM_MIN = 0.2;
   const ZOOM_MAX = 5;
   /** Safe inset inside logo plate when Encajar (breathing room). */
@@ -586,8 +617,11 @@
     let pinchStartDist = 0;
     let pinchStartZoom = 1;
 
-    function kind() {
-      return active?.aspect === 'cover' ? 'cover' : 'logo';
+    function cropKind() {
+      const a = String(active?.aspect || '');
+      if (a === 'cover') return 'cover';
+      if (a === 'plato') return 'plato';
+      return 'logo';
     }
 
     function clampZoom(value) {
@@ -612,12 +646,14 @@
     }
 
     function syncFitUi() {
-      const isLogo = kind() === 'logo';
+      const mode = cropKind();
+      const isLogo = mode === 'logo';
       plateBg = resolvePlatePaint();
-      stage.dataset.fit = isLogo ? fitMode : 'cover';
+      stage.dataset.fit = isLogo || mode === 'plato' ? fitMode : 'cover';
       stage.style.background = isLogo ? plateBg : '#000';
+      root.classList.toggle('is-plato', mode === 'plato');
       if (toolbar instanceof HTMLElement) {
-        toolbar.hidden = !isLogo;
+        toolbar.hidden = mode === 'cover';
       }
       root.querySelectorAll('[data-crop-fit]').forEach((btn) => {
         if (!(btn instanceof HTMLElement)) return;
@@ -637,13 +673,15 @@
       const frameRect = frame.getBoundingClientRect();
       if (!naturalW || !naturalH || !frameRect.width || !frameRect.height) return;
 
-      const isLogoContain = kind() === 'logo' && fitMode === 'contain';
-      const pad = isLogoContain ? LOGO_SAFE_PAD : 0;
+      const isContain =
+        (cropKind() === 'logo' && fitMode === 'contain') ||
+        (cropKind() === 'plato' && fitMode === 'contain');
+      const pad = isContain && cropKind() === 'logo' ? LOGO_SAFE_PAD : 0;
       const fitW = frameRect.width * (1 - pad * 2);
       const fitH = frameRect.height * (1 - pad * 2);
       const sx = fitW / naturalW;
       const sy = fitH / naturalH;
-      baseScale = isLogoContain ? Math.min(sx, sy) : Math.max(sx, sy);
+      baseScale = isContain ? Math.min(sx, sy) : Math.max(sx, sy);
 
       const z = clampZoom(Number(zoom.value || 1));
       zoom.value = String(z);
@@ -661,7 +699,7 @@
     }
 
     function closeCrop(cancelled = true) {
-      root.classList.remove('is-open');
+      root.classList.remove('is-open', 'is-plato');
       root.hidden = true;
       root.setAttribute('aria-hidden', 'true');
       pointers.clear();
@@ -679,13 +717,32 @@
      * @param {any} opts
      */
     async function open(opts) {
-      if (!opts?.file || typeof opts.onConfirm !== 'function') return;
-      active = opts;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      objectUrl = URL.createObjectURL(opts.file);
+      if (typeof opts?.onConfirm !== 'function') return;
 
-      const isCover = opts.aspect === 'cover';
-      fitMode = isCover ? 'cover' : opts.fit === 'cover' ? 'cover' : 'contain';
+      let file = opts.file instanceof File ? opts.file : null;
+      const sourceUrl = String(opts.url || '').trim();
+      if (!file && sourceUrl) {
+        try {
+          file = await fileFromUrl(sourceUrl);
+        } catch (err) {
+          window.alert(err instanceof Error ? err.message : 'No se pudo abrir la imagen');
+          return;
+        }
+      }
+      if (!file) return;
+
+      active = { ...opts, file };
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(file);
+
+      const mode =
+        opts.aspect === 'cover' ? 'cover' : opts.aspect === 'plato' ? 'plato' : 'logo';
+      fitMode =
+        mode === 'cover'
+          ? 'cover'
+          : opts.fit === 'cover'
+            ? 'cover'
+            : 'contain';
 
       const coverForSample = String(opts.coverUrl || opts.sampleFrom || '').trim();
       autoPlateBg = DEFAULT_PLATE;
@@ -695,7 +752,7 @@
       } else {
         plateBgChoice = 'auto';
       }
-      if (coverForSample && !isCover) {
+      if (coverForSample && mode === 'logo') {
         try {
           autoPlateBg = await samplePlateColorFromUrl(coverForSample);
         } catch {
@@ -704,26 +761,37 @@
       }
       plateBg = resolvePlatePaint();
 
-      stage.dataset.aspect = isCover ? 'cover' : 'logo';
+      stage.dataset.aspect = mode;
       syncFitUi();
 
       if (guideCard instanceof HTMLElement) {
-        guideCard.dataset.active = isCover ? 'cover' : 'logo';
+        guideCard.dataset.active = mode === 'cover' ? 'cover' : 'logo';
       }
       if (guideLabel instanceof HTMLElement) {
-        guideLabel.textContent = isCover
-          ? 'Cover · 100% del grid'
-          : 'Logo · rectángulo inferior';
+        guideLabel.textContent =
+          mode === 'cover'
+            ? 'Cover · 100% del grid'
+            : mode === 'plato'
+              ? 'Foto del plato · recuadro 4:3'
+              : 'Logo · rectángulo inferior';
       }
       if (titleEl instanceof HTMLElement) {
-        titleEl.textContent = opts.title || (isCover ? 'Recortar cover' : 'Recortar logo');
+        titleEl.textContent =
+          opts.title ||
+          (mode === 'cover'
+            ? 'Recortar cover'
+            : mode === 'plato'
+              ? 'Ajustar foto del plato'
+              : 'Recortar logo');
       }
       if (hintEl instanceof HTMLElement) {
         hintEl.textContent =
           opts.hint ||
-          (isCover
+          (mode === 'cover'
             ? 'El marco es el cover a pantalla completa (16:9)'
-            : 'Subí PNG sin fondo: Encajar + Auto pinta la placa con el color del cover.');
+            : mode === 'plato'
+              ? 'Encajar reduce la foto al recuadro 4:3 (admin y detalle). Llenar recorta. Arrastrá y usá el zoom.'
+              : 'Subí PNG sin fondo: Encajar + Auto pinta la placa con el color del cover.');
       }
 
       zoom.min = String(ZOOM_MIN);
@@ -766,10 +834,12 @@
         const sw = frameRect.width / scale;
         const sh = frameRect.height / scale;
 
-        const isLogo = kind() === 'logo';
-        const targetAspect = isLogo ? LOGO_ASPECT : COVER_ASPECT;
+        const mode = cropKind();
+        const isLogo = mode === 'logo';
+        const targetAspect =
+          mode === 'logo' ? LOGO_ASPECT : mode === 'plato' ? PLATO_ASPECT : COVER_ASPECT;
         const maxSide = isLogo ? 1600 : 1800;
-        let outW = isLogo ? 1400 : 1600;
+        let outW = mode === 'plato' ? 1600 : isLogo ? 1400 : 1600;
         let outH = Math.max(1, Math.round(outW / targetAspect));
         if (Math.max(outW, outH) > maxSide) {
           const ratio = maxSide / Math.max(outW, outH);
@@ -786,8 +856,6 @@
         ctx.imageSmoothingQuality = 'high';
 
         const paint = resolvePlatePaint();
-        // Logo Encajar: fondo transparente → la placa CSS pinta el color que combina con el cover
-        // Logo Llenar / cover: relleno sólido
         if (isLogo && fitMode === 'contain') {
           ctx.clearRect(0, 0, outW, outH);
         } else {
@@ -854,7 +922,7 @@
     root.querySelectorAll('[data-crop-fit]').forEach((btn) => {
       btn.addEventListener('click', () => {
         if (!(btn instanceof HTMLElement)) return;
-        if (kind() !== 'logo') return;
+        if (cropKind() === 'cover') return;
         const next = btn.dataset.cropFit === 'cover' ? 'cover' : 'contain';
         if (next === fitMode) return;
         fitMode = next;
@@ -866,7 +934,7 @@
     root.querySelectorAll('[data-crop-bg]').forEach((btn) => {
       btn.addEventListener('click', () => {
         if (!(btn instanceof HTMLElement)) return;
-        if (kind() !== 'logo') return;
+        if (cropKind() !== 'logo') return;
         const next = btn.dataset.cropBg || 'auto';
         plateBgChoice = next;
         syncFitUi();
@@ -960,6 +1028,7 @@
       samplePlateColorFromUrl,
       COVER_ASPECT,
       LOGO_ASPECT,
+      PLATO_ASPECT,
     };
   }
 

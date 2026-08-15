@@ -21,6 +21,7 @@ import {
   normalizeUbicacionTheme,
 } from './layout-themes.js';
 import { resolveMediaUrl } from './cloudinary.js';
+import { platoFillUrl } from './plato-media-url.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
 import { normalizeAlergias } from '../config/nutricion.js';
 
@@ -521,7 +522,7 @@ export async function getRestauranteBySlug(slug) {
         .select('id, nombre, orden, bg_type, bg_valor')
         .eq('restaurante_id', row.id)
         .order('orden', { ascending: true }),
-      supabase
+      (createSupabaseServiceClient() || supabase)
         .from('platos')
         .select(
           'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
@@ -536,16 +537,27 @@ export async function getRestauranteBySlug(slug) {
   let platosError = platosResult.error;
   if (platosError) {
     const msg = platosError.message || '';
-    const missingNutricion = /calorias|proteinas|carbs|grasas|alergias|ingredientes_detalle/i.test(msg);
+    console.warn('[supabase] platos SELECT fallback.', msg);
+    const platosClient = createSupabaseServiceClient() || supabase;
     const missingOrden = /\borden\b/i.test(msg);
-    const missingColumn = /column|does not exist|schema cache/i.test(msg);
-    if (missingColumn || missingNutricion || missingOrden) {
-      console.warn('[supabase] platos SELECT fallback.', msg);
-      const select =
-        missingOrden && !missingNutricion
-          ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado'
-          : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden';
-      const fallback = await supabase
+    const nutSelect = missingOrden
+      ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle'
+      : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle';
+    const nutRetry = await platosClient
+      .from('platos')
+      .select(nutSelect)
+      .eq('restaurante_id', row.id)
+      .eq('disponible', true)
+      .order(nutSelect.includes('orden') ? 'orden' : 'id', { ascending: true })
+      .order('id', { ascending: true });
+    if (!nutRetry.error) {
+      platos = nutRetry.data;
+      platosError = null;
+    } else {
+      const select = missingOrden
+        ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado'
+        : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden';
+      const fallback = await platosClient
         .from('platos')
         .select(select)
         .eq('restaurante_id', row.id)
@@ -554,18 +566,6 @@ export async function getRestauranteBySlug(slug) {
         .order('id', { ascending: true });
       platos = fallback.data;
       platosError = fallback.error;
-      if (platosError && select.includes('orden')) {
-        const base = await supabase
-          .from('platos')
-          .select(
-            'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado',
-          )
-          .eq('restaurante_id', row.id)
-          .eq('disponible', true)
-          .order('id', { ascending: true });
-        platos = base.data;
-        platosError = base.error;
-      }
     }
   }
 
@@ -605,7 +605,7 @@ export async function getRestauranteBySlug(slug) {
     if (!platosByCategoria.has(key)) platosByCategoria.set(key, []);
     const imagenUrl =
       typeof plato.imagen_url === 'string' && plato.imagen_url.trim()
-        ? plato.imagen_url.trim()
+        ? platoFillUrl(plato.imagen_url.trim(), { w: 1200, h: 900 })
         : null;
 
     const mapped = {

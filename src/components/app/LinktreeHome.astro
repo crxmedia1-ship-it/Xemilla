@@ -176,7 +176,7 @@ const navSequence: NavItem[] = [
 ---
 
 <div
-  class="linktree-home relative z-10 flex min-h-dvh flex-col bg-transparent px-6 pb-14 pt-14 transition-all duration-300"
+  class="linktree-home relative z-10 flex min-h-dvh w-full flex-col bg-transparent px-6 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[max(3.5rem,env(safe-area-inset-top))] transition-all duration-300"
   data-linktree-home
   style={[
     homeUi?.subtitulo_color ? `--home-subtitulo-color:${homeUi.subtitulo_color}` : '',
@@ -200,8 +200,8 @@ const navSequence: NavItem[] = [
           <img
             src={logoUrl}
             alt=""
-            class="relative max-w-[85vw] rounded-full border border-white/10 object-contain shadow-inner"
-            style="height:var(--logo-size, var(--home-logo-size, 5.25rem)); width:var(--logo-size, var(--home-logo-size, 5.25rem)); max-width:85vw; object-fit:contain"
+            class="relative max-w-full rounded-full border border-white/10 object-contain shadow-inner"
+            style="height:var(--logo-size, var(--home-logo-size, 5.25rem)); width:var(--logo-size, var(--home-logo-size, 5.25rem)); max-width:100%; object-fit:contain"
             data-home-logo
           />
         ) : (

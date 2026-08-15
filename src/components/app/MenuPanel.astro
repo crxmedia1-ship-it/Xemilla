@@ -1,7 +1,7 @@
 ---
 import {
   NUTRICION_FILTROS_PUBLICOS,
-  platoHasNutricionData,
+  ALERGENOS_OPTIONS,
 } from '../../config/nutricion.js';
 
 interface Plato {
@@ -71,7 +71,15 @@ function isVideoUrl(url: string) {
 }
 
 function alergiasCsv(plato: Plato) {
-  return Array.isArray(plato.alergias) ? plato.alergias.join(',') : '';
+  if (!Array.isArray(plato.alergias) || plato.alergias.length === 0) return '';
+  return plato.alergias.map((id) => String(id).trim().toLowerCase()).filter(Boolean).join(',');
+}
+
+function alergiasLabels(plato: Plato) {
+  if (!Array.isArray(plato.alergias) || plato.alergias.length === 0) return [];
+  return plato.alergias
+    .map((id) => ALERGENOS_OPTIONS.find((opt) => opt.id === id)?.label || id)
+    .filter(Boolean);
 }
 
 /** Strip currency symbols / whitespace so parseFloat always gets a clean number */
@@ -92,7 +100,7 @@ const globalBgValor = fondoGlobal.valor || '';
 ---
 
 <div
-  class="menu-panel relative z-10 min-h-full overflow-hidden bg-transparent pb-10 text-[color:var(--color-texto)] font-[family-name:var(--fuente-principal)]"
+  class="menu-panel relative z-10 min-h-full overflow-x-clip overflow-y-visible bg-transparent pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[color:var(--color-texto)] font-[family-name:var(--fuente-principal)]"
   data-menu-panel
   data-menu-bg-global-type={globalBgType}
   data-menu-bg-global-valor={globalBgValor}
@@ -299,15 +307,16 @@ const globalBgValor = fondoGlobal.valor || '';
             return (
               <button
                 type="button"
-                class="menu-featured menu-card snap-center shrink-0 w-[85vw] max-w-[350px] border border-white/10 bg-white/[0.04] text-left active:scale-[0.98]"
+                class="menu-featured menu-card snap-center shrink-0 w-[min(85%,22rem)] border border-white/10 bg-white/[0.04] text-left active:scale-[0.98]"
                 data-reveal
                 data-goto-plato={plato.id}
                 data-goto-cat={catId}
                 data-alergias={alergiasCsv(plato)}
                 data-plato-nombre={plato.nombre}
+                data-ingredientes={plato.ingredientesDetalle || ''}
                 aria-label={`Ir a ${plato.nombre} en ${catName}`}
               >
-                <div class="menu-media relative mb-3.5 w-full overflow-hidden bg-black/40 aspect-[16/10]">
+                <div class="menu-media relative mb-3.5 w-full overflow-hidden bg-black/40 aspect-[4/3]">
                   {hasMedia(mediaUrl) ? (
                     video ? (
                       <span class="flex size-full items-center justify-center text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
@@ -367,7 +376,6 @@ const globalBgValor = fondoGlobal.valor || '';
           <ul class="menu-items" role="list">
             {cat.platos.map((plato) => {
               const mediaUrl = plato.imagenUrl?.trim() || '';
-              const hasNut = showNutricion && platoHasNutricionData(plato);
               return (
                 <li
                   id={`plato-${plato.id}`}
@@ -376,9 +384,10 @@ const globalBgValor = fondoGlobal.valor || '';
                   data-plato-id={plato.id}
                   data-alergias={alergiasCsv(plato)}
                   data-plato-nombre={plato.nombre}
+                  data-ingredientes={plato.ingredientesDetalle || ''}
                 >
                   <div class="flex items-baseline gap-1">
-                    <h4 class="shrink max-w-[58%] text-[1.02rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                    <h4 class="min-w-0 flex-1 text-[1.02rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
                       {plato.nombre}
                     </h4>
                     <span class="menu-leader" aria-hidden="true" />
@@ -388,12 +397,20 @@ const globalBgValor = fondoGlobal.valor || '';
                   </div>
 
                   {plato.descripcion && (
-                    <p class="mt-2 max-w-[92%] text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_50%,transparent)]">
+                    <p class="mt-2 w-full text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_50%,transparent)]">
                       {plato.descripcion}
                     </p>
                   )}
 
-                  {hasMedia(mediaUrl) || hasNut ? (
+                  {showNutricion && alergiasLabels(plato).length > 0 && (
+                    <p class="mt-1.5 flex flex-wrap gap-1" aria-label="Alérgenos">
+                      {alergiasLabels(plato).map((label) => (
+                        <span class="alergia-chip">{label}</span>
+                      ))}
+                    </p>
+                  )}
+
+                  {hasMedia(mediaUrl) || showNutricion ? (
                     <button
                       type="button"
                       data-open-detalle
@@ -402,16 +419,16 @@ const globalBgValor = fondoGlobal.valor || '';
                       data-plato-id={plato.id}
                       data-plato-nombre={plato.nombre}
                       data-plato-desc={plato.descripcion || ''}
-                      data-plato-calorias={hasNut && plato.calorias != null ? String(plato.calorias) : ''}
-                      data-plato-proteinas={hasNut && plato.proteinas != null ? String(plato.proteinas) : ''}
-                      data-plato-carbs={hasNut && plato.carbs != null ? String(plato.carbs) : ''}
-                      data-plato-grasas={hasNut && plato.grasas != null ? String(plato.grasas) : ''}
-                      data-plato-alergias={hasNut ? alergiasCsv(plato) : ''}
-                      data-plato-ingredientes={hasNut ? (plato.ingredientesDetalle || '') : ''}
-                      data-plato-has-nut={hasNut ? 'true' : 'false'}
+                      data-plato-calorias={showNutricion ? String(plato.calorias ?? '') : ''}
+                      data-plato-proteinas={showNutricion ? String(plato.proteinas ?? '') : ''}
+                      data-plato-carbs={showNutricion ? String(plato.carbs ?? '') : ''}
+                      data-plato-grasas={showNutricion ? String(plato.grasas ?? '') : ''}
+                      data-plato-alergias={showNutricion ? alergiasCsv(plato) : ''}
+                      data-plato-ingredientes={showNutricion ? (plato.ingredientesDetalle || '') : ''}
+                      data-plato-has-nut={showNutricion ? 'true' : 'false'}
                       class="menu-btn mt-3 border border-white/15 bg-white/5 px-3.5 py-1.5 text-[0.58rem] font-semibold tracking-[0.18em] uppercase text-[color:var(--color-texto)] shadow-inner backdrop-blur-md active:scale-95"
                     >
-                      {hasMedia(mediaUrl) ? 'Ver detalle' : 'Ficha nutricional'}
+                      Ver detalle
                     </button>
                   ) : null}
                 </li>
@@ -703,8 +720,18 @@ const globalBgValor = fondoGlobal.valor || '';
     white-space: nowrap;
   }
 
-  .alergia-reset:hover {
-    background: rgba(255, 255, 255, 0.06);
+  .alergia-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--color-texto) 14%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 6%, transparent);
+    padding: 0.12rem 0.45rem;
+    font-size: 0.52rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 55%, transparent);
   }
 
   .alergia-reset:active {
@@ -1169,11 +1196,41 @@ const globalBgValor = fondoGlobal.valor || '';
     const featuredSection = panel.querySelector<HTMLElement>('[data-destacados]');
     const emptyEl = panel.querySelector<HTMLElement>('[data-menu-empty-filtros]');
 
+    const ALIAS: Record<string, string> = {
+      trigo: 'gluten',
+      wheat: 'gluten',
+      celiaco: 'gluten',
+      celiac: 'gluten',
+      huevos: 'huevo',
+      egg: 'huevo',
+      lacteo: 'lacteos',
+      leche: 'lacteos',
+      dairy: 'lacteos',
+      peanut: 'mani',
+      nuts: 'frutos_secos',
+      sesame: 'sesamo',
+      spicy: 'picante',
+      meat: 'carne',
+      carnes: 'carne',
+      non_vegan: 'no_vegano',
+      novegano: 'no_vegano',
+    };
+
+    const canon = (raw: string) => {
+      const id = String(raw || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .replace(/[-\s]+/g, '_');
+      return ALIAS[id] || id;
+    };
+
     const toIds = (raw: string): Set<string> => {
       return new Set(
-        raw
-          .split(',')
-          .map((s) => s.trim().toLowerCase().replace(/\s+/g, '_'))
+        String(raw || '')
+          .split(/[,|;]/)
+          .map(canon)
           .filter(Boolean),
       );
     };
@@ -1182,6 +1239,22 @@ const globalBgValor = fondoGlobal.valor || '';
       /res\b|jam[oó]n|hamburg|ribeye|steak|pork|belly|carne|pollo|cerdo|chorizo|bacon|lomo|filete|pescado|at[uú]n|salm[oó]n|camar[oó]n|marisco|calamar|pulpo|langost|ternera|cordero|pavo|nugget|alita|costilla|tocino|mortadela|chicharr[oó]n|ib[eé]rico|smash|carpaccio/i.test(
         nombre,
       );
+
+    const GLUTEN_HINT =
+      /gluten|\btrigo\b|\bwheat\b|centeno|cebada|espelta|pan\s*rallad|harina\s+de\s+trigo|bread\s*crumb/i;
+    const LACTEOS_HINT =
+      /\bl[aá]cteo|\bleche\b|mantequilla|queso|crema|yogur|bechamel|dairy|\bbutter\b|\bcheese\b/i;
+    const NUTS_HINT =
+      /fruto[s]?\s*seco|\bmani\b|\bnuez|\balmendr|cacahuate|pistachio|avellana|\bpeanut|\bwalnut/i;
+    const PICANTE_HINT = /picante|ají|aji\b|chile|habanero|cayena|sriracha|spicy/i;
+
+    const textoCubre = (filtroId: string, blob: string) => {
+      if (filtroId === 'sin_gluten') return GLUTEN_HINT.test(blob);
+      if (filtroId === 'sin_lacteos') return LACTEOS_HINT.test(blob);
+      if (filtroId === 'sin_frutos_secos') return NUTS_HINT.test(blob);
+      if (filtroId === 'sin_picante') return PICANTE_HINT.test(blob);
+      return false;
+    };
 
     const apply = () => {
       const activePills = Array.from(pills).filter(
@@ -1195,18 +1268,21 @@ const globalBgValor = fondoGlobal.valor || '';
       );
       allItems.forEach((item) => {
         const itemAlergias = toIds(item.dataset.alergias ?? '');
-        const nombre = item.dataset.platoNombre || item.dataset.gotoPlato || '';
+        const nombre = item.dataset.platoNombre || '';
+        const blob = `${nombre} ${item.dataset.ingredientes || ''}`;
         let hide = false;
         if (hasActive) {
           hide = activePills.some((pill) => {
+            const filtroId = pill.dataset.alergiaFiltro || '';
             const hides = toIds(pill.dataset.hidesAny ?? '');
             const hideUnknown = pill.dataset.hideUnknown === 'true';
-            const isVegan = pill.dataset.alergiaFiltro === 'vegano';
+            const isVegan = filtroId === 'vegano';
             if (hideUnknown && itemAlergias.size === 0) return true;
             if (isVegan && looksAnimal(nombre)) return true;
             for (const id of hides) {
               if (itemAlergias.has(id)) return true;
             }
+            if (textoCubre(filtroId, blob)) return true;
             return false;
           });
         }

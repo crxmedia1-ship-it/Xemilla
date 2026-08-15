@@ -95,8 +95,9 @@ const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8
       toast.setAttribute('role', 'status');
       toast.setAttribute('aria-live', 'polite');
       toast.className =
-        'pointer-events-none fixed left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[100] max-w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl border border-white/15 bg-zinc-950/92 px-4 py-3 text-center text-[0.72rem] font-medium tracking-wide text-white opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-300 translate-y-[-6px]';
-      document.body.appendChild(toast);
+        'pointer-events-none absolute left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[100] w-[min(92%,22rem)] -translate-x-1/2 rounded-2xl border border-white/15 bg-zinc-950/92 px-4 py-3 text-center text-[0.72rem] font-medium tracking-wide text-white opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-300 translate-y-[-6px]';
+      const host = document.querySelector('[data-restaurant-app]') || document.body;
+      host.appendChild(toast);
     }
     toast.textContent = message;
     toast.style.opacity = '1';

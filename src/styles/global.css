@@ -532,3 +532,63 @@
     radial-gradient(ellipse 80% 40% at 50% 0%, rgba(232, 213, 181, 0.5), transparent 50%),
     #f3eee6;
 }
+
+/* ─── WebApp: 100% móvil · columna centrada en PC ─── */
+:root {
+  --xemilla-app-max: 28rem;
+}
+
+.restaurant-app {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100dvh;
+  min-height: 100svh;
+  margin-inline: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.restaurant-app [data-home-shell] {
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+
+/* Overlays fijos, mismo ancho que la app (móvil full / PC frame) */
+.restaurant-app [data-section],
+.restaurant-app [data-detalle-modal],
+.restaurant-app [data-boutique-modal],
+.restaurant-app [data-ubicacion-drawer],
+.restaurant-app [data-app-nav-overlay],
+.restaurant-app [data-app-tabs] {
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --xemilla-app-max: 26.5rem;
+  }
+
+  .restaurant-app {
+    max-width: var(--xemilla-app-max);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 24px 80px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Misma columna que la app, centrada, sin pelear con translateY */
+  .restaurant-app [data-section],
+  .restaurant-app [data-detalle-modal],
+  .restaurant-app [data-boutique-modal],
+  .restaurant-app [data-ubicacion-drawer],
+  .restaurant-app [data-app-nav-overlay],
+  .restaurant-app [data-app-tabs] {
+    max-width: var(--xemilla-app-max);
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

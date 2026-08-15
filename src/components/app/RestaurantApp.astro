@@ -124,6 +124,25 @@ const reservasCta = showReservas
     }
   : null;
 
+/** Ficha nutricional embebida para el modal de la WebApp */
+const menuNutricionById = {};
+if (showNutricion) {
+  const cats = restaurante?.menu?.categorias || [];
+  for (const cat of cats) {
+    for (const p of cat.platos || []) {
+      if (p?.id == null) continue;
+      menuNutricionById[String(p.id)] = {
+        calorias: p.calorias ?? null,
+        proteinas: p.proteinas ?? null,
+        carbs: p.carbs ?? null,
+        grasas: p.grasas ?? null,
+        alergias: Array.isArray(p.alergias) ? p.alergias : [],
+        ingredientes: p.ingredientesDetalle || p.ingredientes_detalle || '',
+      };
+    }
+  }
+}
+
 /** Logo: logo_url | logo → siempre por resolveMediaUrl */
 let logoUrl = null;
 try {
@@ -237,7 +256,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 {cssAvanzadoScoped ? <style is:inline set:html={cssAvanzadoScoped} /> : null}
 
 <div
-  class="restaurant-app relative z-10 mx-auto min-h-dvh max-w-md bg-transparent text-[color:var(--color-text,var(--color-texto))] font-[family-name:var(--font-body,var(--fuente-principal))]"
+  class="restaurant-app relative z-10 mx-auto min-h-dvh w-full bg-transparent text-[color:var(--color-text,var(--color-texto))] font-[family-name:var(--font-body,var(--fuente-principal))]"
   data-restaurant-app
   data-preview-live="true"
   data-restaurante-id={restaurante?.id || ''}
@@ -246,8 +265,14 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   data-ubicacion-theme={ubicacionTheme}
   data-estilo-navegacion={estiloNavegacion}
   data-fondo-home-tipo={fondoHome.tipo || 'color'}
+  data-show-nutricion={showNutricion ? 'true' : 'false'}
   style={cssVars}
 >
+  {
+    showNutricion ? (
+      <script is:inline type="application/json" data-menu-nutricion-json set:html={JSON.stringify(menuNutricionById)} />
+    ) : null
+  }
   {/*
     HOME stacking (decoupled):
     - Atmosphere: fixed inset-0 z-0 pointer-events-none (SectionAtmosphere)
@@ -256,7 +281,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     Nota: z-0 (no z-[-1]) — z negativo puede pintar detrás del background del body.
   */}
   <div
-    class="relative flex min-h-dvh flex-col overflow-hidden bg-transparent"
+    class="relative flex min-h-dvh w-full flex-col bg-transparent"
     data-home-shell
     data-resolved-home-theme={homeTheme}
   >
@@ -287,7 +312,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
 
     {/* Tema Home: solo estructura (logo / títulos / nav) */}
-    <div class="relative z-10 flex min-h-dvh flex-col bg-transparent pointer-events-auto">
+    <div class="relative z-10 flex min-h-dvh w-full flex-col bg-transparent pointer-events-auto">
       {
         (() => {
           try {
@@ -434,7 +459,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   {
     isNavAppTabs ? (
       <nav
-        class="fixed bottom-0 left-1/2 z-40 flex w-full max-w-md -translate-x-1/2 items-stretch justify-around border-t border-white/10 bg-black/80 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl"
+        class="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full items-stretch justify-around border-t border-white/10 bg-black/80 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl"
         aria-label="Navegación inferior"
         data-app-tabs
       >
@@ -589,7 +614,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
     <div
-      class="detalle-modal pointer-events-none fixed inset-0 z-[90] mx-auto flex max-w-md items-center justify-center opacity-0 transition-all duration-300 ease-out"
+      class="detalle-modal pointer-events-none fixed inset-0 z-[90] mx-auto flex items-center justify-center px-3 opacity-0 transition-all duration-300 ease-out"
       data-detalle-modal
       aria-hidden="true"
     >
@@ -601,13 +626,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       ></button>
 
       <div
-        class="detalle-modal__card relative z-10 mx-4 w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out"
+        class="detalle-modal__card relative z-10 w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out"
         role="dialog"
         aria-modal="true"
         aria-labelledby="detalle-modal-title"
       >
-        <div class="relative max-h-[min(88vh,40rem)] overflow-y-auto">
-          <div class="relative h-64 overflow-hidden bg-black/50">
+        <div class="relative max-h-[min(88dvh,36rem)] overflow-y-auto overscroll-contain">
+          <div class="relative aspect-[4/3] overflow-hidden bg-black/50">
             <img
               data-detalle-img
               src=""
@@ -969,23 +994,87 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
   }
 
-  /**
-   * @param {HTMLElement} app
-   * @param {string} url
-   * @param {string} title
-   * @param {string} [platoId]
-   * @param {string} [platoNombre]
-   * @param {{
-   *   desc?: string,
-   *   hasNut?: boolean,
-   *   calorias?: string,
-   *   proteinas?: string,
-   *   carbs?: string,
-   *   grasas?: string,
-   *   alergias?: string,
+  function macroText(val) {
+    if (val == null || val === '') return '—';
+    return String(val);
+  }
+
+  /** @type {Map<string, {
+   *   calorias?: string | number | null,
+   *   proteinas?: string | number | null,
+   *   carbs?: string | number | null,
+   *   grasas?: string | number | null,
+   *   alergias?: string[] | string,
    *   ingredientes?: string,
-   * }} [meta]
-   */
+   *   ingredientes_detalle?: string,
+   * }>} */
+  const nutCache = new Map();
+
+  function readEmbeddedNutricion(app) {
+    const el = app.querySelector('[data-menu-nutricion-json]');
+    if (!el) return;
+    try {
+      const parsed = JSON.parse(el.textContent || '{}');
+      if (!parsed || typeof parsed !== 'object') return;
+      for (const [id, row] of Object.entries(parsed)) {
+        nutCache.set(String(id), row);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function mergeNutricion(id, fallback) {
+    const live = id ? nutCache.get(String(id)) : null;
+    const alergiasLive = Array.isArray(live?.alergias)
+      ? live.alergias.join(',')
+      : String(live?.alergias || '');
+    return {
+      calorias: macroText(live?.calorias ?? fallback?.calorias),
+      proteinas: macroText(live?.proteinas ?? fallback?.proteinas),
+      carbs: macroText(live?.carbs ?? fallback?.carbs),
+      grasas: macroText(live?.grasas ?? fallback?.grasas),
+      alergias: alergiasLive || fallback?.alergias || '',
+      ingredientes:
+        String(live?.ingredientes || live?.ingredientes_detalle || fallback?.ingredientes || '').trim(),
+    };
+  }
+
+  async function hydrateWebappNutricion(app) {
+    if (app.dataset.showNutricion !== 'true') return;
+    readEmbeddedNutricion(app);
+    const restauranteId = app.dataset.restauranteId || '';
+    if (!restauranteId) return;
+    try {
+      const res = await fetch(
+        `/api/platos-nutricion?restaurante_id=${encodeURIComponent(restauranteId)}`,
+        { cache: 'no-store' },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(json.platos)) return;
+      for (const plato of json.platos) {
+        nutCache.set(String(plato.id), plato);
+        const row = app.querySelector(`[data-plato-id="${plato.id}"]`);
+        if (row instanceof HTMLElement) {
+          row.dataset.alergias = Array.isArray(plato.alergias) ? plato.alergias.join(',') : '';
+          row.dataset.ingredientes = plato.ingredientes_detalle || '';
+        }
+        const btn = app.querySelector(`[data-open-detalle][data-plato-id="${plato.id}"]`);
+        if (btn instanceof HTMLElement) {
+          if (plato.calorias != null) btn.dataset.platoCalorias = String(plato.calorias);
+          if (plato.proteinas != null) btn.dataset.platoProteinas = String(plato.proteinas);
+          if (plato.carbs != null) btn.dataset.platoCarbs = String(plato.carbs);
+          if (plato.grasas != null) btn.dataset.platoGrasas = String(plato.grasas);
+          btn.dataset.platoAlergias = Array.isArray(plato.alergias) ? plato.alergias.join(',') : '';
+          btn.dataset.platoIngredientes = plato.ingredientes_detalle || '';
+          btn.dataset.platoHasNut = 'true';
+        }
+      }
+    } catch {
+      /* silencioso */
+    }
+  }
+
   function openDetalle(
     app: HTMLElement,
     url: string,
@@ -1025,21 +1114,22 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
 
     const nutEl = app.querySelector('[data-detalle-nutricion]');
-    if (nutEl instanceof HTMLElement && meta?.hasNut) {
+    if (nutEl instanceof HTMLElement) {
+      const merged = mergeNutricion(platoId, meta);
       const setMacro = (sel: string, val?: string) => {
         const el = app.querySelector(sel);
         if (el) el.textContent = val && val !== '' ? val : '—';
       };
-      setMacro('[data-detalle-kcal]', meta.calorias);
-      setMacro('[data-detalle-prot]', meta.proteinas);
-      setMacro('[data-detalle-carbs]', meta.carbs);
-      setMacro('[data-detalle-grasas]', meta.grasas);
+      setMacro('[data-detalle-kcal]', merged.calorias === '—' ? '' : merged.calorias);
+      setMacro('[data-detalle-prot]', merged.proteinas === '—' ? '' : merged.proteinas);
+      setMacro('[data-detalle-carbs]', merged.carbs === '—' ? '' : merged.carbs);
+      setMacro('[data-detalle-grasas]', merged.grasas === '—' ? '' : merged.grasas);
 
       const badges = app.querySelector('[data-detalle-alergias-badges]');
       if (badges instanceof HTMLElement) {
         badges.innerHTML = '';
-        const ids = String(meta.alergias || '')
-          .split(',')
+        const ids = String(merged.alergias || '')
+          .split(/[,|;]/)
           .map((s) => s.trim().toLowerCase())
           .filter(Boolean);
         for (const id of ids) {
@@ -1052,7 +1142,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       }
 
       const ingEl = app.querySelector('[data-detalle-ingredientes]');
-      const ingredientes = String(meta.ingredientes || '').trim();
+      const ingredientes = String(merged.ingredientes || '').trim();
       if (ingEl instanceof HTMLElement) {
         if (ingredientes) {
           ingEl.textContent = ingredientes;
@@ -1063,6 +1153,44 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       }
 
       nutEl.classList.remove('hidden');
+
+      if (platoId) {
+        void fetch(`/api/platos-nutricion?id=${encodeURIComponent(platoId)}`, {
+          cache: 'no-store',
+        })
+          .then((res) => res.json().catch(() => ({})))
+          .then((json) => {
+            if (!json?.plato) return;
+            nutCache.set(String(json.plato.id), json.plato);
+            const fresh = mergeNutricion(platoId, meta);
+            setMacro('[data-detalle-kcal]', fresh.calorias === '—' ? '' : fresh.calorias);
+            setMacro('[data-detalle-prot]', fresh.proteinas === '—' ? '' : fresh.proteinas);
+            setMacro('[data-detalle-carbs]', fresh.carbs === '—' ? '' : fresh.carbs);
+            setMacro('[data-detalle-grasas]', fresh.grasas === '—' ? '' : fresh.grasas);
+            if (badges instanceof HTMLElement) {
+              badges.innerHTML = '';
+              const ids = String(fresh.alergias || '')
+                .split(/[,|;]/)
+                .map((s) => s.trim().toLowerCase())
+                .filter(Boolean);
+              for (const id of ids) {
+                const span = document.createElement('span');
+                span.className =
+                  'rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-[0.55rem] uppercase tracking-wider text-zinc-300';
+                span.textContent = ALERGENO_LABELS[id] || id;
+                badges.appendChild(span);
+              }
+            }
+            if (ingEl instanceof HTMLElement) {
+              const ing = String(fresh.ingredientes || '').trim();
+              if (ing) {
+                ingEl.textContent = ing;
+                ingEl.classList.remove('hidden');
+              }
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
@@ -1107,6 +1235,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       if (!(root instanceof HTMLElement)) return;
       if (root.dataset.navReady === 'true') return;
       root.dataset.navReady = 'true';
+      void hydrateWebappNutricion(root);
 
       // Hamburguesa Alchemist — overlay fullscreen
       const burger = root.querySelector('[data-app-nav-burger]');

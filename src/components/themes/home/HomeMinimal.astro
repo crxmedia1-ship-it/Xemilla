@@ -85,7 +85,7 @@ const animClass =
 
 /** Size/color only — public layout ignores X/Y offsets */
 const logoBoxStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); width: var(--logo-size, var(--home-logo-size, ${logoSizePx}px));`;
-const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); max-width: 85vw; width: auto; object-fit: contain;`;
+const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoSizePx}px)); max-width: min(100%, 18rem); width: auto; object-fit: contain;`;
 const logoFallbackStyle = `font-size: calc(var(--logo-size, var(--home-logo-size, ${logoSizePx}px)) * 0.28); color: var(--titulo-color, var(--color-text, var(--color-texto)))`;
 const tituloColorCss = `var(--titulo-color, ${tituloColor || 'var(--color-text, var(--color-texto))'})`;
 const esloganColorCss = `var(--eslogan-color, ${esloganColor || 'var(--home-subtitulo-color, var(--color-primary, var(--color-primario)))'})`;
@@ -116,7 +116,7 @@ const pillStyle =
 
 <div
   class:list={[
-    'home-minimal linktree-home relative z-10 flex h-dvh max-h-dvh flex-col items-center overflow-hidden bg-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.75rem,env(safe-area-inset-top))] font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
+    'home-minimal linktree-home relative z-10 flex min-h-dvh w-full flex-col items-center overflow-hidden bg-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.75rem,env(safe-area-inset-top))] font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
     immersiveLogoOnly && 'justify-center',
     navAppTabs && 'pb-24',
     animClass,
@@ -139,7 +139,7 @@ const pillStyle =
             <img
               src={logoUrl}
               alt=""
-              class="max-w-[85vw] object-contain p-1"
+              class="max-w-full object-contain p-1"
               data-home-logo
               style={logoImgStyle}
             />

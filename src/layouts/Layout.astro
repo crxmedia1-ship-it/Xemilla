@@ -65,6 +65,15 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    {
+      !adminPanel ? (
+        <>
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="mobile-web-app-capable" content="yes" />
+        </>
+      ) : null
+    }
     <link rel="icon" href={iconHref} />
     <link rel="apple-touch-icon" href={iconHref} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -165,7 +174,7 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
         </div>
       )
     }
-    <div class="relative z-10 pointer-events-auto">
+    <div class="relative z-10 min-h-dvh w-full pointer-events-auto">
       <slot />
     </div>
     {adminPanel ? <ImageCropHost /> : null}

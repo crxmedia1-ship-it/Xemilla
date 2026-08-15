@@ -107,7 +107,7 @@ const tituloPx = tituloSizePx || 28;
 const esloganPx = esloganSizePx || 14;
 const menuPx = menuSizePx || 16;
 
-const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); max-width: 85vw; width: auto; object-fit: contain;`;
+const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); max-width: min(100%, 18rem); width: auto; object-fit: contain;`;
 const logoFallbackStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); width: var(--logo-size, var(--home-logo-size, ${logoPx}px)); font-size: calc(var(--logo-size, var(--home-logo-size, ${logoPx}px)) * 0.28); color: var(--titulo-color, ${tituloColor || '#ffffff'}); border:1px solid color-mix(in srgb, var(--titulo-color, ${tituloColor || '#ffffff'}) 18%, transparent); border-radius:9999px;`;
 const tituloColorCss = `var(--titulo-color, ${tituloColor || '#ffffff'})`;
 const esloganColorCss = `var(--eslogan-color, ${esloganColor || '#e5e7eb'})`;
@@ -236,7 +236,7 @@ const rowClass =
 
 <div
   class:list={[
-    'home-editorial linktree-home relative z-10 flex min-h-dvh flex-col items-center gap-6 bg-transparent px-8 pb-12 pt-16 font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
+    'home-editorial linktree-home relative z-10 flex min-h-dvh w-full flex-col items-center gap-6 bg-transparent px-6 pb-12 pt-[max(3rem,env(safe-area-inset-top))] sm:px-8 font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
     (immersiveLogoOnly || navAppTabs) && 'justify-center',
     navFrontal && 'justify-start',
     navAppTabs && 'home-editorial--app-tabs pb-24',
@@ -283,7 +283,7 @@ const rowClass =
             <img
               src={logoUrl}
               alt={nombre || 'Logo'}
-              class="max-w-[85vw] shrink-0 object-contain"
+              class="max-w-full shrink-0 object-contain"
               data-home-logo
               style={logoImgStyle}
             />

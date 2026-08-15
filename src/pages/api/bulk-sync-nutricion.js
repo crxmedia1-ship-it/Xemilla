@@ -62,6 +62,8 @@ export async function POST({ request, cookies }) {
   const unmatched = [];
   /** @type {string[]} */
   const updateErrors = [...errors];
+  /** @type {Array<Record<string, unknown>>} */
+  const platos = [];
 
   for (const row of rows) {
     const ids = byName.get(normalizeName(row.nombre)) || [];
@@ -77,12 +79,23 @@ export async function POST({ request, cookies }) {
       alergias: row.alergias,
       ingredientes_detalle: row.ingredientes_detalle,
     };
-    const { error } = await writeClient.from('platos').update(patch).in('id', ids);
+    const { data, error } = await writeClient
+      .from('platos')
+      .update(patch)
+      .in('id', ids)
+      .select(
+        'id, nombre, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
+      );
     if (error) {
       updateErrors.push(`${row.nombre}: ${error.message}`);
       continue;
     }
-    updated += ids.length;
+    if (!data?.length) {
+      updateErrors.push(`${row.nombre}: no se escribió (permiso o fila)`);
+      continue;
+    }
+    updated += data.length;
+    platos.push(...data);
   }
 
   return json({
@@ -91,6 +104,7 @@ export async function POST({ request, cookies }) {
     unmatched,
     errors: updateErrors,
     count: rows.length,
+    platos,
   });
 }
 

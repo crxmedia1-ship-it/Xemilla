@@ -46,6 +46,50 @@ export const NUTRICION_FILTROS_PUBLICOS = [
 
 const ALERGENO_IDS = new Set(ALERGENOS_OPTIONS.map((a) => a.id));
 
+/** @type {Record<string, string>} */
+const ALERGENO_ALIASES = {
+  huevos: 'huevo',
+  egg: 'huevo',
+  eggs: 'huevo',
+  lacteo: 'lacteos',
+  leche: 'lacteos',
+  dairy: 'lacteos',
+  peanut: 'mani',
+  peanuts: 'mani',
+  nuts: 'frutos_secos',
+  frutossecos: 'frutos_secos',
+  shellfish: 'mariscos',
+  fish: 'pescado',
+  soy: 'soja',
+  sesame: 'sesamo',
+  spicy: 'picante',
+  meat: 'carne',
+  carnes: 'carne',
+  non_vegan: 'no_vegano',
+  novegano: 'no_vegano',
+  trigo: 'gluten',
+  wheat: 'gluten',
+  celiaco: 'gluten',
+  celiac: 'gluten',
+};
+
+/**
+ * Normaliza un token de alérgeno al id canónico (o string vacío).
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function canonAlergenoId(value) {
+  const id = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[-\s]+/g, '_');
+  if (!id) return '';
+  const mapped = ALERGENO_ALIASES[id] || id;
+  return ALERGENO_IDS.has(mapped) ? mapped : mapped;
+}
+
 /**
  * @param {unknown} value
  * @returns {string[]}
@@ -71,14 +115,9 @@ export function normalizeAlergias(value) {
   /** @type {string[]} */
   const out = [];
   for (const item of raw) {
-    const id = String(item ?? '')
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/\p{M}/gu, '')
-      .replace(/\s+/g, '_');
-    if (!id || !ALERGENO_IDS.has(id)) continue;
-    if (!out.includes(id)) out.push(id);
+    const mapped = canonAlergenoId(item);
+    if (!mapped || !ALERGENO_IDS.has(mapped)) continue;
+    if (!out.includes(mapped)) out.push(mapped);
   }
   return out;
 }
@@ -116,6 +155,28 @@ export function platoHasNutricionData(plato) {
  */
 export function alergiasMatchFilter(alergias, hidesAny) {
   if (!Array.isArray(alergias) || alergias.length === 0) return false;
-  const set = new Set(alergias.map((a) => String(a).toLowerCase()));
-  return hidesAny.some((id) => set.has(id));
+  const set = new Set(alergias.map((a) => canonAlergenoId(a)).filter(Boolean));
+  return hidesAny.some((id) => set.has(canonAlergenoId(id)));
+}
+
+/** Pistas en el nombre/ingredientes si el tag no llegó al DOM. */
+const GLUTEN_HINT =
+  /gluten|\btrigo\b|\bwheat\b|centeno|cebada|espelta|pan\s*rallad|harina\s+de\s+trigo|bread\s*crumb/i;
+const LACTEOS_HINT =
+  /\bl[aá]cteo|\bleche\b|mantequilla|queso|crema|yogur|bechamel|dairy|\bbutter\b|\bcheese\b/i;
+const NUTS_HINT = /fruto[s]?\s*seco|\bmani\b|\bnuez|\balmendr|cacahuate|pistachio|avellana|\bpeanut|\bwalnut/i;
+const PICANTE_HINT = /picante|ají|aji\b|chile|habanero|cayena|sriracha|spicy/i;
+
+/**
+ * @param {string} filtroId  sin_gluten | sin_lacteos | …
+ * @param {string} nombre
+ * @param {string} ingredientes
+ */
+export function textoSugiereAlergeno(filtroId, nombre, ingredientes) {
+  const blob = `${nombre || ''} ${ingredientes || ''}`;
+  if (filtroId === 'sin_gluten') return GLUTEN_HINT.test(blob);
+  if (filtroId === 'sin_lacteos') return LACTEOS_HINT.test(blob);
+  if (filtroId === 'sin_frutos_secos') return NUTS_HINT.test(blob);
+  if (filtroId === 'sin_picante') return PICANTE_HINT.test(blob);
+  return false;
 }
