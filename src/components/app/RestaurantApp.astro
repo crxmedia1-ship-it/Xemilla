@@ -692,14 +692,28 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             class="mt-2 hidden text-[0.88rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_62%,transparent)]"
             data-detalle-desc
           ></p>
-          <button
-            type="button"
+          <a
             data-detalle-ar-btn
-            class="detalle-ar-btn mt-4 hidden"
+            class="detalle-ar-btn hidden"
             aria-label="Ver en realidad aumentada"
           >
-            Ver en AR
-          </button>
+            <img data-detalle-ar-thumb alt="" width="1" height="1" />
+          </a>
+          <model-viewer
+            data-detalle-ar-viewer
+            class="detalle-ar-preload is-off"
+            ar
+            ar-modes="quick-look scene-viewer webxr"
+            ar-placement="floor"
+            ar-scale="auto"
+            shadow-intensity="1"
+            reveal="auto"
+            loading="eager"
+            alt="Modelo 3D del plato"
+          ></model-viewer>
+          <p class="detalle-ar-safari hidden" data-detalle-ar-safari>
+            En iPhone la cámara AR se abre desde Safari. Si estás en Chrome, Instagram o WhatsApp, tocá Compartir y elegí Safari.
+          </p>
           {
             showNutricion && (
               <div class="detalle-nut mt-4 hidden" data-detalle-nutricion>
@@ -927,6 +941,28 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     display: block;
   }
 
+  .detalle-ar-preload {
+    position: fixed;
+    left: -100vmax;
+    top: 0;
+    width: 320px;
+    height: 320px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .detalle-ar-preload.is-off {
+    display: none;
+  }
+  .detalle-ar-safari {
+    margin: 0.55rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: color-mix(in srgb, var(--color-texto) 62%, transparent);
+  }
+  .detalle-ar-safari.hidden {
+    display: none;
+  }
   .detalle-ar-btn {
     display: inline-flex;
     align-items: center;
@@ -934,6 +970,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     gap: 0.45rem;
     width: 100%;
     min-height: 2.65rem;
+    margin-top: 1rem;
     padding: 0.7rem 1rem;
     border-radius: 999px;
     border: 1px solid rgba(196, 181, 253, 0.45);
@@ -943,11 +980,29 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     font-weight: 750;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    text-decoration: none;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     cursor: pointer;
     pointer-events: auto;
     position: relative;
     z-index: 5;
+  }
+  .detalle-ar-btn::after {
+    content: 'Ver en AR';
+  }
+  .detalle-ar-btn.is-loading {
+    pointer-events: none;
+    opacity: 0.72;
+  }
+  .detalle-ar-btn.is-loading::after {
+    content: 'Cargando AR…';
+  }
+  .detalle-ar-btn img {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
   }
   .detalle-ar-btn.is-on {
     background: linear-gradient(180deg, rgba(139, 92, 246, 0.55), rgba(109, 40, 217, 0.38));
@@ -1275,13 +1330,26 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       videoEl.load();
     }
     hideDetalleArViewer(app);
+    const arViewer = app.querySelector('[data-detalle-ar-viewer]');
     const arBtn = app.querySelector('[data-detalle-ar-btn]');
+    const safariHint = app.querySelector('[data-detalle-ar-safari]');
+    if (arViewer instanceof HTMLElement) {
+      arViewer.classList.add('is-off');
+      arViewer.removeAttribute('src');
+      arViewer.removeAttribute('ios-src');
+    }
     if (arBtn instanceof HTMLElement) {
       arBtn.classList.add('hidden');
-      arBtn.classList.remove('is-on');
-      arBtn.textContent = 'Ver en AR';
+      arBtn.classList.remove('is-on', 'is-loading');
+      arBtn.removeAttribute('href');
+      arBtn.removeAttribute('rel');
       arBtn.removeAttribute('data-ar-src');
     }
+    if (iosUsdzBlob) {
+      URL.revokeObjectURL(iosUsdzBlob);
+      iosUsdzBlob = '';
+    }
+    if (safariHint instanceof HTMLElement) safariHint.classList.add('hidden');
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
     const descEl = app.querySelector('[data-detalle-desc]');
     if (descEl instanceof HTMLElement) {
@@ -1343,6 +1411,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
    *   ingredientes_detalle?: string,
    * }>} */
   const nutCache = new Map();
+  let iosUsdzBlob = '';
 
   function readEmbeddedNutricion(app) {
     const el = app.querySelector('[data-menu-nutricion-json]');
@@ -1494,18 +1563,41 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     const showAr = app.dataset.showAr === 'true';
     const modelo3dUrl = String(meta?.modelo3dUrl || '').trim();
     const arChip = app.querySelector('[data-detalle-ar-btn]');
+    const arViewer = app.querySelector('[data-detalle-ar-viewer]');
+    const safariHint = app.querySelector('[data-detalle-ar-safari]');
     const mediaStdEl = app.querySelector('[data-detalle-media-std]');
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
 
-    if (showAr && modelo3dUrl && arChip instanceof HTMLElement) {
+    if (showAr && modelo3dUrl && arChip instanceof HTMLElement && arViewer instanceof HTMLElement) {
+      ensureModelViewerLoaded();
       app.dataset.detalleArSrc = modelo3dUrl;
       arChip.dataset.arSrc = modelo3dUrl;
       arChip.dataset.arTitle = title || 'Modelo 3D';
       arChip.classList.remove('hidden', 'is-on');
-      arChip.textContent = 'Ver en AR';
+      const thumb = arChip.querySelector('[data-detalle-ar-thumb]');
+      if (thumb instanceof HTMLImageElement) {
+        thumb.src = url || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+      }
+      arViewer.classList.remove('is-off');
+      arViewer.setAttribute('alt', title || 'Modelo 3D');
+      if (modelo3dUrl.toLowerCase().includes('.usdz')) {
+        arViewer.setAttribute('ios-src', modelo3dUrl);
+      } else {
+        arViewer.removeAttribute('ios-src');
+      }
+      armNativeArLink(arChip, arViewer, modelo3dUrl, title || 'Modelo 3D');
+      arViewer.setAttribute('src', modelo3dUrl);
+      if (safariHint instanceof HTMLElement) {
+        safariHint.classList.toggle('hidden', !isIosThirdPartyBrowser());
+      }
     } else if (arChip instanceof HTMLElement) {
       app.dataset.detalleArSrc = '';
       arChip.classList.add('hidden');
+      if (arViewer instanceof HTMLElement) {
+        arViewer.classList.add('is-off');
+        arViewer.removeAttribute('src');
+      }
+      if (safariHint instanceof HTMLElement) safariHint.classList.add('hidden');
     }
 
     if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
@@ -1556,7 +1648,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
     if (arChip instanceof HTMLElement) {
       arChip.classList.remove('is-on');
-      arChip.textContent = 'Ver en AR';
     }
   }
 
@@ -1569,10 +1660,22 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
-  function openSceneViewerAr(glbUrl: string, title: string) {
+  function isIosThirdPartyBrowser() {
+    const ua = navigator.userAgent || '';
+    return isIosUa() &&
+      /CriOS\/|EdgiOS\/|FxiOS\/|GSA\/|DuckDuckGo\/|Instagram|FBAN|FBAV|Line\/|WhatsApp/i.test(ua);
+  }
+
+  function sceneViewerHref(glbUrl: string, title: string) {
     const file = encodeURIComponent(glbUrl);
     const name = encodeURIComponent(title || 'Plato');
-    const web = `https://arvr.google.com/scene-viewer/1.0?file=${file}&mode=ar_preferred&title=${name}`;
+    return `https://arvr.google.com/scene-viewer/1.0?file=${file}&mode=ar_preferred&title=${name}`;
+  }
+
+  function openSceneViewerAr(glbUrl: string, title: string) {
+    const web = sceneViewerHref(glbUrl, title);
+    const file = encodeURIComponent(glbUrl);
+    const name = encodeURIComponent(title || 'Plato');
     const intent =
       `intent://arvr.google.com/scene-viewer/1.0?file=${file}&mode=ar_preferred&title=${name}#Intent;` +
       `scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;` +
@@ -1580,75 +1683,73 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     window.location.href = intent;
   }
 
-  function launchDetalleAr(app: HTMLElement) {
-    if (app.dataset.showAr !== 'true') return;
-    ensureModelViewerLoaded();
-    const screen = app.querySelector('[data-ar-screen]');
-    const stage = app.querySelector('[data-ar-screen-stage]');
-    const titleEl = app.querySelector('[data-ar-screen-title]');
-    const hintEl = app.querySelector('[data-ar-hint]');
-    const arChip = app.querySelector('[data-detalle-ar-btn]');
-    if (!(screen instanceof HTMLElement) || !(stage instanceof HTMLElement)) return;
-    const src = String(
-      (arChip instanceof HTMLElement ? arChip.dataset.arSrc : '') ||
-        app.dataset.detalleArSrc ||
-        '',
-    ).trim();
-    if (!src) return;
+  function armNativeArLink(
+    link: HTMLElement,
+    viewer: HTMLElement & { prepareUSDZ?: () => Promise<string> },
+    src: string,
+    title: string,
+  ) {
+    if (!(link instanceof HTMLAnchorElement)) return;
 
-    const title =
-      (arChip instanceof HTMLElement ? arChip.dataset.arTitle : '') || 'Modelo 3D';
-    if (titleEl) titleEl.textContent = title;
-    if (arChip instanceof HTMLElement) arChip.classList.add('is-on');
-
-    // Android: Scene Viewer abre la cámara y apoya el .glb en el suelo/mesa.
     if (isAndroidUa()) {
-      if (hintEl instanceof HTMLElement) {
-        hintEl.textContent = 'Abriendo la cámara… apuntá al suelo o a la mesa.';
-      }
-      openSceneViewerAr(src, title);
+      link.removeAttribute('rel');
+      link.href = sceneViewerHref(src, title);
+      link.classList.remove('is-loading');
       return;
     }
 
-    if (hintEl instanceof HTMLElement) {
-      hintEl.textContent = isIosUa()
-        ? 'Permití la cámara y tocá la mesa para apoyar el plato.'
-        : 'La AR de mesa (cámara + plato en la mesa) se abre en el celular. En la computadora no hay cámara AR.';
+    if (!isIosUa()) {
+      link.removeAttribute('rel');
+      link.removeAttribute('href');
+      link.classList.remove('is-loading');
+      return;
     }
 
-    screen.classList.add('is-open');
-    screen.setAttribute('aria-hidden', 'false');
-    stage.replaceChildren();
+    const usdzSrc = src.toLowerCase().includes('.usdz') ? src : '';
+    if (usdzSrc) {
+      link.rel = 'ar';
+      link.href = usdzSrc;
+      link.classList.remove('is-loading');
+      return;
+    }
 
-    const mv = document.createElement('model-viewer') as HTMLElement & {
-      activateAR?: () => Promise<void>;
-    };
-    mv.setAttribute('src', src);
-    mv.setAttribute('alt', title);
-    mv.setAttribute('ar', '');
-    mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-    mv.setAttribute('ar-placement', 'floor');
-    mv.setAttribute('ar-scale', 'auto');
-    mv.setAttribute('camera-controls', '');
-    mv.setAttribute('touch-action', 'pan-y');
-    mv.setAttribute('reveal', 'auto');
-    mv.setAttribute('shadow-intensity', '1');
-    mv.setAttribute('xr-environment', '');
-    if (src.toLowerCase().includes('.usdz')) mv.setAttribute('ios-src', src);
-    mv.style.cssText = 'width:100%;height:100%;display:block;background:#111;';
+    link.rel = 'ar';
+    link.removeAttribute('href');
+    link.classList.add('is-loading');
 
-    const nativeAr = document.createElement('button');
-    nativeAr.setAttribute('slot', 'ar-button');
-    nativeAr.className = 'detalle-ar-native';
-    nativeAr.textContent = 'Colocar en la mesa';
-    mv.appendChild(nativeAr);
-    stage.appendChild(mv);
-
-    if (isIosUa()) {
-      nativeAr.click();
-      if (typeof mv.activateAR === 'function') {
-        void mv.activateAR().catch(() => {});
+    const onReady = async () => {
+      try {
+        const blobUrl = typeof viewer.prepareUSDZ === 'function' ? await viewer.prepareUSDZ() : '';
+        if (!blobUrl) {
+          link.classList.remove('is-loading');
+          return;
+        }
+        if (iosUsdzBlob) URL.revokeObjectURL(iosUsdzBlob);
+        iosUsdzBlob = blobUrl;
+        link.rel = 'ar';
+        link.href = blobUrl;
+        link.classList.remove('is-loading');
+      } catch {
+        link.classList.remove('is-loading');
       }
+    };
+
+    if ((viewer as HTMLElement & { loaded?: boolean }).loaded) {
+      void onReady();
+    } else {
+      viewer.addEventListener('load', () => void onReady(), { once: true });
+    }
+  }
+
+  function launchDetalleAr(app: HTMLElement) {
+    if (app.dataset.showAr !== 'true') return;
+    const src = String(app.dataset.detalleArSrc || '').trim();
+    if (!src) return;
+    if (isAndroidUa()) {
+      const title =
+        (app.querySelector('[data-detalle-ar-btn]') as HTMLElement | null)?.dataset.arTitle ||
+        'Modelo 3D';
+      openSceneViewerAr(src, title);
     }
   }
 
@@ -1663,9 +1764,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       const arLaunchBtn = root.querySelector('[data-detalle-ar-btn]');
       if (arLaunchBtn instanceof HTMLElement) {
         arLaunchBtn.addEventListener('click', (event) => {
+          if (isIosUa() || isAndroidUa()) return;
           event.preventDefault();
-          event.stopPropagation();
-          launchDetalleAr(root);
         });
       }
 
@@ -1772,9 +1872,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
         const arChipBtn = target.closest('[data-detalle-ar-btn]');
         if (arChipBtn instanceof HTMLElement && root.contains(arChipBtn)) {
+          if (isIosUa() || isAndroidUa()) return;
           event.preventDefault();
-          event.stopPropagation();
-          launchDetalleAr(root);
           return;
         }
 
@@ -1810,7 +1909,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     if (document.querySelector('script[data-model-viewer]')) return;
     const s = document.createElement('script');
     s.type = 'module';
-    s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js';
+    s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js';
     s.setAttribute('data-model-viewer', 'true');
     document.head.appendChild(s);
   }
