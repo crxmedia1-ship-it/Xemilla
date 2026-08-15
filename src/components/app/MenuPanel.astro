@@ -419,7 +419,7 @@ const globalBgValor = fondoGlobal.valor || '';
                     </p>
                   )}
 
-                  {hasMedia(mediaUrl) || showNutricion || showAr ? (
+                  {hasMedia(mediaUrl) || showNutricion || (showAr && plato.modelo3dUrl) ? (
                     <button
                       type="button"
                       data-open-detalle

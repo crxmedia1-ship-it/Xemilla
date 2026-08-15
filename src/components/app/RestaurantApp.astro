@@ -659,7 +659,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         </button>
 
         <div class="relative max-h-[min(88dvh,36rem)] overflow-y-auto overscroll-contain">
-          {/* Standard image/video — hidden when AR viewer is active */}
           <div class="relative aspect-[4/3] overflow-hidden bg-black/50" data-detalle-media-std>
             <img
               data-detalle-img
@@ -675,10 +674,20 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               muted
               playsinline
             ></video>
+            <div
+              data-detalle-ar
+              class="absolute inset-0 z-[6] hidden bg-zinc-950/80"
+              style="touch-action: pan-y;"
+            ></div>
+            <button
+              type="button"
+              data-detalle-ar-btn
+              class="detalle-ar-chip hidden"
+              aria-label="Ver en realidad aumentada"
+            >
+              AR
+            </button>
           </div>
-
-          {/* AR 3D viewer — injected dynamically; shown instead of standard media */}
-          <div data-detalle-ar class="hidden"></div>
 
           <div class="space-y-3 px-5 py-4">
             <h3
@@ -780,6 +789,37 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   }
 
   .detalle-nut__tags:empty {
+    display: none;
+  }
+
+  .detalle-ar-chip {
+    position: absolute;
+    left: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 12;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.7rem;
+    min-width: 2.35rem;
+    padding: 0 0.62rem;
+    border-radius: 999px;
+    border: 1px solid rgba(196, 181, 253, 0.55);
+    background: rgba(24, 16, 40, 0.72);
+    color: #ede9fe;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    backdrop-filter: blur(10px);
+  }
+
+  .detalle-ar-chip.is-on {
+    background: rgba(139, 92, 246, 0.88);
+    color: #fff;
+    border-color: rgba(221, 214, 254, 0.9);
+  }
+
+  .detalle-ar-chip.hidden {
     display: none;
   }
 
@@ -1020,7 +1060,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       arEl.innerHTML = '';
       arEl.classList.add('hidden');
     }
-    // Restore the standard media container after AR is cleared
+    const arBtn = app.querySelector('[data-detalle-ar-btn]');
+    if (arBtn instanceof HTMLElement) {
+      arBtn.classList.add('hidden');
+      arBtn.classList.remove('is-on');
+      arBtn.textContent = 'AR';
+      arBtn.removeAttribute('data-ar-src');
+    }
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
     const descEl = app.querySelector('[data-detalle-desc]');
     if (descEl instanceof HTMLElement) {
@@ -1171,8 +1217,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     const imgEl = app.querySelector('[data-detalle-img]');
     const videoEl = app.querySelector('[data-detalle-video]');
     if (!(modal instanceof HTMLElement)) return;
-    // hasArContent is true whenever AR gadget is on — the demo URL handles empty modelo3dUrl
-    const hasArContent = app.dataset.showAr === 'true';
+    // AR only when the gadget is on AND this dish has a 3D URL
+    const hasArContent =
+      app.dataset.showAr === 'true' && Boolean(meta?.modelo3dUrl?.trim());
     if (!url && !meta?.hasNut && !hasArContent) return;
 
     clearDetalleMedia(app);
@@ -1251,49 +1298,19 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     const showAr = app.dataset.showAr === 'true';
     const modelo3dUrl = String(meta?.modelo3dUrl || '').trim();
-    // Demo model for initial testing — replace with real .glb URL per-dish in production
-    const AR_DEMO_URL =
-      'https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb';
-    const resolvedArUrl = modelo3dUrl || (showAr ? AR_DEMO_URL : '');
-
     const arEl = app.querySelector('[data-detalle-ar]');
+    const arChip = app.querySelector('[data-detalle-ar-btn]');
     const mediaStdEl = app.querySelector('[data-detalle-media-std]');
+    if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
 
-    if (showAr && resolvedArUrl && arEl instanceof HTMLElement) {
-      // Hide the standard image/video section while AR is active
-      if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.add('hidden');
+    if (showAr && modelo3dUrl && arChip instanceof HTMLElement) {
+      arChip.dataset.arSrc = modelo3dUrl;
+      arChip.dataset.arTitle = title || 'Modelo 3D';
+      arChip.classList.remove('hidden', 'is-on');
+      arChip.textContent = 'AR';
+    }
 
-      // Glassmorphism wrapper matching the design spec
-      const glassWrapper = document.createElement('div');
-      glassWrapper.className =
-        'relative w-full h-72 overflow-hidden bg-zinc-900/40 border-b border-white/10';
-
-      // model-viewer: touch-action pan-y lets vertical swipes scroll the modal instead of rotating
-      const mv = document.createElement('model-viewer') as HTMLElement & Record<string, unknown>;
-      mv.setAttribute('src', resolvedArUrl);
-      mv.setAttribute('alt', title || 'Modelo 3D');
-      mv.setAttribute('ar', '');
-      mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-      mv.setAttribute('camera-controls', '');
-      mv.setAttribute('auto-rotate', '');
-      mv.setAttribute('shadow-intensity', '1.5');
-      mv.style.cssText =
-        'width:100%;height:100%;background:transparent;touch-action:pan-y;display:block;';
-
-      const arBtn = document.createElement('button');
-      arBtn.setAttribute('slot', 'ar-button');
-      arBtn.style.cssText =
-        'position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:0.5rem;';
-      arBtn.className =
-        'bg-white/90 text-black font-semibold text-xs px-4 py-2.5 rounded-full shadow-2xl border border-white/20 backdrop-blur-md active:scale-95 transition-all';
-      arBtn.innerHTML = '<span>👀 Ver en tu mesa (AR)</span>';
-      mv.appendChild(arBtn);
-
-      glassWrapper.appendChild(mv);
-      arEl.innerHTML = '';
-      arEl.appendChild(glassWrapper);
-      arEl.classList.remove('hidden');
-    } else if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
+    if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
       videoEl.src = url;
       videoEl.muted = true;
       videoEl.loop = true;
@@ -1306,6 +1323,11 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       imgEl.src = url;
       imgEl.alt = title || 'Plato';
       imgEl.classList.remove('hidden');
+    }
+
+    if (arEl instanceof HTMLElement) {
+      arEl.innerHTML = '';
+      arEl.classList.add('hidden');
     }
 
     modal.classList.add('is-open');
@@ -1326,6 +1348,67 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         keepalive: true,
       }).catch(() => {
         /* silencioso */
+      });
+    }
+  }
+
+  function hideDetalleArViewer(app: HTMLElement) {
+    const arEl = app.querySelector('[data-detalle-ar]');
+    const arChip = app.querySelector('[data-detalle-ar-btn]');
+    if (arEl instanceof HTMLElement) {
+      arEl.innerHTML = '';
+      arEl.classList.add('hidden');
+    }
+    if (arChip instanceof HTMLElement) {
+      arChip.classList.remove('is-on');
+      arChip.textContent = 'AR';
+    }
+  }
+
+  function toggleDetalleAr(app: HTMLElement) {
+    const arEl = app.querySelector('[data-detalle-ar]');
+    const arChip = app.querySelector('[data-detalle-ar-btn]');
+    if (!(arEl instanceof HTMLElement) || !(arChip instanceof HTMLElement)) return;
+    const src = String(arChip.dataset.arSrc || '').trim();
+    if (!src) return;
+
+    const isOpen = !arEl.classList.contains('hidden');
+    if (isOpen) {
+      hideDetalleArViewer(app);
+      return;
+    }
+
+    const mv = document.createElement('model-viewer');
+    mv.setAttribute('src', src);
+    mv.setAttribute('alt', arChip.dataset.arTitle || 'Modelo 3D');
+    mv.setAttribute('ar', '');
+    mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+    mv.setAttribute('camera-controls', '');
+    mv.setAttribute('auto-rotate', '');
+    mv.setAttribute('shadow-intensity', '1.5');
+    mv.setAttribute('touch-action', 'pan-y');
+    mv.style.cssText =
+      'width:100%;height:100%;background:transparent;touch-action:pan-y;display:block;';
+
+    const nativeAr = document.createElement('button');
+    nativeAr.setAttribute('slot', 'ar-button');
+    nativeAr.style.cssText =
+      'position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;';
+    nativeAr.className =
+      'rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[0.62rem] font-semibold text-black shadow-lg backdrop-blur-md';
+    nativeAr.textContent = 'Ver en tu mesa';
+    mv.appendChild(nativeAr);
+
+    arEl.innerHTML = '';
+    arEl.appendChild(mv);
+    arEl.classList.remove('hidden');
+    arChip.classList.add('is-on');
+    arChip.textContent = 'Foto';
+
+    const activate = (mv as HTMLElement & { activateAR?: () => Promise<void> }).activateAR;
+    if (typeof activate === 'function') {
+      void activate.call(mv).catch(() => {
+        /* desktop / sin AR: queda el visor 3D */
       });
     }
   }
@@ -1414,8 +1497,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           const platoId = detalleBtn.dataset.platoId || '';
           const platoNombre = detalleBtn.dataset.platoNombre || title;
           const modelo3dUrl = detalleBtn.dataset.platoModelo3dUrl?.trim() || '';
-          // AR demo URL handles dishes with empty modelo3dUrl when gadget is on
-          const hasAr = root.dataset.showAr === 'true';
+          const hasAr = root.dataset.showAr === 'true' && Boolean(modelo3dUrl);
           if (url || detalleBtn.dataset.platoHasNut === 'true' || hasAr) {
             openDetalle(root, url, title, platoId, platoNombre, {
               desc: detalleBtn.dataset.platoDesc || '',
@@ -1429,6 +1511,14 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               modelo3dUrl,
             });
           }
+          return;
+        }
+
+        const arChipBtn = target.closest('[data-detalle-ar-btn]');
+        if (arChipBtn instanceof HTMLElement && root.contains(arChipBtn)) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleDetalleAr(root);
           return;
         }
 

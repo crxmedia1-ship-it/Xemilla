@@ -148,6 +148,7 @@ const RESTAURANTE_SELECT_FULL = [
   'gadget_cuenta',
   'gadget_boutique',
   'gadget_nutricion',
+  'gadget_ar',
   'color_primario',
   'color_fondo',
   'color_texto',
