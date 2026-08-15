@@ -3,23 +3,40 @@
  * Códigos estables en `platos.alergias` (text[]).
  */
 
-/** @typedef {{ id: string, label: string }} AlergenoOption */
+/** @typedef {{ id: string, label: string, emoji: string, color: string }} AlergenoOption */
 
 /** @type {AlergenoOption[]} */
 export const ALERGENOS_OPTIONS = [
-  { id: 'gluten', label: 'Gluten' },
-  { id: 'lacteos', label: 'Lácteos' },
-  { id: 'huevo', label: 'Huevo' },
-  { id: 'mani', label: 'Maní' },
-  { id: 'frutos_secos', label: 'Frutos secos' },
-  { id: 'mariscos', label: 'Mariscos' },
-  { id: 'pescado', label: 'Pescado' },
-  { id: 'soja', label: 'Soja' },
-  { id: 'sesamo', label: 'Sésamo' },
-  { id: 'picante', label: 'Picante' },
-  { id: 'carne', label: 'Carne' },
-  { id: 'no_vegano', label: 'No vegano' },
+  { id: 'gluten', label: 'Gluten', emoji: '🌾', color: '#eab308' },
+  { id: 'lacteos', label: 'Lácteos', emoji: '🥛', color: '#38bdf8' },
+  { id: 'huevo', label: 'Huevo', emoji: '🥚', color: '#facc15' },
+  { id: 'mani', label: 'Maní', emoji: '🥜', color: '#f97316' },
+  { id: 'frutos_secos', label: 'Frutos secos', emoji: '🌰', color: '#c4a574' },
+  { id: 'mariscos', label: 'Mariscos', emoji: '🦐', color: '#fb7185' },
+  { id: 'pescado', label: 'Pescado', emoji: '🐟', color: '#22d3ee' },
+  { id: 'soja', label: 'Soja', emoji: '🫘', color: '#84cc16' },
+  { id: 'sesamo', label: 'Sésamo', emoji: '⚪', color: '#d6d3d1' },
+  { id: 'picante', label: 'Picante', emoji: '🌶️', color: '#ef4444' },
+  { id: 'carne', label: 'Carne', emoji: '🥩', color: '#f43f5e' },
+  { id: 'no_vegano', label: 'No vegano', emoji: '🚫', color: '#a78bfa' },
 ];
+
+/**
+ * @param {unknown} id
+ * @returns {{ id: string, label: string, emoji: string, color: string }}
+ */
+export function getAlergenoMeta(id) {
+  const key = String(id || '')
+    .trim()
+    .toLowerCase();
+  const opt = ALERGENOS_OPTIONS.find((a) => a.id === key);
+  return {
+    id: key,
+    label: opt?.label || key,
+    emoji: opt?.emoji || '⚠️',
+    color: opt?.color || '#94a3b8',
+  };
+}
 
 /**
  * Píldoras públicas: ocultan platos que contengan alguno de `hidesAny`.

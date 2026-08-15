@@ -1,7 +1,6 @@
 ---
 import {
   NUTRICION_FILTROS_PUBLICOS,
-  ALERGENOS_OPTIONS,
 } from '../../config/nutricion.js';
 
 interface Plato {
@@ -80,13 +79,6 @@ function isVideoUrl(url: string) {
 function alergiasCsv(plato: Plato) {
   if (!Array.isArray(plato.alergias) || plato.alergias.length === 0) return '';
   return plato.alergias.map((id) => String(id).trim().toLowerCase()).filter(Boolean).join(',');
-}
-
-function alergiasLabels(plato: Plato) {
-  if (!Array.isArray(plato.alergias) || plato.alergias.length === 0) return [];
-  return plato.alergias
-    .map((id) => ALERGENOS_OPTIONS.find((opt) => opt.id === id)?.label || id)
-    .filter(Boolean);
 }
 
 /** Valor base USD limpio para data-precio-usd */
@@ -411,14 +403,6 @@ const globalBgValor = fondoGlobal.valor || '';
                     </p>
                   )}
 
-                  {showNutricion && alergiasLabels(plato).length > 0 && (
-                    <p class="mt-1.5 flex flex-wrap gap-1" aria-label="Alérgenos">
-                      {alergiasLabels(plato).map((label) => (
-                        <span class="alergia-chip">{label}</span>
-                      ))}
-                    </p>
-                  )}
-
                   {hasMedia(mediaUrl) || showNutricion || (showAr && plato.modelo3dUrl) ? (
                     <button
                       type="button"
@@ -434,7 +418,7 @@ const globalBgValor = fondoGlobal.valor || '';
                       data-plato-grasas={showNutricion ? String(plato.grasas ?? '') : ''}
                       data-plato-alergias={showNutricion ? alergiasCsv(plato) : ''}
                       data-plato-has-nut={showNutricion ? 'true' : 'false'}
-                      data-plato-modelo3d-url={showAr ? (plato.modelo3dUrl || '') : ''}
+                      data-plato-modelo3d-url={plato.modelo3dUrl || ''}
                       class="menu-btn menu-btn--detalle mt-3"
                     >
                       Ver detalle
@@ -508,12 +492,28 @@ const globalBgValor = fondoGlobal.valor || '';
     display: flex;
     flex-direction: column;
     gap: var(--space-section, 2.25rem);
+    width: 100%;
+    max-width: 72rem;
+    margin-inline: auto;
   }
 
   .menu-items {
     display: flex;
     flex-direction: column;
     gap: var(--space-item, 1.25rem);
+  }
+
+  @media (min-width: 900px) {
+    .menu-items {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: 2.5rem;
+      row-gap: 1.75rem;
+    }
+
+    .menu-featured {
+      width: 22rem;
+    }
   }
 
   .menu-cat-section.is-hidden,
@@ -758,20 +758,6 @@ const globalBgValor = fondoGlobal.valor || '';
     cursor: pointer;
     transition: opacity 150ms ease, background-color 150ms ease;
     white-space: nowrap;
-  }
-
-  .alergia-chip {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--color-texto) 16%, transparent);
-    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
-    padding: 0.22rem 0.55rem;
-    font-size: 0.58rem;
-    font-weight: 650;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-texto) 72%, transparent);
   }
 
   .alergia-reset:active {

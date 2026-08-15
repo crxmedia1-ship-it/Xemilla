@@ -598,8 +598,8 @@ async function loadRestauranteBySlug(slug) {
       platosError = null;
     } else {
       const select = missingOrden
-        ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado'
-        : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden';
+        ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, modelo_3d_url'
+        : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, modelo_3d_url';
       const fallback = await platosClient
         .from('platos')
         .select(select)

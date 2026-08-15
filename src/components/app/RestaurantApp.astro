@@ -627,28 +627,27 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
     <div
-      class="detalle-modal pointer-events-none fixed inset-0 z-[90] mx-auto flex items-center justify-center px-3 opacity-0 transition-all duration-300 ease-out"
+      class="detalle-modal pointer-events-none fixed inset-0 z-[90] flex items-end justify-center opacity-0 transition-all duration-300 ease-out md:items-center md:px-6 md:py-8"
       data-detalle-modal
       aria-hidden="true"
     >
       <button
         type="button"
-        class="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity duration-300"
+        class="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-300"
         data-detalle-backdrop
         aria-label="Cerrar detalle"
       ></button>
 
       <div
-        class="detalle-modal__card relative z-10 w-full max-w-sm scale-95 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_64px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out"
+        class="detalle-modal__card relative z-10 flex w-full max-h-[min(92dvh,44rem)] max-w-none flex-col overflow-hidden rounded-t-[1.65rem] border border-white/12 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_80px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out md:max-w-[46rem] md:max-h-[min(86dvh,38rem)] md:flex-row md:rounded-[1.65rem]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="detalle-modal-title"
       >
-        {/* Close button: fixed at top-right above the scroll area, always visible */}
         <button
           type="button"
           data-detalle-close
-          class="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-black/45 text-zinc-200 backdrop-blur-md transition-all duration-200 active:scale-95 hover:text-white"
+          class="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/55 text-zinc-100 backdrop-blur-md transition-all duration-200 active:scale-95 hover:text-white"
           aria-label="Cerrar"
         >
           <svg
@@ -663,75 +662,75 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           </svg>
         </button>
 
-        <div class="relative max-h-[min(88dvh,36rem)] overflow-y-auto overscroll-contain">
-          <div class="relative aspect-[4/3] overflow-hidden bg-black/50" data-detalle-media-std>
-            <img
-              data-detalle-img
-              src=""
-              alt=""
-              class="absolute inset-0 hidden size-full object-cover object-center rounded-t-2xl"
-            />
-            <video
-              data-detalle-video
-              class="absolute inset-0 hidden size-full object-cover object-center rounded-t-2xl"
-              autoplay
-              loop
-              muted
-              playsinline
-            ></video>
-            <div
-              data-detalle-ar
-              class="absolute inset-0 z-[6] hidden bg-zinc-950/80"
-              style="touch-action: pan-y;"
-            ></div>
-            <button
-              type="button"
-              data-detalle-ar-btn
-              class="detalle-ar-chip hidden"
-              aria-label="Ver en realidad aumentada"
-            >
-              AR
-            </button>
-          </div>
+        <div class="relative aspect-[4/3] shrink-0 overflow-hidden bg-black/50 md:aspect-auto md:min-h-[22rem] md:w-[46%]" data-detalle-media-std>
+          <div class="detalle-modal__handle md:hidden" aria-hidden="true"></div>
+          <img
+            data-detalle-img
+            src=""
+            alt=""
+            class="absolute inset-0 hidden size-full object-cover object-center"
+          />
+          <video
+            data-detalle-video
+            class="absolute inset-0 hidden size-full object-cover object-center"
+            autoplay
+            loop
+            muted
+            playsinline
+          ></video>
+          <div
+            data-detalle-ar
+            class="absolute inset-0 z-[8] hidden bg-zinc-950/80"
+            style="touch-action: pan-y;"
+          ></div>
+        </div>
 
-          <div class="space-y-3 px-5 py-4">
-            <h3
-              id="detalle-modal-title"
-              class={`text-[1.05rem] font-semibold leading-snug ${estilos?.displayClass || ''} text-[color:var(--color-texto)]`}
-              data-detalle-title
-            >
-              Plato
-            </h3>
-            <p
-              class="hidden text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]"
-              data-detalle-desc
-            ></p>
-              {
-              showNutricion && (
-                <div class="detalle-nut hidden" data-detalle-nutricion>
-                  <div class="detalle-nut__macros" data-detalle-macros>
-                    <div class="detalle-nut__metric">
-                      <p class="detalle-nut__k">kcal</p>
-                      <p class="detalle-nut__v" data-detalle-kcal>—</p>
-                    </div>
-                    <div class="detalle-nut__metric">
-                      <p class="detalle-nut__k">Prot</p>
-                      <p class="detalle-nut__v" data-detalle-prot>—</p>
-                    </div>
-                    <div class="detalle-nut__metric">
-                      <p class="detalle-nut__k">Carbs</p>
-                      <p class="detalle-nut__v" data-detalle-carbs>—</p>
-                    </div>
-                    <div class="detalle-nut__metric">
-                      <p class="detalle-nut__k">Grasas</p>
-                      <p class="detalle-nut__v" data-detalle-grasas>—</p>
-                    </div>
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 md:px-6 md:py-6">
+          <h3
+            id="detalle-modal-title"
+            class={`pr-10 text-[1.2rem] font-semibold leading-snug ${estilos?.displayClass || ''} text-[color:var(--color-texto)]`}
+            data-detalle-title
+          >
+            Plato
+          </h3>
+          <p
+            class="mt-2 hidden text-[0.88rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_62%,transparent)]"
+            data-detalle-desc
+          ></p>
+          <button
+            type="button"
+            data-detalle-ar-btn
+            class="detalle-ar-btn mt-4 hidden"
+            aria-label="Ver en realidad aumentada"
+          >
+            Ver en AR
+          </button>
+          {
+            showNutricion && (
+              <div class="detalle-nut mt-4 hidden" data-detalle-nutricion>
+                <div class="detalle-nut__macros" data-detalle-macros>
+                  <div class="detalle-nut__metric">
+                    <p class="detalle-nut__k">kcal</p>
+                    <p class="detalle-nut__v" data-detalle-kcal>—</p>
                   </div>
-                  <div class="detalle-nut__tags" data-detalle-alergias-badges></div>
+                  <div class="detalle-nut__metric">
+                    <p class="detalle-nut__k">Prot</p>
+                    <p class="detalle-nut__v" data-detalle-prot>—</p>
+                  </div>
+                  <div class="detalle-nut__metric">
+                    <p class="detalle-nut__k">Carbs</p>
+                    <p class="detalle-nut__v" data-detalle-carbs>—</p>
+                  </div>
+                  <div class="detalle-nut__metric">
+                    <p class="detalle-nut__k">Grasas</p>
+                    <p class="detalle-nut__v" data-detalle-grasas>—</p>
+                  </div>
                 </div>
-              )
-            }
-          </div>
+                <p class="detalle-nut__alergias-label">Contiene</p>
+                <div class="detalle-nut__tags" data-detalle-alergias-badges></div>
+              </div>
+            )
+          }
         </div>
       </div>
     </div>
@@ -743,13 +742,36 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     pointer-events: auto;
     opacity: 1;
   }
+  .detalle-modal__card {
+    transform: translateY(1.25rem);
+  }
   .detalle-modal.is-open .detalle-modal__card {
-    transform: scale(1);
+    transform: translateY(0);
     opacity: 1;
+  }
+  @media (min-width: 768px) {
+    .detalle-modal__card {
+      transform: translateY(0) scale(0.96);
+    }
+    .detalle-modal.is-open .detalle-modal__card {
+      transform: scale(1);
+    }
+  }
+
+  .detalle-modal__handle {
+    position: absolute;
+    top: 0.55rem;
+    left: 50%;
+    z-index: 8;
+    width: 2.4rem;
+    height: 0.28rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateX(-50%);
   }
 
   .detalle-nut {
-    padding: 0.8rem;
+    padding: 0.9rem;
     border-radius: 1.15rem;
     border: 1px solid color-mix(in srgb, var(--color-texto) 12%, transparent);
     background: color-mix(in srgb, var(--color-texto) 5.5%, transparent);
@@ -758,14 +780,14 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   .detalle-nut__macros {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.4rem;
+    gap: 0.45rem;
   }
 
   .detalle-nut__metric {
     min-width: 0;
-    padding: 0.55rem 0.15rem 0.6rem;
-    border-radius: 0.85rem;
-    background: color-mix(in srgb, var(--color-texto) 6%, transparent);
+    padding: 0.6rem 0.15rem 0.65rem;
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
     text-align: center;
   }
 
@@ -786,60 +808,102 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     color: var(--color-texto);
   }
 
+  .detalle-nut__alergias-label {
+    margin: 0.85rem 0 0.45rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-texto) 48%, transparent);
+  }
+
   .detalle-nut__tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-top: 0.7rem;
+    gap: 0.45rem;
   }
 
   .detalle-nut__tags:empty {
     display: none;
   }
 
-  .detalle-ar-chip {
-    position: absolute;
-    left: 0.75rem;
-    bottom: 0.75rem;
-    z-index: 12;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 1.7rem;
-    min-width: 2.35rem;
-    padding: 0 0.62rem;
-    border-radius: 999px;
-    border: 1px solid rgba(196, 181, 253, 0.55);
-    background: rgba(24, 16, 40, 0.72);
-    color: #ede9fe;
-    font-size: 0.62rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    backdrop-filter: blur(10px);
-  }
-
-  .detalle-ar-chip.is-on {
-    background: rgba(139, 92, 246, 0.88);
-    color: #fff;
-    border-color: rgba(221, 214, 254, 0.9);
-  }
-
-  .detalle-ar-chip.hidden {
+  .detalle-nut__tags:empty + .detalle-nut__alergias-label,
+  .detalle-nut__alergias-label:has(+ .detalle-nut__tags:empty) {
     display: none;
   }
 
-  .detalle-nut-chip {
+  .detalle-ar-btn {
     display: inline-flex;
     align-items: center;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--color-texto) 16%, transparent);
-    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
-    padding: 0.28rem 0.62rem;
-    font-size: 0.58rem;
-    font-weight: 650;
-    letter-spacing: 0.1em;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(196, 181, 253, 0.45);
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.42), rgba(109, 40, 217, 0.28));
+    color: #f5f3ff;
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-texto) 78%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  .detalle-ar-btn.is-on {
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.55), rgba(109, 40, 217, 0.38));
+    border-color: rgba(221, 214, 254, 0.55);
+    color: #fff;
+  }
+  .detalle-ar-native {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+  }
+  .detalle-ar-btn.hidden {
+    display: none;
+  }
+
+  .detalle-nut-chip,
+  .alergeno-badge {
+    --badge: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--badge) 58%, transparent);
+    background: color-mix(in srgb, var(--badge) 22%, transparent);
+    padding: 0.32rem 0.75rem 0.32rem 0.48rem;
+    min-height: 1.85rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--badge) 55%, #fff);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  .alergeno-badge[data-alergeno='gluten'] { --badge: #eab308; }
+  .alergeno-badge[data-alergeno='lacteos'] { --badge: #38bdf8; }
+  .alergeno-badge[data-alergeno='huevo'] { --badge: #facc15; }
+  .alergeno-badge[data-alergeno='mani'] { --badge: #f97316; }
+  .alergeno-badge[data-alergeno='frutos_secos'] { --badge: #c4a574; }
+  .alergeno-badge[data-alergeno='mariscos'] { --badge: #fb7185; }
+  .alergeno-badge[data-alergeno='pescado'] { --badge: #22d3ee; }
+  .alergeno-badge[data-alergeno='soja'] { --badge: #84cc16; }
+  .alergeno-badge[data-alergeno='sesamo'] { --badge: #d6d3d1; }
+  .alergeno-badge[data-alergeno='picante'] { --badge: #ef4444; }
+  .alergeno-badge[data-alergeno='carne'] { --badge: #f43f5e; }
+  .alergeno-badge[data-alergeno='no_vegano'] { --badge: #a78bfa; }
+  .alergeno-badge--empty {
+    --badge: #94a3b8;
+    color: color-mix(in srgb, var(--color-texto) 55%, transparent);
+    border-color: color-mix(in srgb, var(--color-texto) 14%, transparent);
+    background: color-mix(in srgb, var(--color-texto) 6%, transparent);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-weight: 600;
   }
 
   [data-app-nav-overlay].is-open {
@@ -1030,20 +1094,59 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     setAppTabsActive(app, null);
   }
 
-  const ALERGENO_LABELS: Record<string, string> = {
-    gluten: 'Gluten',
-    lacteos: 'Lácteos',
-    huevo: 'Huevo',
-    mani: 'Maní',
-    frutos_secos: 'Frutos secos',
-    mariscos: 'Mariscos',
-    pescado: 'Pescado',
-    soja: 'Soja',
-    sesamo: 'Sésamo',
-    picante: 'Picante',
-    carne: 'Carne',
-    no_vegano: 'No vegano',
+  const ALERGENO_META: Record<string, { label: string; emoji: string }> = {
+    gluten: { label: 'Gluten', emoji: '🌾' },
+    lacteos: { label: 'Lácteos', emoji: '🥛' },
+    huevo: { label: 'Huevo', emoji: '🥚' },
+    mani: { label: 'Maní', emoji: '🥜' },
+    frutos_secos: { label: 'Frutos secos', emoji: '🌰' },
+    mariscos: { label: 'Mariscos', emoji: '🦐' },
+    pescado: { label: 'Pescado', emoji: '🐟' },
+    soja: { label: 'Soja', emoji: '🫘' },
+    sesamo: { label: 'Sésamo', emoji: '⚪' },
+    picante: { label: 'Picante', emoji: '🌶️' },
+    carne: { label: 'Carne', emoji: '🥩' },
+    no_vegano: { label: 'No vegano', emoji: '🚫' },
   };
+
+  function renderAlergenoBadges(host: HTMLElement, raw: string) {
+    host.replaceChildren();
+    const ids = String(raw || '')
+      .split(/[,|;]/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const labelEl = host.previousElementSibling;
+    if (ids.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'alergeno-badge alergeno-badge--empty';
+      empty.textContent = 'Sin alérgenos declarados';
+      host.appendChild(empty);
+      if (labelEl instanceof HTMLElement) {
+        labelEl.textContent = 'Alérgenos';
+        labelEl.hidden = false;
+      }
+      return;
+    }
+    if (labelEl instanceof HTMLElement) {
+      labelEl.textContent = 'Contiene';
+      labelEl.hidden = false;
+    }
+    for (const id of ids) {
+      const meta = ALERGENO_META[id] || { label: id, emoji: '⚠️' };
+      const badge = document.createElement('span');
+      badge.className = 'alergeno-badge';
+      badge.dataset.alergeno = id;
+      const emoji = document.createElement('span');
+      emoji.className = 'alergeno-badge__emoji';
+      emoji.setAttribute('aria-hidden', 'true');
+      emoji.textContent = meta.emoji;
+      const label = document.createElement('span');
+      label.className = 'alergeno-badge__label';
+      label.textContent = meta.label;
+      badge.append(emoji, label);
+      host.appendChild(badge);
+    }
+  }
 
   function clearDetalleMedia(app: HTMLElement) {
     const imgEl = app.querySelector('[data-detalle-img]');
@@ -1069,7 +1172,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     if (arBtn instanceof HTMLElement) {
       arBtn.classList.add('hidden');
       arBtn.classList.remove('is-on');
-      arBtn.textContent = 'AR';
+      arBtn.textContent = 'Ver en AR';
       arBtn.removeAttribute('data-ar-src');
     }
     if (mediaStdEl instanceof HTMLElement) mediaStdEl.classList.remove('hidden');
@@ -1242,7 +1345,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
 
     const nutEl = app.querySelector('[data-detalle-nutricion]');
-    if (nutEl instanceof HTMLElement) {
+    if (nutEl instanceof HTMLElement && app.dataset.showNutricion === 'true') {
       const merged = mergeNutricion(platoId, meta);
       const setMacro = (sel: string, val?: string) => {
         const el = app.querySelector(sel);
@@ -1255,17 +1358,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
       const badges = app.querySelector('[data-detalle-alergias-badges]');
       if (badges instanceof HTMLElement) {
-        badges.innerHTML = '';
-        const ids = String(merged.alergias || '')
-          .split(/[,|;]/)
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean);
-        for (const id of ids) {
-          const span = document.createElement('span');
-          span.className = 'detalle-nut-chip';
-          span.textContent = ALERGENO_LABELS[id] || id;
-          badges.appendChild(span);
-        }
+        renderAlergenoBadges(badges, merged.alergias || '');
       }
 
       nutEl.classList.remove('hidden');
@@ -1284,17 +1377,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             setMacro('[data-detalle-carbs]', fresh.carbs === '—' ? '' : fresh.carbs);
             setMacro('[data-detalle-grasas]', fresh.grasas === '—' ? '' : fresh.grasas);
             if (badges instanceof HTMLElement) {
-              badges.innerHTML = '';
-              const ids = String(fresh.alergias || '')
-                .split(/[,|;]/)
-                .map((s) => s.trim().toLowerCase())
-                .filter(Boolean);
-              for (const id of ids) {
-                const span = document.createElement('span');
-                span.className = 'detalle-nut-chip';
-                span.textContent = ALERGENO_LABELS[id] || id;
-                badges.appendChild(span);
-              }
+              renderAlergenoBadges(badges, fresh.alergias || '');
             }
           })
           .catch(() => {});
@@ -1312,7 +1395,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       arChip.dataset.arSrc = modelo3dUrl;
       arChip.dataset.arTitle = title || 'Modelo 3D';
       arChip.classList.remove('hidden', 'is-on');
-      arChip.textContent = 'AR';
+      arChip.textContent = 'Ver en AR';
+    } else if (arChip instanceof HTMLElement) {
+      arChip.classList.add('hidden');
     }
 
     if (isVideoUrl(url) && videoEl instanceof HTMLVideoElement) {
@@ -1366,11 +1451,12 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
     if (arChip instanceof HTMLElement) {
       arChip.classList.remove('is-on');
-      arChip.textContent = 'AR';
+      arChip.textContent = 'Ver en AR';
     }
   }
 
-  function toggleDetalleAr(app: HTMLElement) {
+  function launchDetalleAr(app: HTMLElement) {
+    if (app.dataset.showAr !== 'true') return;
     ensureModelViewerLoaded();
     const arEl = app.querySelector('[data-detalle-ar]');
     const arChip = app.querySelector('[data-detalle-ar-btn]');
@@ -1378,44 +1464,52 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     const src = String(arChip.dataset.arSrc || '').trim();
     if (!src) return;
 
-    const isOpen = !arEl.classList.contains('hidden');
-    if (isOpen) {
-      hideDetalleArViewer(app);
-      return;
+    let mv = arEl.querySelector('model-viewer') as
+      | (HTMLElement & { activateAR?: () => Promise<void> })
+      | null;
+
+    if (!mv) {
+      mv = document.createElement('model-viewer') as HTMLElement & {
+        activateAR?: () => Promise<void>;
+      };
+      mv.setAttribute('src', src);
+      mv.setAttribute('alt', arChip.dataset.arTitle || 'Modelo 3D');
+      mv.setAttribute('ar', '');
+      mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+      mv.setAttribute('camera-controls', '');
+      mv.setAttribute('auto-rotate', '');
+      mv.setAttribute('shadow-intensity', '1.5');
+      mv.setAttribute('touch-action', 'pan-y');
+      mv.setAttribute('reveal', 'auto');
+      mv.style.cssText =
+        'width:100%;height:100%;background:transparent;touch-action:pan-y;display:block;';
+
+      const nativeAr = document.createElement('button');
+      nativeAr.setAttribute('slot', 'ar-button');
+      nativeAr.className = 'detalle-ar-native';
+      nativeAr.textContent = 'Ver en AR';
+      mv.appendChild(nativeAr);
+
+      arEl.innerHTML = '';
+      arEl.appendChild(mv);
+      arEl.classList.remove('hidden');
     }
 
-    const mv = document.createElement('model-viewer');
-    mv.setAttribute('src', src);
-    mv.setAttribute('alt', arChip.dataset.arTitle || 'Modelo 3D');
-    mv.setAttribute('ar', '');
-    mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-    mv.setAttribute('camera-controls', '');
-    mv.setAttribute('auto-rotate', '');
-    mv.setAttribute('shadow-intensity', '1.5');
-    mv.setAttribute('touch-action', 'pan-y');
-    mv.style.cssText =
-      'width:100%;height:100%;background:transparent;touch-action:pan-y;display:block;';
-
-    const nativeAr = document.createElement('button');
-    nativeAr.setAttribute('slot', 'ar-button');
-    nativeAr.style.cssText =
-      'position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;';
-    nativeAr.className =
-      'rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[0.62rem] font-semibold text-black shadow-lg backdrop-blur-md';
-    nativeAr.textContent = 'Ver en tu mesa';
-    mv.appendChild(nativeAr);
-
-    arEl.innerHTML = '';
-    arEl.appendChild(mv);
-    arEl.classList.remove('hidden');
     arChip.classList.add('is-on');
-    arChip.textContent = 'Foto';
+    arChip.textContent = 'Ver en AR';
 
-    const activate = (mv as HTMLElement & { activateAR?: () => Promise<void> }).activateAR;
-    if (typeof activate === 'function') {
-      void activate.call(mv).catch(() => {
-        /* desktop / sin AR: queda el visor 3D */
-      });
+    const tryActivate = () => {
+      if (typeof mv?.activateAR === 'function') {
+        void mv.activateAR().catch(() => {
+          /* PC sin WebXR: queda el modelo 3D girando */
+        });
+      }
+    };
+
+    if (customElements.get('model-viewer')) {
+      tryActivate();
+    } else {
+      customElements.whenDefined('model-viewer').then(tryActivate).catch(() => {});
     }
   }
 
@@ -1525,7 +1619,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         if (arChipBtn instanceof HTMLElement && root.contains(arChipBtn)) {
           event.preventDefault();
           event.stopPropagation();
-          toggleDetalleAr(root);
+          launchDetalleAr(root);
           return;
         }
 
