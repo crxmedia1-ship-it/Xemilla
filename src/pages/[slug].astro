@@ -10,7 +10,9 @@ import { designThemes, DEFAULT_DESIGN_DNA } from '../config/themes.js';
 import {
   sanitizeTheme,
   normalizeUbicacionTheme,
+  normalizeNosotrosTheme,
   DEFAULT_UBICACION_THEME,
+  DEFAULT_NOSOTROS_THEME,
 } from '../lib/layout-themes.js';
 
 // SSR 100% dinámico: sin caché de edge/CDN al cambiar temas desde Admin
@@ -33,6 +35,11 @@ try {
 
 const homeThemeRawDb = restauranteRaw?.home_theme ?? null;
 const sanitizedHomeTheme = sanitizeTheme(homeThemeRawDb);
+const nosotrosThemeResolved = normalizeNosotrosTheme(
+  restauranteRaw?.nosotros_theme ??
+    restauranteRaw?.uiEstilo?.nosotros?.theme ??
+    DEFAULT_NOSOTROS_THEME,
+);
 const ubicacionThemeResolved = normalizeUbicacionTheme(
   restauranteRaw?.ubicacion_theme ?? DEFAULT_UBICACION_THEME,
 );
@@ -51,6 +58,9 @@ const restaurante = restauranteRaw
       ...restauranteRaw,
       home_theme: homeThemeRawDb,
       homeTheme: sanitizedHomeTheme,
+      nosotrosTheme: nosotrosThemeResolved,
+      nosotros_theme:
+        restauranteRaw.nosotros_theme ?? nosotrosThemeResolved,
       ubicacionTheme: ubicacionThemeResolved,
       ubicacion_theme:
         restauranteRaw.ubicacion_theme ?? ubicacionThemeResolved,
@@ -106,6 +116,7 @@ const ogUrl = restaurante ? `${siteOrigin}/${restaurante.slug}` : '';
       <RestaurantApp
         restaurante={restaurante}
         homeTheme={sanitizedHomeTheme}
+        nosotrosTheme={nosotrosThemeResolved}
         ubicacionTheme={ubicacionThemeResolved}
       />
     </Layout>

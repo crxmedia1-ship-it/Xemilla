@@ -1,19 +1,18 @@
 ---
-interface BloqueEditorial {
-  subtitulo?: string;
-  titulo: string;
-  tituloAcento?: string;
-  caption?: string;
-  imagen?: string | null;
-  media_url?: string | null;
-  texto?: string;
-  contenido?: string;
-  alineacion?: 'alternada' | 'inversa' | string;
-  acentos?: string[];
-}
+/**
+ * Switcher de plantilla Nosotros (editorial | split | bento).
+ */
+import NosotrosEditorial from '../themes/nosotros/NosotrosEditorial.astro';
+import NosotrosSplit from '../themes/nosotros/NosotrosSplit.astro';
+import NosotrosBento from '../themes/nosotros/NosotrosBento.astro';
+import {
+  normalizeNosotrosTheme,
+  DEFAULT_NOSOTROS_THEME,
+} from '../../lib/layout-themes.js';
 
 interface Props {
-  bloques?: BloqueEditorial[];
+  theme?: string | null;
+  bloques?: unknown[];
   texto?: string;
   highlights?: string[];
   designDnaId?: string;
@@ -32,6 +31,7 @@ interface Props {
 }
 
 const {
+  theme: themeProp,
   bloques = [],
   texto = '',
   highlights = [],
@@ -40,223 +40,31 @@ const {
   estilos,
 } = Astro.props;
 
-const titleColor = (sectionColors.color_titulo || '').trim();
-const bodyColor = (sectionColors.color_cuerpo || '').trim();
-const titleStyle = titleColor ? `color:${titleColor}` : undefined;
-const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const nosotrosTheme = normalizeNosotrosTheme(themeProp ?? DEFAULT_NOSOTROS_THEME);
 
-const isElegant = designDnaId === 'elegant';
-const dropCapClass = isElegant
-  ? 'first-letter:float-left first-letter:mr-3 first-letter:text-5xl first-letter:font-bold first-letter:text-[var(--color-primario)]'
-  : '';
-
-function escapeHtml(value: unknown) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-function escapeRegExp(value: string) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function renderTitleHtml(title: string, accent?: string) {
-  const safe = escapeHtml(title);
-  if (!accent || !accent.trim()) return safe;
-  const needle = escapeHtml(accent.trim());
-  const re = new RegExp(`(${escapeRegExp(needle)})`, 'i');
-  return safe.replace(re, '<span class="editorial-accent">$1</span>');
-}
-
-function renderBodyHtml(body: string, words: string[] = []) {
-  let html = escapeHtml(body);
-  for (const word of words) {
-    if (!word?.trim()) continue;
-    const needle = escapeHtml(word.trim());
-    const re = new RegExp(`(${escapeRegExp(needle)})`, 'gi');
-    html = html.replace(re, '<span class="editorial-accent">$1</span>');
-  }
-  return html;
-}
-
-function isVideoUrl(url: string) {
-  return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
-}
-
-function resolveBloques() {
-  if (Array.isArray(bloques) && bloques.length > 0) {
-    return bloques
-      .map((b) => {
-        if (!b) return null;
-        const textoBody = (b.texto || b.contenido || '').trim();
-        const media = (b.media_url || b.imagen || '').trim() || null;
-        return {
-          ...b,
-          texto: textoBody,
-          media_url: media,
-          imagen: media,
-          alineacion: b.alineacion === 'inversa' ? 'inversa' : 'alternada',
-        };
-      })
-      .filter((b) => b && (b.titulo || b.texto || b.media_url));
-  }
-
-  if (texto) {
-    return [
-      {
-        subtitulo: highlights[0] || 'Nuestra historia',
-        titulo: 'Nosotros',
-        caption: '',
-        imagen: null,
-        media_url: null,
-        texto,
-        alineacion: 'alternada',
-        acentos: [],
-      },
-    ];
-  }
-
-  return [];
-}
-
-const editorial = resolveBloques();
-
-/**
- * mediaPrimero: true → media arriba / izquierda
- */
-function mediaPrimero(bloque: { alineacion?: string }, index: number) {
-  if (bloque.alineacion === 'inversa') return true;
-  // alternada: pares texto primero, impares media primero
-  return index % 2 === 1;
-}
+const shared = {
+  bloques,
+  texto,
+  highlights,
+  designDnaId,
+  sectionColors,
+  estilos,
+};
 ---
 
-<div
-  class="mx-auto flex w-full max-w-none flex-col items-center px-5 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-8"
-  data-nosotros-panel
->
+<div data-nosotros-panel data-nosotros-theme={nosotrosTheme}>
   {
-    editorial.length === 0 ? (
-      <p class={`w-full max-w-prose text-center text-sm leading-relaxed ${estilos.mutedColor}`}>
-        Pronto contaremos nuestra historia.
-      </p>
+    nosotrosTheme === 'split' ? (
+      <NosotrosSplit {...shared} />
+    ) : nosotrosTheme === 'bento' ? (
+      <NosotrosBento {...shared} />
     ) : (
-      <div class="flex w-full flex-col items-center space-y-14">
-        {editorial.map((bloque, index) => {
-          const media =
-            typeof bloque.media_url === 'string' && bloque.media_url.trim()
-              ? bloque.media_url.trim()
-              : null;
-          const caption =
-            bloque.caption?.trim() || String(index + 1).padStart(2, '0') + '.';
-          const titleHtml = renderTitleHtml(bloque.titulo, bloque.tituloAcento);
-          const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);
-          const reverse = mediaPrimero(bloque, index);
-          const video = media ? isVideoUrl(media) : false;
-
-          const mediaBlock = (
-            <figure class="w-full">
-              <div class="w-full overflow-hidden">
-                {media ? (
-                  video ? (
-                    <video
-                      src={media}
-                      class="aspect-[4/3] w-full object-cover"
-                      autoplay
-                      muted
-                      loop
-                      playsinline
-                      data-reveal-media
-                    />
-                  ) : (
-                    <img
-                      src={media}
-                      alt=""
-                      data-reveal-media
-                      class="aspect-[4/3] w-full object-cover will-change-transform"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )
-                ) : (
-                  <div
-                    class="flex aspect-[4/3] w-full items-center justify-center border border-dashed border-current/15"
-                    aria-hidden="true"
-                  >
-                    <span class={`text-[0.55rem] uppercase tracking-[0.18em] ${estilos.softColor}`}>
-                      Media
-                    </span>
-                  </div>
-                )}
-              </div>
-              {caption && (
-                <figcaption
-                  class={`mt-2.5 w-full text-right text-[0.55rem] font-medium uppercase tracking-[0.2em] ${estilos.softColor}`}
-                >
-                  {caption}
-                </figcaption>
-              )}
-            </figure>
-          );
-
-          const textBlock = (
-            <div class="w-full">
-              {bloque.subtitulo && (
-                <p
-                  class={`w-full text-center text-[0.58rem] font-medium uppercase tracking-[0.32em] ${estilos.softColor}`}
-                >
-                  {bloque.subtitulo}
-                </p>
-              )}
-              <h3
-                class={`mt-4 w-full text-center text-[1.75rem] font-semibold uppercase leading-[1.15] tracking-[0.04em] font-[family-name:var(--fuente-display)] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
-                style={titleStyle}
-                set:html={titleHtml}
-              />
-              {bloque.texto && (
-                <p
-                  class={`editorial-body mx-auto mt-8 max-w-[22rem] text-left text-[0.92rem] leading-[1.8] ${!bodyColor ? estilos.textColor : ''} ${dropCapClass}`}
-                  style={bodyStyle}
-                  set:html={bodyHtml}
-                />
-              )}
-            </div>
-          );
-
-          return (
-            <article
-              class="editorial-row flex w-full flex-col items-center gap-7 md:flex-row md:items-stretch md:gap-8"
-              data-reveal
-              data-editorial-block
-              data-alineacion={bloque.alineacion}
-              data-media-first={reverse ? 'true' : 'false'}
-            >
-              <div class:list={['w-full md:w-1/2 md:self-center', reverse ? 'order-1' : 'order-2']}>
-                {mediaBlock}
-              </div>
-              <div
-                class:list={[
-                  'flex w-full flex-col justify-center md:w-1/2',
-                  reverse ? 'order-2' : 'order-1',
-                ]}
-              >
-                {textBlock}
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      <NosotrosEditorial {...shared} />
     )
   }
 </div>
 
 <style>
-  .editorial-accent {
-    color: var(--color-primario);
-  }
-
   [data-nosotros-panel] [data-reveal] {
     opacity: 0;
     transform: translate3d(0, 14px, 0);
@@ -279,7 +87,8 @@ function mediaPrimero(bloque: { alineacion?: string }, index: number) {
       transform var(--motion-reveal, 620ms cubic-bezier(0.22, 1, 0.36, 1));
   }
 
-  [data-nosotros-panel] [data-reveal].is-inview [data-reveal-media] {
+  [data-nosotros-panel] [data-reveal].is-inview [data-reveal-media],
+  [data-nosotros-panel] [data-reveal-media].is-inview {
     opacity: 1;
     transform: scale(1);
   }
@@ -301,7 +110,7 @@ function mediaPrimero(bloque: { alineacion?: string }, index: number) {
       if (panel.dataset.revealReady === 'true') return;
       panel.dataset.revealReady = 'true';
 
-      const items = panel.querySelectorAll('[data-reveal]');
+      const items = panel.querySelectorAll('[data-reveal], [data-reveal-media]');
       if (!items.length) return;
 
       const scrollRoot =

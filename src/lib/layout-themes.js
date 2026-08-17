@@ -1,5 +1,5 @@
 /**
- * Plantillas de estructura (Layout Themes) para Home y Ubicación.
+ * Plantillas de estructura (Layout Themes) para Home, Nosotros y Ubicación.
  */
 
 export const HOME_THEME_IDS = /** @type {const} */ ([
@@ -8,10 +8,16 @@ export const HOME_THEME_IDS = /** @type {const} */ ([
   'hero',
   'minimal',
 ]);
+export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
+  'editorial',
+  'split',
+  'bento',
+]);
 export const UBICACION_THEME_IDS = /** @type {const} */ (['modal', 'split']);
 
 /** Fallback cuando Supabase no trae home_theme. */
 export const DEFAULT_HOME_THEME = 'bento';
+export const DEFAULT_NOSOTROS_THEME = 'editorial';
 export const DEFAULT_UBICACION_THEME = 'modal';
 
 /**
@@ -48,6 +54,36 @@ export const HOME_THEME_MAP = Object.freeze({
   hero: 'hero',
   minimal: 'minimal',
 });
+
+/**
+ * @param {unknown} value
+ * @returns {'editorial' | 'split' | 'bento'}
+ */
+export function normalizeNosotrosTheme(value) {
+  const key = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  if (!key) return DEFAULT_NOSOTROS_THEME;
+
+  if (key.includes('split') || key.includes('divid')) return 'split';
+  if (key.includes('bento') || key.includes('grid') || key.includes('capsul')) {
+    return 'bento';
+  }
+  if (
+    key.includes('editorial') ||
+    key.includes('revista') ||
+    key.includes('magazine') ||
+    key === 'classic' ||
+    key === 'default'
+  ) {
+    return 'editorial';
+  }
+
+  return DEFAULT_NOSOTROS_THEME;
+}
 
 /**
  * @param {unknown} value

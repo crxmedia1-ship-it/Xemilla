@@ -17,6 +17,8 @@ import { themeToCssVars, homeBackgroundCssVars, DEFAULT_THEME } from '../../lib/
 import {
   sanitizeTheme,
   normalizeUbicacionTheme,
+  normalizeNosotrosTheme,
+  DEFAULT_NOSOTROS_THEME,
 } from '../../lib/layout-themes.js';
 import { resolveMediaUrl } from '../../lib/cloudinary.js';
 import { resolveSafeHomeProps } from '../../lib/home-safe-props.js';
@@ -33,11 +35,13 @@ interface Props {
   restaurante: any;
   /** Plantilla Home forzada desde [slug].astro (SSR) — solo estructura */
   homeTheme?: string;
+  /** Plantilla Nosotros forzada desde [slug].astro (SSR) */
+  nosotrosTheme?: string;
   /** Plantilla Ubicación forzada desde [slug].astro (SSR) */
   ubicacionTheme?: string;
 }
 
-const { restaurante, homeTheme: homeThemeProp, ubicacionTheme: ubicacionThemeProp } = Astro.props;
+const { restaurante, homeTheme: homeThemeProp, nosotrosTheme: nosotrosThemeProp, ubicacionTheme: ubicacionThemeProp } = Astro.props;
 const theme = restaurante?.theme ?? DEFAULT_THEME;
 const gadgets = restaurante?.gadgets || {};
 const uiEstilo = restaurante?.uiEstilo || {};
@@ -64,6 +68,13 @@ let homeTheme = sanitizeTheme(
 );
 const ubicacionTheme = normalizeUbicacionTheme(
   ubicacionThemeProp ?? restaurante?.ubicacionTheme ?? restaurante?.ubicacion_theme,
+);
+const nosotrosTheme = normalizeNosotrosTheme(
+  nosotrosThemeProp ??
+    restaurante?.nosotrosTheme ??
+    restaurante?.nosotros_theme ??
+    restaurante?.uiEstilo?.nosotros?.theme ??
+    DEFAULT_NOSOTROS_THEME,
 );
 
 console.log('🔥 [SUPABASE READ]', {
@@ -276,6 +287,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   data-restaurante-id={restaurante?.id || ''}
   data-design={theme?.designDnaId || 'elegant'}
   data-home-theme={homeTheme}
+  data-nosotros-theme={nosotrosTheme}
   data-ubicacion-theme={ubicacionTheme}
   data-estilo-navegacion={estiloNavegacion}
   data-fondo-home-tipo={fondoHome.tipo || 'color'}
@@ -563,6 +575,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       estilos={estilos}
     >
       <NosotrosPanel
+        theme={nosotrosTheme}
         bloques={nosotros?.bloques ?? []}
         texto={nosotros?.texto || ''}
         highlights={nosotros?.highlights || []}

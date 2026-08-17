@@ -18,6 +18,7 @@ import {
 import { parseBoutiqueConfig } from './boutique.js';
 import {
   normalizeHomeTheme,
+  normalizeNosotrosTheme,
   normalizeUbicacionTheme,
 } from './layout-themes.js';
 import { resolveMediaUrl } from './cloudinary.js';
@@ -178,6 +179,7 @@ const RESTAURANTE_SELECT_FULL = [
   'app_icon_url',
   'ui_estilo',
   'home_theme',
+  'nosotros_theme',
   'ubicacion_theme',
 ].join(', ');
 
@@ -206,13 +208,15 @@ export async function listRestauranteSlugs() {
 async function enrichThemesWithServiceRole(row) {
   const hasHome =
     row.home_theme != null && String(row.home_theme).trim() !== '';
+  const hasNosotros =
+    row.nosotros_theme != null && String(row.nosotros_theme).trim() !== '';
   const hasUbicacion =
     row.ubicacion_theme != null && String(row.ubicacion_theme).trim() !== '';
   const hasUiEstilo = row.ui_estilo != null && row.ui_estilo !== '';
   const hasSeccionesFondo =
     row.secciones_fondo != null && row.secciones_fondo !== '';
 
-  if (hasHome && hasUbicacion && hasUiEstilo && hasSeccionesFondo) {
+  if (hasHome && hasNosotros && hasUbicacion && hasUiEstilo && hasSeccionesFondo) {
     return row;
   }
 
@@ -227,7 +231,7 @@ async function enrichThemesWithServiceRole(row) {
   const { data, error } = await service
     .from('restaurantes')
     .select(
-      'home_theme, ubicacion_theme, logo_url, ui_estilo, secciones_fondo, eslogan, nombre_comercial',
+      'home_theme, nosotros_theme, ubicacion_theme, logo_url, ui_estilo, secciones_fondo, eslogan, nombre_comercial',
     )
     .eq('id', row.id)
     .maybeSingle();
@@ -241,6 +245,7 @@ async function enrichThemesWithServiceRole(row) {
 
   console.log('[supabase] identidad visual via service role:', {
     home_theme: data.home_theme,
+    nosotros_theme: data.nosotros_theme,
     ubicacion_theme: data.ubicacion_theme,
     has_ui_estilo: data.ui_estilo != null,
     has_secciones_fondo: data.secciones_fondo != null,
@@ -249,6 +254,7 @@ async function enrichThemesWithServiceRole(row) {
   return {
     ...row,
     home_theme: hasHome ? row.home_theme : data.home_theme,
+    nosotros_theme: hasNosotros ? row.nosotros_theme : data.nosotros_theme,
     ubicacion_theme: hasUbicacion ? row.ubicacion_theme : data.ubicacion_theme,
     logo_url: asText(row.logo_url) || asText(data.logo_url) || row.logo_url,
     ui_estilo: hasUiEstilo ? row.ui_estilo : data.ui_estilo,
@@ -306,7 +312,7 @@ async function fetchRestauranteRow(slug) {
 
   const themes = await supabase
     .from('restaurantes')
-    .select('id, home_theme, ubicacion_theme, logo_url')
+    .select('id, home_theme, nosotros_theme, ubicacion_theme, logo_url')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -315,6 +321,7 @@ async function fetchRestauranteRow(slug) {
     merged = {
       ...merged,
       home_theme: themes.data.home_theme,
+      nosotros_theme: themes.data.nosotros_theme,
       ubicacion_theme: themes.data.ubicacion_theme,
       logo_url: asText(merged.logo_url) || themes.data.logo_url,
     };
@@ -769,9 +776,15 @@ async function loadRestauranteBySlug(slug) {
 
   // Preservar valor RAW de Supabase (sanitize solo en [slug] / RestaurantApp)
   const homeThemeRaw = row.home_theme ?? /** @type {any} */ (uiEstilo).home_theme ?? null;
+  const nosotrosThemeRaw =
+    row.nosotros_theme ??
+    /** @type {any} */ (uiEstilo)?.nosotros?.theme ??
+    /** @type {any} */ (uiEstilo).nosotros_theme ??
+    null;
   const ubicacionThemeRaw =
     row.ubicacion_theme ?? /** @type {any} */ (uiEstilo).ubicacion_theme ?? null;
   const homeTheme = normalizeHomeTheme(homeThemeRaw);
+  const nosotrosTheme = normalizeNosotrosTheme(nosotrosThemeRaw);
   const ubicacionTheme = normalizeUbicacionTheme(ubicacionThemeRaw);
 
   return {
@@ -794,9 +807,11 @@ async function loadRestauranteBySlug(slug) {
     uiEstilo,
     uiCssVars,
     homeTheme,
+    nosotrosTheme,
     ubicacionTheme,
     /** RAW desde public.restaurantes — no sobrescribir con sanitize */
     home_theme: homeThemeRaw,
+    nosotros_theme: nosotrosThemeRaw,
     ubicacion_theme: ubicacionThemeRaw,
     customCss: sanitizeCustomCss(row.custom_css),
     seccionesFondo: {

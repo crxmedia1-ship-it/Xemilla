@@ -11,6 +11,7 @@ import {
 import { buildBoutiqueConfig } from '../../lib/boutique.js';
 import {
   normalizeHomeTheme,
+  normalizeNosotrosTheme,
   normalizeUbicacionTheme,
 } from '../../lib/layout-themes.js';
 import {
@@ -140,10 +141,16 @@ async function handleUpdateMarca({ request, cookies }) {
   patch.app_icon_url = normalizeUrlOrText(raw.app_icon_url);
 
   // Tokens tipográficos Home + colores por sección
-  patch.ui_estilo = buildUiEstiloFromBody(raw);
+  const uiEstilo = buildUiEstiloFromBody(raw);
+  const nosotrosTheme = normalizeNosotrosTheme(raw.nosotros_theme);
+  if (uiEstilo?.nosotros && typeof uiEstilo.nosotros === 'object') {
+    uiEstilo.nosotros.theme = nosotrosTheme;
+  }
+  patch.ui_estilo = uiEstilo;
 
   // Plantillas de estructura (Layout Themes)
   patch.home_theme = normalizeHomeTheme(raw.home_theme);
+  patch.nosotros_theme = nosotrosTheme;
   patch.ubicacion_theme = normalizeUbicacionTheme(raw.ubicacion_theme);
 
   // Fondos por sección (JSONB) + legacy imagen_fondo si home es image
@@ -282,6 +289,7 @@ async function handleUpdateMarca({ request, cookies }) {
         'app_icon_url',
         'ui_estilo',
         'home_theme',
+        'nosotros_theme',
         'ubicacion_theme',
         'imagen_fondo',
         'custom_css',
@@ -319,7 +327,7 @@ async function handleUpdateMarca({ request, cookies }) {
   if (error) {
     // Si faltan columnas nuevas en Supabase, reintentar sin ellas (legacy)
     const missingNew =
-      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|gadget_nutricion|config_boutique|home_theme|ubicacion_theme|column|schema cache/i.test(
+      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|gadget_nutricion|config_boutique|home_theme|nosotros_theme|ubicacion_theme|column|schema cache/i.test(
         error.message || '',
       );
     if (missingNew) {
@@ -337,7 +345,18 @@ async function handleUpdateMarca({ request, cookies }) {
       delete legacyPatch.gadget_ar;
       delete legacyPatch.config_boutique;
       delete legacyPatch.home_theme;
+      // Keep nosotros_theme mirrored in ui_estilo even if the flat column fails.
+      delete legacyPatch.nosotros_theme;
       delete legacyPatch.ubicacion_theme;
+      if (
+        legacyPatch.ui_estilo &&
+        typeof legacyPatch.ui_estilo === 'object' &&
+        patch.nosotros_theme
+      ) {
+        const ui = /** @type {Record<string, any>} */ (legacyPatch.ui_estilo);
+        ui.nosotros = { ...(ui.nosotros || {}), theme: patch.nosotros_theme };
+        legacyPatch.ui_estilo = ui;
+      }
       const retry = await writeClient
         .from('restaurantes')
         .update(legacyPatch)

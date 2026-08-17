@@ -1,0 +1,218 @@
+---
+/**
+ * Nosotros Split — 50/50: media fija a un lado + historia en tarjetas deslizantes.
+ */
+import {
+  resolveNosotrosBloques,
+  renderTitleHtml,
+  renderBodyHtml,
+  isVideoUrl,
+} from '../../../lib/nosotros-layout.js';
+
+interface BloqueEditorial {
+  subtitulo?: string;
+  titulo?: string;
+  tituloAcento?: string;
+  caption?: string;
+  imagen?: string | null;
+  media_url?: string | null;
+  texto?: string;
+  contenido?: string;
+  alineacion?: string;
+  acentos?: string[];
+}
+
+interface Props {
+  bloques?: BloqueEditorial[];
+  texto?: string;
+  highlights?: string[];
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  bloques = [],
+  texto = '',
+  highlights = [],
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+
+const items = resolveNosotrosBloques({ bloques, texto, highlights });
+const heroMedia =
+  items.find((b) => typeof b.media_url === 'string' && b.media_url.trim())?.media_url?.trim() ||
+  null;
+const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
+---
+
+<div
+  class="nosotros-split mx-auto flex w-full max-w-none flex-col pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-4 font-[family-name:var(--font-body,var(--fuente-principal))] md:min-h-[min(70dvh,40rem)] md:flex-row md:items-stretch md:gap-0"
+>
+  {
+    items.length === 0 ? (
+      <p class={`mx-auto w-full max-w-prose px-5 py-10 text-center text-sm leading-relaxed ${estilos.mutedColor}`}>
+        Pronto contaremos nuestra historia.
+      </p>
+    ) : (
+      <>
+        <aside class="nosotros-split__media relative w-full shrink-0 overflow-hidden md:sticky md:top-0 md:h-[min(70dvh,40rem)] md:w-1/2 md:self-start">
+          {heroMedia ? (
+            heroVideo ? (
+              <video
+                src={heroMedia}
+                class="h-56 w-full object-cover md:h-full"
+                autoplay
+                muted
+                loop
+                playsinline
+                data-reveal-media
+              />
+            ) : (
+              <img
+                src={heroMedia}
+                alt=""
+                class="h-56 w-full object-cover md:h-full"
+                loading="lazy"
+                decoding="async"
+                data-reveal-media
+              />
+            )
+          ) : (
+            <div
+              class="flex h-56 w-full items-center justify-center border border-dashed border-current/15 md:h-full"
+              aria-hidden="true"
+              style="background:color-mix(in srgb, var(--color-primario) 12%, transparent)"
+            >
+              <span class={`text-[0.55rem] uppercase tracking-[0.18em] ${estilos.softColor}`}>
+                Media
+              </span>
+            </div>
+          )}
+          <div
+            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-black/35"
+            aria-hidden="true"
+          />
+        </aside>
+
+        <div
+          class="nosotros-split__stories flex w-full flex-col gap-3 overflow-x-auto overflow-y-visible px-4 py-5 md:w-1/2 md:overflow-x-visible md:overflow-y-auto md:px-6 md:py-8"
+          data-reveal
+        >
+          <p
+            class={`mb-1 text-[0.55rem] font-semibold uppercase tracking-[0.28em] ${estilos.softColor}`}
+          >
+            Nuestra historia
+          </p>
+
+          <div class="flex snap-x snap-mandatory gap-3 md:flex-col md:snap-none md:gap-4">
+            {items.map((bloque, index) => {
+              const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
+              const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);
+              const cardMedia =
+                typeof bloque.media_url === 'string' &&
+                bloque.media_url.trim() &&
+                bloque.media_url.trim() !== heroMedia
+                  ? bloque.media_url.trim()
+                  : null;
+              const cardVideo = cardMedia ? isVideoUrl(cardMedia) : false;
+
+              return (
+                <article
+                  class="glass-panel studio-card flex w-[min(85vw,20rem)] shrink-0 snap-center flex-col gap-3 p-4 md:w-full"
+                  data-reveal
+                  style="border-color:color-mix(in srgb, var(--color-primario) 22%, transparent)"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <span
+                      class={`text-[0.55rem] font-semibold uppercase tracking-[0.22em] ${estilos.softColor}`}
+                    >
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    {bloque.subtitulo && (
+                      <span class={`truncate text-[0.55rem] uppercase tracking-[0.16em] ${estilos.softColor}`}>
+                        {bloque.subtitulo}
+                      </span>
+                    )}
+                  </div>
+
+                  {cardMedia && (
+                    <div class="overflow-hidden rounded-xl">
+                      {cardVideo ? (
+                        <video
+                          src={cardMedia}
+                          class="aspect-[16/10] w-full object-cover"
+                          autoplay
+                          muted
+                          loop
+                          playsinline
+                          data-reveal-media
+                        />
+                      ) : (
+                        <img
+                          src={cardMedia}
+                          alt=""
+                          class="aspect-[16/10] w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          data-reveal-media
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {bloque.titulo && (
+                    <h3
+                      class={`text-[1.15rem] font-semibold leading-snug tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                      style={titleStyle}
+                      set:html={titleHtml}
+                    />
+                  )}
+
+                  {bloque.texto && (
+                    <p
+                      class={`text-[0.88rem] leading-[1.7] ${!bodyColor ? estilos.textColor : ''}`}
+                      style={bodyStyle}
+                      set:html={bodyHtml}
+                    />
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </>
+    )
+  }
+</div>
+
+<style>
+  .editorial-accent {
+    color: var(--color-primario);
+  }
+
+  .nosotros-split__stories {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  @media (min-width: 768px) {
+    .nosotros-split__stories {
+      max-height: min(70dvh, 40rem);
+    }
+  }
+</style>

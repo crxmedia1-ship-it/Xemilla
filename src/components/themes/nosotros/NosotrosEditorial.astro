@@ -1,0 +1,187 @@
+---
+/**
+ * Nosotros Editorial — maqueta tipo revista centrada con drop cap.
+ */
+import {
+  resolveNosotrosBloques,
+  renderTitleHtml,
+  renderBodyHtml,
+  isVideoUrl,
+  mediaPrimero,
+} from '../../../lib/nosotros-layout.js';
+
+interface BloqueEditorial {
+  subtitulo?: string;
+  titulo?: string;
+  tituloAcento?: string;
+  caption?: string;
+  imagen?: string | null;
+  media_url?: string | null;
+  texto?: string;
+  contenido?: string;
+  alineacion?: string;
+  acentos?: string[];
+}
+
+interface Props {
+  bloques?: BloqueEditorial[];
+  texto?: string;
+  highlights?: string[];
+  designDnaId?: string;
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  bloques = [],
+  texto = '',
+  highlights = [],
+  designDnaId = 'elegant',
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+
+const dropCapClass =
+  designDnaId === 'elegant'
+    ? 'first-letter:float-left first-letter:mr-2 first-letter:text-5xl first-letter:font-bold first-letter:text-[var(--color-primario)]'
+    : 'first-letter:float-left first-letter:mr-2 first-letter:text-5xl first-letter:font-bold';
+
+const editorial = resolveNosotrosBloques({ bloques, texto, highlights });
+---
+
+<div class="mx-auto flex w-full max-w-none flex-col items-center px-5 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-8 font-[family-name:var(--font-body,var(--fuente-principal))]">
+  {
+    editorial.length === 0 ? (
+      <p class={`w-full max-w-prose text-center text-sm leading-relaxed ${estilos.mutedColor}`}>
+        Pronto contaremos nuestra historia.
+      </p>
+    ) : (
+      <div class="flex w-full flex-col items-center space-y-14">
+        {editorial.map((bloque, index) => {
+          const media =
+            typeof bloque.media_url === 'string' && bloque.media_url.trim()
+              ? bloque.media_url.trim()
+              : null;
+          const caption =
+            bloque.caption?.trim() || String(index + 1).padStart(2, '0') + '.';
+          const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
+          const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);
+          const reverse = mediaPrimero(bloque, index);
+          const video = media ? isVideoUrl(media) : false;
+
+          const mediaBlock = (
+            <figure class="w-full">
+              <div class="w-full overflow-hidden">
+                {media ? (
+                  video ? (
+                    <video
+                      src={media}
+                      class="aspect-[4/3] w-full object-cover"
+                      autoplay
+                      muted
+                      loop
+                      playsinline
+                      data-reveal-media
+                    />
+                  ) : (
+                    <img
+                      src={media}
+                      alt=""
+                      data-reveal-media
+                      class="aspect-[4/3] w-full object-cover will-change-transform"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )
+                ) : (
+                  <div
+                    class="flex aspect-[4/3] w-full items-center justify-center border border-dashed border-current/15"
+                    aria-hidden="true"
+                  >
+                    <span class={`text-[0.55rem] uppercase tracking-[0.18em] ${estilos.softColor}`}>
+                      Media
+                    </span>
+                  </div>
+                )}
+              </div>
+              {caption && (
+                <figcaption
+                  class={`mt-2.5 w-full text-right text-[0.55rem] font-medium uppercase tracking-[0.2em] ${estilos.softColor}`}
+                >
+                  {caption}
+                </figcaption>
+              )}
+            </figure>
+          );
+
+          const textBlock = (
+            <div class="w-full">
+              {bloque.subtitulo && (
+                <p
+                  class={`w-full text-center text-[0.58rem] font-medium uppercase tracking-[0.32em] ${estilos.softColor}`}
+                >
+                  {bloque.subtitulo}
+                </p>
+              )}
+              <h3
+                class={`mt-4 w-full text-center text-[1.75rem] font-semibold uppercase leading-[1.15] tracking-[0.04em] font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                style={titleStyle}
+                set:html={titleHtml}
+              />
+              {bloque.texto && (
+                <p
+                  class={`editorial-body mx-auto mt-8 max-w-[22rem] text-left text-[0.92rem] leading-[1.8] ${!bodyColor ? estilos.textColor : ''} ${dropCapClass}`}
+                  style={bodyStyle}
+                  set:html={bodyHtml}
+                />
+              )}
+            </div>
+          );
+
+          return (
+            <article
+              class="editorial-row flex w-full flex-col items-center gap-7 md:flex-row md:items-stretch md:gap-8"
+              data-reveal
+              data-editorial-block
+              data-alineacion={bloque.alineacion}
+              data-media-first={reverse ? 'true' : 'false'}
+            >
+              <div class:list={['w-full md:w-1/2 md:self-center', reverse ? 'order-1' : 'order-2']}>
+                {mediaBlock}
+              </div>
+              <div
+                class:list={[
+                  'flex w-full flex-col justify-center md:w-1/2',
+                  reverse ? 'order-2' : 'order-1',
+                ]}
+              >
+                {textBlock}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .editorial-accent {
+    color: var(--color-primario);
+  }
+</style>

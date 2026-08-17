@@ -15,6 +15,7 @@ import {
 import { parseBoutiqueConfig } from '../../lib/boutique.js';
 import {
   normalizeHomeTheme,
+  normalizeNosotrosTheme,
   normalizeUbicacionTheme,
 } from '../../lib/layout-themes.js';
 import { macrosPresentIn, resolveMacroId } from '../../config/menu-macros.js';
@@ -414,6 +415,9 @@ const marca = {
   gadget_ar: Boolean(restaurante?.gadget_ar),
   boutique_productos: boutiqueConfig.productos,
   home_theme: normalizeHomeTheme(restaurante?.home_theme),
+  nosotros_theme: normalizeNosotrosTheme(
+    restaurante?.nosotros_theme ?? uiEstiloRaw?.nosotros?.theme,
+  ),
   ubicacion_theme: normalizeUbicacionTheme(restaurante?.ubicacion_theme),
   reservas_label: configReservas.label || configReservas.boton_texto || 'PEDIR / RESERVAR',
   reservas_destino_tipo:
@@ -2123,6 +2127,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     <p class={labelClass}>Nosotros</p>
 
                     <div class="id-ubicacion">
+                      <label class="id-ubicacion__field">
+                        <span>Plantilla Nosotros</span>
+                        <select id="marca-nosotros-theme" name="nosotros_theme" class="id-ubicacion__select">
+                          <option value="editorial" selected={marca.nosotros_theme === 'editorial'}>
+                            Editorial
+                          </option>
+                          <option value="split" selected={marca.nosotros_theme === 'split'}>
+                            Split
+                          </option>
+                          <option value="bento" selected={marca.nosotros_theme === 'bento'}>
+                            Bento
+                          </option>
+                        </select>
+                      </label>
+
                       <label class="id-ubicacion__field">
                         <span>Fondo</span>
                         <select id="marca-fondo-nosotros-tipo" name="fondo_nosotros_tipo" class="id-ubicacion__select">
@@ -5393,27 +5412,27 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     margin-top: 0.15rem;
   }
 
-  .id-ubicacion {
+  :global(.id-ubicacion) {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
   }
 
-  .id-ubicacion__row {
+  :global(.id-ubicacion__row) {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.55rem;
   }
 
-  .id-ubicacion__field {
+  :global(.id-ubicacion__field) {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: 0.28rem;
   }
 
-  .id-ubicacion__field span,
-  .id-swatch > span {
+  :global(.id-ubicacion__field span),
+  :global(.id-swatch > span) {
     font-size: 0.58rem;
     font-weight: 650;
     letter-spacing: 0.14em;
@@ -5421,8 +5440,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     color: var(--text-muted, #71717a);
   }
 
-  .id-ubicacion__select,
-  .id-ubicacion__input {
+  :global(.id-ubicacion__select),
+  :global(.id-ubicacion__input) {
     width: 100%;
     min-height: 2.15rem;
     border-radius: 0.7rem;
@@ -5431,22 +5450,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     color: var(--text-primary, #fff);
     font-size: 0.78rem;
     padding: 0.4rem 0.65rem;
+    box-sizing: border-box;
   }
 
-  .id-ubicacion__swatches {
+  :global(.id-ubicacion__swatches) {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem;
   }
 
-  .id-cat-fondo {
+  :global(.id-cat-fondo) {
     display: grid;
     grid-template-columns: 7.5rem minmax(0, 1fr);
     align-items: center;
     gap: 0.55rem;
   }
 
-  .id-cat-fondo__name {
+  :global(.id-cat-fondo__name) {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -5456,14 +5476,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     color: var(--text-primary, #fff);
   }
 
-  .id-swatch {
+  :global(.id-swatch) {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: 0.28rem;
   }
 
-  .id-swatch__ctrl {
+  :global(.id-swatch__ctrl) {
     display: flex;
     align-items: center;
     gap: 0.45rem;
@@ -5474,7 +5494,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     background: color-mix(in srgb, var(--text-primary, #fff) 4%, transparent);
   }
 
-  .id-swatch__dot {
+  :global(.id-swatch__dot) {
     width: 1.35rem;
     height: 1.35rem;
     flex-shrink: 0;
@@ -5487,16 +5507,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     -webkit-appearance: none;
   }
 
-  .id-swatch__dot::-webkit-color-swatch-wrapper {
+  :global(.id-swatch__dot::-webkit-color-swatch-wrapper) {
     padding: 0;
   }
 
-  .id-swatch__dot::-webkit-color-swatch {
+  :global(.id-swatch__dot::-webkit-color-swatch) {
     border: 0;
     border-radius: 999px;
   }
 
-  .id-swatch__hex {
+  :global(.id-swatch__hex) {
     min-width: 0;
     flex: 1;
     border: 0;
@@ -5510,25 +5530,25 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   @media (max-width: 640px) {
-    .id-ubicacion__row,
-    .id-ubicacion__swatches {
+    :global(.id-ubicacion__row),
+    :global(.id-ubicacion__swatches) {
       grid-template-columns: 1fr;
     }
 
-    .id-cat-fondo {
+    :global(.id-cat-fondo) {
       grid-template-columns: 1fr;
       gap: 0.28rem;
     }
   }
 
-  .nosotros-bloque {
+  :global(.nosotros-bloque) {
     padding: 0.7rem 0.85rem 0.85rem;
     border-radius: 0.95rem;
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
     background: color-mix(in srgb, var(--text-primary, #fff) 3.5%, transparent);
   }
 
-  .nosotros-bloque__head {
+  :global(.nosotros-bloque__head) {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -5536,7 +5556,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     margin-bottom: 0.55rem;
   }
 
-  .nosotros-bloque__kicker {
+  :global(.nosotros-bloque__kicker) {
     margin: 0;
     font-size: 0.58rem;
     font-weight: 650;
@@ -5545,7 +5565,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     color: var(--text-muted, #71717a);
   }
 
-  .nosotros-bloque__remove {
+  :global(.nosotros-bloque__remove) {
     border: 0;
     border-radius: 0.5rem;
     padding: 0.22rem 0.5rem;
@@ -5559,11 +5579,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     font-family: inherit;
   }
 
-  .nosotros-bloque__remove:hover {
+  :global(.nosotros-bloque__remove:hover) {
     background: color-mix(in srgb, #fb7185 12%, transparent);
   }
 
-  .nosotros-bloque textarea.id-ubicacion__input {
+  :global(.nosotros-bloque textarea.id-ubicacion__input) {
     min-height: 4.4rem;
     resize: vertical;
     line-height: 1.45;
@@ -6216,13 +6236,26 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const MACRO_PILL_INACTIVE = 'macro-filter-pill';
 
   /** Astro scopes page CSS via data-astro-cid; stamp it on JS-created nodes. */
-  const ASTRO_SCOPE_ATTR = [...(document.querySelector('#status-scroll, #macro-scroll, .platos-table')?.attributes ?? [])]
+  const ASTRO_SCOPE_ATTR = [
+    ...(document.querySelector(
+      '#nosotros-bloques-list, [data-nosotros-bloque], #status-scroll, #macro-scroll, .platos-table, #dashboard-root',
+    )?.attributes ?? []),
+  ]
     .map((a) => a.name)
     .find((n) => n.startsWith('data-astro-cid'));
 
   /** @param {HTMLElement} el */
   function stampAstroScope(el) {
     if (ASTRO_SCOPE_ATTR && el instanceof HTMLElement) el.setAttribute(ASTRO_SCOPE_ATTR, '');
+  }
+
+  /** @param {HTMLElement} rootEl */
+  function stampAstroScopeTree(rootEl) {
+    if (!(rootEl instanceof HTMLElement)) return;
+    stampAstroScope(rootEl);
+    rootEl.querySelectorAll('*').forEach((node) => {
+      if (node instanceof HTMLElement) stampAstroScope(node);
+    });
   }
   const opsTelefonoInput = document.getElementById('hub-telefono');
   const opsHorarioInput = document.getElementById('ops-horario');
@@ -10272,6 +10305,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         </label>
       </div>
     `;
+    stampAstroScopeTree(wrap);
     return wrap;
   }
 
@@ -10686,6 +10720,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           gadget_ar: checked('marca-gadget-ar'),
           boutique_productos: collectBoutiqueProductos(),
           home_theme: val('marca-home-theme') || 'editorial',
+          nosotros_theme: val('marca-nosotros-theme') || 'editorial',
           ubicacion_theme: val('marca-ubicacion-theme') || 'modal',
         }),
       });

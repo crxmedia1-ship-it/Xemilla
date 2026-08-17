@@ -56,6 +56,7 @@ const RESTAURANTE_ADMIN_SELECT = [
   // resolveHubCoverUrl / resolveHubLogoBg leen ui_estilo.hub.
   'ui_estilo',
   'home_theme',
+  'nosotros_theme',
   'ubicacion_theme',
 ].join(', ');
 

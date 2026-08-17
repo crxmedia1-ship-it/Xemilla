@@ -807,6 +807,7 @@ export function parseUiEstilo(value) {
       color_fondo: normalizeHexColor(nosotros.color_fondo || nosotros.colorFondo, ''),
       color_titulo: normalizeHexColor(nosotros.color_titulo || nosotros.colorTitulo, ''),
       color_cuerpo: normalizeHexColor(nosotros.color_cuerpo || nosotros.colorCuerpo, ''),
+      theme: String(nosotros.theme || '').trim().toLowerCase() || '',
     },
     ubicacion: {
       color_fondo: normalizeHexColor(ubicacion.color_fondo || ubicacion.colorFondo, ''),
@@ -946,6 +947,9 @@ export function buildUiEstiloFromBody(raw) {
       color_fondo: normalizeHexColor(raw.nosotros_color_fondo, ''),
       color_titulo: normalizeHexColor(raw.nosotros_color_titulo, ''),
       color_cuerpo: normalizeHexColor(raw.nosotros_color_cuerpo, ''),
+      theme: String(raw.nosotros_theme ?? raw.nosotros?.theme ?? '')
+        .trim()
+        .toLowerCase() || 'editorial',
     },
     ubicacion: {
       color_fondo: normalizeHexColor(raw.ubicacion_color_fondo, ''),
