@@ -1183,6 +1183,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                     type="button"
                                     data-edit-ar
                                     data-shows-when-ar
+                                    hidden={!marca.gadget_ar}
                                     class:list={[
                                       'ar-chip',
                                       plato.modelo_3d_url && 'is-on',
@@ -1225,6 +1226,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                 type="button"
                                 data-edit-nutricion
                                 data-shows-when-nutricion
+                                hidden={!marca.gadget_nutricion}
                                 class:list={[
                                   'nut-edit-btn',
                                   !marca.gadget_nutricion && 'hidden',
@@ -3232,7 +3234,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   <div
         id="nutricion-modal"
-        class="modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-6 backdrop-blur-md"
+        class="modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 sm:p-6 backdrop-blur-md"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nutricion-modal-title"
@@ -3240,24 +3242,24 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         aria-hidden="true"
       >
         <div data-modal-card class={`modal-card glass-panel ${bounceWallClass} w-full max-w-lg overflow-hidden p-0 shadow-2xl`}>
-          <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
-            <div class="min-w-0">
+          <div class="nutricion-modal__head flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5 sm:px-5 sm:py-4">
+            <div class="min-w-0 flex-1">
               <p class="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 Ficha nutricional
               </p>
-              <h3 id="nutricion-modal-title" class="mt-1 truncate font-blacksushi-display text-xl font-semibold">
+              <h3 id="nutricion-modal-title" class="mt-1 truncate font-blacksushi-display text-lg font-semibold sm:text-xl">
                 Plato
               </h3>
             </div>
             <button
               type="button"
               id="nutricion-modal-close"
-              class="rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+              class="shrink-0 rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
             >
               Cerrar
             </button>
           </div>
-          <div class="max-h-[min(70vh,32rem)] space-y-5 overflow-y-auto px-5 py-5">
+          <div class="nutricion-modal__body max-h-[min(70vh,32rem)] space-y-5 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
             <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               <div class="nut-metric">
                 <label for="nut-calorias">kcal</label>
@@ -3584,6 +3586,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     text-transform: uppercase;
     cursor: pointer;
     font-family: inherit;
+  }
+
+  .ar-chip.hidden,
+  .ar-chip[hidden],
+  [data-shows-when-ar].hidden,
+  [data-shows-when-ar][hidden] {
+    display: none !important;
   }
 
   .ar-chip:hover {
@@ -3972,6 +3981,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     font: inherit;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Scoped display:flex beats Tailwind .hidden — force hide when gadget is off */
+  .nut-edit-btn.hidden,
+  .nut-edit-btn[hidden],
+  [data-shows-when-nutricion].hidden,
+  [data-shows-when-nutricion][hidden] {
+    display: none !important;
   }
 
   .nut-edit-btn:hover,
@@ -5115,6 +5132,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       margin-top: 0.7rem;
     }
 
+    .dish-gadget-stack:not(:has(.nut-edit-btn:not(.hidden):not([hidden]))) {
+      display: none;
+      margin-top: 0;
+    }
+
     .nut-edit-btn__title {
       font-size: 0.72rem;
       letter-spacing: 0.06em;
@@ -5224,14 +5246,67 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
     #nutricion-modal {
       z-index: 120;
-      align-items: flex-end;
-      padding: 0;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(0.85rem, env(safe-area-inset-top))
+        max(0.85rem, env(safe-area-inset-right))
+        max(0.85rem, env(safe-area-inset-bottom))
+        max(0.85rem, env(safe-area-inset-left));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     #nutricion-modal .modal-card {
-      max-height: min(92dvh, 40rem);
-      border-radius: 1.35rem 1.35rem 0 0;
-      padding-bottom: env(safe-area-inset-bottom);
+      width: min(100%, 26rem);
+      max-height: min(88dvh, 36rem);
+      margin: auto;
+      border-radius: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #nutricion-modal .nutricion-modal__head {
+      flex-shrink: 0;
+    }
+
+    #nutricion-modal .nutricion-modal__body {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 1rem;
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    #nutricion-modal #nutricion-modal-title {
+      font-size: 1.05rem;
+      line-height: 1.25;
+    }
+
+    #nutricion-modal .grid.grid-cols-2 {
+      gap: 0.5rem;
+    }
+
+    #nutricion-modal .nut-metric {
+      padding: 0.55rem 0.5rem;
+    }
+
+    #nutricion-modal .nut-metric input {
+      font-size: 0.95rem;
+    }
+
+    #nutricion-modal .nut-chip {
+      font-size: 0.68rem;
+      padding: 0.42rem 0.65rem;
+    }
+
+    #nutricion-modal .nut-save-btn {
+      width: 100%;
+      min-height: 2.65rem;
+      margin-top: 0.25rem;
     }
 
     .platos-row[data-disponible='false'] {
@@ -8917,15 +8992,17 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const mediaCell = plato.imagen_url
       ? `<button type="button" data-ver-plato title="Ver / editar media" class="dish-thumb"><img src="${escapeHtml(platoFillUrl(plato.imagen_url, { w: 480, h: 360 }))}" alt="" class="dish-thumb__img" loading="lazy" /></button>`
       : `<label class="dish-thumb dish-thumb--empty"><input type="file" accept="image/*,video/*,image/gif" data-upload-media class="sr-only" /><span data-upload-label title="Subir media" class="dish-thumb__placeholder">${CAMERA_ICON_SVG}</span></label>`;
-    const nutHidden = isNutricionGadgetOn() ? '' : ' hidden';
+    const nutOn = isNutricionGadgetOn();
+    const nutHidden = nutOn ? '' : ' hidden';
+    const nutAttr = nutOn ? '' : ' hidden';
     const nutPreview = formatNutricionPreviewFromRow(tr);
     const nutFilled = nutPreview !== 'Sin ficha · clic para editar';
-    const nutBtn = `<button type="button" data-edit-nutricion data-shows-when-nutricion class="nut-edit-btn${nutHidden}" title="Editar ficha nutricional"><span class="nut-edit-btn__top"><span class="nut-edit-btn__title">Nutrición</span><span class="nut-edit-btn__go" aria-hidden="true">›</span></span><span data-nutricion-preview class="nut-edit-btn__preview ${nutFilled ? 'is-filled' : 'is-empty'}">${escapeHtml(nutPreview)}</span></button>`;
+    const nutBtn = `<button type="button" data-edit-nutricion data-shows-when-nutricion class="nut-edit-btn${nutHidden}"${nutAttr} title="Editar ficha nutricional"><span class="nut-edit-btn__top"><span class="nut-edit-btn__title">Nutrición</span><span class="nut-edit-btn__go" aria-hidden="true">›</span></span><span data-nutricion-preview class="nut-edit-btn__preview ${nutFilled ? 'is-filled' : 'is-empty'}">${escapeHtml(nutPreview)}</span></button>`;
     const isSuper = root instanceof HTMLElement && root.dataset.isSuperAdmin === 'true';
     const arOn = isArGadgetOn();
     const arUrl = String(tr.dataset.modelo3dUrl || '').trim();
     const arBtn = isSuper
-      ? `<button type="button" data-edit-ar data-shows-when-ar class="ar-chip${arUrl ? ' is-on' : ''}${arOn ? '' : ' hidden'}" title="${arUrl ? 'Editar modelo AR' : 'Cargar URL de AR'}" aria-label="Modelo AR 3D">AR</button>`
+      ? `<button type="button" data-edit-ar data-shows-when-ar class="ar-chip${arUrl ? ' is-on' : ''}${arOn ? '' : ' hidden'}"${arOn ? '' : ' hidden'} title="${arUrl ? 'Editar modelo AR' : 'Cargar URL de AR'}" aria-label="Modelo AR 3D">AR</button>`
       : '';
     const gadgetStack = `<div class="dish-gadget-stack">${nutBtn}</div>`;
 
