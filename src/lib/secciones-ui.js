@@ -660,6 +660,20 @@ export function scopeCssAvanzado(value) {
 
 /**
  * @param {unknown} value
+ * @param {boolean} fallback
+ */
+function parseBoolish(value, fallback = false) {
+  if (value === true || value === 1 || value === '1' || value === 'true' || value === 'on') {
+    return true;
+  }
+  if (value === false || value === 0 || value === '0' || value === 'false' || value === 'off') {
+    return false;
+  }
+  return fallback;
+}
+
+/**
+ * @param {unknown} value
  */
 export function parseUiEstilo(value) {
   let raw = value;
@@ -775,6 +789,18 @@ export function parseUiEstilo(value) {
       ),
       efecto_entrada: normalizeEfectoEntrada(
         home.efecto_entrada ?? home.efectoEntrada ?? home.entrada_animacion,
+      ),
+    },
+    menu: {
+      fondos_cinematicos: parseBoolish(
+        /** @type {Record<string, unknown>} */ (raw.menu || {}).fondos_cinematicos ??
+          /** @type {Record<string, unknown>} */ (raw.menu || {}).fondosCinematicos,
+        null,
+      ),
+      color_texto: normalizeHexColor(
+        /** @type {Record<string, unknown>} */ (raw.menu || {}).color_texto ??
+          /** @type {Record<string, unknown>} */ (raw.menu || {}).colorTexto,
+        '',
       ),
     },
     nosotros: {
@@ -902,6 +928,18 @@ export function buildUiEstiloFromBody(raw) {
       ),
       efecto_entrada: normalizeEfectoEntrada(
         raw.home_efecto_entrada ?? raw.efecto_entrada,
+      ),
+    },
+    menu: {
+      fondos_cinematicos: parseBoolish(
+        raw.menu_fondos_cinematicos ??
+          raw.fondos_cinematicos_categoria ??
+          raw.menu?.fondos_cinematicos,
+        false,
+      ),
+      color_texto: normalizeHexColor(
+        raw.menu_color_texto ?? raw.menu?.color_texto,
+        '',
       ),
     },
     nosotros: {
@@ -1045,6 +1083,7 @@ export function uiEstiloToCssVars(ui, fallbackPrimario = '#9f1239') {
     ubicacion.color_fondo ? `--sec-ubicacion-fondo: ${ubicacion.color_fondo}` : '',
     ubicacion.color_titulo ? `--sec-ubicacion-titulo: ${ubicacion.color_titulo}` : '',
     ubicacion.color_cuerpo ? `--sec-ubicacion-cuerpo: ${ubicacion.color_cuerpo}` : '',
+    ui?.menu?.color_texto ? `--menu-texto-color: ${ui.menu.color_texto}` : '',
   ]
     .filter(Boolean)
     .join('; ');

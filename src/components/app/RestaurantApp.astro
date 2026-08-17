@@ -249,6 +249,14 @@ try {
 const estilos = homeProps.estilos;
 const menu = restaurante?.menu ?? {};
 const nosotros = restaurante?.nosotros ?? {};
+const hasCatCinematicMedia = (menu?.categorias || []).some((cat) => {
+  const tipo = String(cat?.bgType || '').toLowerCase();
+  const valor = String(cat?.bgValor || '').trim();
+  return Boolean(valor) && (tipo === 'image' || tipo === 'video' || /^https?:\/\//i.test(valor));
+});
+const menuFondosCinematicos =
+  uiEstilo?.menu?.fondos_cinematicos === true ||
+  (uiEstilo?.menu?.fondos_cinematicos == null && hasCatCinematicMedia);
 
 /** CSS avanzado: ui_estilo.css_avanzado (canónico) ↔ columna custom_css */
 const cssAvanzadoScoped = scopeCssAvanzado(
@@ -514,12 +522,25 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     <OverlayPanel
       sectionId="menu"
       title="IL MENÚ"
+      fondoTipo={String(fondoMenu?.valor || '').trim() ? fondoMenu.tipo : 'color'}
+      fondoValor={String(fondoMenu?.valor || '').trim() || theme.colorFondo}
+      overlayEstilo={homeOverlayEstilo}
+      overlayOpacity={homeOverlayOpacity}
+      fondoAnimacion={homeFondoAnimacion}
+      categoryCrossfade={menuFondosCinematicos}
+      categoryBackgrounds={Object.fromEntries(
+        (menu?.categorias || []).map((cat) => [
+          String(cat.id),
+          { tipo: cat.bgType || 'color', valor: cat.bgValor || '' },
+        ]),
+      )}
       estilos={{ ...estilos, panelColor: 'bg-transparent' }}
     >
       <MenuPanel
         categorias={menu?.categorias || []}
         destacados={menu?.destacados ?? []}
         fondoGlobal={fondoMenu}
+        cinematicCategoryBg={menuFondosCinematicos}
         showNutricion={showNutricion}
         showAr={showAr}
         tasaBcv={tasasCambio.usdVes}

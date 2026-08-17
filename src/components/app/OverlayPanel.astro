@@ -6,6 +6,11 @@ interface Props {
   title: string;
   fondoTipo?: string;
   fondoValor?: string;
+  overlayEstilo?: string;
+  overlayOpacity?: number | string;
+  fondoAnimacion?: string;
+  categoryCrossfade?: boolean;
+  categoryBackgrounds?: Record<string, { tipo?: string; valor?: string }>;
   sectionColors?: {
     color_fondo?: string;
     color_titulo?: string;
@@ -25,6 +30,11 @@ const {
   title,
   fondoTipo = 'color',
   fondoValor = '',
+  overlayEstilo,
+  overlayOpacity,
+  fondoAnimacion,
+  categoryCrossfade = false,
+  categoryBackgrounds = {},
   sectionColors = {},
   estilos,
 } = Astro.props;
@@ -35,8 +45,9 @@ const bodyColor = (sectionColors.color_cuerpo || '').trim();
 
 const hasAtmosphere =
   !containerBg &&
-  (fondoTipo === 'image' || fondoTipo === 'video' || fondoTipo === 'color') &&
-  Boolean(String(fondoValor || '').trim());
+  (categoryCrossfade ||
+    ((fondoTipo === 'image' || fondoTipo === 'video' || fondoTipo === 'color') &&
+      Boolean(String(fondoValor || '').trim())));
 
 const sheetStyle = [
   containerBg ? `background-color:${containerBg}` : '',
@@ -64,7 +75,17 @@ const sheetStyle = [
   style={sheetStyle || undefined}
   aria-hidden="true"
 >
-  {!containerBg && <SectionAtmosphere tipo={fondoTipo} valor={fondoValor} />}
+  {!containerBg && (
+    <SectionAtmosphere
+      tipo={fondoTipo}
+      valor={fondoValor}
+      overlayEstilo={overlayEstilo}
+      overlayOpacity={overlayOpacity}
+      fondoAnimacion={fondoAnimacion}
+      categoryCrossfade={categoryCrossfade}
+      categoryBackgrounds={categoryBackgrounds}
+    />
+  )}
 
   <header
     class:list={[

@@ -1,10 +1,13 @@
 ---
 /**
- * Atmósfera de sección (única dueña de fondos/efectos Home).
+ * Atmósfera de sección (única dueña de fondos/efectos).
  * Tipos: color | image | carrusel | video.
  * Overlays: puro | gradiente | vineta | oscuro | cinematico (+ grain).
- * Animación de media vía fondo_animacion → fondoAnimacionClass.
+ * Cross-fade por categoría: solo 2 capas (layer-a / layer-b), Ken Burns en el media.
  * pointer-events-none — la UI encima recibe los clicks.
+ *
+ * Posición: Home usa fixed inset-0 z-0 (z negativo queda bajo el bg del body).
+ * Overlays de menú usan absolute inset-0 z-0 dentro del sheet.
  */
 import {
   parseFondoMediaUrls,
@@ -13,6 +16,11 @@ import {
   normalizeFondoAnimacion,
   fondoAnimacionClass,
 } from '../../lib/secciones-ui.js';
+
+interface CategoryBg {
+  tipo?: string;
+  valor?: string;
+}
 
 interface Props {
   tipo?: string;
@@ -31,6 +39,9 @@ interface Props {
    */
   fixed?: boolean;
   class?: string;
+  /** Fondos cinemáticos por categoría (WebApp menú) */
+  categoryCrossfade?: boolean;
+  categoryBackgrounds?: Record<string, CategoryBg>;
 }
 
 const {
@@ -42,6 +53,8 @@ const {
   fondoAnimacion: fondoAnimacionProp,
   fixed = false,
   class: className = '',
+  categoryCrossfade = false,
+  categoryBackgrounds = {},
 } = Astro.props;
 
 const kind = String(tipo || 'color').toLowerCase();
@@ -54,7 +67,7 @@ const isColor = kind === 'color' && Boolean(value);
 const carruselUrls = isCarrusel ? parseFondoMediaUrls(value) : [];
 const hasCarrusel = carruselUrls.length > 0;
 const singleCarruselAsImage = isCarrusel && carruselUrls.length === 1;
-const multiCarrusel = isCarrusel && carruselUrls.length > 1;
+const multiCarrusel = isCarrusel && carruselUrls.length > 1 && !categoryCrossfade;
 
 const showMedia = isImage || isVideo || hasCarrusel;
 const overlayEstilo = normalizeOverlayEstilo(overlayEstiloProp);
@@ -94,12 +107,12 @@ const isOscuro = overlayEstilo === 'oscuro';
 /** Estilos de capa overlay según preset (cinematico handled separately) */
 const overlayLayerClass =
   overlayEstilo === 'puro'
-    ? 'absolute inset-0 bg-transparent'
+    ? 'absolute inset-0 z-10 bg-transparent'
     : overlayEstilo === 'gradiente'
-      ? 'absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent'
+      ? 'absolute inset-0 z-10 bg-gradient-to-t from-black/70 via-black/20 to-transparent'
       : overlayEstilo === 'vineta'
-        ? 'absolute inset-0'
-        : 'absolute inset-0 bg-black';
+        ? 'absolute inset-0 z-10'
+        : 'absolute inset-0 z-10 bg-black';
 
 const overlayLayerStyle =
   overlayEstilo === 'vineta'
@@ -108,81 +121,155 @@ const overlayLayerStyle =
       ? `opacity: ${overlayAlpha};`
       : '';
 
+const showAtmosphere = showMedia || isColor || categoryCrossfade;
 const showOverlayLayer =
-  showMedia && overlay && overlayEstilo !== 'puro' && !isCinematic;
-const showCinematic =
-  showMedia && overlay && isCinematic;
+  showAtmosphere && overlay && overlayEstilo !== 'puro' && !isCinematic;
+const showCinematic = showAtmosphere && overlay && isCinematic;
 
-/** Home: fixed detrás del theme (z-0, no z-[-1] — evita quedar bajo el bg del body) · Overlay panels: absolute */
+const fallbackTipo = isImage || singleCarruselAsImage
+  ? 'image'
+  : isVideo
+    ? 'video'
+    : isColor
+      ? 'color'
+      : 'color';
+const fallbackValor = singleCarruselAsImage ? carruselUrls[0] : value;
+
+const catMapJson = JSON.stringify(categoryBackgrounds || {});
+
+/** Home: fixed detrás del theme (z-0, no z-[-1]) · Overlay panels: absolute */
 const rootPositionClass = fixed
   ? 'pointer-events-none fixed inset-0 z-0 overflow-hidden'
   : 'pointer-events-none absolute inset-0 z-0 overflow-hidden';
+
+const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
 ---
 
 {
-  (showMedia || isColor) && (
+  showAtmosphere && (
     <div
       class={`${rootPositionClass} ${className}`}
       aria-hidden="true"
       data-section-atmosphere
       data-atmosphere-fixed={fixed ? 'true' : undefined}
-      data-fondo-tipo={multiCarrusel ? 'carrusel' : kind}
+      data-atmosphere-crossfade={categoryCrossfade ? 'true' : undefined}
+      data-fallback-tipo={fallbackTipo}
+      data-fallback-valor={fallbackValor}
+      data-fondo-tipo={categoryCrossfade ? 'crossfade' : multiCarrusel ? 'carrusel' : kind}
       data-overlay-estilo={overlayEstilo}
       data-overlay-opacity={opacityPct}
       data-fondo-animacion={fondoAnimacion}
     >
-      {isColor && <div class="absolute inset-0" style={`background-color:${value}`} />}
+      {categoryCrossfade ? (
+        <>
+          <script type="application/json" data-atmosphere-cat-map set:html={catMapJson} />
+          <div class="absolute inset-0 overflow-hidden" data-xfade-stack>
+            {(['a', 'b'] as const).map((id, i) => (
+              <div
+                data-xfade-layer={id}
+                class:list={[i === 0 && 'is-on']}
+                style={`position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};transition:opacity 1200ms ease-in-out;`}
+              >
+                <div
+                  class:list={[
+                    'absolute inset-[-8%] bg-cover bg-center will-change-transform',
+                    kenInnerClass,
+                  ]}
+                  data-xfade-image
+                  hidden={!((i === 0 && (fallbackTipo === 'image')) )}
+                  style={
+                    i === 0 && fallbackTipo === 'image' && fallbackValor
+                      ? `background-image:url("${safeBgUrl(fallbackValor)}")`
+                      : undefined
+                  }
+                />
+                <video
+                  class:list={[
+                    'pointer-events-none absolute inset-[-8%] z-0 h-[116%] w-[116%] object-cover will-change-transform',
+                    kenInnerClass,
+                  ]}
+                  data-xfade-video
+                  hidden={!(i === 0 && fallbackTipo === 'video')}
+                  autoplay
+                  loop
+                  muted
+                  playsinline
+                  preload="metadata"
+                >
+                  {i === 0 && fallbackTipo === 'video' && fallbackValor ? (
+                    <source src={fallbackValor} type={videoType} />
+                  ) : null}
+                </video>
+                <div
+                  class="absolute inset-0"
+                  data-xfade-color
+                  hidden={!(i === 0 && fallbackTipo === 'color')}
+                  style={
+                    i === 0 && fallbackTipo === 'color' && fallbackValor
+                      ? `background-color:${fallbackValor}`
+                      : undefined
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {isColor && <div class="absolute inset-0" style={`background-color:${value}`} />}
 
-      {(isImage || singleCarruselAsImage) && (
-        <div class="absolute inset-0 overflow-hidden">
-          <div
-            class:list={[
-              'absolute inset-0 bg-cover bg-center will-change-transform',
-              kenBurnsClass,
-            ]}
-            data-atmosphere-media
-            style={`background-image:url("${safeBgUrl(singleCarruselAsImage ? carruselUrls[0] : value)}")`}
-          />
-        </div>
-      )}
+          {(isImage || singleCarruselAsImage) && (
+            <div class="absolute inset-0 overflow-hidden">
+              <div
+                class:list={[
+                  'absolute inset-0 bg-cover bg-center will-change-transform',
+                  kenBurnsClass,
+                ]}
+                data-atmosphere-media
+                style={`background-image:url("${safeBgUrl(singleCarruselAsImage ? carruselUrls[0] : value)}")`}
+              />
+            </div>
+          )}
 
-      {multiCarrusel && (
-        <div
-          class="absolute inset-0 overflow-hidden"
-          data-fondo-carrusel
-          data-carrusel-interval="4000"
-        >
-          {carruselUrls.map((url, i) => (
+          {multiCarrusel && (
             <div
-              class:list={[
-                'absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out will-change-transform',
-                kenBurnsClass,
-              ]}
-              data-carrusel-slide
-              data-atmosphere-media
-              style={`background-image:url("${safeBgUrl(url)}"); opacity: ${i === 0 ? 1 : 0};`}
-            />
-          ))}
-        </div>
-      )}
+              class="absolute inset-0 overflow-hidden"
+              data-fondo-carrusel
+              data-carrusel-interval="4000"
+            >
+              {carruselUrls.map((url, i) => (
+                <div
+                  class:list={[
+                    'absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out will-change-transform',
+                    kenBurnsClass,
+                  ]}
+                  data-carrusel-slide
+                  data-atmosphere-media
+                  style={`background-image:url("${safeBgUrl(url)}"); opacity: ${i === 0 ? 1 : 0};`}
+                />
+              ))}
+            </div>
+          )}
 
-      {isVideo && (
-        <div class="absolute inset-0 overflow-hidden">
-          <video
-            autoplay
-            loop
-            muted
-            playsinline
-            class:list={[
-              'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover will-change-transform',
-              kenBurnsClass,
-            ]}
-            data-atmosphere-media
-            data-fondo-animacion={fondoAnimacion}
-          >
-            <source src={value} type={videoType} />
-          </video>
-        </div>
+          {isVideo && (
+            <div class="absolute inset-0 overflow-hidden">
+              <video
+                autoplay
+                loop
+                muted
+                playsinline
+                class:list={[
+                  'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover will-change-transform',
+                  kenBurnsClass,
+                ]}
+                data-atmosphere-media
+                data-fondo-animacion={fondoAnimacion}
+              >
+                <source src={value} type={videoType} />
+              </video>
+            </div>
+          )}
+        </>
       )}
 
       {showOverlayLayer && (
@@ -235,6 +322,211 @@ const rootPositionClass = fixed
             index = (index + 1) % slides.length;
             slides[index].style.opacity = '1';
           }, ms);
+        });
+      })();
+    </script>
+  ) : null
+}
+
+{
+  categoryCrossfade ? (
+    <script is:inline>
+      (() => {
+        const roots = document.querySelectorAll(
+          '[data-section-atmosphere][data-atmosphere-crossfade="true"]',
+        );
+        roots.forEach((root) => {
+          if (!(root instanceof HTMLElement)) return;
+          if (root.dataset.xfadeBound === '1') return;
+          root.dataset.xfadeBound = '1';
+
+          const layerA = root.querySelector('[data-xfade-layer="a"]');
+          const layerB = root.querySelector('[data-xfade-layer="b"]');
+          if (!(layerA instanceof HTMLElement) || !(layerB instanceof HTMLElement)) {
+            return;
+          }
+
+          layerA.style.opacity = '1';
+          layerB.style.opacity = '0';
+          layerA.classList.add('is-on');
+
+          const fallbackTipo = root.dataset.fallbackTipo || 'color';
+          const fallbackValor = root.dataset.fallbackValor || '';
+          /** @type {Record<string, { tipo?: string, valor?: string }>} */
+          let catMap = {};
+          const mapEl = root.querySelector('[data-atmosphere-cat-map]');
+          if (mapEl) {
+            try {
+              catMap = JSON.parse(mapEl.textContent || '{}') || {};
+            } catch {
+              catMap = {};
+            }
+          }
+
+          const decoded = new Set();
+          let activeKey = `${fallbackTipo}|${fallbackValor}`;
+          let activeIsA = true;
+          let gen = 0;
+          let pendingRaf = 0;
+
+          const isVideoUrl = (url) =>
+            /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || /\/video\/upload\//i.test(url);
+
+          const resolveMedia = (catId) => {
+            if (!catId || catId === 'all') {
+              return { tipo: fallbackTipo, valor: fallbackValor };
+            }
+            const entry = catMap[catId] || catMap[String(catId)];
+            const valor = String(entry?.valor || '').trim();
+            if (!valor) return { tipo: fallbackTipo, valor: fallbackValor };
+            let tipo = String(entry?.tipo || '').toLowerCase();
+            if (tipo !== 'image' && tipo !== 'video' && tipo !== 'color') {
+              tipo = isVideoUrl(valor) ? 'video' : /^#|^[0-9a-f]{3,8}$/i.test(valor)
+                ? 'color'
+                : 'image';
+            }
+            return { tipo, valor };
+          };
+
+          const fillLayer = (layer, tipo, valor) => {
+            const image = layer.querySelector('[data-xfade-image]');
+            const video = layer.querySelector('[data-xfade-video]');
+            const color = layer.querySelector('[data-xfade-color]');
+            if (image instanceof HTMLElement) {
+              image.hidden = tipo !== 'image';
+              if (tipo === 'image' && valor) {
+                image.style.backgroundImage = `url("${valor.replace(/"/g, '\\"')}")`;
+              }
+            }
+            if (video instanceof HTMLVideoElement) {
+              video.hidden = tipo !== 'video';
+              if (tipo === 'video' && valor && video.getAttribute('src') !== valor) {
+                video.pause();
+                video.src = valor;
+                video.load();
+                const play = video.play();
+                if (play && typeof play.catch === 'function') play.catch(() => {});
+              } else if (tipo !== 'video') {
+                video.pause();
+              }
+            }
+            if (color instanceof HTMLElement) {
+              color.hidden = tipo !== 'color';
+              if (tipo === 'color' && valor) color.style.backgroundColor = valor;
+            }
+          };
+
+          const preload = (tipo, valor) =>
+            new Promise((resolve) => {
+              if (tipo !== 'image' || !valor) {
+                resolve();
+                return;
+              }
+              if (decoded.has(valor)) {
+                resolve();
+                return;
+              }
+              const img = new Image();
+              img.decoding = 'async';
+              const done = () => {
+                decoded.add(valor);
+                resolve();
+              };
+              img.onload = done;
+              img.onerror = done;
+              img.src = valor;
+            });
+
+          const crossfadeTo = (tipo, valor) => {
+            const key = `${tipo}|${valor}`;
+            if (key === activeKey) return;
+            const token = ++gen;
+            const incoming = activeIsA ? layerB : layerA;
+            const outgoing = activeIsA ? layerA : layerB;
+            preload(tipo, valor).then(() => {
+              if (token !== gen) return;
+              fillLayer(incoming, tipo, valor);
+              incoming.style.opacity = '1';
+              outgoing.style.opacity = '0';
+              incoming.classList.add('is-on');
+              outgoing.classList.remove('is-on');
+              activeIsA = !activeIsA;
+              activeKey = key;
+            });
+          };
+
+          const applyCategory = (catId) => {
+            const media = resolveMedia(catId);
+            crossfadeTo(media.tipo, media.valor);
+          };
+
+          const sheet = root.closest('[data-section="menu"]');
+          const panel = sheet?.querySelector('[data-menu-panel]') ||
+            document.querySelector('[data-menu-panel]');
+
+          const onCategory = (id) => {
+            applyCategory(String(id || 'all'));
+          };
+
+          document.addEventListener(
+            'xemilla:menu-category',
+            (event) => {
+              const detail = /** @type {CustomEvent} */ (event).detail || {};
+              onCategory(detail.id);
+            },
+            { passive: true },
+          );
+
+          document.addEventListener(
+            'click',
+            (event) => {
+              const t = event.target;
+              if (!(t instanceof Element)) return;
+              const tab = t.closest('.tab-categoria, [data-cat-filter]');
+              if (!(tab instanceof HTMLElement)) return;
+              if (panel && !panel.contains(tab) && !tab.closest('[data-menu-cats]')) {
+                return;
+              }
+              onCategory(tab.dataset.catFilter || 'all');
+            },
+            { passive: true },
+          );
+
+          const scrollRoot =
+            sheet?.querySelector('.overflow-y-auto') ||
+            panel?.closest('[data-section]')?.querySelector('.overflow-y-auto');
+          const sections = panel
+            ? panel.querySelectorAll('[data-menu-cat]')
+            : [];
+
+          if (typeof IntersectionObserver !== 'undefined' && scrollRoot && sections.length) {
+            const io = new IntersectionObserver(
+              (entries) => {
+                if (panel instanceof HTMLElement && panel.dataset.menuFilter && panel.dataset.menuFilter !== 'all') {
+                  return;
+                }
+                const visible = entries
+                  .filter((e) => e.isIntersecting)
+                  .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+                if (!visible || !(visible.target instanceof HTMLElement)) return;
+                const catId = visible.target.dataset.menuCat || '';
+                if (!catId) return;
+                if (pendingRaf) return;
+                pendingRaf = requestAnimationFrame(() => {
+                  pendingRaf = 0;
+                  onCategory(catId);
+                });
+              },
+              {
+                root: scrollRoot instanceof Element ? scrollRoot : null,
+                threshold: 0.28,
+                rootMargin: '-18% 0px -48% 0px',
+              },
+            );
+            sections.forEach((section) => io.observe(section));
+          }
+
+          fillLayer(layerA, fallbackTipo, fallbackValor);
         });
       })();
     </script>

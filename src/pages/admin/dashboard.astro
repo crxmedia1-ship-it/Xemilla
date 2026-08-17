@@ -40,6 +40,12 @@ import {
   DEFAULT_TYPOGRAPHY_COMBO,
 } from '../../config/typography-combos.js';
 import {
+  resolveMenuFont,
+  MENU_FONT_GROUPS,
+  MENU_GOOGLE_FONT_OPTIONS,
+  MENU_FONTS_PREVIEW_HREF,
+} from '../../config/menu-fonts.js';
+import {
   getUserAdminRole,
   getAssignedRestauranteId,
   ADMIN_ROLE_SUPER,
@@ -289,6 +295,15 @@ function matchTipografiaCombo(raw) {
   return normalizeTypographyComboId(raw || DEFAULT_TYPOGRAPHY_COMBO);
 }
 
+function hexPickerValue(value, fallback = '#0a0a0a') {
+  const v = String(value || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v;
+  if (/^#[0-9a-f]{3}$/i.test(v)) {
+    return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  }
+  return fallback;
+}
+
 const marca = {
   color_primario: restaurante?.color_primario || '#9f1239',
   color_fondo: restaurante?.color_fondo || '#0a0a0a',
@@ -352,11 +367,18 @@ const marca = {
   fondo_nosotros_valor: fondoNosotros.valor,
   fondo_menu_tipo: fondoMenu.tipo,
   fondo_menu_valor: fondoMenu.valor,
-  menu_font: ['elegant', 'modern', 'urban'].includes(
-    String(restaurante?.menu_font || '').toLowerCase(),
-  )
-    ? String(restaurante.menu_font).toLowerCase()
-    : 'elegant',
+  menu_fondos_cinematicos:
+    uiEstiloRaw?.menu?.fondos_cinematicos === true ||
+    uiEstiloRaw?.menu?.fondos_cinematicos === false
+      ? Boolean(uiEstiloRaw.menu.fondos_cinematicos)
+      : (categorias || []).some((cat) => {
+          const tipo = String(cat.bg_type || '').toLowerCase();
+          const valor = String(cat.bg_valor || '').trim();
+          return Boolean(valor) && (tipo === 'image' || tipo === 'video' || /^https?:\/\//i.test(valor));
+        }),
+  menu_font: resolveMenuFont(restaurante?.menu_font).family,
+  menu_color_texto:
+    uiEstiloRaw?.menu?.color_texto || restaurante?.color_texto || '#ffffff',
   fondo_ubicacion_tipo: fondoUbicacion.tipo,
   fondo_ubicacion_valor: fondoUbicacion.valor,
   nosotros_bloques: nosotrosBloques,
@@ -633,6 +655,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             >
               Métricas
             </button>
+            {
+              !isSuperAdmin && (
             <button
               type="button"
               role="tab"
@@ -644,6 +668,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             >
               Perfil
             </button>
+              )
+            }
             {
               isSuperAdmin && (
                 <button
@@ -1313,6 +1339,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             />
           </div>
 
+          {
+            !isSuperAdmin && (
           <div
             id="panel-perfil"
             role="tabpanel"
@@ -1327,10 +1355,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   <p class="perfil-studio__kicker">Perfil del restaurante</p>
                   <h2 class="perfil-studio__title">{hubNombre || 'Restaurante'}</h2>
                   <p class="perfil-studio__lead">
-                    Horario, mapa y redes que ve el comensal.
-                    {isSuperAdmin
-                      ? ' Nombre, logo y teléfono se editan en el inicio de SuperAdmin.'
-                      : ' Nombre, logo y teléfono los define SuperAdmin.'}
+                    Horario, mapa y redes que ve el comensal. Nombre, logo y teléfono los define SuperAdmin.
                   </p>
                 </div>
                 <div class="perfil-studio__status-wrap">
@@ -1416,6 +1441,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               </div>
             </section>
           </div>
+            )
+          }
 
           {
             isSuperAdmin && (
@@ -2090,76 +2117,168 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   </div>
 
                   {/* —— NOSOTROS —— */}
-                  <div data-marca-panel="nosotros" class={`${studioCardClass} space-y-4`} hidden>
+                  <div data-marca-panel="nosotros" class={`${studioCardClass} space-y-3`} hidden>
                     <p class={labelClass}>Nosotros</p>
 
-                    <div class="grid gap-3 lg:grid-cols-2">
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Tipo de fondo</span>
-                        <select id="marca-fondo-nosotros-tipo" name="fondo_nosotros_tipo" class={fieldClass}>
+                    <div class="id-ubicacion">
+                      <label class="id-ubicacion__field">
+                        <span>Fondo</span>
+                        <select id="marca-fondo-nosotros-tipo" name="fondo_nosotros_tipo" class="id-ubicacion__select">
                           <option value="color" selected={marca.fondo_nosotros_tipo === 'color'}>Color</option>
                           <option value="image" selected={marca.fondo_nosotros_tipo === 'image'}>Imagen</option>
                           <option value="video" selected={marca.fondo_nosotros_tipo === 'video'}>Video</option>
                         </select>
                       </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Valor del fondo</span>
-                        <input type="text" id="marca-fondo-nosotros-valor" name="fondo_nosotros_valor" value={marca.fondo_nosotros_valor} placeholder="#0a0a0a o https://…" class={fieldClass} />
+
+                      <label
+                        class="id-swatch"
+                        data-nosotros-fondo-color
+                        hidden={marca.fondo_nosotros_tipo !== 'color'}
+                      >
+                        <span>Color de fondo</span>
+                        <span class="id-swatch__ctrl">
+                          <input
+                            type="color"
+                            id="marca-fondo-nosotros-valor-picker"
+                            value={hexPickerValue(marca.fondo_nosotros_valor, '#0a0a0a')}
+                            class="id-swatch__dot"
+                          />
+                          <input
+                            type="text"
+                            id="marca-fondo-nosotros-valor-color"
+                            value={marca.fondo_nosotros_tipo === 'color' ? marca.fondo_nosotros_valor : ''}
+                            placeholder="#0a0a0a"
+                            spellcheck="false"
+                            class="id-swatch__hex"
+                          />
+                        </span>
                       </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Color Fondo Contenedor</span>
-                        <input type="text" id="marca-nosotros-color-fondo" name="nosotros_color_fondo" value={marca.nosotros_color_fondo} placeholder="#0a0a0a" class={fieldClass} />
+
+                      <label
+                        class="id-ubicacion__field"
+                        data-nosotros-fondo-url
+                        hidden={marca.fondo_nosotros_tipo === 'color'}
+                      >
+                        <span data-nosotros-fondo-url-label>
+                          {marca.fondo_nosotros_tipo === 'video' ? 'URL del video' : 'URL de la imagen'}
+                        </span>
+                        <input
+                          type="text"
+                          inputmode="url"
+                          id="marca-fondo-nosotros-valor-url"
+                          value={marca.fondo_nosotros_tipo === 'color' ? '' : marca.fondo_nosotros_valor}
+                          placeholder="https://…"
+                          class="id-ubicacion__input"
+                        />
                       </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Color Títulos</span>
-                        <input type="text" id="marca-nosotros-color-titulo" name="nosotros_color_titulo" value={marca.nosotros_color_titulo} placeholder="#ffffff" class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5 lg:col-span-2">
-                        <span class={labelClass}>Color Cuerpo</span>
-                        <input type="text" id="marca-nosotros-color-cuerpo" name="nosotros_color_cuerpo" value={marca.nosotros_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
-                      </label>
+                      <input type="hidden" id="marca-fondo-nosotros-valor" name="fondo_nosotros_valor" value={marca.fondo_nosotros_valor} />
+
+                      <div class="id-ubicacion__swatches">
+                        <label class="id-swatch">
+                          <span>Contenedor</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-nosotros-color-fondo-picker"
+                              value={hexPickerValue(marca.nosotros_color_fondo, '#fafafa')}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-nosotros-color-fondo"
+                              name="nosotros_color_fondo"
+                              value={marca.nosotros_color_fondo}
+                              placeholder="#fafafa"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                        <label class="id-swatch">
+                          <span>Títulos</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-nosotros-color-titulo-picker"
+                              value={hexPickerValue(marca.nosotros_color_titulo, '#ffffff')}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-nosotros-color-titulo"
+                              name="nosotros_color_titulo"
+                              value={marca.nosotros_color_titulo}
+                              placeholder="#ffffff"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                        <label class="id-swatch">
+                          <span>Cuerpo</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-nosotros-color-cuerpo-picker"
+                              value={hexPickerValue(marca.nosotros_color_cuerpo, '#d4d4d8')}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-nosotros-color-cuerpo"
+                              name="nosotros_color_cuerpo"
+                              value={marca.nosotros_color_cuerpo}
+                              placeholder="#d4d4d8"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                      </div>
                     </div>
 
-                    <div id="nosotros-bloques-list" class="space-y-4">
+                    <div id="nosotros-bloques-list" class="space-y-2.5">
                       {
                         marca.nosotros_bloques.map((bloque, index) => (
                           <div
-                            class="nosotros-bloque rounded-xl border border-white/10 bg-black/25 p-4 space-y-4"
+                            class="nosotros-bloque"
                             data-nosotros-bloque
                           >
-                            <div class="flex items-center justify-between gap-3">
-                              <p class={`${labelClass} !text-zinc-400`}>Bloque {index + 1}</p>
+                            <div class="nosotros-bloque__head">
+                              <p class="nosotros-bloque__kicker">Bloque {index + 1}</p>
                               <button
                                 type="button"
-                                class="rounded-lg px-2.5 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-rose-300/80 transition hover:bg-rose-500/10 hover:text-rose-200"
+                                class="nosotros-bloque__remove"
                                 data-remove-bloque
                               >
                                 Quitar
                               </button>
                             </div>
-                            <div class="grid gap-4 lg:grid-cols-2">
-                              <label class="block space-y-2 lg:col-span-2">
-                                <span class={labelClass}>Título</span>
-                                <input type="text" data-bloque-titulo value={bloque.titulo} class={fieldClass} />
+                            <div class="id-ubicacion">
+                              <div class="id-ubicacion__row">
+                                <label class="id-ubicacion__field">
+                                  <span>Título</span>
+                                  <input type="text" data-bloque-titulo value={bloque.titulo} class="id-ubicacion__input" />
+                                </label>
+                                <label class="id-ubicacion__field">
+                                  <span>Alineación</span>
+                                  <select data-bloque-alineacion class="id-ubicacion__select">
+                                    <option value="alternada" selected={bloque.alineacion !== 'inversa'}>
+                                      Alternada
+                                    </option>
+                                    <option value="inversa" selected={bloque.alineacion === 'inversa'}>
+                                      Inversa
+                                    </option>
+                                  </select>
+                                </label>
+                              </div>
+                              <label class="id-ubicacion__field">
+                                <span>Texto</span>
+                                <textarea data-bloque-texto rows="3" class="id-ubicacion__input">{bloque.texto}</textarea>
                               </label>
-                              <label class="block space-y-2 lg:col-span-2">
-                                <span class={labelClass}>Texto</span>
-                                <textarea data-bloque-texto rows="4" class={fieldClass}>{bloque.texto}</textarea>
-                              </label>
-                              <label class="block space-y-2 lg:col-span-2">
-                                <span class={labelClass}>URL de media (imagen o video)</span>
-                                <input type="url" data-bloque-media value={bloque.media_url} placeholder="https://…" class={fieldClass} />
-                              </label>
-                              <label class="block space-y-2 lg:col-span-2">
-                                <span class={labelClass}>Alineación</span>
-                                <select data-bloque-alineacion class={fieldClass}>
-                                  <option value="alternada" selected={bloque.alineacion !== 'inversa'}>
-                                    Alternada
-                                  </option>
-                                  <option value="inversa" selected={bloque.alineacion === 'inversa'}>
-                                    Inversa
-                                  </option>
-                                </select>
+                              <label class="id-ubicacion__field">
+                                <span>URL de media</span>
+                                <input type="text" inputmode="url" data-bloque-media value={bloque.media_url} placeholder="https://…" class="id-ubicacion__input" />
                               </label>
                             </div>
                           </div>
@@ -2170,80 +2289,186 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     <button
                       type="button"
                       id="nosotros-add-bloque"
-                      class="inline-flex items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-3 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition hover:border-white/25 hover:text-zinc-200"
+                      class="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-400 transition hover:border-white/25 hover:text-zinc-200"
                     >
                       + Añadir bloque
                     </button>
                   </div>
 
                   {/* —— SECCIÓN MENÚ —— */}
-                  <div data-marca-panel="menu" class={`${studioCardClass} space-y-4`} hidden>
+                  <div data-marca-panel="menu" class={`${studioCardClass} space-y-3`} hidden>
                     <p class={labelClass}>Menú</p>
 
-                    <div class="grid gap-3 lg:grid-cols-2">
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Fondo · tipo</span>
-                        <select id="marca-fondo-menu-tipo" name="fondo_menu_tipo" class={fieldClass}>
+                    <div
+                      id="menu-fondo-general"
+                      class="id-ubicacion"
+                      hidden={marca.menu_fondos_cinematicos}
+                    >
+                      <label class="id-ubicacion__field">
+                        <span>Fondo</span>
+                        <select id="marca-fondo-menu-tipo" name="fondo_menu_tipo" class="id-ubicacion__select">
                           <option value="color" selected={marca.fondo_menu_tipo === 'color'}>Color</option>
                           <option value="image" selected={marca.fondo_menu_tipo === 'image'}>Imagen</option>
                           <option value="video" selected={marca.fondo_menu_tipo === 'video'}>Video</option>
                         </select>
                       </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Fondo · valor</span>
-                        <input type="text" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} placeholder="#0a0a0a o https://…" class={fieldClass} />
+
+                      <label
+                        class="id-swatch"
+                        data-menu-fondo-color
+                        hidden={marca.fondo_menu_tipo !== 'color'}
+                      >
+                        <span>Color de fondo</span>
+                        <span class="id-swatch__ctrl">
+                          <input
+                            type="color"
+                            id="marca-fondo-menu-valor-picker"
+                            value={/^#([0-9a-f]{6})$/i.test(String(marca.fondo_menu_valor || ''))
+                              ? marca.fondo_menu_valor
+                              : /^#([0-9a-f]{3})$/i.test(String(marca.fondo_menu_valor || ''))
+                                ? `#${String(marca.fondo_menu_valor)[1]}${String(marca.fondo_menu_valor)[1]}${String(marca.fondo_menu_valor)[2]}${String(marca.fondo_menu_valor)[2]}${String(marca.fondo_menu_valor)[3]}${String(marca.fondo_menu_valor)[3]}`
+                                : '#0a0a0a'}
+                            class="id-swatch__dot"
+                          />
+                          <input
+                            type="text"
+                            id="marca-fondo-menu-valor-color"
+                            value={marca.fondo_menu_tipo === 'color' ? marca.fondo_menu_valor : ''}
+                            placeholder="#0a0a0a"
+                            spellcheck="false"
+                            class="id-swatch__hex"
+                          />
+                        </span>
                       </label>
-                      <label class="block space-y-1.5 lg:col-span-2">
-                        <span class={labelClass}>Tipografía Menú</span>
-                        <select id="marca-menu-font" name="menu_font" class={fieldClass}>
-                          <option value="elegant" selected={marca.menu_font === 'elegant'}>
-                            Elegante
-                          </option>
-                          <option value="modern" selected={marca.menu_font === 'modern'}>
-                            Moderna
-                          </option>
-                          <option value="urban" selected={marca.menu_font === 'urban'}>
-                            Urbana
-                          </option>
+
+                      <label
+                        class="id-ubicacion__field"
+                        data-menu-fondo-url
+                        hidden={marca.fondo_menu_tipo === 'color'}
+                      >
+                        <span data-menu-fondo-url-label>
+                          {marca.fondo_menu_tipo === 'video' ? 'URL del video' : 'URL de la imagen'}
+                        </span>
+                        <input
+                          type="text"
+                          inputmode="url"
+                          id="marca-fondo-menu-valor-url"
+                          value={marca.fondo_menu_tipo === 'color' ? '' : marca.fondo_menu_valor}
+                          placeholder="https://…"
+                          class="id-ubicacion__input"
+                        />
+                      </label>
+                      <input type="hidden" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} />
+                    </div>
+
+                    <div id="menu-tipo-block" class="id-ubicacion">
+                      <link rel="stylesheet" href={MENU_FONTS_PREVIEW_HREF} />
+                      <label class="id-ubicacion__field">
+                        <span>Fuente del menú</span>
+                        <select
+                          id="marca-menu-font"
+                          name="menu_font"
+                          class="id-ubicacion__select"
+                          style={`font-family:"${marca.menu_font || 'Playfair Display'}", ui-sans-serif, system-ui`}
+                        >
+                          {
+                            !MENU_GOOGLE_FONT_OPTIONS.includes(marca.menu_font) && marca.menu_font ? (
+                              <option value={marca.menu_font} selected>
+                                {marca.menu_font}
+                              </option>
+                            ) : null
+                          }
+                          {
+                            MENU_FONT_GROUPS.map((group) => (
+                              <optgroup label={group.label}>
+                                {group.fonts.map((font) => (
+                                  <option
+                                    value={font}
+                                    selected={marca.menu_font === font}
+                                    style={`font-family:"${font}", ui-sans-serif, system-ui`}
+                                  >
+                                    {font}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))
+                          }
                         </select>
+                      </label>
+                      <label class="id-swatch">
+                        <span>Color de tipografía</span>
+                        <span class="id-swatch__ctrl">
+                          <input
+                            type="color"
+                            id="marca-menu-color-texto-picker"
+                            value={/^#([0-9a-f]{6})$/i.test(String(marca.menu_color_texto || ''))
+                              ? marca.menu_color_texto
+                              : '#ffffff'}
+                            class="id-swatch__dot"
+                          />
+                          <input
+                            type="text"
+                            id="marca-menu-color-texto"
+                            name="menu_color_texto"
+                            value={marca.menu_color_texto}
+                            placeholder="#ffffff"
+                            spellcheck="false"
+                            class="id-swatch__hex"
+                          />
+                        </span>
                       </label>
                     </div>
 
-                    <div class="border-t border-white/5 pt-3 space-y-3">
-                      <p class={labelClass}>Fondos por categoría</p>
+                    <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                      <span class="min-w-0">
+                        <span class="block text-sm font-medium text-zinc-200">Fondos Cinemáticos por Categoría</span>
+                        <span class="mt-0.5 block text-[0.68rem] leading-snug text-zinc-500">Oculta el fondo general y usa una imagen por categoría</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        id="marca-menu-fondos-cinematicos"
+                        name="menu_fondos_cinematicos"
+                        checked={marca.menu_fondos_cinematicos}
+                        class="peer sr-only"
+                        data-marca-gadget
+                        role="switch"
+                        aria-checked={marca.menu_fondos_cinematicos ? 'true' : 'false'}
+                      />
+                      <span
+                        class:list={['ios-toggle', 'pointer-events-none', 'shrink-0', marca.menu_fondos_cinematicos && 'is-on']}
+                        data-marca-toggle-ui
+                        data-for="marca-menu-fondos-cinematicos"
+                        aria-hidden="true"
+                      >
+                        <span class="ios-toggle__knob"></span>
+                      </span>
+                    </label>
+
+                    <div
+                      id="categorias-fondos-wrap"
+                      hidden={!marca.menu_fondos_cinematicos}
+                    >
+                      <p class={labelClass}>URL por categoría</p>
                       {
                         categorias.length === 0 ? (
-                          <p class="text-xs text-zinc-600">Sin categorías</p>
+                          <p class="mt-2 text-xs text-zinc-600">Sin categorías</p>
                         ) : (
-                          <div class="space-y-2" id="categorias-fondos-list">
+                          <div class="mt-2 space-y-1.5" id="categorias-fondos-list">
                             {categorias.map((cat) => (
                               <div
-                                class="grid gap-2 rounded-lg border border-white/5 bg-zinc-950/50 p-2.5 sm:grid-cols-[1fr_7rem_1fr] sm:items-end"
+                                class="id-cat-fondo"
                                 data-cat-fondo
                                 data-cat-id={cat.id}
                               >
-                                <div class="min-w-0">
-                                  <p class="truncate text-xs font-medium text-zinc-200">{cat.nombre}</p>
-                                  <p class="mt-0.5 font-mono text-[0.6rem] text-zinc-600">#{cat.id}</p>
-                                </div>
-                                <label class="block space-y-1">
-                                  <span class={labelClass}>Tipo</span>
-                                  <select data-cat-bg-type class={fieldClass}>
-                                    <option value="color" selected={(cat.bg_type || 'color') === 'color'}>Color</option>
-                                    <option value="image" selected={cat.bg_type === 'image'}>Imagen</option>
-                                    <option value="video" selected={cat.bg_type === 'video'}>Video</option>
-                                  </select>
-                                </label>
-                                <label class="block space-y-1">
-                                  <span class={labelClass}>Valor</span>
-                                  <input
-                                    type="text"
-                                    data-cat-bg-valor
-                                    value={cat.bg_valor || ''}
-                                    placeholder="HEX/URL"
-                                    class={fieldClass}
-                                  />
-                                </label>
+                                <span class="id-cat-fondo__name">{cat.nombre}</span>
+                                <input
+                                  type="text"
+                                  inputmode="url"
+                                  data-cat-bg-valor
+                                  value={cat.bg_valor || ''}
+                                  placeholder="https://…"
+                                  class="id-ubicacion__input"
+                                />
                               </div>
                             ))}
                           </div>
@@ -2253,57 +2478,114 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   </div>
 
                   {/* —— HORARIOS & UBICACIÓN —— */}
-                  <div data-marca-panel="ubicacion" class={`${studioCardClass} space-y-4`} hidden>
+                  <div data-marca-panel="ubicacion" class={`${studioCardClass} space-y-3`} hidden>
                     <p class={labelClass}>Horarios &amp; Ubicación</p>
 
-                    <label class="block max-w-md space-y-1.5">
-                      <span class={labelClass}>Plantilla Ubicación</span>
-                      <select
-                        id="marca-ubicacion-theme"
-                        name="ubicacion_theme"
-                        class={fieldClass}
-                      >
-                        <option value="modal" selected={marca.ubicacion_theme === 'modal'}>
-                          Modal / Drawer
-                        </option>
-                        <option value="split" selected={marca.ubicacion_theme === 'split'}>
-                          Split Map + tabs
-                        </option>
-                      </select>
-                    </label>
-
-                    <div class="grid gap-3 lg:grid-cols-2">
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Fondo · tipo</span>
-                        <select id="marca-fondo-ubicacion-tipo" name="fondo_ubicacion_tipo" class={fieldClass}>
-                          <option value="color" selected={marca.fondo_ubicacion_tipo === 'color'}>Color</option>
-                          <option value="image" selected={marca.fondo_ubicacion_tipo === 'image'}>Imagen</option>
-                          <option value="video" selected={marca.fondo_ubicacion_tipo === 'video'}>Video</option>
-                        </select>
+                    <div class="id-ubicacion">
+                      <div class="id-ubicacion__row">
+                        <label class="id-ubicacion__field">
+                          <span>Plantilla</span>
+                          <select id="marca-ubicacion-theme" name="ubicacion_theme" class="id-ubicacion__select">
+                            <option value="modal" selected={marca.ubicacion_theme === 'modal'}>Modal / Drawer</option>
+                            <option value="split" selected={marca.ubicacion_theme === 'split'}>Split mapa</option>
+                          </select>
+                        </label>
+                        <label class="id-ubicacion__field">
+                          <span>Fondo</span>
+                          <select id="marca-fondo-ubicacion-tipo" name="fondo_ubicacion_tipo" class="id-ubicacion__select">
+                            <option value="color" selected={marca.fondo_ubicacion_tipo === 'color'}>Color</option>
+                            <option value="image" selected={marca.fondo_ubicacion_tipo === 'image'}>Imagen</option>
+                            <option value="video" selected={marca.fondo_ubicacion_tipo === 'video'}>Video</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label class="id-ubicacion__field">
+                        <span>Valor del fondo</span>
+                        <input
+                          type="text"
+                          id="marca-fondo-ubicacion-valor"
+                          name="fondo_ubicacion_valor"
+                          value={marca.fondo_ubicacion_valor}
+                          placeholder="HEX, URL de imagen o video"
+                          class="id-ubicacion__input"
+                        />
                       </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Fondo · valor</span>
-                        <input type="text" id="marca-fondo-ubicacion-valor" name="fondo_ubicacion_valor" value={marca.fondo_ubicacion_valor} class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Color Fondo</span>
-                        <input type="text" id="marca-ubicacion-color-fondo" name="ubicacion_color_fondo" value={marca.ubicacion_color_fondo} placeholder="#0a0a0a" class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>Color Títulos</span>
-                        <input type="text" id="marca-ubicacion-color-titulo" name="ubicacion_color_titulo" value={marca.ubicacion_color_titulo} placeholder="#ffffff" class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5 lg:col-span-2">
-                        <span class={labelClass}>Color Cuerpo</span>
-                        <input type="text" id="marca-ubicacion-color-cuerpo" name="ubicacion_color_cuerpo" value={marca.ubicacion_color_cuerpo} placeholder="#d4d4d8" class={fieldClass} />
-                      </label>
-                      <label class="block space-y-1.5">
-                        <span class={labelClass}>WhatsApp</span>
-                        <input type="text" id="marca-whatsapp" name="whatsapp_url" value={marca.whatsapp_url} placeholder="+58…" class={fieldClass} />
+                      <div class="id-ubicacion__swatches">
+                        <label class="id-swatch">
+                          <span>Fondo</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-ubicacion-color-fondo-picker"
+                              value={marca.ubicacion_color_fondo || '#0a0a0a'}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-ubicacion-color-fondo"
+                              name="ubicacion_color_fondo"
+                              value={marca.ubicacion_color_fondo}
+                              placeholder="#0a0a0a"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                        <label class="id-swatch">
+                          <span>Títulos</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-ubicacion-color-titulo-picker"
+                              value={marca.ubicacion_color_titulo || '#ffffff'}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-ubicacion-color-titulo"
+                              name="ubicacion_color_titulo"
+                              value={marca.ubicacion_color_titulo}
+                              placeholder="#ffffff"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                        <label class="id-swatch">
+                          <span>Cuerpo</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-ubicacion-color-cuerpo-picker"
+                              value={marca.ubicacion_color_cuerpo || '#d4d4d8'}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-ubicacion-color-cuerpo"
+                              name="ubicacion_color_cuerpo"
+                              value={marca.ubicacion_color_cuerpo}
+                              placeholder="#d4d4d8"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                      </div>
+                      <label class="id-ubicacion__field">
+                        <span>WhatsApp</span>
+                        <input
+                          type="text"
+                          id="marca-whatsapp"
+                          name="whatsapp_url"
+                          value={marca.whatsapp_url}
+                          placeholder="+58…"
+                          class="id-ubicacion__input"
+                        />
                       </label>
                     </div>
 
-                    <div class="marca-local-ops">
+                    <div class="marca-local-ops mt-1 w-full">
                       <PerfilLocalCard
                         scope="marca"
                         mapsInputId="marca-coordenadas"
@@ -2678,6 +2960,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               </svg>
               <span>Métricas</span>
             </button>
+            {
+              !isSuperAdmin && (
             <button type="button" class="studio-dock__btn" data-tab-target="perfil" aria-selected="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M20 21a8 8 0 10-16 0"></path>
@@ -2685,6 +2969,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               </svg>
               <span>Perfil</span>
             </button>
+              )
+            }
             {
               isSuperAdmin ? (
                 <button type="button" class="studio-dock__btn" data-tab-target="identidad" aria-selected="false">
@@ -4956,11 +5242,183 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   .marca-local-ops {
-    margin-top: 0.35rem;
+    margin-top: 0.15rem;
   }
 
-  .marca-local-ops .perfil-group {
-    background: color-mix(in srgb, var(--bg-card, #18181b) 88%, transparent);
+  .id-ubicacion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .id-ubicacion__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+  }
+
+  .id-ubicacion__field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.28rem;
+  }
+
+  .id-ubicacion__field span,
+  .id-swatch > span {
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted, #71717a);
+  }
+
+  .id-ubicacion__select,
+  .id-ubicacion__input {
+    width: 100%;
+    min-height: 2.15rem;
+    border-radius: 0.7rem;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    background: color-mix(in srgb, var(--text-primary, #fff) 4%, transparent);
+    color: var(--text-primary, #fff);
+    font-size: 0.78rem;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .id-ubicacion__swatches {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .id-cat-fondo {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .id-cat-fondo__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: var(--text-primary, #fff);
+  }
+
+  .id-swatch {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.28rem;
+  }
+
+  .id-swatch__ctrl {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.15rem;
+    padding: 0.22rem 0.45rem 0.22rem 0.28rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    background: color-mix(in srgb, var(--text-primary, #fff) 4%, transparent);
+  }
+
+  .id-swatch__dot {
+    width: 1.35rem;
+    height: 1.35rem;
+    flex-shrink: 0;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fff) 16%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .id-swatch__dot::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  .id-swatch__dot::-webkit-color-swatch {
+    border: 0;
+    border-radius: 999px;
+  }
+
+  .id-swatch__hex {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary, #fff);
+    font-family: ui-monospace, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    outline: none;
+  }
+
+  @media (max-width: 640px) {
+    .id-ubicacion__row,
+    .id-ubicacion__swatches {
+      grid-template-columns: 1fr;
+    }
+
+    .id-cat-fondo {
+      grid-template-columns: 1fr;
+      gap: 0.28rem;
+    }
+  }
+
+  .nosotros-bloque {
+    padding: 0.7rem 0.85rem 0.85rem;
+    border-radius: 0.95rem;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    background: color-mix(in srgb, var(--text-primary, #fff) 3.5%, transparent);
+  }
+
+  .nosotros-bloque__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .nosotros-bloque__kicker {
+    margin: 0;
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted, #71717a);
+  }
+
+  .nosotros-bloque__remove {
+    border: 0;
+    border-radius: 0.5rem;
+    padding: 0.22rem 0.5rem;
+    background: transparent;
+    color: color-mix(in srgb, #fb7185 85%, #fff);
+    font-size: 0.55rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .nosotros-bloque__remove:hover {
+    background: color-mix(in srgb, #fb7185 12%, transparent);
+  }
+
+  .nosotros-bloque textarea.id-ubicacion__input {
+    min-height: 4.4rem;
+    resize: vertical;
+    line-height: 1.45;
   }
 
   .perfil-studio__hero {
@@ -5055,22 +5513,69 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     color: var(--text-muted, #71717a);
   }
 
-  .perfil-chips {
-    display: flex;
+  .perfil-seg {
+    display: inline-flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
+    padding: 0.18rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+    gap: 0.12rem;
   }
 
-  .perfil-chip {
+  .perfil-seg__btn {
     border: 0;
     border-radius: 999px;
-    padding: 0.32rem 0.65rem;
-    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
-    color: var(--text-primary);
+    padding: 0.42rem 0.8rem;
+    background: transparent;
+    color: var(--text-muted, #71717a);
     font-size: 0.68rem;
     font-weight: 650;
+    letter-spacing: 0.02em;
     cursor: pointer;
     font-family: inherit;
+    transition: background 140ms ease, color 140ms ease;
+  }
+
+  .perfil-seg__btn:hover {
+    color: var(--text-primary);
+  }
+
+  .perfil-seg__btn:focus-visible,
+  .perfil-seg__btn:active {
+    background: var(--text-primary);
+    color: var(--bg-page, #fff);
+  }
+
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-seg__btn:focus-visible,
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-seg__btn:active {
+    color: #09090b;
+  }
+
+  .perfil-seg__btn--mute {
+    color: var(--text-muted, #71717a);
+  }
+
+  .perfil-local-ops .perfil-toggle {
+    width: 2.75rem;
+    height: 1.62rem;
+    --toggle-off: #d4d4d8;
+    --toggle-on: #16a34a;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.08);
+  }
+
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-local-ops .perfil-toggle {
+    --toggle-off: #3f3f46;
+  }
+
+  .perfil-local-ops .perfil-toggle .ios-toggle__knob {
+    width: 1.28rem;
+    height: 1.28rem;
+    top: 0.17rem;
+    left: 0.17rem;
+  }
+
+  .perfil-local-ops .perfil-toggle.is-on .ios-toggle__knob {
+    transform: translateX(1.12rem);
   }
 
   .perfil-list {
@@ -5086,8 +5591,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.72rem 1.1rem;
+    padding: 0.78rem 1.1rem;
     border-top: 1px solid var(--border-subtle);
+  }
+
+  .perfil-day {
+    display: grid;
+    grid-template-columns: 7.2rem minmax(0, 1fr) auto;
+    align-items: center;
   }
 
   .perfil-day__name,
@@ -5096,19 +5607,20 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     font-size: 0.92rem;
     font-weight: 550;
     letter-spacing: -0.02em;
-    min-width: 5.5rem;
+    min-width: 0;
   }
 
-  .perfil-day__controls {
+  .perfil-day__mid {
     display: flex;
     align-items: center;
-    gap: 0.7rem;
+    justify-content: flex-end;
+    min-width: 0;
   }
 
   .perfil-day__times {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
   }
 
   .perfil-day__to {
@@ -5118,14 +5630,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   .perfil-day input[type='time'],
   .perfil-field input {
-    border: 0;
+    border: 1px solid var(--border-subtle);
     border-radius: 0.7rem;
-    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    background: color-mix(in srgb, var(--text-primary) 4%, transparent);
     color: var(--text-primary);
     font: inherit;
     font-size: 0.82rem;
-    padding: 0.4rem 0.55rem;
-    min-width: 6.4rem;
+    padding: 0.42rem 0.55rem;
+    min-width: 6.5rem;
     color-scheme: inherit;
   }
 
@@ -5152,7 +5664,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #059669;
+    color: #16a34a;
   }
 
   .perfil-day__closed-label {
@@ -5167,6 +5679,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   .perfil-day[data-closed='true'] .perfil-day__closed-label {
     display: inline;
+  }
+
+  .perfil-day[data-closed='true'] .perfil-day__name {
+    color: var(--text-muted, #71717a);
   }
 
   .perfil-meta__value {
@@ -5276,8 +5792,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   .perfil-social {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
-    padding: 0.8rem 1.1rem;
+    gap: 0.55rem;
+    padding: 0.9rem 1.1rem;
     border-top: 1px solid var(--border-subtle);
   }
 
@@ -5288,27 +5804,56 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     gap: 0.75rem;
   }
 
-  .perfil-social__bar span {
+  .perfil-social__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
     font-size: 0.92rem;
-    font-weight: 550;
+    font-weight: 600;
     letter-spacing: -0.02em;
+  }
+
+  .perfil-social__glyph {
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0.95rem;
+  }
+
+  .perfil-social__glyph--ig {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%2371717a' stroke-width='1.8' viewBox='0 0 24 24'><rect x='3' y='3' width='18' height='18' rx='5'/><circle cx='12' cy='12' r='4'/><circle cx='17.5' cy='6.5' r='0.8' fill='%2371717a' stroke='none'/></svg>");
+  }
+
+  .perfil-social__glyph--fb {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%2371717a' viewBox='0 0 24 24'><path d='M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h2.6l.4-3H13v-2c0-.6.4-1 1-1z'/></svg>");
+  }
+
+  .perfil-social__glyph--tt {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%2371717a' viewBox='0 0 24 24'><path d='M14 4c.4 2.4 1.8 4 4.2 4.3v2.4c-1.5 0-2.8-.5-4.2-1.4v6.4A6.3 6.3 0 1 1 11.2 9v2.5a3.8 3.8 0 1 0 2.8 3.6V4z'/></svg>");
+  }
+
+  .perfil-social__glyph--ta {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%2371717a' stroke-width='1.8' viewBox='0 0 24 24'><path d='M4 10h16M12 4v6M8.5 10l-3 8M15.5 10l3 8M7 16h10'/></svg>");
   }
 
   .perfil-social input {
     width: 100%;
     min-width: 0;
-    border: 0;
-    border-radius: 0.7rem;
-    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--text-primary) 4%, transparent);
     color: var(--text-primary);
     font: inherit;
     font-size: 0.84rem;
-    padding: 0.5rem 0.7rem;
+    padding: 0.58rem 0.75rem;
     color-scheme: inherit;
   }
 
   .perfil-social[data-on='false'] input {
-    opacity: 0.4;
+    opacity: 0.42;
   }
 
   @media (max-width: 768px) {
@@ -5338,21 +5883,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
 
     .perfil-day {
-      flex-wrap: wrap;
-      align-items: center;
+      grid-template-columns: 1fr auto;
       gap: 0.45rem 0.6rem;
     }
 
     .perfil-day__name {
-      min-width: 0;
-      flex: 1 1 auto;
+      grid-column: 1;
       font-size: 0.88rem;
     }
 
-    .perfil-day__controls {
-      flex: 1 1 auto;
-      justify-content: flex-end;
-      min-width: 0;
+    .perfil-day .perfil-toggle {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .perfil-day__mid {
+      grid-column: 1 / -1;
+      justify-content: flex-start;
     }
 
     .perfil-day input[type='time'] {
@@ -5378,11 +5925,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   @media (min-width: 769px) {
     .perfil-studio {
-      max-width: 36rem;
+      max-width: 40rem;
     }
 
     .perfil-day input[type='time'] {
-      min-width: 5.6rem;
+      min-width: 5.8rem;
     }
   }
 
@@ -8967,6 +9514,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       let id = normalizeTabName(targetName);
       // Operativo: never open Identidad (no tab / no panel); force Menú.
       if (id === 'identidad' && !canUseIdentidad) id = 'menu';
+      if (id === 'perfil' && canUseIdentidad) id = 'identidad';
 
       const allowed = new Set(
         [...tabButtons]
@@ -9164,6 +9712,100 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   wireColorPair('marca-home-menu-color-picker', 'marca-home-menu-color');
   wireColorPair('marca-home-subtexto-color-picker', 'marca-home-subtexto-color');
   wireColorPair('marca-home-borde-destacado-color-picker', 'marca-home-borde-destacado-color');
+  wireColorPair('marca-ubicacion-color-fondo-picker', 'marca-ubicacion-color-fondo');
+  wireColorPair('marca-ubicacion-color-titulo-picker', 'marca-ubicacion-color-titulo');
+  wireColorPair('marca-ubicacion-color-cuerpo-picker', 'marca-ubicacion-color-cuerpo');
+  wireColorPair('marca-fondo-menu-valor-picker', 'marca-fondo-menu-valor-color');
+  wireColorPair('marca-menu-color-texto-picker', 'marca-menu-color-texto');
+  wireColorPair('marca-fondo-nosotros-valor-picker', 'marca-fondo-nosotros-valor-color');
+  wireColorPair('marca-nosotros-color-fondo-picker', 'marca-nosotros-color-fondo');
+  wireColorPair('marca-nosotros-color-titulo-picker', 'marca-nosotros-color-titulo');
+  wireColorPair('marca-nosotros-color-cuerpo-picker', 'marca-nosotros-color-cuerpo');
+
+  const menuFondoTipo = document.getElementById('marca-fondo-menu-tipo');
+  const menuFondoColorWrap = document.querySelector('[data-menu-fondo-color]');
+  const menuFondoUrlWrap = document.querySelector('[data-menu-fondo-url]');
+  const menuFondoUrlLabel = document.querySelector('[data-menu-fondo-url-label]');
+  const menuFondoColorVal = document.getElementById('marca-fondo-menu-valor-color');
+  const menuFondoUrlVal = document.getElementById('marca-fondo-menu-valor-url');
+  const menuFondoHidden = document.getElementById('marca-fondo-menu-valor');
+  const menuFontInput = document.getElementById('marca-menu-font');
+
+  const syncMenuFondoHidden = () => {
+    if (!(menuFondoHidden instanceof HTMLInputElement)) return;
+    if (!(menuFondoTipo instanceof HTMLSelectElement)) return;
+    const isColor = menuFondoTipo.value === 'color';
+    const colorVal =
+      menuFondoColorVal instanceof HTMLInputElement ? menuFondoColorVal.value.trim() : '';
+    const urlVal =
+      menuFondoUrlVal instanceof HTMLInputElement ? menuFondoUrlVal.value.trim() : '';
+    menuFondoHidden.value = isColor ? colorVal : urlVal;
+  };
+
+  const syncMenuFondoUi = () => {
+    if (!(menuFondoTipo instanceof HTMLSelectElement)) return;
+    const tipo = menuFondoTipo.value;
+    if (menuFondoColorWrap instanceof HTMLElement) menuFondoColorWrap.hidden = tipo !== 'color';
+    if (menuFondoUrlWrap instanceof HTMLElement) menuFondoUrlWrap.hidden = tipo === 'color';
+    if (menuFondoUrlLabel instanceof HTMLElement) {
+      menuFondoUrlLabel.textContent = tipo === 'video' ? 'URL del video' : 'URL de la imagen';
+    }
+    syncMenuFondoHidden();
+  };
+
+  menuFondoTipo?.addEventListener('change', syncMenuFondoUi, { signal });
+  menuFondoColorVal?.addEventListener('input', syncMenuFondoHidden, { signal });
+  menuFondoUrlVal?.addEventListener('input', syncMenuFondoHidden, { signal });
+  syncMenuFondoUi();
+
+  const nosotrosFondoTipo = document.getElementById('marca-fondo-nosotros-tipo');
+  const nosotrosFondoColorWrap = document.querySelector('[data-nosotros-fondo-color]');
+  const nosotrosFondoUrlWrap = document.querySelector('[data-nosotros-fondo-url]');
+  const nosotrosFondoUrlLabel = document.querySelector('[data-nosotros-fondo-url-label]');
+  const nosotrosFondoColorVal = document.getElementById('marca-fondo-nosotros-valor-color');
+  const nosotrosFondoUrlVal = document.getElementById('marca-fondo-nosotros-valor-url');
+  const nosotrosFondoHidden = document.getElementById('marca-fondo-nosotros-valor');
+
+  const syncNosotrosFondoHidden = () => {
+    if (!(nosotrosFondoHidden instanceof HTMLInputElement)) return;
+    if (!(nosotrosFondoTipo instanceof HTMLSelectElement)) return;
+    const isColor = nosotrosFondoTipo.value === 'color';
+    const colorVal =
+      nosotrosFondoColorVal instanceof HTMLInputElement ? nosotrosFondoColorVal.value.trim() : '';
+    const urlVal =
+      nosotrosFondoUrlVal instanceof HTMLInputElement ? nosotrosFondoUrlVal.value.trim() : '';
+    nosotrosFondoHidden.value = isColor ? colorVal : urlVal;
+  };
+
+  const syncNosotrosFondoUi = () => {
+    if (!(nosotrosFondoTipo instanceof HTMLSelectElement)) return;
+    const tipo = nosotrosFondoTipo.value;
+    if (nosotrosFondoColorWrap instanceof HTMLElement) {
+      nosotrosFondoColorWrap.hidden = tipo !== 'color';
+    }
+    if (nosotrosFondoUrlWrap instanceof HTMLElement) {
+      nosotrosFondoUrlWrap.hidden = tipo === 'color';
+    }
+    if (nosotrosFondoUrlLabel instanceof HTMLElement) {
+      nosotrosFondoUrlLabel.textContent = tipo === 'video' ? 'URL del video' : 'URL de la imagen';
+    }
+    syncNosotrosFondoHidden();
+  };
+
+  nosotrosFondoTipo?.addEventListener('change', syncNosotrosFondoUi, { signal });
+  nosotrosFondoColorVal?.addEventListener('input', syncNosotrosFondoHidden, { signal });
+  nosotrosFondoUrlVal?.addEventListener('input', syncNosotrosFondoHidden, { signal });
+  syncNosotrosFondoUi();
+
+  if (menuFontInput instanceof HTMLSelectElement) {
+    const paintMenuFontPreview = () => {
+      const family = menuFontInput.value.trim() || 'Playfair Display';
+      const safe = family.replace(/["'`]/g, '');
+      menuFontInput.style.fontFamily = `"${safe}", ui-sans-serif, system-ui`;
+    };
+    menuFontInput.addEventListener('change', paintMenuFontPreview, { signal });
+    paintMenuFontPreview();
+  }
 
   /** Actualiza label/placeholder del valor de fondo Home según tipo */
   const fondoHomeTipo = document.getElementById('marca-fondo-home-tipo');
@@ -9386,7 +10028,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   function renumberBloques() {
     if (!(bloquesList instanceof HTMLElement)) return;
     bloquesList.querySelectorAll('[data-nosotros-bloque]').forEach((el, i) => {
-      const title = el.querySelector('p');
+      const title = el.querySelector('.nosotros-bloque__kicker');
       if (title instanceof HTMLElement) {
         title.textContent = `Bloque ${i + 1}`;
       }
@@ -9395,33 +10037,34 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   function createBloqueEl(index = 1) {
     const wrap = document.createElement('div');
-    wrap.className =
-      'nosotros-bloque rounded-xl border border-white/10 bg-black/25 p-4 space-y-4';
+    wrap.className = 'nosotros-bloque';
     wrap.dataset.nosotrosBloque = '';
     wrap.innerHTML = `
-      <div class="flex items-center justify-between gap-3">
-        <p class="${labelClassJs} !text-zinc-400">Bloque ${index}</p>
-        <button type="button" class="rounded-lg px-2.5 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-rose-300/80 transition hover:bg-rose-500/10 hover:text-rose-200" data-remove-bloque>Quitar</button>
+      <div class="nosotros-bloque__head">
+        <p class="nosotros-bloque__kicker">Bloque ${index}</p>
+        <button type="button" class="nosotros-bloque__remove" data-remove-bloque>Quitar</button>
       </div>
-      <div class="grid gap-4 lg:grid-cols-2">
-        <label class="block space-y-2 lg:col-span-2">
-          <span class="${labelClassJs}">Título</span>
-          <input type="text" data-bloque-titulo class="${fieldClassJs}" />
+      <div class="id-ubicacion">
+        <div class="id-ubicacion__row">
+          <label class="id-ubicacion__field">
+            <span>Título</span>
+            <input type="text" data-bloque-titulo class="id-ubicacion__input" />
+          </label>
+          <label class="id-ubicacion__field">
+            <span>Alineación</span>
+            <select data-bloque-alineacion class="id-ubicacion__select">
+              <option value="alternada" selected>Alternada</option>
+              <option value="inversa">Inversa</option>
+            </select>
+          </label>
+        </div>
+        <label class="id-ubicacion__field">
+          <span>Texto</span>
+          <textarea data-bloque-texto rows="3" class="id-ubicacion__input"></textarea>
         </label>
-        <label class="block space-y-2 lg:col-span-2">
-          <span class="${labelClassJs}">Texto</span>
-          <textarea data-bloque-texto rows="4" class="${fieldClassJs}"></textarea>
-        </label>
-        <label class="block space-y-2 lg:col-span-2">
-          <span class="${labelClassJs}">URL de media (imagen o video)</span>
-          <input type="url" data-bloque-media placeholder="https://…" class="${fieldClassJs}" />
-        </label>
-        <label class="block space-y-2 lg:col-span-2">
-          <span class="${labelClassJs}">Alineación</span>
-          <select data-bloque-alineacion class="${fieldClassJs}">
-            <option value="alternada" selected>Alternada</option>
-            <option value="inversa">Inversa</option>
-          </select>
+        <label class="id-ubicacion__field">
+          <span>URL de media</span>
+          <input type="text" inputmode="url" data-bloque-media placeholder="https://…" class="id-ubicacion__input" />
         </label>
       </div>
     `;
@@ -9459,13 +10102,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       .map((el) => {
         if (!(el instanceof HTMLElement)) return null;
         const id = el.dataset.catId;
-        const bg_type =
-          /** @type {HTMLSelectElement | null} */ (el.querySelector('[data-cat-bg-type]'))
-            ?.value || 'color';
         const bg_valor =
           /** @type {HTMLInputElement | null} */ (el.querySelector('[data-cat-bg-valor]'))
             ?.value || '';
-        return { id, bg_type, bg_valor: bg_valor.trim() };
+        const valor = bg_valor.trim();
+        let bg_type = 'color';
+        if (valor) {
+          if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(valor) || /\/video\/upload\//i.test(valor)) {
+            bg_type = 'video';
+          } else if (/^https?:\/\//i.test(valor) || valor.startsWith('/') || /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(valor)) {
+            bg_type = 'image';
+          } else if (valor.startsWith('#')) {
+            bg_type = 'color';
+          } else {
+            bg_type = 'image';
+          }
+        }
+        return { id, bg_type, bg_valor: valor };
       })
       .filter(Boolean);
   }
@@ -9555,6 +10208,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const badge = card?.querySelector('[data-gadget-status]');
       if (badge instanceof HTMLElement) {
         badge.textContent = on ? 'Activo' : 'Inactivo';
+      }
+
+      if (input.id === 'marca-menu-fondos-cinematicos') {
+        const wrap = document.getElementById('categorias-fondos-wrap');
+        const fondoGeneral = document.getElementById('menu-fondo-general');
+        if (wrap instanceof HTMLElement) wrap.hidden = !on;
+        if (fondoGeneral instanceof HTMLElement) fondoGeneral.hidden = on;
       }
 
       // Nutrition-specific: show/hide menu tools without leaving Identidad
@@ -9664,6 +10324,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       return el instanceof HTMLInputElement ? el.checked : false;
     };
 
+    if (typeof syncMenuFondoHidden === 'function') syncMenuFondoHidden();
+    if (typeof syncNosotrosFondoHidden === 'function') syncNosotrosFondoHidden();
+
     marcaSave.disabled = true;
     marcaSave.textContent = 'Guardando…';
     if (marcaFeedback) {
@@ -9741,7 +10404,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           fondo_nosotros_valor: val('marca-fondo-nosotros-valor'),
           fondo_menu_tipo: val('marca-fondo-menu-tipo'),
           fondo_menu_valor: val('marca-fondo-menu-valor'),
+          menu_fondos_cinematicos: checked('marca-menu-fondos-cinematicos'),
           menu_font: val('marca-menu-font'),
+          menu_color_texto: val('marca-menu-color-texto'),
           fondo_ubicacion_tipo: val('marca-fondo-ubicacion-tipo'),
           fondo_ubicacion_valor: val('marca-fondo-ubicacion-valor'),
           nosotros_bloques: collectNosotrosBloques(),

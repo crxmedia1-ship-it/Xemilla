@@ -17,6 +17,7 @@ import {
   normalizeTypographyComboId,
   resolveTypographyCombo,
 } from '../../config/typography-combos.js';
+import { sanitizeMenuFontFamily, resolveMenuFont } from '../../config/menu-fonts.js';
 
 export const prerender = false;
 
@@ -129,15 +130,10 @@ async function handleUpdateMarca({ request, cookies }) {
   const combo = resolveTypographyCombo(tipografiaCombo);
   patch.tipo_letra = combo.id;
 
-  // Tipografía del menú (títulos + precios)
-  const menuFont = String(raw.menu_font ?? '')
-    .trim()
-    .toLowerCase();
-  const MENU_FONT_OK = new Set(['elegant', 'modern', 'urban']);
-  if (menuFont && !MENU_FONT_OK.has(menuFont)) {
-    return json({ error: 'menu_font inválido (elegant | modern | urban)' }, 400);
-  }
-  patch.menu_font = menuFont || null;
+  // Tipografía del menú (títulos + precios): familia Google o preset legacy
+  const menuFontResolved = resolveMenuFont(raw.menu_font);
+  const menuFontSafe = sanitizeMenuFontFamily(menuFontResolved.family);
+  patch.menu_font = menuFontSafe || menuFontResolved.id || null;
 
   // Metadatos de compartido / PWA
   patch.share_image_url = normalizeUrlOrText(raw.share_image_url);
