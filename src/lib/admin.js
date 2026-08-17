@@ -52,8 +52,8 @@ const RESTAURANTE_ADMIN_SELECT = [
   'redes_sociales',
   'share_image_url',
   'app_icon_url',
-  'hub_cover_url',
-  'hub_logo_bg',
+  // hub_cover_url / hub_logo_bg: no están en todos los proyectos;
+  // resolveHubCoverUrl / resolveHubLogoBg leen ui_estilo.hub.
   'ui_estilo',
   'home_theme',
   'ubicacion_theme',
@@ -85,11 +85,14 @@ const RESTAURANTE_ADMIN_SELECT_BASE = [
   'gadget_dividir_cuenta',
   'gadget_reservas',
   'gadget_llamar_mesero',
+  'gadget_nutricion',
+  'gadget_ar',
   'config_wifi',
   'config_reservas',
   'logo_url',
   'eslogan',
   'secciones_fondo',
+  'ui_estilo',
 ].join(', ');
 
 const UUID_RE =
@@ -124,11 +127,22 @@ async function fetchRestauranteAdmin(client, filter) {
 
   console.warn('[admin] columnas nuevas no disponibles; SELECT base.', msg);
   const base = await run(RESTAURANTE_ADMIN_SELECT_BASE);
-  if (base.error) {
-    console.error('[admin] restaurante (base):', base.error.message);
+  if (!base.error) return base.data ?? null;
+
+  // Último recurso: base sin nutrición/AR si esas columnas tampoco existen
+  const msgBase = base.error.message || '';
+  if (!/gadget_nutricion|gadget_ar|column|does not exist|schema cache/i.test(msgBase)) {
+    console.error('[admin] restaurante (base):', msgBase);
     return null;
   }
-  return base.data ?? null;
+  const bare = await run(
+    RESTAURANTE_ADMIN_SELECT_BASE.replace(', gadget_nutricion, gadget_ar', ''),
+  );
+  if (bare.error) {
+    console.error('[admin] restaurante (bare):', bare.error.message);
+    return null;
+  }
+  return bare.data ?? null;
 }
 
 /**

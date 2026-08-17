@@ -4665,8 +4665,25 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       box-shadow:
         0 18px 40px rgba(0, 0, 0, 0.28),
         0 1px 0 rgba(255, 255, 255, 0.06) inset;
-      /* Keep dock above content; content padding clears this height */
       pointer-events: auto;
+      transition:
+        padding 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-radius 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 220ms ease;
+      will-change: transform, padding;
+    }
+
+    /* Instagram-style: shrink on scroll down */
+    .studio-dock.is-compact {
+      width: min(72vw, 17.5rem);
+      padding: 0.22rem 0.28rem;
+      border-radius: 1.15rem;
+      transform: translateX(-50%) translateY(0.15rem);
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.22),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
     }
 
     html.admin-panel.light .studio-dock,
@@ -4696,13 +4713,62 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       font-weight: 650;
       letter-spacing: 0.02em;
       padding: 0.3rem 0.15rem;
-      transition: color 160ms ease, background-color 160ms ease, transform 120ms ease;
+      transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        transform 120ms ease,
+        min-height 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        gap 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        padding 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-radius 220ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     .studio-dock__btn svg {
       width: 1.2rem;
       height: 1.2rem;
       flex-shrink: 0;
+      transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1), height 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .studio-dock__btn > span {
+      display: block;
+      max-height: 1.2rem;
+      overflow: hidden;
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity 180ms ease,
+        max-height 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .studio-dock.is-compact .studio-dock__btn {
+      min-height: 2.35rem;
+      gap: 0;
+      padding: 0.35rem 0.1rem;
+      border-radius: 0.9rem;
+    }
+
+    .studio-dock.is-compact .studio-dock__btn svg {
+      width: 1.05rem;
+      height: 1.05rem;
+    }
+
+    .studio-dock.is-compact .studio-dock__btn > span {
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(0.25rem);
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .studio-dock,
+      .studio-dock__btn,
+      .studio-dock__btn svg,
+      .studio-dock__btn > span,
+      .studio-fab {
+        transition: none !important;
+      }
     }
 
     .studio-dock__btn.is-active,
@@ -4740,7 +4806,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       font-weight: 500;
       line-height: 1;
       box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
-      transition: transform 140ms ease, opacity 140ms ease;
+      transition:
+        bottom 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 140ms ease,
+        opacity 140ms ease;
+    }
+
+    .studio-fab.is-dock-compact {
+      bottom: calc(4.15rem + env(safe-area-inset-bottom));
     }
 
     html.admin-panel.light .studio-fab,
@@ -9604,7 +9677,61 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     switchTab(defaultTab);
   }
 
+  /**
+   * Bottom dock: Instagram-style compact on scroll down, expand on scroll up.
+   */
+  function initStudioDockScroll() {
+    const dock = document.querySelector('[data-admin-bottom-nav]');
+    if (!(dock instanceof HTMLElement)) return;
+    if (dock.dataset.scrollBound === '1') return;
+    dock.dataset.scrollBound = '1';
+
+    const fab = document.querySelector('.studio-fab');
+    let lastY = window.scrollY || 0;
+    let compact = false;
+    let ticking = false;
+    const DOWN_THRESHOLD = 10;
+    const UP_THRESHOLD = 6;
+    const MIN_Y = 24;
+
+    const setCompact = (next) => {
+      if (compact === next) return;
+      compact = next;
+      dock.classList.toggle('is-compact', compact);
+      if (fab instanceof HTMLElement) {
+        fab.classList.toggle('is-dock-compact', compact);
+      }
+    };
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        if (window.matchMedia('(min-width: 769px)').matches) {
+          setCompact(false);
+          lastY = window.scrollY || 0;
+          return;
+        }
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        const delta = y - lastY;
+        if (y <= MIN_Y) {
+          setCompact(false);
+        } else if (delta > DOWN_THRESHOLD) {
+          setCompact(true);
+        } else if (delta < -UP_THRESHOLD) {
+          setCompact(false);
+        }
+        lastY = y;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true, signal });
+    onScroll();
+  }
+
   initAdminTopNavTabs();
+  initStudioDockScroll();
   syncAllDishNameMarquees();
   void hydratePlatosNutricion();
   window.addEventListener(
@@ -10280,6 +10407,44 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             sync();
             showToast(
               err instanceof Error ? err.message : 'Error al guardar nutrición',
+              'error',
+            );
+          } finally {
+            input.disabled = false;
+          }
+        },
+        { signal },
+      );
+    }
+
+    if (input.id === 'marca-gadget-ar') {
+      input.addEventListener(
+        'change',
+        async () => {
+          if (!restauranteId) return;
+          const prev = !input.checked;
+          input.disabled = true;
+          try {
+            const res = await fetch('/api/update-gadget-ar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                restaurante_id: restauranteId,
+                activo: input.checked,
+              }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error || 'No se pudo guardar el gadget');
+            showToast(
+              json.message ||
+                (input.checked ? 'Gadget AR activo' : 'Gadget AR apagado'),
+              'ok',
+            );
+          } catch (err) {
+            input.checked = prev;
+            sync();
+            showToast(
+              err instanceof Error ? err.message : 'Error al guardar AR',
               'error',
             );
           } finally {
