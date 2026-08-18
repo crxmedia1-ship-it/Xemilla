@@ -1,0 +1,713 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { getRestauranteBySlug } from '../../lib/restaurantes.js';
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/');
+
+const restaurante = await getRestauranteBySlug(slug);
+if (!restaurante || !restaurante.gadget_live_module) {
+  return new Response(null, { status: 404 });
+}
+
+const mesaNumero = parseInt(Astro.url.searchParams.get('mesa') || '0', 10) || 0;
+
+const nombre = String(restaurante.nombre_comercial || '').trim();
+const logoUrl = String(restaurante.logo_url || '').trim();
+const colorPrimario = String(restaurante.color_primario || '#7c3aed').trim();
+const restauranteId = String(restaurante.id || '').trim();
+
+// Google Maps URL for review
+const redes = Array.isArray(restaurante.redes_sociales) ? restaurante.redes_sociales : [];
+const mapsRed = redes.find((r) => r.red === 'maps' || r.red === 'tripadvisor');
+const mapsHref = mapsRed?.url || restaurante.coordenadas_maps || '';
+
+// Platos disponibles (solo tipo plato, no categoría oculta)
+const platos = (restaurante.platos || []).filter((p) => p.disponible !== false);
+const categorias = restaurante.categorias || [];
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+const platosJson = JSON.stringify(platos.map((p) => ({
+  id: String(p.id || ''),
+  nombre: String(p.nombre || ''),
+  descripcion: String(p.descripcion || ''),
+  precio: Number(p.precio || 0),
+  imagen_url: String(p.imagen_url || p.foto_url || ''),
+  categoria_id: String(p.categoria_id || ''),
+  gadget_nutricion: p.gadget_nutricion,
+  calorias: p.calorias,
+  proteinas: p.proteinas,
+  carbohidratos: p.carbohidratos,
+  grasas: p.grasas,
+  ar_url: p.ar_url,
+})));
+
+const categoriasJson = JSON.stringify(categorias.map((c) => ({
+  id: String(c.id || ''),
+  nombre: String(c.nombre || ''),
+})));
+---
+
+<Layout
+  title={`Mesa en vivo · ${nombre}`}
+  theme="crx"
+  themeColor={colorPrimario}
+>
+  <div
+    id="live-guest-root"
+    data-restaurante-id={restauranteId}
+    data-slug={slug}
+    data-mesa={mesaNumero}
+    data-platos={platosJson}
+    data-categorias={categoriasJson}
+    data-maps-href={mapsHref}
+    data-nombre={nombre}
+    data-logo={logoUrl}
+    class="relative min-h-dvh"
+    style={`--color-primario: ${colorPrimario}`}
+  >
+    <!-- Atmosphere -->
+    <div class="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
+      <div class="absolute inset-0" style={`background: linear-gradient(135deg, ${colorPrimario}18 0%, #030712 60%)`}></div>
+      <div class="absolute -top-32 left-1/2 -translate-x-1/2 size-[500px] rounded-full blur-[140px] opacity-20" style={`background: ${colorPrimario}`}></div>
+    </div>
+
+    <!-- Step: PIN Entry -->
+    <section id="step-pin" class="relative z-10 flex min-h-dvh flex-col items-center justify-center px-6 py-10">
+      <div class="w-full max-w-sm space-y-8">
+        <!-- Logo / Brand -->
+        <div class="text-center">
+          {logoUrl ? (
+            <img src={logoUrl} alt={nombre} width="120" height="48" class="mx-auto mb-4 h-12 w-auto object-contain" loading="eager" />
+          ) : (
+            <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-2xl font-black text-white">
+              {nombre.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <h1 class="text-xl font-bold text-white">{nombre}</h1>
+          {mesaNumero > 0 && (
+            <p class="mt-1 text-sm text-zinc-400">Mesa {mesaNumero}</p>
+          )}
+        </div>
+
+        <div class="rounded-3xl border border-white/10 bg-zinc-900/60 p-6 shadow-2xl backdrop-blur-xl space-y-5">
+          <div class="text-center">
+            <div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-white/5 text-2xl">🔐</div>
+            <h2 class="text-lg font-bold text-white">Ingresá tu PIN de mesa</h2>
+            <p class="mt-1 text-xs text-zinc-500">El mesonero te lo entrega al sentarte</p>
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex justify-center gap-2" id="pin-inputs-wrap">
+              {[0,1,2,3].map(i => (
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  maxlength="1"
+                  min="0"
+                  max="9"
+                  class="pin-digit size-14 rounded-xl border border-white/15 bg-zinc-800/70 text-center text-2xl font-bold text-white outline-none transition focus:border-white/50 focus:bg-zinc-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                  data-idx={i}
+                  aria-label={`Dígito ${i + 1} del PIN`}
+                />
+              ))}
+            </div>
+
+            <div id="pin-mesa-wrap" class:list={[mesaNumero > 0 ? 'hidden' : '', 'space-y-1']}>
+              <label class="block text-[0.65rem] font-semibold uppercase tracking-widest text-zinc-500">N° de Mesa</label>
+              <input
+                type="number"
+                id="pin-mesa-input"
+                min="1"
+                max="200"
+                inputmode="numeric"
+                placeholder="Ej: 5"
+                class="w-full rounded-xl border border-white/15 bg-zinc-800/70 px-4 py-3 text-center text-lg font-bold text-white outline-none transition focus:border-white/50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              id="btn-validate-pin"
+              class="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold text-white transition disabled:opacity-40"
+              style={`background: ${colorPrimario}`}
+            >
+              <span id="pin-btn-label">Entrar a la mesa →</span>
+              <svg id="pin-spinner" class="hidden size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </button>
+
+            <p id="pin-error" class="hidden text-center text-xs font-medium text-red-400" role="alert"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step: Name Entry -->
+    <section id="step-name" class="relative z-10 hidden min-h-dvh flex-col items-center justify-center px-6 py-10">
+      <div class="w-full max-w-sm space-y-6">
+        <div class="text-center">
+          <div class="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-white/5 text-3xl">👋</div>
+          <h2 class="text-xl font-bold text-white">¿Cómo te llamás?</h2>
+          <p class="mt-1 text-sm text-zinc-500">Para identificar tu pedido en la mesa</p>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-zinc-900/60 p-6 shadow-2xl backdrop-blur-xl space-y-4">
+          <input
+            type="text"
+            id="nombre-input"
+            placeholder="Tu nombre (ej. Carlos)"
+            maxlength="40"
+            autocomplete="given-name"
+            class="w-full rounded-xl border border-white/15 bg-zinc-800/70 px-4 py-3.5 text-center text-lg font-semibold text-white outline-none transition placeholder:text-zinc-600 focus:border-white/40"
+          />
+          <button
+            type="button"
+            id="btn-set-nombre"
+            class="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold text-white transition disabled:opacity-40"
+            style={`background: ${colorPrimario}`}
+          >
+            Listo, entrar →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step: Live Session (Menu + Cart) -->
+    <section id="step-session" class="relative z-10 hidden flex-col">
+      <!-- Session header -->
+      <header class="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-zinc-950/80 px-4 py-3 backdrop-blur-xl">
+        <div>
+          <p class="text-sm font-bold text-white">{nombre}</p>
+          <p class="text-[0.6rem] text-zinc-500">Mesa <span id="header-mesa"></span> · <span id="header-nombre" class="text-zinc-300"></span></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-ver-cuenta" class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20">
+            💰 Mi Cuenta
+          </button>
+          <button type="button" id="btn-mesero" class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:text-white">
+            🔔
+          </button>
+        </div>
+      </header>
+
+      <!-- Category tabs -->
+      <nav id="cat-tabs" class="flex gap-1.5 overflow-x-auto border-b border-white/8 bg-zinc-950/60 px-4 py-2 backdrop-blur-sm scrollbar-none" aria-label="Categorías"></nav>
+
+      <!-- Menu grid -->
+      <div id="platos-grid" class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3"></div>
+
+      <!-- Live cart feed -->
+      <div class="border-t border-white/8 bg-zinc-950/40 px-4 py-3">
+        <p class="mb-2 text-[0.6rem] font-semibold uppercase tracking-widest text-zinc-600">🔴 En vivo · Mesa</p>
+        <div id="live-feed" class="space-y-1.5 max-h-40 overflow-y-auto"></div>
+      </div>
+    </section>
+
+    <!-- Plato Detail Modal -->
+    <div id="plato-modal" class="fixed inset-0 z-50 hidden items-end justify-center p-4 sm:items-center" role="dialog" aria-modal="true">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="plato-modal-backdrop"></div>
+      <div class="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-2xl">
+        <button type="button" id="plato-modal-close" class="absolute right-4 top-4 z-10 flex size-8 items-center justify-center rounded-full bg-zinc-800/80 text-zinc-400">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+        </button>
+        <img id="modal-img" src="" alt="" class="h-48 w-full object-cover hidden" />
+        <div class="p-5 space-y-3">
+          <div>
+            <h3 id="modal-nombre" class="text-lg font-bold text-white"></h3>
+            <p id="modal-desc" class="mt-0.5 text-sm text-zinc-400"></p>
+            <p id="modal-precio" class="mt-2 text-xl font-black" style={`color: ${colorPrimario}`}></p>
+          </div>
+          <!-- Nutrition -->
+          <div id="modal-nutricion" class="hidden rounded-xl border border-white/8 bg-white/[0.03] p-3 space-y-1">
+            <p class="text-[0.6rem] font-semibold uppercase tracking-widest text-zinc-600">Información nutricional</p>
+            <div id="modal-nutricion-values" class="flex flex-wrap gap-2"></div>
+          </div>
+          <!-- AR -->
+          <a id="modal-ar-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden flex items-center justify-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-xs font-semibold text-violet-300">
+            🥽 Ver en Realidad Aumentada (AR)
+          </a>
+          <!-- Quantity + Add -->
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-800 px-2 py-1">
+              <button type="button" id="modal-qty-minus" class="flex size-7 items-center justify-center rounded-lg text-zinc-300 hover:bg-zinc-700 hover:text-white text-lg font-bold">−</button>
+              <span id="modal-qty" class="w-6 text-center text-sm font-bold text-white">1</span>
+              <button type="button" id="modal-qty-plus" class="flex size-7 items-center justify-center rounded-lg text-zinc-300 hover:bg-zinc-700 hover:text-white text-lg font-bold">+</button>
+            </div>
+            <button type="button" id="modal-add-btn" class="flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition" style={`background: ${colorPrimario}`}>
+              Agregar al pedido
+            </button>
+          </div>
+          <p id="modal-feedback" class="hidden text-center text-xs text-zinc-500" role="status"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cuenta / Split Modal -->
+    <div id="cuenta-modal" class="fixed inset-0 z-50 hidden items-end justify-center p-4 sm:items-center" role="dialog" aria-modal="true">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="cuenta-modal-backdrop"></div>
+      <div class="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-2xl max-h-[85dvh] overflow-y-auto">
+        <div class="p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-white">💰 Cuenta de la Mesa</h3>
+            <button type="button" id="cuenta-modal-close" class="flex size-8 items-center justify-center rounded-full bg-zinc-800/80 text-zinc-400">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+            </button>
+          </div>
+          <div id="cuenta-resumen" class="space-y-3"></div>
+          <div class="border-t border-white/10 pt-3">
+            <div class="flex justify-between text-sm font-bold text-white">
+              <span>Total Mesa</span>
+              <span id="cuenta-total" style={`color: ${colorPrimario}`}></span>
+            </div>
+          </div>
+          <!-- Google Review Banner -->
+          {mapsHref && (
+            <div id="review-banner" class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-center space-y-2">
+              <p class="text-sm font-semibold text-amber-200">¿Qué tal tu experiencia hoy?</p>
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/15 px-4 py-2.5 text-xs font-bold text-amber-300 transition hover:bg-amber-500/25"
+              >
+                ⭐⭐⭐⭐⭐ Dejar Reseña en Google
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="guest-toast" class="fixed right-4 top-4 z-[100] hidden max-w-xs rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-xl" role="status">
+      <p id="guest-toast-msg" class="text-sm font-medium text-white"></p>
+    </div>
+  </div>
+</Layout>
+
+<script define:vars={{ restauranteId, slug, mesaNumero, supabaseUrl, supabaseAnonKey, colorPrimario }}>
+import { createBrowserClient } from '@supabase/ssr';
+
+const root = document.getElementById('live-guest-root');
+const platos = JSON.parse(root?.dataset.platos || '[]');
+const categorias = JSON.parse(root?.dataset.categorias || '[]');
+const mapsHref = root?.dataset.mapsHref || '';
+
+const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+
+// ── Session state ─────────────────────────────────────
+const SESSION_KEY = 'xemilla-live-session';
+let session = null;
+try { session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch {}
+
+let currentMesa = mesaNumero || 0;
+let sesionId = session?.sesion_id || '';
+let comensalNombre = session?.nombre || '';
+let currentPlato = null;
+let modalQty = 1;
+let realtimeChannel = null;
+
+// ── Utilities ─────────────────────────────────────────
+function showToast(msg, tone = 'ok') {
+  const t = document.getElementById('guest-toast');
+  const m = document.getElementById('guest-toast-msg');
+  if (!t || !m) return;
+  m.textContent = msg;
+  t.className = `fixed right-4 top-4 z-[100] max-w-xs rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-xl ${
+    tone === 'error' ? 'border-red-500/30 bg-red-900/90 text-red-200' : 'border-white/10 bg-zinc-900/95 text-white'
+  }`;
+  t.hidden = false;
+  setTimeout(() => { t.hidden = true; }, 3000);
+}
+
+function fmt(price) {
+  if (!price) return '';
+  return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(price);
+}
+
+function showStep(id) {
+  ['step-pin', 'step-name', 'step-session'].forEach((s) => {
+    const el = document.getElementById(s);
+    if (!el) return;
+    el.classList.toggle('hidden', s !== id);
+    el.classList.toggle('flex', s === id && s !== 'step-session');
+  });
+  if (id === 'step-session') {
+    const el = document.getElementById('step-session');
+    el?.classList.remove('hidden');
+    el?.classList.add('flex');
+    buildMenu();
+    connectRealtime();
+    const mn = document.getElementById('header-mesa');
+    const nn = document.getElementById('header-nombre');
+    if (mn) mn.textContent = String(currentMesa);
+    if (nn) nn.textContent = comensalNombre;
+  }
+}
+
+// ── PIN flow ─────────────────────────────────────────
+const pinDigits = document.querySelectorAll('.pin-digit');
+pinDigits.forEach((input, i) => {
+  input.addEventListener('input', () => {
+    const val = String(input.value).replace(/\D/g, '').slice(-1);
+    input.value = val;
+    if (val && i < pinDigits.length - 1) pinDigits[i + 1].focus();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !input.value && i > 0) pinDigits[i - 1].focus();
+  });
+});
+
+function getPin() {
+  return [...pinDigits].map((d) => d.value).join('');
+}
+
+document.getElementById('btn-validate-pin')?.addEventListener('click', async () => {
+  const pin = getPin();
+  const mesaInput = document.getElementById('pin-mesa-input');
+  const mesa = currentMesa || parseInt(mesaInput?.value || '0', 10);
+  const errEl = document.getElementById('pin-error');
+  const spinner = document.getElementById('pin-spinner');
+  const label = document.getElementById('pin-btn-label');
+  const btn = document.getElementById('btn-validate-pin');
+
+  if (!mesa || mesa < 1) { if (errEl) { errEl.textContent = 'Ingresá el número de mesa'; errEl.classList.remove('hidden'); } return; }
+  if (pin.length !== 4) { if (errEl) { errEl.textContent = 'Ingresá los 4 dígitos del PIN'; errEl.classList.remove('hidden'); } return; }
+
+  if (btn instanceof HTMLButtonElement) btn.disabled = true;
+  if (spinner) spinner.classList.remove('hidden');
+  if (label) label.textContent = 'Verificando…';
+  if (errEl) errEl.classList.add('hidden');
+
+  try {
+    const res = await fetch('/api/live/validate-pin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: restauranteId, mesa_numero: mesa, pin }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'PIN incorrecto');
+    currentMesa = mesa;
+    sesionId = data.sesion_id;
+    showStep('step-name');
+  } catch (err) {
+    if (errEl) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+    if (btn instanceof HTMLButtonElement) btn.disabled = false;
+    if (spinner) spinner.classList.add('hidden');
+    if (label) label.textContent = 'Entrar a la mesa →';
+  }
+});
+
+document.getElementById('btn-set-nombre')?.addEventListener('click', () => {
+  const input = document.getElementById('nombre-input');
+  const nombre = input instanceof HTMLInputElement ? input.value.trim() : '';
+  if (!nombre) { input?.focus(); return; }
+  comensalNombre = nombre;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ sesion_id: sesionId, nombre, mesa: currentMesa }));
+  } catch {}
+  showStep('step-session');
+});
+
+document.getElementById('nombre-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-set-nombre')?.click();
+});
+
+// ── If already have a session, skip PIN ───────────────
+if (session?.sesion_id && session?.nombre) {
+  sesionId = session.sesion_id;
+  comensalNombre = session.nombre;
+  currentMesa = session.mesa || currentMesa;
+  // Verify session still active
+  fetch(`/api/live/get-session?sesion_id=${sesionId}&restaurante_id=${restauranteId}`)
+    .then((r) => r.json())
+    .then((d) => {
+      if (d.ok && d.sesion?.estado === 'activa') {
+        showStep('step-session');
+      } else {
+        sessionStorage.removeItem(SESSION_KEY);
+      }
+    })
+    .catch(() => {});
+}
+
+// ── Build menu ─────────────────────────────────────────
+let activeCatId = '';
+
+function buildMenu() {
+  const catNav = document.getElementById('cat-tabs');
+  const grid = document.getElementById('platos-grid');
+  if (!catNav || !grid) return;
+
+  // Build category tabs
+  const cats = categorias.filter((c) => platos.some((p) => p.categoria_id === c.id));
+  if (cats.length) activeCatId = cats[0].id;
+
+  catNav.innerHTML = cats.map((c, i) =>
+    `<button type="button" class="cat-tab shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${i === 0 ? 'text-white' : 'text-zinc-500 hover:text-zinc-200'}"
+      style="${i === 0 ? `background: ${colorPrimario}40; border: 1px solid ${colorPrimario}60;` : 'border: 1px solid transparent;'}"
+      data-cat-id="${c.id}">${c.nombre}</button>`
+  ).join('');
+
+  catNav.querySelectorAll('.cat-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeCatId = btn.dataset.catId || '';
+      catNav.querySelectorAll('.cat-tab').forEach((b) => {
+        const active = b.dataset.catId === activeCatId;
+        b.style.cssText = active ? `background: ${colorPrimario}40; border: 1px solid ${colorPrimario}60;` : 'border: 1px solid transparent;';
+        b.className = `cat-tab shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${active ? 'text-white' : 'text-zinc-500 hover:text-zinc-200'}`;
+      });
+      renderPlatos();
+    });
+  });
+
+  renderPlatos();
+}
+
+function renderPlatos() {
+  const grid = document.getElementById('platos-grid');
+  if (!grid) return;
+  const filtered = activeCatId ? platos.filter((p) => p.categoria_id === activeCatId) : platos;
+  grid.innerHTML = filtered.map((p) => `
+    <button type="button" class="group relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] text-left transition hover:border-white/15 hover:bg-white/[0.06]"
+      data-plato-id="${p.id}">
+      ${p.imagen_url ? `<img src="${p.imagen_url}" alt="${p.nombre}" class="h-32 w-full object-cover" loading="lazy" />` : `<div class="flex h-24 items-center justify-center bg-zinc-900 text-3xl">🍽</div>`}
+      <div class="p-3 space-y-1">
+        <p class="text-sm font-semibold text-white leading-tight">${p.nombre}</p>
+        ${p.descripcion ? `<p class="text-[0.65rem] text-zinc-500 line-clamp-2">${p.descripcion}</p>` : ''}
+        ${p.precio ? `<p class="text-sm font-bold mt-1" style="color: ${colorPrimario}">${fmt(p.precio)}</p>` : ''}
+      </div>
+    </button>
+  `).join('');
+
+  grid.querySelectorAll('[data-plato-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.platoId;
+      const plato = platos.find((p) => p.id === id);
+      if (plato) openPlatoModal(plato);
+    });
+  });
+}
+
+// ── Plato modal ────────────────────────────────────────
+function openPlatoModal(plato) {
+  currentPlato = plato;
+  modalQty = 1;
+  const modal = document.getElementById('plato-modal');
+  const img = document.getElementById('modal-img');
+  const nombre = document.getElementById('modal-nombre');
+  const desc = document.getElementById('modal-desc');
+  const precio = document.getElementById('modal-precio');
+  const qty = document.getElementById('modal-qty');
+  const nutricion = document.getElementById('modal-nutricion');
+  const nutriValues = document.getElementById('modal-nutricion-values');
+  const arBtn = document.getElementById('modal-ar-btn');
+  const feedback = document.getElementById('modal-feedback');
+
+  if (img) { img.src = plato.imagen_url || ''; img.classList.toggle('hidden', !plato.imagen_url); }
+  if (nombre) nombre.textContent = plato.nombre;
+  if (desc) desc.textContent = plato.descripcion || '';
+  if (precio) precio.textContent = plato.precio ? fmt(plato.precio) : '';
+  if (qty) qty.textContent = '1';
+  if (feedback) { feedback.textContent = ''; feedback.classList.add('hidden'); }
+
+  // Nutrition
+  if (nutricion && nutriValues && (plato.calorias || plato.proteinas || plato.carbohidratos || plato.grasas)) {
+    const items = [
+      plato.calorias && `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.6rem] text-zinc-300">${plato.calorias} kcal</span>`,
+      plato.proteinas && `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.6rem] text-zinc-300">P: ${plato.proteinas}g</span>`,
+      plato.carbohidratos && `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.6rem] text-zinc-300">C: ${plato.carbohidratos}g</span>`,
+      plato.grasas && `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.6rem] text-zinc-300">G: ${plato.grasas}g</span>`,
+    ].filter(Boolean).join('');
+    nutriValues.innerHTML = items;
+    nutricion.classList.toggle('hidden', !items);
+  } else {
+    nutricion?.classList.add('hidden');
+  }
+
+  // AR
+  if (arBtn) {
+    if (plato.ar_url) { arBtn.href = plato.ar_url; arBtn.classList.remove('hidden'); }
+    else arBtn.classList.add('hidden');
+  }
+
+  modal?.classList.remove('hidden');
+  modal?.classList.add('flex');
+}
+
+function closePlatoModal() {
+  document.getElementById('plato-modal')?.classList.add('hidden');
+  document.getElementById('plato-modal')?.classList.remove('flex');
+}
+
+document.getElementById('plato-modal-backdrop')?.addEventListener('click', closePlatoModal);
+document.getElementById('plato-modal-close')?.addEventListener('click', closePlatoModal);
+
+document.getElementById('modal-qty-minus')?.addEventListener('click', () => {
+  if (modalQty > 1) { modalQty--; const el = document.getElementById('modal-qty'); if (el) el.textContent = String(modalQty); }
+});
+document.getElementById('modal-qty-plus')?.addEventListener('click', () => {
+  if (modalQty < 10) { modalQty++; const el = document.getElementById('modal-qty'); if (el) el.textContent = String(modalQty); }
+});
+
+document.getElementById('modal-add-btn')?.addEventListener('click', async () => {
+  if (!currentPlato || !sesionId) return;
+  const btn = document.getElementById('modal-add-btn');
+  const feedback = document.getElementById('modal-feedback');
+  if (btn instanceof HTMLButtonElement) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+
+  try {
+    const res = await fetch('/api/live/add-pedido', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sesion_id: sesionId,
+        restaurante_id: restauranteId,
+        comensal_nombre: comensalNombre,
+        plato_id: currentPlato.id,
+        plato_nombre: currentPlato.nombre,
+        plato_precio: currentPlato.precio || 0,
+        cantidad: modalQty,
+        tipo: 'plato',
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.code === 'SESSION_CLOSED') {
+        sessionStorage.removeItem(SESSION_KEY);
+        showToast('La sesión de esta mesa fue cerrada. Pedí un nuevo PIN al mesonero.', 'error');
+        showStep('step-pin');
+        return;
+      }
+      throw new Error(data.error || 'Error al agregar');
+    }
+    if (feedback) { feedback.textContent = '✅ Pedido enviado'; feedback.classList.remove('hidden'); }
+    showToast(`🍽 ${currentPlato.nombre} ×${modalQty} enviado`);
+    setTimeout(closePlatoModal, 1200);
+  } catch (err) {
+    if (feedback) { feedback.textContent = err.message; feedback.classList.remove('hidden'); }
+  } finally {
+    if (btn instanceof HTMLButtonElement) { btn.disabled = false; btn.textContent = 'Agregar al pedido'; }
+  }
+});
+
+// ── Call waiter ────────────────────────────────────────
+document.getElementById('btn-mesero')?.addEventListener('click', async () => {
+  if (!sesionId) return;
+  await fetch('/api/live/add-pedido', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sesion_id: sesionId, restaurante_id: restauranteId,
+      comensal_nombre: comensalNombre, plato_nombre: 'Llamada al mesero',
+      tipo: 'mesero', cantidad: 1,
+    }),
+  });
+  showToast('🔔 Mesero avisado, enseguida te atienden');
+});
+
+// ── Cuenta modal ────────────────────────────────────────
+document.getElementById('btn-ver-cuenta')?.addEventListener('click', async () => {
+  if (!sesionId) return;
+  const modal = document.getElementById('cuenta-modal');
+  modal?.classList.remove('hidden'); modal?.classList.add('flex');
+
+  try {
+    const res = await fetch(`/api/live/get-session?sesion_id=${sesionId}&restaurante_id=${restauranteId}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    const resumenEl = document.getElementById('cuenta-resumen');
+    const totalEl = document.getElementById('cuenta-total');
+    if (resumenEl) {
+      resumenEl.innerHTML = data.resumen.map((r) => `
+        <div class="rounded-xl border border-white/8 bg-white/[0.03] p-3 space-y-1.5">
+          <p class="text-xs font-bold text-white">👤 ${r.comensal}</p>
+          ${r.items.map((item) => `
+            <div class="flex justify-between text-[0.7rem] text-zinc-400">
+              <span>${item.cantidad}× ${item.plato_nombre}</span>
+              <span>${fmt(item.plato_precio * item.cantidad)}</span>
+            </div>`).join('')}
+          <div class="flex justify-between border-t border-white/8 pt-1.5 text-xs font-semibold text-zinc-200">
+            <span>Subtotal ${r.comensal}</span><span>${fmt(r.total)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+    if (totalEl) totalEl.textContent = fmt(data.total_mesa);
+    if (data.sesion?.estado === 'finalizada') {
+      sessionStorage.removeItem(SESSION_KEY);
+      document.getElementById('review-banner')?.classList.remove('hidden');
+    }
+  } catch (err) {
+    const resumenEl = document.getElementById('cuenta-resumen');
+    if (resumenEl) resumenEl.innerHTML = `<p class="text-xs text-red-400">${err.message}</p>`;
+  }
+});
+
+['cuenta-modal-backdrop', 'cuenta-modal-close'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('click', () => {
+    document.getElementById('cuenta-modal')?.classList.add('hidden');
+    document.getElementById('cuenta-modal')?.classList.remove('flex');
+  });
+});
+
+// ── Live feed ──────────────────────────────────────────
+function addFeedItem(pedido) {
+  const feed = document.getElementById('live-feed');
+  if (!feed) return;
+  const icon = pedido.tipo === 'mesero' ? '🔔' : pedido.tipo === 'cuenta' ? '💰' : '🍽';
+  const text = pedido.tipo === 'plato'
+    ? `<strong>${pedido.comensal_nombre}</strong> pidió ${pedido.cantidad}× ${pedido.plato_nombre}`
+    : `<strong>${pedido.comensal_nombre}</strong> llamó al mesero`;
+  const el = document.createElement('div');
+  el.className = 'rounded-lg bg-white/[0.04] px-3 py-1.5 text-[0.7rem] text-zinc-300 animate-in fade-in slide-in-from-bottom-2 duration-300';
+  el.innerHTML = `${icon} ${text}`;
+  feed.prepend(el);
+  if (feed.children.length > 20) feed.lastElementChild?.remove();
+}
+
+// ── Supabase Realtime ────────────────────────────────
+function connectRealtime() {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+  if (!sesionId) return;
+
+  realtimeChannel = supabase
+    .channel(`live-session-${sesionId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'pedidos_live',
+      filter: `sesion_id=eq.${sesionId}`,
+    }, (payload) => {
+      const pedido = payload.new;
+      if (pedido) addFeedItem(pedido);
+    })
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'sesiones_mesa',
+      filter: `id=eq.${sesionId}`,
+    }, (payload) => {
+      if (payload.new?.estado === 'finalizada') {
+        sessionStorage.removeItem(SESSION_KEY);
+        showToast('🔴 El mesonero cerró la mesa. Revisá tu cuenta.', 'error');
+        document.getElementById('btn-ver-cuenta')?.click();
+      }
+    })
+    .subscribe();
+}
+
+window.addEventListener('pagehide', () => {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+});
+</script>
+
+<style>
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  #step-session { min-height: 100dvh; }
+</style>

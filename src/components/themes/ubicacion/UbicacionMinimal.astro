@@ -7,6 +7,8 @@ import {
   resolveHorarioFilas,
   resolveRedesActivas,
   resolveMapsHref,
+  ubicacionCardStyle,
+  normalizeUbicacionGridEstilo,
 } from '../../../lib/ubicacion-theme-data.js';
 import UbicacionActionPills from './UbicacionActionPills.astro';
 
@@ -26,6 +28,8 @@ interface Props {
     color_fondo?: string;
     color_titulo?: string;
     color_cuerpo?: string;
+    color_acento?: string;
+    grid_estilo?: string;
   };
   estilos: {
     mutedColor: string;
@@ -52,24 +56,27 @@ const {
 
 const titleColor = (sectionColors.color_titulo || '').trim();
 const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const panelBg = (sectionColors.color_fondo || '').trim();
+const accentColor = (sectionColors.color_acento || '').trim();
 const titleStyle = titleColor ? `color:${titleColor}` : undefined;
 const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const cardStyle = [
+  ubicacionCardStyle(normalizeUbicacionGridEstilo(sectionColors.grid_estilo), panelBg),
+  accentColor ? `--ubi-acento:${accentColor}` : '',
+]
+  .filter(Boolean)
+  .join('; ');
 
 const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
 const addressLine = mapsQuery || 'Nuestro local';
 const mapsHref = resolveMapsHref(mapaUrl, direccion, ciudad);
 const mapsEmbed = googleMapsEmbedSrc(mapaUrl, mapsQuery);
-const redesActivas = resolveRedesActivas(
-  instagram,
-  redes,
-  whatsapp || telefono,
-);
+const redesActivas =   resolveRedesActivas(instagram, redes, whatsapp);
 
 const horarioFilas = resolveHorarioFilas(horarios, horariosRows);
 const horariosJson = JSON.stringify(horarioFilas);
 
-const cardClass =
-  'rounded-2xl border border-white/10 bg-black/35 p-4 backdrop-blur-xl sm:p-5';
+const cardClass = 'rounded-2xl p-4 sm:p-5';
 ---
 
 <div
@@ -112,7 +119,7 @@ const cardClass =
 
   {
     mapsEmbed ? (
-      <div class={`${cardClass} mt-5 overflow-hidden p-0`}>
+      <div class={`${cardClass} mt-5 overflow-hidden p-0`} style={cardStyle}>
         <div class="relative aspect-[16/10] w-full bg-black/40">
           <iframe
             title="Mapa del restaurante"
@@ -126,7 +133,7 @@ const cardClass =
     ) : null
   }
 
-  <div class={`${cardClass} mt-4`}>
+  <div class={`${cardClass} mt-4`} style={cardStyle}>
     <p
       class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}
       style={bodyStyle}
@@ -164,7 +171,7 @@ const cardClass =
 
   {
     redesActivas.length > 0 || mapsHref ? (
-      <div class={`${cardClass} mt-4`}>
+      <div class={`${cardClass} mt-4`} style={cardStyle}>
         <p
           class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}
           style={bodyStyle}

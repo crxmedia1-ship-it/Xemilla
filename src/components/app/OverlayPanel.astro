@@ -71,10 +71,13 @@ const atmosphereOverlayEstilo =
       : 'puro'
     : overlayEstilo || 'puro';
 
+const paintPanelFondo = sectionId === 'ubicacion';
+
 /**
  * Contenedor:
  * - Sin atmósfera → pinta el sheet completo.
  * - Con atmósfera → solo CSS var para tarjetas/contenido (no tapa el fondo).
+ * - Ubicación: el swatch FONDO pinta el sheet aunque haya atmósfera de color.
  */
 const sheetStyle = [
   containerBg ? `--sec-fondo:${containerBg}` : '',
@@ -84,6 +87,9 @@ const sheetStyle = [
   !hasAtmosphere && !containerBg && fondoTipoNorm === 'color' && fondoValorTrim
     ? `background-color:${fondoValorTrim}`
     : '',
+  paintPanelFondo && hasAtmosphere && fondoTipoNorm === 'color' && (containerBg || fondoValorTrim)
+    ? `background-color:${containerBg || fondoValorTrim}`
+    : '',
   hasAtmosphere && fondoTipoNorm !== 'color'
     ? 'background-color:var(--color-fondo)'
     : '',
@@ -92,7 +98,7 @@ const sheetStyle = [
   .join('; ');
 
 const headerStyle = [
-  containerBg && !hasAtmosphere
+  (containerBg && (!hasAtmosphere || paintPanelFondo))
     ? `background-color:color-mix(in srgb, ${containerBg} 92%, transparent)`
     : hasAtmosphere && fondoTipoNorm === 'color' && fondoValorTrim
       ? `background-color:color-mix(in srgb, ${fondoValorTrim} 88%, transparent)`
@@ -172,7 +178,17 @@ const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('
       'relative z-10 flex-1 overflow-y-auto overscroll-contain',
       !hasAtmosphere && !containerBg && estilos.panelColor,
     ]}
-    style={bodyStyle || undefined}
+    style={[
+      bodyStyle,
+      paintPanelFondo &&
+      hasAtmosphere &&
+      fondoTipoNorm === 'color' &&
+      (containerBg || fondoValorTrim)
+        ? `background-color:${containerBg || fondoValorTrim}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('; ') || undefined}
   >
     <slot />
   </div>

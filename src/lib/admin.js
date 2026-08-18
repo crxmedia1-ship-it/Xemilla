@@ -42,6 +42,8 @@ const RESTAURANTE_ADMIN_SELECT = [
   'gadget_boutique',
   'gadget_nutricion',
   'gadget_ar',
+  'gadget_live_module',
+  'num_mesas',
   'config_wifi',
   'config_reservas',
   'config_boutique',

@@ -46,7 +46,10 @@ import {
   normalizeChipsEstilo,
   normalizePlatosLayout,
   normalizeEstiloTarjetas,
+  normalizeGadgetServiciosEstilo,
 } from '../../lib/secciones-ui.js';
+import { hasOperationalGadgets } from '../../lib/gadgets.js';
+import { normalizeUbicacionGridEstilo } from '../../lib/ubicacion-theme-data.js';
 import {
   TYPOGRAPHY_COMBO_OPTIONS,
   normalizeTypographyComboId,
@@ -322,6 +325,7 @@ const opsFacebook = redField('facebook');
 const opsTiktok = redField('tiktok');
 const opsTripadvisor = redField('tripadvisor');
 const opsWhatsapp = redField('whatsapp');
+const opsTelefonoContacto = redField('telefono');
 const opsMaps = String(restaurante?.coordenadas_maps || '').trim();
 const opsMapsEmbed = googleMapsEmbedSrc(opsMaps);
 const opsMapsOpen = mapsOpenHref(opsMaps);
@@ -405,6 +409,9 @@ const marca = {
   home_efecto_entrada: normalizeEfectoEntrada(
     uiEstiloRaw?.home?.efecto_entrada,
   ),
+  home_gadget_servicios_estilo: normalizeGadgetServiciosEstilo(
+    uiEstiloRaw?.home?.gadget_servicios_estilo,
+  ),
   nosotros_color_fondo: uiEstiloRaw?.nosotros?.color_fondo || '',
   nosotros_color_titulo: uiEstiloRaw?.nosotros?.color_titulo || '',
   nosotros_color_cuerpo: uiEstiloRaw?.nosotros?.color_cuerpo || '',
@@ -420,6 +427,9 @@ const marca = {
   ubicacion_color_fondo: uiEstiloRaw?.ubicacion?.color_fondo || '',
   ubicacion_color_titulo: uiEstiloRaw?.ubicacion?.color_titulo || '',
   ubicacion_color_cuerpo: uiEstiloRaw?.ubicacion?.color_cuerpo || '',
+  ubicacion_color_boton: uiEstiloRaw?.ubicacion?.color_acento || uiEstiloRaw?.ubicacion?.color_boton || '',
+  ubicacion_color_acento: uiEstiloRaw?.ubicacion?.color_acento || uiEstiloRaw?.ubicacion?.color_boton || '',
+  ubicacion_grid_estilo: normalizeUbicacionGridEstilo(uiEstiloRaw?.ubicacion?.grid_estilo),
   /** Canónico: ui_estilo.css_avanzado; alias columna custom_css */
   css_avanzado: uiEstiloRaw?.css_avanzado || restaurante?.custom_css || '',
   custom_css: uiEstiloRaw?.css_avanzado || restaurante?.custom_css || '',
@@ -494,6 +504,9 @@ const marca = {
   gadget_boutique: Boolean(restaurante?.gadget_boutique),
   gadget_nutricion: Boolean(restaurante?.gadget_nutricion),
   gadget_ar: Boolean(restaurante?.gadget_ar),
+  gadget_live_module: Boolean(restaurante?.gadget_live_module),
+  qr_artistico_url: String(restaurante?.qr_artistico_url || '').trim(),
+  num_mesas: Number(restaurante?.num_mesas ?? 10) || 10,
   boutique_productos: boutiqueConfig.productos,
   home_theme: normalizeHomeTheme(restaurante?.home_theme),
   nosotros_theme: normalizeNosotrosTheme(
@@ -511,6 +524,13 @@ const marca = {
     configReservas.href ||
     '',
 };
+
+const marcaHasOperationalGadgets = hasOperationalGadgets({
+  wifi: marca.gadget_wifi,
+  llamarMesero: marca.gadget_mesero,
+  dividirCuenta: marca.gadget_cuenta,
+  boutique: marca.gadget_boutique,
+});
 
 const fieldClass =
   'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50';
@@ -805,6 +825,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         <div
           data-restaurante-id={restId}
           id="dashboard-root"
+          data-slug={publicSlug}
           data-categorias={categoriasJson}
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
           data-gadget-nutricion={marca.gadget_nutricion ? 'true' : 'false'}
@@ -1471,6 +1492,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 tiktok={opsTiktok}
                 tripadvisor={opsTripadvisor}
                 whatsapp={opsWhatsapp}
+                telefono={opsTelefonoContacto}
                 socialIdPrefix="ops-"
               />
 
@@ -1576,6 +1598,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       { id: 'ubicacion', label: 'Horarios y Ubicación' },
                       { id: 'reservas', label: 'Reservas' },
                       { id: 'gadgets', label: 'Gadgets' },
+                      { id: 'qr', label: 'QR & Impresión' },
                     ].map((tab, i) => (
                       <button
                         type="button"
@@ -1670,6 +1693,36 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             Ninguno
                           </option>
                         </select>
+                      </label>
+
+                      <label
+                        class:list={['block space-y-1.5', !marcaHasOperationalGadgets && 'hidden']}
+                        for="marca-home-gadget-servicios-estilo"
+                        data-shows-when-operational-gadgets
+                        hidden={!marcaHasOperationalGadgets}
+                      >
+                        <span class={labelClass}>Servicios de mesa</span>
+                        <select
+                          id="marca-home-gadget-servicios-estilo"
+                          name="home_gadget_servicios_estilo"
+                          class={fieldClass}
+                        >
+                          <option
+                            value="drawer"
+                            selected={marca.home_gadget_servicios_estilo === 'drawer' || !marca.home_gadget_servicios_estilo}
+                          >
+                            Drawer (panel inferior)
+                          </option>
+                          <option
+                            value="radial"
+                            selected={marca.home_gadget_servicios_estilo === 'radial'}
+                          >
+                            Radial (botones en arco)
+                          </option>
+                        </select>
+                        <p class="text-[0.62rem] leading-relaxed text-zinc-500">
+                          Botón flotante con Wi‑Fi, mesonero, cuenta y boutique activos.
+                        </p>
                       </label>
 
                       <label class="block space-y-1.5" for="marca-home-fondo-animacion">
@@ -2869,7 +2922,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         data-ubicacion-fondo-color
                         hidden={marca.fondo_ubicacion_tipo !== 'color'}
                       >
-                        <span>Color de fondo</span>
+                        <span>Fondo</span>
                         <span class="id-swatch__ctrl">
                           <input
                             type="color"
@@ -2911,28 +2964,33 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         name="fondo_ubicacion_valor"
                         value={marca.fondo_ubicacion_valor}
                       />
+                      <input
+                        type="hidden"
+                        id="marca-ubicacion-color-fondo"
+                        name="ubicacion_color_fondo"
+                        value={marca.ubicacion_color_fondo || (marca.fondo_ubicacion_tipo === 'color' ? marca.fondo_ubicacion_valor : '')}
+                      />
+
+                      <label class="id-ubicacion__field">
+                        <span>Tarjetas (Horarios y Redes)</span>
+                        <select
+                          id="marca-ubicacion-grid-estilo"
+                          name="ubicacion_grid_estilo"
+                          class="id-ubicacion__select"
+                        >
+                          <option value="solido" selected={marca.ubicacion_grid_estilo === 'solido'}>
+                            Sólido
+                          </option>
+                          <option value="vidrio" selected={marca.ubicacion_grid_estilo === 'vidrio' || !marca.ubicacion_grid_estilo}>
+                            Vidrio
+                          </option>
+                          <option value="blur" selected={marca.ubicacion_grid_estilo === 'blur'}>
+                            Blur
+                          </option>
+                        </select>
+                      </label>
 
                       <div class="id-ubicacion__swatches">
-                        <label class="id-swatch">
-                          <span>Fondo</span>
-                          <span class="id-swatch__ctrl">
-                            <input
-                              type="color"
-                              id="marca-ubicacion-color-fondo-picker"
-                              value={marca.ubicacion_color_fondo || '#0a0a0a'}
-                              class="id-swatch__dot"
-                            />
-                            <input
-                              type="text"
-                              id="marca-ubicacion-color-fondo"
-                              name="ubicacion_color_fondo"
-                              value={marca.ubicacion_color_fondo}
-                              placeholder="#0a0a0a"
-                              spellcheck="false"
-                              class="id-swatch__hex"
-                            />
-                          </span>
-                        </label>
                         <label class="id-swatch">
                           <span>Títulos</span>
                           <span class="id-swatch__ctrl">
@@ -2973,7 +3031,34 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             />
                           </span>
                         </label>
+                        <label class="id-swatch">
+                          <span>Acento</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-ubicacion-color-acento-picker"
+                              value={marca.ubicacion_color_acento || marca.color_primario || '#9f1239'}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-ubicacion-color-acento"
+                              name="ubicacion_color_acento"
+                              value={marca.ubicacion_color_acento}
+                              placeholder={marca.color_primario || '#9f1239'}
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
                       </div>
+                      <button
+                        type="button"
+                        class="id-ubicacion__copy-home"
+                        data-copy-home-colors-ubicacion
+                      >
+                        Usar colores del Home
+                      </button>
                     </div>
                     </div>
 
@@ -3001,6 +3086,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           tiktok={opsTiktok}
                           tripadvisor={opsTripadvisor}
                           whatsapp={opsWhatsapp}
+                          telefono={opsTelefonoContacto}
                           socialIdPrefix="marca-redes-"
                         />
                       </div>
@@ -3278,7 +3364,285 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
+                      {/* ── Xemilla Live (Autopedido) ── full-width */}
+                      <article
+                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300 sm:col-span-2', marca.gadget_live_module && 'gadget-card--on']}
+                        data-gadget-card
+                        data-gadget-id="live"
+                        style="--gadget-accent: #7c3aed;"
+                      >
+                        <div class="flex items-start gap-3 p-4">
+                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                            </svg>
+                          </span>
+                          <div class="min-w-0 flex-1 pt-0.5">
+                            <div class="flex items-center gap-2">
+                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Xemilla Live · Autopedido</h4>
+                              <span class="gadget-status" data-gadget-status>{marca.gadget_live_module ? 'Activo' : 'Inactivo'}</span>
+                              {marca.gadget_live_module && publicSlug ? (
+                                <a
+                                  href={`/admin/live?restaurante=${restId}`}
+                                  class="ml-auto shrink-0 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-violet-300 transition hover:text-violet-100"
+                                >
+                                  Portal Mesonero ↗
+                                </a>
+                              ) : null}
+                            </div>
+                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Sesiones de mesa con PIN, autopedido colaborativo en tiempo real y monitor de comanda.</p>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Xemilla Live">
+                            <input type="checkbox" id="marca-gadget-live-module" name="gadget_live_module" checked={marca.gadget_live_module} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_live_module ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_live_module && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-live-module" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+
+                        <div class:list={['gadget-card__config', marca.gadget_live_module && 'is-open']} data-gadget-config aria-hidden={marca.gadget_live_module ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner space-y-3 px-4 pb-4">
+                            <div class="grid gap-2 sm:grid-cols-3">
+                              {publicSlug ? (
+                                <>
+                                  <a
+                                    href={`/admin/live?restaurante=${restId}`}
+                                    class="flex items-center justify-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2.5 text-[11px] font-semibold text-violet-300 transition hover:bg-violet-500/20"
+                                  >
+                                    🟢 Portal Mesonero
+                                  </a>
+                                  <a
+                                    href={`/admin/comanda?restaurante=${restId}`}
+                                    class="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20"
+                                  >
+                                    📋 Monitor Comanda
+                                  </a>
+                                  <a
+                                    href={`/live/${publicSlug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/60 px-3 py-2.5 text-[11px] font-semibold text-zinc-400 transition hover:bg-zinc-800"
+                                  >
+                                    👁 Vista Comensal ↗
+                                  </a>
+                                </>
+                              ) : null}
+                            </div>
+                            <p class="text-[10px] leading-relaxed text-zinc-600">
+                              El mesonero abre la mesa → genera PIN → el comensal escanea QR e ingresa PIN → autopedido colaborativo → monitor de comanda en cocina/barra.
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+
                     </div>
+                  </div>
+
+                  {/* —— QR & IMPRESIÓN —— */}
+                  <div
+                    data-marca-panel="qr"
+                    class="space-y-4"
+                    hidden
+                  >
+                    {/* Card principal — Glassmorphism */}
+                    <section
+                      class="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-xl backdrop-blur-xl space-y-5"
+                      aria-labelledby="qr-section-title"
+                    >
+                      {/* Glow decoration */}
+                      <div class="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-indigo-500/10 blur-3xl" aria-hidden="true" />
+                      <div class="pointer-events-none absolute -bottom-12 -left-12 size-48 rounded-full bg-violet-500/10 blur-3xl" aria-hidden="true" />
+
+                      <div class="relative flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p id="qr-section-title" class={labelClass}>Códigos QR &amp; Impresión</p>
+                          <p class="mt-1 text-[11px] leading-snug text-zinc-500">Genera el QR de marca del local y lotes de mesas para imprenta.</p>
+                        </div>
+                        {publicWebAppUrl ? (
+                          <a
+                            href={publicWebAppUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:text-zinc-200"
+                          >
+                            xemilla.app/{publicSlug} ↗
+                          </a>
+                        ) : null}
+                      </div>
+
+                      {/* ── Selector de modalidad ── */}
+                      <div class="relative space-y-2">
+                        <p class={labelClass}>Modalidad de QR</p>
+                        <div id="qr-mode-tabs" class="flex gap-2 flex-wrap" role="group" aria-label="Modalidad">
+                          <button
+                            type="button"
+                            data-qr-mode="standard"
+                            class="qr-mode-btn flex-1 min-w-[140px] rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:border-indigo-500/50 aria-pressed:border-indigo-500 aria-pressed:bg-indigo-500/20 aria-pressed:text-indigo-200"
+                            aria-pressed="true"
+                          >
+                            QR Estándar Vectorial
+                          </button>
+                          <button
+                            type="button"
+                            data-qr-mode="artistic"
+                            class="qr-mode-btn flex-1 min-w-[140px] rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-zinc-400 transition-all hover:border-indigo-500/50 aria-pressed:border-indigo-500 aria-pressed:bg-indigo-500/20 aria-pressed:text-indigo-200"
+                            aria-pressed="false"
+                          >
+                            QR Artístico IA (ControlNet)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* ── Opciones Artístico IA ── */}
+                      <div id="qr-artistic-options" class="space-y-4 hidden">
+                        <div class="grid gap-3 sm:grid-cols-2">
+                          <div class="space-y-1.5">
+                            <p class={labelClass}>Concepto / Preset Visual</p>
+                            <select id="qr-concepto" class={fieldClass}>
+                              <option value="sushi">Sushi / Asiático</option>
+                              <option value="burger">Burger / Grill</option>
+                              <option value="pizza">Pizza / Italiano</option>
+                              <option value="cocktails">Cocktails / Neón</option>
+                              <option value="finedining">Fine Dining</option>
+                            </select>
+                          </div>
+                          <div class="space-y-1.5">
+                            <p class={labelClass}>
+                              Nivel de integración IA
+                              <span class="ml-1 text-zinc-500" id="qr-peso-display">(0.35)</span>
+                            </p>
+                            <input
+                              type="range"
+                              id="qr-peso-ia"
+                              min="0.2"
+                              max="0.5"
+                              step="0.05"
+                              value="0.35"
+                              class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+                            />
+                            <div class="flex justify-between text-[0.6rem] text-zinc-600">
+                              <span>0.2 · Más legible</span>
+                              <span>0.5 · Más artístico</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="flex items-start gap-2.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-3.5 py-3">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-indigo-400">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
+                          </svg>
+                          <p class="text-[11px] leading-relaxed text-indigo-300/80">
+                            Requiere <code class="rounded border border-indigo-400/20 bg-indigo-500/10 px-1 font-mono text-[10px]">REPLICATE_API_TOKEN</code> en las variables de entorno del servidor. Sin token usa QR estándar de alta resolución.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* ── Botón Generar + Preview ── */}
+                      <div class="space-y-3">
+                        <button
+                          type="button"
+                          id="qr-generate-btn"
+                          class="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-600/20 px-5 py-3 text-sm font-semibold text-indigo-200 transition-all hover:border-indigo-500/70 hover:bg-indigo-600/30 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <span id="qr-gen-icon">🎨</span>
+                          <span id="qr-gen-label">Generar QR con IA</span>
+                          <svg id="qr-gen-spinner" class="hidden size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        </button>
+
+                        {/* Preview */}
+                        <div id="qr-preview-wrap" class={`${marca.qr_artistico_url ? '' : 'hidden'} rounded-2xl border border-white/10 bg-black/30 p-4 space-y-3`}>
+                          <p class={labelClass}>Vista previa</p>
+                          <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                            <img
+                              id="qr-preview-img"
+                              src={marca.qr_artistico_url || ''}
+                              alt="QR de marca"
+                              width="200"
+                              height="200"
+                              class="size-[160px] shrink-0 rounded-xl border border-white/10 bg-zinc-900 object-contain shadow-lg sm:size-[180px]"
+                              loading="lazy"
+                            />
+                            <div class="flex flex-col gap-2 min-w-0">
+                              <p class="text-[11px] text-zinc-400 break-all" id="qr-preview-url">{marca.qr_artistico_url}</p>
+                              <a
+                                id="qr-download-btn"
+                                href={marca.qr_artistico_url || '#'}
+                                download={`qr-${publicSlug}.png`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-600/25"
+                              >
+                                ⬇️ Descargar PNG (Alta Res) [Cloudinary]
+                              </a>
+                              <p class="text-[10px] text-zinc-600">El QR apunta a: <code class="text-zinc-400">xemilla.app/{publicSlug}</code></p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div id="qr-error-msg" class="hidden rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-400" role="alert"></div>
+                      </div>
+                    </section>
+
+                    {/* ── Lote de Mesas / Chips NFC ── */}
+                    <section
+                      class="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-xl backdrop-blur-xl space-y-5"
+                      aria-labelledby="qr-mesas-title"
+                    >
+                      <div class="pointer-events-none absolute -right-12 -bottom-12 size-48 rounded-full bg-amber-500/8 blur-3xl" aria-hidden="true" />
+
+                      <div>
+                        <p id="qr-mesas-title" class={labelClass}>Impresión en Lote · Mesas / Chips NFC</p>
+                        <p class="mt-1 text-[11px] leading-snug text-zinc-500">Genera un pliego PDF listo para imprenta con QR individual por mesa.</p>
+                      </div>
+
+                      <div class="grid gap-3 sm:grid-cols-2">
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Número de mesas del local</span>
+                          <input
+                            type="number"
+                            id="qr-num-mesas"
+                            min="1"
+                            max="200"
+                            step="1"
+                            value={marca.num_mesas}
+                            placeholder="10"
+                            inputmode="numeric"
+                            class={fieldClass}
+                          />
+                        </label>
+                        <div class="flex flex-col justify-end space-y-1.5">
+                          <p class={labelClass}>URL base generada</p>
+                          <p class="truncate rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-[0.68rem] font-mono text-zinc-400">
+                            xemilla.app/{publicSlug}?mesa=1…{'{N}'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        id="qr-batch-btn"
+                        class="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-600/15 px-5 py-3 text-sm font-semibold text-amber-200 transition-all hover:border-amber-500/60 hover:bg-amber-600/25 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <span id="qr-batch-icon">🖨️</span>
+                        <span id="qr-batch-label">Descargar Pliego de Mesas en PDF</span>
+                        <svg id="qr-batch-spinner" class="hidden size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </button>
+
+                      <div id="qr-batch-error" class="hidden rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-400" role="alert"></div>
+
+                      <div class="flex items-start gap-2.5 rounded-xl border border-amber-500/15 bg-amber-500/5 px-3.5 py-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-amber-400">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
+                        </svg>
+                        <p class="text-[11px] leading-relaxed text-amber-300/80">
+                          El PDF se abre en ventana de impresión del navegador. Cada QR incluye la etiqueta de mesa y la URL. Compatible con NFC chips (misma URL destino).
+                        </p>
+                      </div>
+                    </section>
                   </div>
 
                   <p id="marca-feedback" class="hidden text-xs text-zinc-500" role="status"></p>
@@ -5840,6 +6204,31 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     gap: 0.5rem;
   }
 
+  :global(.id-ubicacion__swatches--4) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :global(.id-ubicacion__copy-home) {
+    margin-top: 0.15rem;
+    width: 100%;
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #a1a1aa;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  :global(.id-ubicacion__copy-home:hover) {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
   :global(.id-ubicacion--dense) {
     gap: 0.45rem;
   }
@@ -8186,11 +8575,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             tiktok_url: tiktokUrl,
             tripadvisor_url: tripadvisorUrl,
             whatsapp_url: whatsappUrl,
+            telefono_url: socialField('perfil', 'telefono'),
             instagram_activo: socialOn('instagram', 'perfil'),
             facebook_activo: socialOn('facebook', 'perfil'),
             tiktok_activo: socialOn('tiktok', 'perfil'),
             tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
             whatsapp_activo: socialOn('whatsapp', 'perfil'),
+            telefono_activo: socialOn('telefono', 'perfil'),
           }),
         });
         const json = await res.json().catch(() => ({}));
@@ -10474,9 +10865,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       ['marca-nosotros-color-fondo-picker', 'marca-nosotros-color-fondo'],
       ['marca-nosotros-color-titulo-picker', 'marca-nosotros-color-titulo'],
       ['marca-nosotros-color-cuerpo-picker', 'marca-nosotros-color-cuerpo'],
-      ['marca-ubicacion-color-fondo-picker', 'marca-ubicacion-color-fondo'],
       ['marca-ubicacion-color-titulo-picker', 'marca-ubicacion-color-titulo'],
       ['marca-ubicacion-color-cuerpo-picker', 'marca-ubicacion-color-cuerpo'],
+      ['marca-ubicacion-color-acento-picker', 'marca-ubicacion-color-acento'],
       ['marca-fondo-menu-valor-picker', 'marca-fondo-menu-valor-color'],
       ['marca-menu-color-fondo-picker', 'marca-menu-color-fondo'],
       ['marca-menu-color-texto-picker', 'marca-menu-color-texto'],
@@ -10505,9 +10896,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   wireColorPair('marca-home-menu-color-picker', 'marca-home-menu-color');
   wireColorPair('marca-home-subtexto-color-picker', 'marca-home-subtexto-color');
   wireColorPair('marca-home-borde-destacado-color-picker', 'marca-home-borde-destacado-color');
-  wireColorPair('marca-ubicacion-color-fondo-picker', 'marca-ubicacion-color-fondo');
   wireColorPair('marca-ubicacion-color-titulo-picker', 'marca-ubicacion-color-titulo');
   wireColorPair('marca-ubicacion-color-cuerpo-picker', 'marca-ubicacion-color-cuerpo');
+  wireColorPair('marca-ubicacion-color-acento-picker', 'marca-ubicacion-color-acento');
   wireColorPair('marca-fondo-menu-valor-picker', 'marca-fondo-menu-valor-color');
   wireColorPair('marca-menu-color-fondo-picker', 'marca-menu-color-fondo');
   wireColorPair('marca-menu-color-texto-picker', 'marca-menu-color-texto');
@@ -10636,6 +11027,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const urlVal =
       ubicacionFondoUrlVal instanceof HTMLInputElement ? ubicacionFondoUrlVal.value.trim() : '';
     ubicacionFondoHidden.value = isColor ? colorVal : urlVal;
+    const panelFondo = document.getElementById('marca-ubicacion-color-fondo');
+    if (panelFondo instanceof HTMLInputElement && isColor) {
+      panelFondo.value = colorVal;
+    }
   };
 
   const syncUbicacionFondoUi = () => {
@@ -10672,6 +11067,83 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       { signal },
     );
   syncUbicacionFondoUi();
+
+  const colorFieldVal = (id) => {
+    const el = document.getElementById(id);
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLSelectElement
+    ) {
+      return String(el.value || '').trim();
+    }
+    return '';
+  };
+
+  const setColorPairValue = (textId, pickerId, value) => {
+    const text = document.getElementById(textId);
+    const picker = document.getElementById(pickerId);
+    let v = String(value || '').trim();
+    if (v && v[0] !== '#') v = `#${v}`;
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return;
+    const full =
+      v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v;
+    if (text instanceof HTMLInputElement) text.value = full;
+    if (picker instanceof HTMLInputElement) picker.value = full;
+  };
+
+  const firstHexIn = (raw) => {
+    const m = String(raw || '').match(/#([0-9a-f]{3}|[0-9a-f]{6})\b/i);
+    return m ? `#${m[1]}` : '';
+  };
+
+  document
+    .querySelector('[data-copy-home-colors-ubicacion]')
+    ?.addEventListener(
+      'click',
+      () => {
+        const titulo =
+          colorFieldVal('marca-home-titulo-color') ||
+          colorFieldVal('marca-color-texto') ||
+          '#ffffff';
+        const cuerpo =
+          colorFieldVal('marca-home-eslogan-color') ||
+          colorFieldVal('marca-home-subtexto-color') ||
+          '#d4d4d8';
+        const acento =
+          colorFieldVal('marca-color-primario') || '#9f1239';
+        const homeFondo =
+          firstHexIn(colorFieldVal('marca-fondo-home-valor')) || '#0a0a0a';
+
+        setColorPairValue(
+          'marca-ubicacion-color-titulo',
+          'marca-ubicacion-color-titulo-picker',
+          titulo,
+        );
+        setColorPairValue(
+          'marca-ubicacion-color-cuerpo',
+          'marca-ubicacion-color-cuerpo-picker',
+          cuerpo,
+        );
+        setColorPairValue(
+          'marca-ubicacion-color-acento',
+          'marca-ubicacion-color-acento-picker',
+          acento,
+        );
+
+        if (ubicacionFondoTipo instanceof HTMLSelectElement) {
+          ubicacionFondoTipo.value = 'color';
+        }
+        setColorPairValue(
+          'marca-fondo-ubicacion-valor-color',
+          'marca-fondo-ubicacion-valor-picker',
+          homeFondo,
+        );
+        syncUbicacionFondoUi();
+        checkMarcaDirty();
+      },
+      { signal },
+    );
 
   const syncMenuLegacyFields = () => {
     const tituloSel = document.getElementById('marca-menu-fuente-titulo');
@@ -11239,6 +11711,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     checkMarcaDirty();
   }, { signal });
 
+  const syncOperationalGadgetsUi = () => {
+    const wifi = document.getElementById('marca-gadget-wifi');
+    const mesero = document.getElementById('marca-gadget-mesero');
+    const dividir = document.getElementById('marca-gadget-dividir');
+    const boutique = document.getElementById('marca-gadget-boutique');
+    const on =
+      (wifi instanceof HTMLInputElement && wifi.checked) ||
+      (mesero instanceof HTMLInputElement && mesero.checked) ||
+      (dividir instanceof HTMLInputElement && dividir.checked) ||
+      (boutique instanceof HTMLInputElement && boutique.checked);
+    document.querySelectorAll('[data-shows-when-operational-gadgets]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.classList.toggle('hidden', !on);
+      el.hidden = !on;
+    });
+  };
+
   // Sync visual ios-toggle + tarjetas gadget (switches reales del catálogo)
   document.querySelectorAll('[data-marca-gadget]').forEach((input) => {
     if (!(input instanceof HTMLInputElement)) return;
@@ -11266,6 +11755,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         const badge = card?.querySelector('[data-gadget-status]');
         if (badge instanceof HTMLElement) {
           badge.textContent = on ? 'Activo' : 'Inactivo';
+        }
+        if (
+          input.id === 'marca-gadget-wifi' ||
+          input.id === 'marca-gadget-mesero' ||
+          input.id === 'marca-gadget-dividir' ||
+          input.id === 'marca-gadget-boutique'
+        ) {
+          syncOperationalGadgetsUi();
         }
       }
 
@@ -11308,6 +11805,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     sync();
   });
 
+  syncOperationalGadgetsUi();
+
   document.querySelectorAll('[data-gadget-config-inner]').forEach((panel) => {
     panel.addEventListener(
       'click',
@@ -11329,6 +11828,297 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   };
   colorPrimarioInput?.addEventListener('input', syncGadgetAccent, { signal });
   syncGadgetAccent();
+
+  // ── QR & Impresión ──────────────────────────────────────────────
+  (function initQrPanel() {
+    const qrModeBtns = document.querySelectorAll('[data-qr-mode]');
+    const qrArtisticOptions = document.getElementById('qr-artistic-options');
+    const qrGenBtn = document.getElementById('qr-generate-btn');
+    const qrGenLabel = document.getElementById('qr-gen-label');
+    const qrGenIcon = document.getElementById('qr-gen-icon');
+    const qrGenSpinner = document.getElementById('qr-gen-spinner');
+    const qrPreviewWrap = document.getElementById('qr-preview-wrap');
+    const qrPreviewImg = document.getElementById('qr-preview-img');
+    const qrPreviewUrl = document.getElementById('qr-preview-url');
+    const qrDownloadBtn = document.getElementById('qr-download-btn');
+    const qrErrorMsg = document.getElementById('qr-error-msg');
+    const qrPesoIa = document.getElementById('qr-peso-ia');
+    const qrPesoDisplay = document.getElementById('qr-peso-display');
+    const qrBatchBtn = document.getElementById('qr-batch-btn');
+    const qrBatchLabel = document.getElementById('qr-batch-label');
+    const qrBatchIcon = document.getElementById('qr-batch-icon');
+    const qrBatchSpinner = document.getElementById('qr-batch-spinner');
+    const qrBatchError = document.getElementById('qr-batch-error');
+    const qrNumMesas = document.getElementById('qr-num-mesas');
+
+    let qrMode = 'standard';
+
+    // Modo selector
+    qrModeBtns.forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      btn.addEventListener('click', () => {
+        qrMode = btn.dataset.qrMode || 'standard';
+        qrModeBtns.forEach((b) => {
+          if (!(b instanceof HTMLElement)) return;
+          const active = b.dataset.qrMode === qrMode;
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+          b.classList.toggle('bg-white/10', !active);
+          b.classList.toggle('bg-indigo-500/20', active);
+          b.classList.toggle('text-white', !active);
+          b.classList.toggle('text-indigo-200', active);
+          b.classList.toggle('border-indigo-500', active);
+          b.classList.toggle('border-white/15', !active);
+        });
+        if (qrArtisticOptions instanceof HTMLElement) {
+          qrArtisticOptions.classList.toggle('hidden', qrMode !== 'artistic');
+        }
+        if (qrGenLabel) {
+          qrGenLabel.textContent =
+            qrMode === 'artistic' ? 'Generar QR con IA' : 'Generar QR Estándar';
+        }
+        if (qrGenIcon) qrGenIcon.textContent = qrMode === 'artistic' ? '🎨' : '⚡';
+      }, { signal });
+    });
+
+    // Slider peso IA
+    if (qrPesoIa instanceof HTMLInputElement) {
+      const updatePeso = () => {
+        if (qrPesoDisplay) qrPesoDisplay.textContent = `(${parseFloat(qrPesoIa.value).toFixed(2)})`;
+      };
+      qrPesoIa.addEventListener('input', updatePeso, { signal });
+      updatePeso();
+    }
+
+    // Botón Generar QR
+    if (qrGenBtn instanceof HTMLButtonElement) {
+      qrGenBtn.addEventListener('click', async () => {
+        if (!restauranteId) {
+          showQrError('Restaurante no disponible');
+          return;
+        }
+
+        setQrLoading(true);
+        hideQrError();
+
+        try {
+          const concepto = (() => {
+            const el = document.getElementById('qr-concepto');
+            return el instanceof HTMLSelectElement ? el.value : 'sushi';
+          })();
+          const pesoIa = qrPesoIa instanceof HTMLInputElement
+            ? parseFloat(qrPesoIa.value)
+            : 0.35;
+
+          const res = await fetch('/api/generate-artistic-qr', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              restaurante_id: restauranteId,
+              slug: _qrSlug(),
+              concepto,
+              peso_ia: pesoIa,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+          }
+
+          showQrPreview(data.url, _qrSlug());
+          showToast(
+            data.isArtistic ? '✨ QR artístico generado y guardado' : '✅ QR estándar generado',
+            'ok',
+          );
+        } catch (err) {
+          showQrError(err instanceof Error ? err.message : String(err));
+        } finally {
+          setQrLoading(false);
+        }
+      }, { signal });
+    }
+
+    // Botón Pliego de Mesas PDF
+    if (qrBatchBtn instanceof HTMLButtonElement) {
+      qrBatchBtn.addEventListener('click', async () => {
+        if (!restauranteId) {
+          showBatchError('Restaurante no disponible');
+          return;
+        }
+        const numMesas = qrNumMesas instanceof HTMLInputElement
+          ? Math.max(1, parseInt(qrNumMesas.value, 10) || 10)
+          : 10;
+
+        setBatchLoading(true);
+        hideBatchError();
+
+        try {
+          const res = await fetch('/api/generate-table-qrs', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              restaurante_id: restauranteId,
+              slug: _qrSlug(),
+              num_mesas: numMesas,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+          }
+
+          openPrintWindow(data.mesas, data.slug || _qrSlug());
+          showToast(`🖨️ Pliego de ${numMesas} mesas listo para imprimir`, 'ok');
+        } catch (err) {
+          showBatchError(err instanceof Error ? err.message : String(err));
+        } finally {
+          setBatchLoading(false);
+        }
+      }, { signal });
+    }
+
+    /** Lee el slug del local actual desde el elemento raíz del dashboard */
+    function _qrSlug() {
+      const root = document.getElementById('dashboard-root');
+      return (root instanceof HTMLElement && root.dataset.slug) ? root.dataset.slug : '';
+    }
+
+    function setQrLoading(on) {
+      if (!(qrGenBtn instanceof HTMLButtonElement)) return;
+      qrGenBtn.disabled = on;
+      if (qrGenLabel) qrGenLabel.textContent = on ? 'Generando…' : (qrMode === 'artistic' ? 'Generar QR con IA' : 'Generar QR Estándar');
+      if (qrGenIcon) qrGenIcon.textContent = on ? '' : (qrMode === 'artistic' ? '🎨' : '⚡');
+      if (qrGenSpinner instanceof HTMLElement) qrGenSpinner.classList.toggle('hidden', !on);
+    }
+
+    function setBatchLoading(on) {
+      if (!(qrBatchBtn instanceof HTMLButtonElement)) return;
+      qrBatchBtn.disabled = on;
+      if (qrBatchLabel) qrBatchLabel.textContent = on ? 'Generando pliego…' : 'Descargar Pliego de Mesas en PDF';
+      if (qrBatchIcon) qrBatchIcon.textContent = on ? '' : '🖨️';
+      if (qrBatchSpinner instanceof HTMLElement) qrBatchSpinner.classList.toggle('hidden', !on);
+    }
+
+    function showQrPreview(url, slug) {
+      if (!url) return;
+      if (qrPreviewImg instanceof HTMLImageElement) qrPreviewImg.src = url;
+      if (qrPreviewUrl) qrPreviewUrl.textContent = url;
+      if (qrDownloadBtn instanceof HTMLAnchorElement) {
+        qrDownloadBtn.href = url;
+        qrDownloadBtn.download = `qr-${slug}.png`;
+      }
+      if (qrPreviewWrap instanceof HTMLElement) qrPreviewWrap.classList.remove('hidden');
+    }
+
+    function showQrError(msg) {
+      if (!(qrErrorMsg instanceof HTMLElement)) return;
+      qrErrorMsg.textContent = msg;
+      qrErrorMsg.classList.remove('hidden');
+    }
+
+    function hideQrError() {
+      if (!(qrErrorMsg instanceof HTMLElement)) return;
+      qrErrorMsg.classList.add('hidden');
+    }
+
+    function showBatchError(msg) {
+      if (!(qrBatchError instanceof HTMLElement)) return;
+      qrBatchError.textContent = msg;
+      qrBatchError.classList.remove('hidden');
+    }
+
+    function hideBatchError() {
+      if (!(qrBatchError instanceof HTMLElement)) return;
+      qrBatchError.classList.add('hidden');
+    }
+
+    /**
+     * Abre ventana de impresión con el pliego de mesas.
+     * @param {{ numero: number, appUrl: string, qrUrl: string }[]} mesas
+     * @param {string} slug
+     */
+    function openPrintWindow(mesas, slug) {
+      const win = window.open('', '_blank', 'width=900,height=700');
+      if (!win) {
+        showBatchError('El navegador bloqueó la ventana emergente. Permitila para imprimir.');
+        return;
+      }
+
+      const cards = mesas
+        .map(
+          ({ numero, appUrl, qrUrl }) => `
+            <div class="mesa-card">
+              <img src="${escHtml(qrUrl)}" alt="QR Mesa ${numero}" width="220" height="220" loading="eager" />
+              <div class="mesa-info">
+                <p class="mesa-label">Mesa ${numero}</p>
+                <p class="mesa-url">${escHtml(appUrl)}</p>
+              </div>
+            </div>`,
+        )
+        .join('');
+
+      win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pliego QR Mesas – ${escHtml(slug)}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #111; }
+    h1 { font-size: 14pt; font-weight: 700; text-align: center; margin-bottom: 4mm; color: #1a1a1a; letter-spacing: 0.02em; }
+    p.subtitle { font-size: 8pt; text-align: center; color: #666; margin-bottom: 8mm; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+    .mesa-card { border: 1px solid #ddd; border-radius: 8px; padding: 5mm; display: flex; flex-direction: column; align-items: center; gap: 3mm; page-break-inside: avoid; break-inside: avoid; }
+    .mesa-card img { width: 55mm; height: 55mm; object-fit: contain; display: block; }
+    .mesa-info { text-align: center; }
+    .mesa-label { font-size: 13pt; font-weight: 800; letter-spacing: 0.04em; color: #111; }
+    .mesa-url { font-size: 5.5pt; color: #888; font-family: monospace; margin-top: 1mm; word-break: break-all; }
+    .footer { margin-top: 8mm; text-align: center; font-size: 7pt; color: #aaa; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none; }
+    }
+    .btn-print { display: block; margin: 6mm auto 0; padding: 3mm 8mm; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-size: 11pt; font-weight: 600; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Códigos QR de Mesa — ${escHtml(slug)}</h1>
+  <p class="subtitle">xemilla.app · Escanea para acceder al menú digital de tu mesa</p>
+  <div class="grid">${cards}</div>
+  <p class="footer">Generado por Xemilla · ${new Date().toLocaleDateString('es-VE')}</p>
+  <button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  <script>
+    window.addEventListener('load', () => {
+      // Esperar que todas las imágenes carguen antes de auto-imprimir
+      const imgs = Array.from(document.images);
+      const pending = imgs.filter(i => !i.complete);
+      if (pending.length === 0) { window.print(); return; }
+      let done = 0;
+      pending.forEach(img => {
+        img.addEventListener('load', () => { if (++done === pending.length) window.print(); });
+        img.addEventListener('error', () => { if (++done === pending.length) window.print(); });
+      });
+    });
+  <\/script>
+</body>
+</html>`);
+      win.document.close();
+    }
+
+    /** @param {string} s */
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  })();
+  // ── /QR & Impresión ─────────────────────────────────────────────
 
   async function saveIdentidadMarca() {
     const saveBtn =
@@ -11436,11 +12226,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           home_fondo_animacion: val('marca-home-fondo-animacion') || 'in',
           home_estilo_navegacion: val('marca-home-estilo-navegacion') || 'frontal',
           home_efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
+          home_gadget_servicios_estilo:
+            val('marca-home-gadget-servicios-estilo') || 'drawer',
           overlay_opacity: Number(val('marca-home-overlay-opacity')) || 40,
           overlay_estilo: val('marca-home-overlay-estilo') || 'oscuro',
           fondo_animacion: val('marca-home-fondo-animacion') || 'in',
           estilo_navegacion: val('marca-home-estilo-navegacion') || 'frontal',
           efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
+          gadget_servicios_estilo:
+            val('marca-home-gadget-servicios-estilo') || 'drawer',
           fondo_tipo: val('marca-fondo-home-tipo'),
           fondo_valor: val('marca-fondo-home-valor'),
           titulo_color: val('marca-home-titulo-color'),
@@ -11454,9 +12248,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           nosotros_contenedor_estilo: val('marca-nosotros-contenedor-estilo') || 'vidrio',
           nosotros_fuente_titulo: val('marca-nosotros-fuente-titulo') || 'cinzel',
           nosotros_fuente_cuerpo: val('marca-nosotros-fuente-cuerpo') || 'plus-jakarta',
-          ubicacion_color_fondo: val('marca-ubicacion-color-fondo'),
+          ubicacion_color_fondo: val('marca-ubicacion-color-fondo') || val('marca-fondo-ubicacion-valor'),
           ubicacion_color_titulo: val('marca-ubicacion-color-titulo'),
           ubicacion_color_cuerpo: val('marca-ubicacion-color-cuerpo'),
+          ubicacion_color_acento: val('marca-ubicacion-color-acento'),
+          ubicacion_color_boton: val('marca-ubicacion-color-acento'),
+          ubicacion_grid_estilo: val('marca-ubicacion-grid-estilo') || 'vidrio',
           fondo_home_tipo: val('marca-fondo-home-tipo'),
           fondo_home_valor: val('marca-fondo-home-valor'),
           fondo_nosotros_tipo: val('marca-fondo-nosotros-tipo'),
@@ -11484,11 +12281,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           redes_tiktok: socialField('marca', 'tiktok'),
           redes_tripadvisor: socialField('marca', 'tripadvisor'),
           redes_whatsapp: socialField('marca', 'whatsapp'),
+          redes_telefono: socialField('marca', 'telefono'),
           redes_instagram_activo: socialOn('instagram', 'marca'),
           redes_facebook_activo: socialOn('facebook', 'marca'),
           redes_tiktok_activo: socialOn('tiktok', 'marca'),
           redes_tripadvisor_activo: socialOn('tripadvisor', 'marca'),
           redes_whatsapp_activo: socialOn('whatsapp', 'marca'),
+          redes_telefono_activo: socialOn('telefono', 'marca'),
           instagram_url: socialField('marca', 'instagram'),
           horarios: (() => {
             syncHorarioHidden('marca');
@@ -11511,6 +12310,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           gadget_boutique: checked('marca-gadget-boutique'),
           gadget_nutricion: checked('marca-gadget-nutricion'),
           gadget_ar: checked('marca-gadget-ar'),
+          gadget_live_module: checked('marca-gadget-live-module'),
           boutique_productos: collectBoutiqueProductos(),
           home_theme: val('marca-home-theme') || 'editorial',
           ubicacion_theme: val('marca-ubicacion-theme') || 'modal',

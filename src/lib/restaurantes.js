@@ -446,6 +446,8 @@ function buildUbicacion(row, brand) {
       redesPublicas.find((r) => r.red === 'instagram')?.url || '';
     const waPublica =
       redesPublicas.find((r) => r.red === 'whatsapp')?.url || legacyWa;
+    const telPublica =
+      redesPublicas.find((r) => r.red === 'telefono')?.url || '';
 
     return {
       titulo: 'UBICACIÓN Y HORARIOS',
@@ -455,7 +457,7 @@ function buildUbicacion(row, brand) {
       mapaUrl: asText(row.coordenadas_maps) || 'https://maps.google.com',
       horarios: horariosRaw,
       horariosRows: normalizeHorarios(horariosRaw),
-      telefono: waPublica,
+      telefono: telPublica,
       email: '',
       instagram: igPublica,
       whatsapp: waPublica,
@@ -717,9 +719,6 @@ async function loadRestauranteBySlug(slug) {
 
   if (!ubicacion.whatsapp && whatsapp) {
     ubicacion.whatsapp = whatsapp;
-  }
-  if (!ubicacion.telefono && whatsapp) {
-    ubicacion.telefono = whatsapp;
   }
 
   // Tema: fila Supabase primero (theme.js); brand.tema solo si faltan columnas

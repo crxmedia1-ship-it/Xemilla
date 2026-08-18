@@ -1,0 +1,278 @@
+---
+/**
+ * Botón flotante de servicios operativos (Wi‑Fi, mesonero, cuenta, boutique).
+ * Excluye gadgets experienciales (nutrición, AR) — viven en el menú.
+ */
+import { normalizeGadgetServiciosEstilo, buildOperationalGadgetItems } from '../../lib/gadgets.js';
+
+interface Props {
+  style?: string;
+  /** @type {import('../../lib/gadgets.js').GadgetFlags} */
+  gadgets?: {
+    wifi?: boolean;
+    llamarMesero?: boolean;
+    dividirCuenta?: boolean;
+    boutique?: boolean;
+  };
+  /** Clase extra para el FAB (p. ej. offset con app tabs) */
+  fabClass?: string;
+}
+
+const { style: styleProp = 'drawer', gadgets = {}, fabClass = '' } = Astro.props;
+
+const items = buildOperationalGadgetItems(gadgets);
+if (!items.length) return null;
+
+const style = normalizeGadgetServiciosEstilo(styleProp);
+const isRadial = style === 'radial';
+
+const iconWifi = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674a13.217 13.217 0 0118.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>`;
+const iconMesero = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3 4.157v1.5m-6-1.5v1.5m12-9.75H6.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h11.25c.621 0 1.125-.504 1.125-1.125V6.375c0-.621-.504-1.125-1.125-1.125z"/></svg>`;
+const iconCuenta = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 0v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>`;
+const iconBoutique = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>`;
+
+/** @param {string} id */
+function itemIcon(id) {
+  if (id === 'wifi') return iconWifi;
+  if (id === 'mesero') return iconMesero;
+  if (id === 'dividir') return iconCuenta;
+  if (id === 'boutique') return iconBoutique;
+  return '';
+}
+---
+
+<div
+  class:list={['gadget-floating-root', isRadial && 'gadget-floating-root--radial']}
+  data-gadget-floating
+  data-gadget-style={style}
+>
+  {
+    isRadial ? (
+      <div class:list={['gadget-radial fixed bottom-5 right-5 z-[55]', fabClass]} data-gadget-radial>
+        <div class="gadget-radial__orbit pointer-events-none" data-gadget-radial-orbit aria-hidden="true">
+          {
+            items.map((item, index) => (
+              <button
+                type="button"
+                class="gadget-radial__satellite pointer-events-none absolute flex size-12 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white opacity-0 shadow-xl backdrop-blur-xl transition-all duration-300"
+                data-gadget-radial-item
+                data-gadget-index={String(index)}
+                {...item.kind === 'boutique'
+                  ? { 'data-open-boutique': true }
+                  : { 'data-open-section': item.id }}
+                {...item.requiresMesa ? { 'data-requires-mesa': 'true' } : {}}
+                aria-label={item.label}
+              >
+                <Fragment set:html={itemIcon(item.id)} />
+              </button>
+            ))
+          }
+        </div>
+        <button
+          type="button"
+          class:list={[
+            'gadget-fab w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:scale-105 transition-all',
+          ]}
+          data-gadget-fab
+          aria-label="Servicios de mesa"
+          aria-expanded="false"
+          aria-haspopup="true"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          </svg>
+        </button>
+      </div>
+    ) : (
+      <>
+        <button
+          type="button"
+          class:list={[
+            'gadget-fab fixed bottom-5 right-5 z-[55] w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:scale-105 transition-all',
+            fabClass,
+          ]}
+          data-gadget-fab
+          aria-label="Servicios de mesa"
+          aria-expanded="false"
+          aria-controls="gadget-drawer-panel"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          </svg>
+        </button>
+
+        <div
+          class="gadget-drawer pointer-events-none fixed inset-0 z-[56] opacity-0 transition-opacity duration-300"
+          data-gadget-drawer
+          aria-hidden="true"
+        >
+          <button
+            type="button"
+            class="absolute inset-0 bg-black/45 backdrop-blur-sm opacity-0 transition-opacity duration-300"
+            data-gadget-drawer-backdrop
+            aria-label="Cerrar servicios"
+            tabindex="-1"
+          />
+
+          <div
+            id="gadget-drawer-panel"
+            class="gadget-drawer__panel fixed inset-x-0 bottom-0 translate-y-full backdrop-blur-2xl bg-black/80 border-t border-white/10 rounded-t-3xl p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-transform duration-300 ease-out"
+            data-gadget-drawer-panel
+            role="dialog"
+            aria-modal="true"
+            aria-label="Servicios de mesa"
+          >
+            <div class="mx-auto mb-5 h-1 w-10 rounded-full bg-white/25" aria-hidden="true" />
+
+            <div class="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <p class="text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-white/45">
+                  Servicios
+                </p>
+                <h2 class="mt-1 text-xl font-semibold tracking-tight text-white">
+                  Servicios de mesa
+                </h2>
+              </div>
+              <button
+                type="button"
+                class="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-lg text-white/70 transition hover:text-white"
+                data-gadget-drawer-close
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <ul class="grid gap-2.5" role="list">
+              {
+                items.map((item) => (
+                  <li>
+                    <button
+                      type="button"
+                      class="gadget-drawer__item flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-left transition hover:border-white/20 hover:bg-white/[0.07]"
+                      {...item.kind === 'boutique'
+                        ? { 'data-open-boutique': true }
+                        : { 'data-open-section': item.id }}
+                      {...item.requiresMesa ? { 'data-requires-mesa': 'true' } : {}}
+                      data-gadget-drawer-action
+                    >
+                      <span class="flex size-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/40 text-white">
+                        <Fragment set:html={itemIcon(item.id)} />
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-semibold text-white">{item.label}</span>
+                        <span class="mt-0.5 block text-xs text-white/50">{item.subtitle}</span>
+                      </span>
+                      <span class="text-white/35" aria-hidden="true">›</span>
+                    </button>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+        </div>
+      </>
+    )
+  }
+</div>
+
+<script>
+  function getAppRoot(el) {
+    return el.closest('.restaurant-app');
+  }
+
+  function setDrawerOpen(root, open) {
+    const drawer = root.querySelector('[data-gadget-drawer]');
+    const fab = root.querySelector('[data-gadget-fab]');
+    const backdrop = root.querySelector('[data-gadget-drawer-backdrop]');
+    const panel = root.querySelector('[data-gadget-drawer-panel]');
+    if (!(drawer instanceof HTMLElement)) return;
+
+    drawer.classList.toggle('is-open', open);
+    drawer.classList.toggle('pointer-events-none', !open);
+    drawer.classList.toggle('opacity-0', !open);
+    drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+    if (backdrop instanceof HTMLElement) {
+      backdrop.classList.toggle('opacity-100', open);
+      backdrop.tabIndex = open ? 0 : -1;
+    }
+    if (panel instanceof HTMLElement) {
+      panel.classList.toggle('translate-y-full', !open);
+      panel.classList.toggle('translate-y-0', open);
+    }
+    if (fab instanceof HTMLElement) {
+      fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    document.documentElement.classList.toggle('gadget-drawer-open', open);
+  }
+
+  function setRadialOpen(root, open) {
+    const radial = root.querySelector('[data-gadget-radial]');
+    const fab = root.querySelector('[data-gadget-fab]');
+    if (!(radial instanceof HTMLElement)) return;
+
+    radial.classList.toggle('is-open', open);
+    if (fab instanceof HTMLElement) {
+      fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    root.querySelectorAll('[data-gadget-radial-item]').forEach((btn, index) => {
+      if (!(btn instanceof HTMLElement)) return;
+      btn.classList.toggle('pointer-events-auto', open);
+      btn.classList.toggle('opacity-100', open);
+      btn.style.transitionDelay = open ? `${index * 40}ms` : '0ms';
+    });
+  }
+
+  function closeGadgetFloating(root) {
+    setDrawerOpen(root, false);
+    setRadialOpen(root, false);
+  }
+
+  function initGadgetFloating(app) {
+    if (!(app instanceof HTMLElement)) return;
+    const floating = app.querySelector('[data-gadget-floating]');
+    if (!(floating instanceof HTMLElement)) return;
+
+    const style = floating.dataset.gadgetStyle || 'drawer';
+    const fab = floating.querySelector('[data-gadget-fab]');
+
+    fab?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (style === 'radial') {
+        const radial = floating.querySelector('[data-gadget-radial]');
+        const open = radial instanceof HTMLElement && radial.classList.contains('is-open');
+        setRadialOpen(floating, !open);
+        return;
+      }
+      const drawer = floating.querySelector('[data-gadget-drawer]');
+      const open = drawer instanceof HTMLElement && drawer.classList.contains('is-open');
+      setDrawerOpen(floating, !open);
+    });
+
+    floating.querySelector('[data-gadget-drawer-backdrop]')?.addEventListener('click', () => {
+      closeGadgetFloating(floating);
+    });
+    floating.querySelector('[data-gadget-drawer-close]')?.addEventListener('click', () => {
+      closeGadgetFloating(floating);
+    });
+
+    floating.querySelectorAll('[data-gadget-drawer-action], [data-gadget-radial-item]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        closeGadgetFloating(floating);
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      closeGadgetFloating(floating);
+    });
+  }
+
+  document.querySelectorAll('.restaurant-app').forEach((app) => initGadgetFloating(app));
+  document.addEventListener('astro:page-load', () => {
+    document.querySelectorAll('.restaurant-app').forEach((app) => initGadgetFloating(app));
+  });
+</script>

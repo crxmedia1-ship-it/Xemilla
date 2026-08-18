@@ -29,6 +29,7 @@ export function resolveHorarioFilas(horarios, horariosRows) {
 export function redLabel(red) {
   const key = String(red || '').toLowerCase();
   if (key === 'whatsapp') return 'WhatsApp';
+  if (key === 'telefono') return 'Llamar';
   if (key === 'instagram') return 'Instagram';
   if (key === 'facebook') return 'Facebook';
   if (key === 'tiktok') return 'TikTok';
@@ -79,6 +80,7 @@ export function resolveRedHref(red, url) {
   const key = String(red || '').toLowerCase();
   const raw = String(url || '').trim();
   if (!raw) return '';
+  if (key === 'telefono') return resolveTelHref(raw);
   if (key === 'whatsapp') return resolveWaHref(raw);
   if (/^https?:\/\//i.test(raw)) return raw;
   const handle = raw.replace(/^@/, '');
@@ -98,6 +100,17 @@ export function resolveWaHref(whatsapp, telefono = '') {
   const waDigits = waRaw.replace(/\D/g, '');
   if (/^https?:\/\//i.test(waRaw)) return waRaw;
   return waDigits ? `https://wa.me/${waDigits}` : '';
+}
+
+/**
+ * @param {string} telefono
+ */
+export function resolveTelHref(telefono) {
+  const raw = String(telefono || '').trim();
+  if (!raw) return '';
+  if (/^tel:/i.test(raw)) return raw;
+  const digits = raw.replace(/[^\d+]/g, '');
+  return digits ? `tel:${digits}` : '';
 }
 
 /**
@@ -124,6 +137,94 @@ export function resolveInstagramHref(instagram) {
 }
 
 /**
+ * @param {string} hex
+ * @returns {string}
+ */
+export function contrastOnHex(hex) {
+  const raw = String(hex || '').replace('#', '').trim();
+  const full =
+    raw.length === 3
+      ? raw
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : raw;
+  if (!/^[0-9a-f]{6}$/i.test(full)) return '#ffffff';
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luma > 0.58 ? '#111111' : '#ffffff';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'solido' | 'vidrio' | 'blur'}
+ */
+export function normalizeUbicacionGridEstilo(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (v === 'solido' || v === 'solid' || v === 'opaco') return 'solido';
+  if (v === 'blur' || v === 'niebla' || v === 'frost') return 'blur';
+  return 'vidrio';
+}
+
+/**
+ * @param {'solido' | 'vidrio' | 'blur'} estilo
+ * @param {string} [color]
+ */
+export function ubicacionCardStyle(estilo, color = '') {
+  const bg = String(color || '').trim();
+  if (estilo === 'solido') {
+    return bg
+      ? `background:${bg}; border:1px solid color-mix(in srgb, ${bg} 72%, transparent); backdrop-filter:none; -webkit-backdrop-filter:none;`
+      : 'background:rgba(10,10,10,.92); border:1px solid rgba(255,255,255,.1); backdrop-filter:none; -webkit-backdrop-filter:none;';
+  }
+  if (estilo === 'blur') {
+    return bg
+      ? `background:color-mix(in srgb, ${bg} 36%, transparent); border:1px solid color-mix(in srgb, ${bg} 22%, transparent); backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px);`
+      : 'background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px);';
+  }
+  return bg
+    ? `background:color-mix(in srgb, ${bg} 78%, transparent); border:1px solid color-mix(in srgb, ${bg} 40%, transparent); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);`
+    : 'background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);';
+}
+
+/**
+ * Colores de Ubicación. El acento NO hereda del Home.
+ * @param {Record<string, unknown>} ubicacion
+ * @param {Record<string, unknown>} home
+ * @param {{ fondoColor?: string, primario?: string }} [extras]
+ */
+export function resolveUbicacionSectionColors(ubicacion = {}, home = {}, extras = {}) {
+  const fondo = String(ubicacion.color_fondo || extras.fondoColor || '').trim();
+  const titulo = String(
+    ubicacion.color_titulo || home.titulo_color || home.tituloColor || '',
+  ).trim();
+  const cuerpo = String(
+    ubicacion.color_cuerpo || home.eslogan_color || home.esloganColor || '',
+  ).trim();
+  const acento = String(
+    ubicacion.color_acento || ubicacion.color_boton || extras.primario || '',
+  ).trim();
+  const grid = normalizeUbicacionGridEstilo(ubicacion.grid_estilo);
+
+  return {
+    color_fondo: fondo,
+    color_titulo: titulo,
+    color_cuerpo: cuerpo,
+    color_boton: acento,
+    color_acento: acento,
+    color_boton_texto: contrastOnHex(acento),
+    grid_estilo: grid,
+  };
+}
+
+/**
  * @param {string} mapsHref
  * @param {Array<{ red: string, url: string }>} redesActivas
  */
@@ -132,7 +233,7 @@ export function buildContactActions(mapsHref, redesActivas = []) {
   const actions = [];
   const maps = String(mapsHref || '').trim();
   if (maps) {
-    actions.push({ id: 'maps', label: redLabel('maps'), href: maps, icon: 'maps' });
+    actions.push({ id: 'maps', label: redLabel('maps'), href: maps, icon: 'maps', external: true });
   }
   for (const r of redesActivas) {
     const href = resolveRedHref(r.red, r.url);
@@ -142,6 +243,7 @@ export function buildContactActions(mapsHref, redesActivas = []) {
       label: redLabel(r.red),
       href,
       icon: r.red,
+      external: !/^(tel:|mailto:)/i.test(href),
     });
   }
   return actions;

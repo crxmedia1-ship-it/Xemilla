@@ -105,6 +105,12 @@ export async function POST({ request, cookies }) {
   const tiktokRaw = raw.tiktok_url !== undefined ? raw.tiktok_url : undefined;
   const tripadvisorRaw =
     raw.tripadvisor_url !== undefined ? raw.tripadvisor_url : undefined;
+  const phoneRaw =
+    raw.telefono_url !== undefined
+      ? raw.telefono_url
+      : raw.redes_telefono !== undefined
+        ? raw.redes_telefono
+        : undefined;
   const socialAltRaw =
     facebookRaw === undefined && tiktokRaw === undefined
       ? raw.social_alt_url !== undefined
@@ -117,6 +123,7 @@ export async function POST({ request, cookies }) {
   const tiktokActivo = parseActivoFlag(raw.tiktok_activo);
   const tripadvisorActivo = parseActivoFlag(raw.tripadvisor_activo);
   const whatsappActivo = parseActivoFlag(raw.whatsapp_activo);
+  const phoneActivo = parseActivoFlag(raw.telefono_activo);
 
   const needsRedes =
     instagramRaw !== undefined ||
@@ -125,7 +132,9 @@ export async function POST({ request, cookies }) {
     tripadvisorRaw !== undefined ||
     socialAltRaw !== undefined ||
     telefonoRaw !== undefined ||
-    whatsappActivo !== undefined;
+    phoneRaw !== undefined ||
+    whatsappActivo !== undefined ||
+    phoneActivo !== undefined;
 
   const writeClient = isSuper
     ? getSuperAdminWriteClient(supabase, user)
@@ -220,6 +229,14 @@ export async function POST({ request, cookies }) {
         true,
       );
     }
+    if (phoneRaw !== undefined) {
+      redes = upsertRed(
+        redes,
+        'telefono',
+        String(phoneRaw ?? '').trim(),
+        phoneActivo !== false,
+      );
+    }
     if (socialAltRaw !== undefined) {
       const alt = String(socialAltRaw ?? '').trim();
       const kind = detectSocialAltKind(alt, redes);
@@ -269,12 +286,14 @@ export async function POST({ request, cookies }) {
     redesOut.find((r) => r.red === 'tripadvisor')?.url || '';
   const igRow = redesOut.find((r) => r.red === 'instagram');
   const waRow = redesOut.find((r) => r.red === 'whatsapp');
+  const phoneRow = redesOut.find((r) => r.red === 'telefono');
 
   return json({
     ok: true,
     restaurante: {
       id: data.id,
       whatsapp_url: waRow?.url || data.whatsapp_url || '',
+      telefono_url: phoneRow?.url || '',
       horarios: data.horarios || '',
       instagram_url: data.instagram_url || igRow?.url || '',
       facebook_url: facebookUrl,
@@ -291,6 +310,7 @@ export async function POST({ request, cookies }) {
       whatsapp_activo: waRow
         ? waRow.activo !== false
         : Boolean(data.whatsapp_url),
+      telefono_activo: phoneRow ? phoneRow.activo !== false : false,
       coordenadas_maps: data.coordenadas_maps || '',
     },
   });

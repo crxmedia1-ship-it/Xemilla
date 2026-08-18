@@ -245,41 +245,6 @@ export function buildHomeNavSequence(opts = {}) {
     },
   ];
 
-  if (opts.showWifi) {
-    trailing.push({
-      id: 'wifi',
-      label: compact ? 'WI-FI' : 'CONECTAR WI-FI',
-      subtitle: homeNavSubtitle('wifi', tagline, wifi),
-      kind: 'section',
-    });
-  }
-  if (opts.showLlamarMesero) {
-    trailing.push({
-      id: 'mesero',
-      label: compact ? 'MESERO' : 'LLAMAR MESERO',
-      subtitle: homeNavSubtitle('mesero', tagline, wifi),
-      kind: 'section',
-      requiresMesa: true,
-    });
-  }
-  if (opts.showDividir) {
-    trailing.push({
-      id: 'dividir',
-      label: compact ? 'LA CUENTA' : 'PEDIR LA CUENTA / DIVIDIR CUENTA',
-      subtitle: homeNavSubtitle('dividir', tagline, wifi),
-      kind: 'section',
-      requiresMesa: true,
-    });
-  }
-  if (opts.showBoutique) {
-    trailing.push({
-      id: 'boutique',
-      label: compact ? 'BOUTIQUE' : 'BOUTIQUE / MERCHANDISE',
-      subtitle: homeNavSubtitle('boutique', tagline, wifi),
-      kind: 'boutique',
-    });
-  }
-
   const hasReservas = Boolean(opts.reservasCta?.href);
   /** @type {HomeNavItem | null} */
   const reservasItem = hasReservas

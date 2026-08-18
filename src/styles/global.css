@@ -637,6 +637,10 @@
   background: #ffffff;
 }
 
+.restaurant-app .ubicacion-social-btn--telefono {
+  background: #22c55e;
+}
+
 .restaurant-app .ubicacion-social-btn--whatsapp {
   background: #25d366;
 }
@@ -661,4 +665,52 @@
 
 .restaurant-app .ubicacion-social-btn--tripadvisor {
   background: #34e0a1;
+}
+
+/* Botón flotante de servicios operativos */
+.restaurant-app [data-gadget-drawer].is-open {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+html.gadget-drawer-open {
+  overflow: hidden;
+}
+
+.restaurant-app .gadget-radial {
+  position: relative;
+}
+
+.restaurant-app .gadget-radial__orbit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+}
+
+.restaurant-app .gadget-radial__satellite {
+  right: 0;
+  bottom: 0;
+  transform: translate(0, 0) scale(0.85);
+}
+
+.restaurant-app .gadget-radial.is-open [data-gadget-index='0'] {
+  transform: translate(-5.25rem, -0.75rem) scale(1);
+}
+
+.restaurant-app .gadget-radial.is-open [data-gadget-index='1'] {
+  transform: translate(-4.25rem, -3.75rem) scale(1);
+}
+
+.restaurant-app .gadget-radial.is-open [data-gadget-index='2'] {
+  transform: translate(-1.75rem, -5.75rem) scale(1);
+}
+
+.restaurant-app .gadget-radial.is-open [data-gadget-index='3'] {
+  transform: translate(1.25rem, -5.25rem) scale(1);
+}
+
+.restaurant-app .gadget-radial.is-open .gadget-fab {
+  transform: rotate(45deg);
 }

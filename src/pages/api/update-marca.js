@@ -292,6 +292,9 @@ async function handleUpdateMarca({ request, cookies }) {
   if (raw.gadget_ar !== undefined) {
     patch.gadget_ar = toBool(raw.gadget_ar);
   }
+  if (raw.gadget_live_module !== undefined) {
+    patch.gadget_live_module = toBool(raw.gadget_live_module);
+  }
 
   const wifiTouched =
     raw.gadget_wifi !== undefined ||
@@ -412,6 +415,7 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
     // Fallback amplio solo si el mensaje es genérico de schema cache
     if (/schema cache|column|does not exist/i.test(msg) && attempt < 6) {
       const optional = [
+        'gadget_live_module',
         'gadget_ar',
         'gadget_nutricion',
         'gadget_boutique',

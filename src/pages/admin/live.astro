@@ -1,0 +1,415 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { createSupabaseServerClient } from '../../lib/supabase/server.js';
+import { createSupabaseServiceClient } from '../../lib/supabase/service.js';
+import {
+  isSuperAdminUser,
+  getAssignedRestauranteId,
+} from '../../config/superadmin.js';
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) return Astro.redirect('/admin/login');
+
+const isSuper = isSuperAdminUser(user);
+const restauranteId = isSuper
+  ? (Astro.url.searchParams.get('restaurante') || Astro.url.searchParams.get('id') || '')
+  : (getAssignedRestauranteId(user) || '');
+
+if (!restauranteId) return Astro.redirect(isSuper ? '/admin/super/dashboard' : '/admin/login');
+
+const service = createSupabaseServiceClient() ?? supabase;
+
+// Load restaurant data
+const { data: restaurante } = await service
+  .from('restaurantes')
+  .select('id, nombre_comercial, slug, logo_url, num_mesas, gadget_live_module, color_primario')
+  .eq('id', restauranteId)
+  .maybeSingle();
+
+if (!restaurante) return Astro.redirect('/admin/super/dashboard');
+
+// Load active sessions
+const { data: sesionesActivas } = await service
+  .from('sesiones_mesa')
+  .select('id, mesa_numero, pin, estado, created_at')
+  .eq('restaurante_id', restauranteId)
+  .eq('estado', 'activa');
+
+const numMesas = Number(restaurante.num_mesas ?? 10) || 10;
+const slug = String(restaurante.slug || '').trim();
+const nombre = String(restaurante.nombre_comercial || 'Restaurante').trim();
+const colorPrimario = String(restaurante.color_primario || '#7c3aed').trim();
+
+const activasByMesa = Object.fromEntries(
+  (sesionesActivas || []).map((s) => [s.mesa_numero, s]),
+);
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+---
+
+<Layout
+  title={`Live · ${nombre}`}
+  theme="crx"
+  themeColor="#030712"
+  adminPanel
+>
+  <div
+    id="live-root"
+    data-restaurante-id={restauranteId}
+    data-slug={slug}
+    data-num-mesas={numMesas}
+    class="relative min-h-dvh bg-zinc-950 text-white"
+  >
+    <!-- Atmosphere -->
+    <div class="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
+      <div class="absolute inset-0 bg-gradient-to-br from-violet-950/30 via-zinc-950 to-zinc-950"></div>
+      <div class="absolute -top-24 left-1/2 -translate-x-1/2 size-[500px] rounded-full bg-violet-600/10 blur-[120px]"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="relative z-10 flex items-center justify-between border-b border-white/10 bg-zinc-950/80 px-4 py-3 backdrop-blur-xl sm:px-6">
+      <div class="flex items-center gap-3">
+        <span class="flex size-8 items-center justify-center rounded-xl bg-violet-600/20 text-base">🟢</span>
+        <div>
+          <h1 class="text-sm font-bold tracking-tight text-white">{nombre} · Live</h1>
+          <p class="text-[0.6rem] uppercase tracking-[0.16em] text-zinc-500">Portal Mesonero</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a
+          href={`/admin/comanda?restaurante=${restauranteId}`}
+          class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20"
+        >
+          📋 Comanda
+        </a>
+        <a
+          href={`/admin/dashboard?restaurante=${restauranteId}`}
+          class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:text-white"
+        >
+          ← Admin
+        </a>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="relative z-10 mx-auto max-w-5xl px-4 py-6 sm:px-6">
+
+      <!-- Stats bar -->
+      <div class="mb-6 grid grid-cols-3 gap-3">
+        {[
+          { label: 'Mesas Totales', value: numMesas, color: 'text-zinc-300' },
+          { label: 'En Uso', id: 'stat-en-uso', value: (sesionesActivas || []).length, color: 'text-violet-300' },
+          { label: 'Disponibles', id: 'stat-disponibles', value: numMesas - (sesionesActivas || []).length, color: 'text-emerald-300' },
+        ].map(stat => (
+          <div class="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-center backdrop-blur-sm">
+            <p class={`text-2xl font-bold tabular-nums ${stat.color}`} id={stat.id || ''}>{stat.value}</p>
+            <p class="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-zinc-600">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <!-- Table grid -->
+      <div id="mesas-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {Array.from({ length: numMesas }, (_, i) => {
+          const n = i + 1;
+          const sesion = activasByMesa[n];
+          const enUso = Boolean(sesion);
+          return (
+            <button
+              type="button"
+              class:list={[
+                'mesa-card group relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border p-4 text-center transition-all duration-300',
+                enUso
+                  ? 'border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/15'
+                  : 'border-white/8 bg-white/[0.03] hover:border-emerald-500/30 hover:bg-emerald-500/5',
+              ]}
+              data-mesa={n}
+              data-sesion-id={sesion?.id || ''}
+              data-en-uso={enUso ? 'true' : 'false'}
+              data-pin={sesion?.pin || ''}
+            >
+              <span class:list={[
+                'flex size-10 items-center justify-center rounded-xl text-lg font-bold transition-colors',
+                enUso ? 'bg-violet-500/20 text-violet-200' : 'bg-zinc-800 text-zinc-400 group-hover:text-emerald-400',
+              ]}>
+                {n}
+              </span>
+              <span class="text-[0.65rem] font-semibold uppercase tracking-[0.14em]">
+                Mesa {n}
+              </span>
+              {enUso ? (
+                <span class="inline-flex items-center gap-1 rounded-full bg-violet-500/20 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-violet-300">
+                  <span class="size-1.5 animate-pulse rounded-full bg-violet-400"></span>
+                  PIN {sesion?.pin}
+                </span>
+              ) : (
+                <span class="text-[0.55rem] text-zinc-600 group-hover:text-emerald-500">Disponible</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </main>
+
+    <!-- Mesa action drawer -->
+    <div
+      id="mesa-drawer"
+      class="fixed inset-0 z-50 hidden items-end justify-center p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+    >
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="drawer-backdrop"></div>
+      <div class="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-2xl">
+        <div class="p-6 space-y-5">
+          <div class="flex items-center justify-between">
+            <h2 id="drawer-title" class="text-lg font-bold text-white"></h2>
+            <button type="button" id="drawer-close" class="flex size-8 items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white transition">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+            </button>
+          </div>
+
+          <!-- PIN display (when active) -->
+          <div id="drawer-pin-section" class="hidden rounded-2xl border border-violet-500/30 bg-violet-500/10 p-4 text-center space-y-1">
+            <p class="text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-violet-400">PIN Activo</p>
+            <p id="drawer-pin" class="text-4xl font-black tracking-[0.3em] text-violet-200"></p>
+            <p class="text-[0.6rem] text-violet-500">Comparte este PIN con el comensal</p>
+          </div>
+
+          <!-- QR link -->
+          <div id="drawer-qr-section" class="hidden space-y-1">
+            <p class="text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">URL del Comensal</p>
+            <p id="drawer-qr-url" class="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-[0.65rem] text-zinc-400 break-all"></p>
+          </div>
+
+          <!-- Action buttons -->
+          <div id="drawer-actions" class="space-y-2"></div>
+
+          <p id="drawer-feedback" class="hidden text-center text-xs text-zinc-500" role="status"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="live-toast" class="fixed right-4 top-4 z-[100] hidden max-w-xs rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-xl" role="status">
+      <p id="live-toast-msg" class="text-sm font-medium text-white"></p>
+    </div>
+  </div>
+</Layout>
+
+<script define:vars={{ restauranteId, slug, numMesas, supabaseUrl, supabaseAnonKey }}>
+import { createBrowserClient } from '@supabase/ssr';
+
+const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+
+const root = document.getElementById('live-root');
+const grid = document.getElementById('mesas-grid');
+const drawer = document.getElementById('mesa-drawer');
+const drawerBackdrop = document.getElementById('drawer-backdrop');
+const drawerClose = document.getElementById('drawer-close');
+const drawerTitle = document.getElementById('drawer-title');
+const drawerPinSection = document.getElementById('drawer-pin-section');
+const drawerPin = document.getElementById('drawer-pin');
+const drawerQrSection = document.getElementById('drawer-qr-section');
+const drawerQrUrl = document.getElementById('drawer-qr-url');
+const drawerActions = document.getElementById('drawer-actions');
+const drawerFeedback = document.getElementById('drawer-feedback');
+const statEnUso = document.getElementById('stat-en-uso');
+const statDisp = document.getElementById('stat-disponibles');
+
+// Current drawer state
+let activeMesa = null;
+
+// ── Toast ──────────────────────────────────────────────
+function showToast(msg, tone = 'ok') {
+  const t = document.getElementById('live-toast');
+  const m = document.getElementById('live-toast-msg');
+  if (!t || !m) return;
+  m.textContent = msg;
+  t.className = `fixed right-4 top-4 z-[100] max-w-xs rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-xl transition-all ${
+    tone === 'error'
+      ? 'border-red-500/30 bg-red-900/90 text-red-200'
+      : 'border-white/10 bg-zinc-900/95 text-white'
+  }`;
+  t.hidden = false;
+  setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+// ── Update stats ──────────────────────────────────────
+function updateStats() {
+  const enUso = grid?.querySelectorAll('[data-en-uso="true"]').length ?? 0;
+  if (statEnUso) statEnUso.textContent = String(enUso);
+  if (statDisp) statDisp.textContent = String(numMesas - enUso);
+}
+
+// ── Mesa card state ───────────────────────────────────
+function setMesaState(mesaBtn, { enUso, sesionId = '', pin = '' }) {
+  if (!(mesaBtn instanceof HTMLElement)) return;
+  const n = parseInt(mesaBtn.dataset.mesa || '0', 10);
+  mesaBtn.dataset.enUso = enUso ? 'true' : 'false';
+  mesaBtn.dataset.sesionId = sesionId;
+  mesaBtn.dataset.pin = pin;
+
+  mesaBtn.className = [
+    'mesa-card group relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border p-4 text-center transition-all duration-300',
+    enUso
+      ? 'border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/15'
+      : 'border-white/8 bg-white/[0.03] hover:border-emerald-500/30 hover:bg-emerald-500/5',
+  ].join(' ');
+
+  mesaBtn.innerHTML = `
+    <span class="flex size-10 items-center justify-center rounded-xl text-lg font-bold transition-colors ${enUso ? 'bg-violet-500/20 text-violet-200' : 'bg-zinc-800 text-zinc-400 group-hover:text-emerald-400'}">${n}</span>
+    <span class="text-[0.65rem] font-semibold uppercase tracking-[0.14em]">Mesa ${n}</span>
+    ${enUso
+      ? `<span class="inline-flex items-center gap-1 rounded-full bg-violet-500/20 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-violet-300"><span class="size-1.5 animate-pulse rounded-full bg-violet-400"></span>PIN ${pin}</span>`
+      : `<span class="text-[0.55rem] text-zinc-600 group-hover:text-emerald-500">Disponible</span>`
+    }
+  `;
+}
+
+// ── Open drawer ────────────────────────────────────────
+function openDrawer(mesaBtn) {
+  if (!(mesaBtn instanceof HTMLElement)) return;
+  activeMesa = mesaBtn;
+  const n = parseInt(mesaBtn.dataset.mesa || '0', 10);
+  const enUso = mesaBtn.dataset.enUso === 'true';
+  const pin = mesaBtn.dataset.pin || '';
+  const sesionId = mesaBtn.dataset.sesionId || '';
+
+  if (drawerTitle) drawerTitle.textContent = `Mesa ${n}`;
+
+  if (enUso && pin) {
+    drawerPinSection?.classList.remove('hidden');
+    if (drawerPin) drawerPin.textContent = pin;
+    drawerQrSection?.classList.remove('hidden');
+    const liveUrl = `${window.location.origin}/live/${slug}?mesa=${n}`;
+    if (drawerQrUrl) drawerQrUrl.textContent = liveUrl;
+  } else {
+    drawerPinSection?.classList.add('hidden');
+    drawerQrSection?.classList.add('hidden');
+  }
+
+  if (drawerActions) {
+    drawerActions.innerHTML = enUso
+      ? `<button type="button" id="btn-cerrar-mesa"
+           class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600/15 border border-red-500/30 px-4 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-600/25"
+           data-sesion-id="${sesionId}" data-mesa="${n}">
+           🔴 Cerrar &amp; Cobrar Mesa ${n}
+         </button>`
+      : `<button type="button" id="btn-abrir-mesa"
+           class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600/15 border border-emerald-500/30 px-4 py-3 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-600/25"
+           data-mesa="${n}">
+           🟢 Abrir Mesa ${n}
+         </button>`;
+
+    document.getElementById('btn-abrir-mesa')?.addEventListener('click', () => handleAbrirMesa(n));
+    document.getElementById('btn-cerrar-mesa')?.addEventListener('click', () => handleCerrarMesa(sesionId, n));
+  }
+
+  if (drawerFeedback) { drawerFeedback.textContent = ''; drawerFeedback.classList.add('hidden'); }
+  drawer?.classList.remove('hidden');
+  drawer?.classList.add('flex');
+}
+
+function closeDrawer() {
+  drawer?.classList.add('hidden');
+  drawer?.classList.remove('flex');
+  activeMesa = null;
+}
+
+drawerBackdrop?.addEventListener('click', closeDrawer);
+drawerClose?.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+// ── Open mesa ─────────────────────────────────────────
+async function handleAbrirMesa(mesaNumero) {
+  const btn = document.getElementById('btn-abrir-mesa');
+  if (btn instanceof HTMLButtonElement) { btn.disabled = true; btn.textContent = 'Abriendo…'; }
+  try {
+    const res = await fetch('/api/live/open-mesa', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: restauranteId, mesa_numero: mesaNumero }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    const mesaBtn = grid?.querySelector(`[data-mesa="${mesaNumero}"]`);
+    setMesaState(mesaBtn, { enUso: true, sesionId: data.sesion_id, pin: data.pin });
+    updateStats();
+    showToast(`✅ Mesa ${mesaNumero} abierta · PIN ${data.pin}`);
+    closeDrawer();
+  } catch (err) {
+    if (drawerFeedback) { drawerFeedback.textContent = err.message; drawerFeedback.classList.remove('hidden'); }
+    if (btn instanceof HTMLButtonElement) { btn.disabled = false; btn.textContent = `🟢 Abrir Mesa ${mesaNumero}`; }
+  }
+}
+
+// ── Close mesa ────────────────────────────────────────
+async function handleCerrarMesa(sesionId, mesaNumero) {
+  const btn = document.getElementById('btn-cerrar-mesa');
+  if (btn instanceof HTMLButtonElement) { btn.disabled = true; btn.textContent = 'Cerrando…'; }
+  try {
+    const res = await fetch('/api/live/close-mesa', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: restauranteId, sesion_id: sesionId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    const mesaBtn = grid?.querySelector(`[data-mesa="${mesaNumero}"]`);
+    setMesaState(mesaBtn, { enUso: false });
+    updateStats();
+    showToast(`🔴 Mesa ${mesaNumero} cerrada`);
+    closeDrawer();
+  } catch (err) {
+    if (drawerFeedback) { drawerFeedback.textContent = err.message; drawerFeedback.classList.remove('hidden'); }
+    if (btn instanceof HTMLButtonElement) { btn.disabled = false; btn.textContent = `🔴 Cerrar & Cobrar Mesa ${mesaNumero}`; }
+  }
+}
+
+// ── Mesa card click ───────────────────────────────────
+grid?.addEventListener('click', (e) => {
+  const btn = e.target?.closest('[data-mesa]');
+  if (btn) openDrawer(btn);
+});
+
+// ── Supabase Realtime — sesiones_mesa ────────────────
+const channel = supabase
+  .channel(`live-mesas-${restauranteId}`)
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'sesiones_mesa',
+    filter: `restaurante_id=eq.${restauranteId}`,
+  }, (payload) => {
+    const row = payload.new || payload.old;
+    if (!row?.mesa_numero) return;
+    const mesaBtn = grid?.querySelector(`[data-mesa="${row.mesa_numero}"]`);
+    if (!mesaBtn) return;
+
+    if (payload.eventType === 'INSERT' && row.estado === 'activa') {
+      setMesaState(mesaBtn, { enUso: true, sesionId: row.id, pin: row.pin });
+    } else if (row.estado === 'finalizada') {
+      setMesaState(mesaBtn, { enUso: false });
+    }
+    updateStats();
+  })
+  .subscribe();
+
+window.addEventListener('pagehide', () => { supabase.removeChannel(channel); });
+</script>
+
+<style>
+  .gadget-card__config { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .gadget-card__config.is-open { max-height: 400px; }
+</style>

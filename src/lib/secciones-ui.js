@@ -4,6 +4,8 @@
  */
 
 import { normalizeContenedorEstilo } from './nosotros-layout.js';
+import { normalizeGadgetServiciosEstilo } from './gadgets.js';
+import { normalizeUbicacionGridEstilo } from './ubicacion-theme-data.js';
 import {
   resolveNosotrosFuenteTitulo,
   resolveNosotrosFuenteCuerpo,
@@ -171,6 +173,7 @@ export function parseReservasConfig(config) {
 
 const REDES_ALLOWED = new Set([
   'whatsapp',
+  'telefono',
   'instagram',
   'facebook',
   'tiktok',
@@ -213,6 +216,11 @@ export function parseRedesSociales(value) {
  * @param {string} url
  */
 function normalizeSocialUrl(red, url) {
+  if (red === 'telefono') {
+    if (/^tel:/i.test(url)) return url;
+    const digits = url.replace(/[^\d+]/g, '');
+    return digits ? `tel:${digits}` : url;
+  }
   if (/^https?:\/\//i.test(url)) return url;
   const handle = url.replace(/^@/, '');
   if (red === 'whatsapp') {
@@ -404,7 +412,10 @@ export const HOME_EFECTOS_ENTRADA = Object.freeze(
   new Set(['rise', 'blur', 'reveal', 'ninguno']),
 );
 
-/** Migración legacy escala 1–5 (XS–XL) → px aproximados. */
+export {
+  GADGET_SERVICIOS_ESTILOS,
+  normalizeGadgetServiciosEstilo,
+} from './gadgets.js';
 const LEGACY_LOGO_PX = Object.freeze({ 1: 40, 2: 64, 3: 96, 4: 128, 5: 160 });
 const LEGACY_TITULO_PX = Object.freeze({ 1: 14, 2: 16, 3: 20, 4: 30, 5: 48 });
 const LEGACY_ESLOGAN_PX = Object.freeze({ 1: 11, 2: 12, 3: 14, 4: 20, 5: 28 });
@@ -978,6 +989,11 @@ export function parseUiEstilo(value) {
       efecto_entrada: normalizeEfectoEntrada(
         home.efecto_entrada ?? home.efectoEntrada ?? home.entrada_animacion,
       ),
+      gadget_servicios_estilo: normalizeGadgetServiciosEstilo(
+        home.gadget_servicios_estilo ??
+          home.gadgetServiciosEstilo ??
+          raw.home_gadget_servicios_estilo,
+      ),
     },
     menu: normalizeMenuUi(
       /** @type {Record<string, unknown>} */ (raw.menu || {}),
@@ -1002,6 +1018,17 @@ export function parseUiEstilo(value) {
       color_fondo: normalizeHexColor(ubicacion.color_fondo || ubicacion.colorFondo, ''),
       color_titulo: normalizeHexColor(ubicacion.color_titulo || ubicacion.colorTitulo, ''),
       color_cuerpo: normalizeHexColor(ubicacion.color_cuerpo || ubicacion.colorCuerpo, ''),
+      color_boton: normalizeHexColor(
+        ubicacion.color_acento || ubicacion.colorAcento || ubicacion.color_boton || ubicacion.colorBoton,
+        '',
+      ),
+      color_acento: normalizeHexColor(
+        ubicacion.color_acento || ubicacion.colorAcento || ubicacion.color_boton || ubicacion.colorBoton,
+        '',
+      ),
+      grid_estilo: normalizeUbicacionGridEstilo(
+        ubicacion.grid_estilo || ubicacion.gridEstilo || ubicacion.contenedor_estilo,
+      ),
     },
     /** Canónico; alias histórico: columna restaurantes.custom_css */
     css_avanzado: sanitizeCssAvanzado(
@@ -1119,6 +1146,11 @@ export function buildUiEstiloFromBody(raw) {
       efecto_entrada: normalizeEfectoEntrada(
         raw.home_efecto_entrada ?? raw.efecto_entrada,
       ),
+      gadget_servicios_estilo: normalizeGadgetServiciosEstilo(
+        raw.home_gadget_servicios_estilo ??
+          raw.gadget_servicios_estilo ??
+          raw.home?.gadget_servicios_estilo,
+      ),
     },
     menu: normalizeMenuUi(
       /** @type {Record<string, unknown>} */ (raw.menu || {}),
@@ -1160,6 +1192,17 @@ export function buildUiEstiloFromBody(raw) {
       color_fondo: normalizeHexColor(raw.ubicacion_color_fondo, ''),
       color_titulo: normalizeHexColor(raw.ubicacion_color_titulo, ''),
       color_cuerpo: normalizeHexColor(raw.ubicacion_color_cuerpo, ''),
+      color_boton: normalizeHexColor(
+        raw.ubicacion_color_acento || raw.ubicacion_color_boton,
+        '',
+      ),
+      color_acento: normalizeHexColor(
+        raw.ubicacion_color_acento || raw.ubicacion_color_boton,
+        '',
+      ),
+      grid_estilo: normalizeUbicacionGridEstilo(
+        raw.ubicacion_grid_estilo ?? raw.ubicacion?.grid_estilo,
+      ),
     },
     css_avanzado: sanitizeCssAvanzado(raw.css_avanzado ?? raw.custom_css ?? ''),
   };
@@ -1299,6 +1342,10 @@ export function uiEstiloToCssVars(ui, fallbackPrimario = '#9f1239') {
     ubicacion.color_fondo ? `--sec-ubicacion-fondo: ${ubicacion.color_fondo}` : '',
     ubicacion.color_titulo ? `--sec-ubicacion-titulo: ${ubicacion.color_titulo}` : '',
     ubicacion.color_cuerpo ? `--sec-ubicacion-cuerpo: ${ubicacion.color_cuerpo}` : '',
+    (ubicacion.color_acento || ubicacion.color_boton)
+      ? `--sec-ubicacion-acento: ${ubicacion.color_acento || ubicacion.color_boton}`
+      : '',
+    ubicacion.grid_estilo ? `--sec-ubicacion-grid: ${ubicacion.grid_estilo}` : '',
     ui?.menu?.color_texto ? `--menu-texto-color: ${ui.menu.color_texto}` : '',
     ui?.menu?.color_fondo ? `--menu-surface-color: ${ui.menu.color_fondo}` : '',
     ui?.menu?.color_acento ? `--menu-accent-color: ${ui.menu.color_acento}` : '',

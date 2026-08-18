@@ -61,11 +61,7 @@ const drawerBgStyle = secFondo
 const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
 const addressLine = mapsQuery || 'Nuestro local';
 const mapsHref = resolveMapsHref(mapaUrl, direccion, ciudad);
-const redesActivas = resolveRedesActivas(
-  instagram,
-  redes,
-  whatsapp || telefono,
-);
+const redesActivas =   resolveRedesActivas(instagram, redes, whatsapp);
 
 const horarioFilas = resolveHorarioFilas(horarios, horariosRows);
 const horariosJson = JSON.stringify(horarioFilas);

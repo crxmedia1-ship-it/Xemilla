@@ -7,6 +7,7 @@ import WifiGadget from '../gadgets/WifiGadget.astro';
 import DividirCuenta from '../gadgets/DividirCuenta.astro';
 import LlamarMeseroGadget from '../gadgets/LlamarMeseroGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
+import GadgetFloatingButton from './GadgetFloatingButton.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
 import HomeHeroCards from '../themes/home/HomeHeroCards.astro';
 import HomeBentoGrid from '../themes/home/HomeBentoGrid.astro';
@@ -30,6 +31,11 @@ import {
   normalizeFondoAnimacion,
   normalizeOverlayEstilo,
 } from '../../lib/secciones-ui.js';
+import {
+  hasOperationalGadgets,
+  normalizeGadgetServiciosEstilo,
+} from '../../lib/gadgets.js';
+import { resolveUbicacionSectionColors } from '../../lib/ubicacion-theme-data.js';
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,6 +59,10 @@ const showLlamarMesero = Boolean(gadgets?.llamarMesero);
 const showBoutique = Boolean(gadgets?.boutique);
 const showNutricion = Boolean(gadgets?.nutricion);
 const showAr = Boolean(gadgets?.ar);
+const hasOperationalFloating = hasOperationalGadgets(gadgets);
+const gadgetServiciosEstilo = normalizeGadgetServiciosEstilo(
+  uiEstilo?.home?.gadget_servicios_estilo ?? uiEstilo?.home?.gadgetServiciosEstilo,
+);
 let tasasCambio = { usdVes: 36.5, eurVes: 40, fuente: 'fallback', fecha: null };
 try {
   tasasCambio = (await fetchTasasCambio()) || tasasCambio;
@@ -117,6 +127,7 @@ const estiloNavegacion = normalizeEstiloNavegacion(
 const isNavHamburguesa = estiloNavegacion === 'hamburguesa';
 const isNavAppTabs = estiloNavegacion === 'app_tabs';
 const hideCentralNav = isNavHamburguesa || isNavAppTabs;
+const fabOffsetClass = isNavAppTabs ? '!bottom-24' : '';
 
 const menuColorCss =
   uiEstilo?.home?.menu_color ||
@@ -199,10 +210,10 @@ let homeProps = {
       restaurante?.menu_link ||
       (restaurante?.slug ? `/${restaurante.slug}/menu` : ''),
     estilos: restaurante?.estilos,
-    showWifi,
-    showDividir,
-    showLlamarMesero,
-    showBoutique,
+    showWifi: hasOperationalFloating ? false : showWifi,
+    showDividir: hasOperationalFloating ? false : showDividir,
+    showLlamarMesero: hasOperationalFloating ? false : showLlamarMesero,
+    showBoutique: hasOperationalFloating ? false : showBoutique,
     wifiSsid: restaurante?.wifi?.ssid || '',
     wifiClave: restaurante?.wifi?.password || '',
     reservasCta,
@@ -222,6 +233,17 @@ let homeProps = {
 };
 
 const ubicacion = restaurante?.ubicacion ?? {};
+const ubicacionSectionColors = resolveUbicacionSectionColors(
+  uiEstilo?.ubicacion || {},
+  uiEstilo?.home || {},
+  {
+    fondoColor:
+      String(fondoUbicacion?.tipo || '').toLowerCase() === 'color'
+        ? String(fondoUbicacion?.valor || '').trim()
+        : '',
+    primario: theme?.colorPrimario || theme?.color_primario || '',
+  },
+);
 const ubicacionProps = {
   direccion: ubicacion?.direccion || '',
   ciudad: ubicacion?.ciudad || '',
@@ -234,7 +256,7 @@ const ubicacionProps = {
   mapaUrl: ubicacion?.mapaUrl || '',
   horarios: ubicacion?.horarios ?? '',
   horariosRows: ubicacion?.horariosRows ?? [],
-  sectionColors: uiEstilo?.ubicacion,
+  sectionColors: ubicacionSectionColors,
   estilos: homeProps.estilos,
 };
 
@@ -420,52 +442,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               Horarios y Ubicación
             </button>
             {
-              showWifi ? (
-                <button
-                  type="button"
-                  data-open-section="wifi"
-                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
-                >
-                  Wi-Fi
-                </button>
-              ) : null
-            }
-            {
-              showLlamarMesero ? (
-                <button
-                  type="button"
-                  data-open-section="mesero"
-                  data-requires-mesa="true"
-                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
-                >
-                  Llamar mesero
-                </button>
-              ) : null
-            }
-            {
-              showDividir ? (
-                <button
-                  type="button"
-                  data-open-section="dividir"
-                  data-requires-mesa="true"
-                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
-                >
-                  Dividir cuenta
-                </button>
-              ) : null
-            }
-            {
-              showBoutique ? (
-                <button
-                  type="button"
-                  data-open-boutique
-                  class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white sm:text-4xl"
-                >
-                  Boutique
-                </button>
-              ) : null
-            }
-            {
               showReservas && reservasCta ? (
                 <a
                   href={reservasCta.href || '#'}
@@ -601,7 +577,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           title={ubicacion?.titulo || 'HORARIOS Y UBICACIÓN'}
           fondoTipo={fondoUbicacion.tipo}
           fondoValor={fondoUbicacion.valor}
-          sectionColors={uiEstilo.ubicacion}
+          sectionColors={ubicacionSectionColors}
           estilos={estilos}
         >
           {
@@ -670,6 +646,16 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           displayClass={estilos?.displayClass || ''}
         />
       )
+    }
+
+    {
+      hasOperationalFloating ? (
+        <GadgetFloatingButton
+          style={gadgetServiciosEstilo}
+          gadgets={gadgets}
+          fabClass={fabOffsetClass}
+        />
+      ) : null
     }
 
     {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
