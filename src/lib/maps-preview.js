@@ -1,10 +1,27 @@
 /**
  * Preview / embed de Google Maps a partir de coordenadas_maps.
+ * Acepta enlace, URL embed (?pb=…) o HTML iframe completo.
  */
 
 function isGenericMapsHome(url) {
   const u = String(url || '').trim();
   return !u || /^https?:\/\/(www\.)?maps\.google\.com\/?$/i.test(u);
+}
+
+/**
+ * Extrae src de iframe o URL embed de Google Maps.
+ * @param {string} input
+ */
+export function parseMapsEmbedInput(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return '';
+
+  const iframeMatch = raw.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  if (iframeMatch?.[1]) return iframeMatch[1].trim();
+
+  if (/google\.[^/]+\/maps\/embed/i.test(raw)) return raw;
+
+  return '';
 }
 
 /**
@@ -55,6 +72,9 @@ export function extractMapsQuery(url) {
  */
 export function mapsOpenHref(mapsUrl, fallbackQuery = '') {
   const url = String(mapsUrl || '').trim();
+  const embed = parseMapsEmbedInput(url);
+  if (embed) return embed;
+
   if (url && !isGenericMapsHome(url)) return url;
   const q = String(fallbackQuery || '').trim();
   if (q) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -68,6 +88,9 @@ export function mapsOpenHref(mapsUrl, fallbackQuery = '') {
  */
 export function googleMapsEmbedSrc(mapsUrl, fallbackQuery = '') {
   const url = String(mapsUrl || '').trim();
+  const embed = parseMapsEmbedInput(url);
+  if (embed) return embed;
+
   const coords = parseMapsLatLng(url);
   if (coords) {
     return `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=16&output=embed`;
@@ -99,4 +122,15 @@ export function mapsStaticImageSrc(mapsUrl) {
   const coords = parseMapsLatLng(mapsUrl);
   if (!coords) return '';
   return `https://staticmap.openstreetmap.de/staticmap.php?center=${coords.lat},${coords.lng}&zoom=16&size=800x420&maptype=mapnik&markers=${coords.lat},${coords.lng},red-pushpin`;
+}
+
+/**
+ * Normaliza lo guardado: prefiere URL embed limpia si pegaron iframe.
+ * @param {string} input
+ */
+export function normalizeMapsStorage(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return '';
+  const embed = parseMapsEmbedInput(raw);
+  return embed || raw;
 }

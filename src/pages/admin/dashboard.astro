@@ -18,6 +18,14 @@ import {
   normalizeNosotrosTheme,
   normalizeUbicacionTheme,
 } from '../../lib/layout-themes.js';
+import { normalizeContenedorEstilo } from '../../lib/nosotros-layout.js';
+import {
+  NOSOTROS_FUENTES_TITULO,
+  NOSOTROS_FUENTES_CUERPO,
+  resolveNosotrosFuenteTitulo,
+  resolveNosotrosFuenteCuerpo,
+  buildNosotrosFontsHref,
+} from '../../config/nosotros-typography.js';
 import { macrosPresentIn, resolveMacroId } from '../../config/menu-macros.js';
 import { platoFillUrl } from '../../lib/plato-media-url.js';
 import {
@@ -34,6 +42,10 @@ import {
   normalizeEfectoEntrada,
   normalizeOverlayEstilo,
   parseRedesSociales,
+  normalizeChipsLayout,
+  normalizeChipsEstilo,
+  normalizePlatosLayout,
+  normalizeEstiloTarjetas,
 } from '../../lib/secciones-ui.js';
 import {
   TYPOGRAPHY_COMBO_OPTIONS,
@@ -225,29 +237,58 @@ function parseJsonArray(value) {
   return [];
 }
 
-/** @type {Array<{ titulo: string, texto: string, media_url: string, alineacion: string }>} */
+/** @type {Array<{ titulo: string, texto: string, media_url: string, media: string[], alineacion: string }>} */
 let nosotrosBloques = parseJsonArray(restaurante?.nosotros_bloques)
-  .map((b) => ({
-    titulo: String(b?.titulo || '').trim(),
-    texto: String(b?.texto || b?.contenido || '').trim(),
-    media_url: String(b?.media_url || b?.imagen || '').trim(),
-    alineacion: String(b?.alineacion || 'alternada').toLowerCase() === 'inversa' ? 'inversa' : 'alternada',
-  }))
-  .filter((b) => b.titulo || b.texto || b.media_url);
+  .map((b) => {
+    /** @type {string[]} */
+    const media = [];
+    const push = (v) => {
+      const url = String(v || '').trim();
+      if (!url || media.length >= 3) return;
+      media.push(url);
+    };
+    if (Array.isArray(b?.media) && b.media.length > 0) {
+      for (const m of b.media) push(m);
+    } else {
+      if (Array.isArray(b?.media_urls)) {
+        for (const m of b.media_urls) push(m);
+      }
+      push(b?.media_url);
+      push(b?.imagen);
+    }
+    return {
+      titulo: String(b?.titulo || '').trim(),
+      texto: String(b?.texto || b?.contenido || '').trim(),
+      media_url: media[0] || '',
+      media: media.length ? media : [],
+      alineacion: String(b?.alineacion || 'alternada').toLowerCase() === 'inversa' ? 'inversa' : 'alternada',
+    };
+  })
+  .filter((b) => b.titulo || b.texto || b.media.length);
 
 if (nosotrosBloques.length === 0 && (restaurante?.nosotros_titulo || restaurante?.nosotros_texto || restaurante?.nosotros_imagen)) {
+  const img = restaurante?.nosotros_imagen || '';
   nosotrosBloques = [
     {
       titulo: restaurante?.nosotros_titulo || 'Nosotros',
       texto: restaurante?.nosotros_texto || '',
-      media_url: restaurante?.nosotros_imagen || '',
+      media_url: img,
+      media: img ? [img] : [],
       alineacion: 'alternada',
     },
   ];
 }
 
 if (nosotrosBloques.length === 0) {
-  nosotrosBloques = [{ titulo: '', texto: '', media_url: '', alineacion: 'alternada' }];
+  nosotrosBloques = [{ titulo: '', texto: '', media_url: '', media: [], alineacion: 'alternada' }];
+}
+
+/** Filas visibles de media en admin (mín. 1 campo vacío). */
+function bloqueMediaForAdmin(bloque) {
+  const filled = (bloque.media || [])
+    .map((m) => String(m || '').trim())
+    .filter(Boolean);
+  return filled.length ? filled : [''];
 }
 
 const redesParsed = parseRedesSociales(restaurante?.redes_sociales);
@@ -256,6 +297,16 @@ if (!redesById.instagram && restaurante?.instagram_url) {
   redesById.instagram = {
     red: 'instagram',
     url: String(restaurante.instagram_url).trim(),
+    activo: true,
+  };
+}
+if (
+  !redesById.whatsapp &&
+  (restaurante?.whatsapp_url || restaurante?.whatsapp_num)
+) {
+  redesById.whatsapp = {
+    red: 'whatsapp',
+    url: String(restaurante.whatsapp_url || restaurante.whatsapp_num).trim(),
     activo: true,
   };
 }
@@ -270,6 +321,7 @@ const opsInstagram = redField('instagram');
 const opsFacebook = redField('facebook');
 const opsTiktok = redField('tiktok');
 const opsTripadvisor = redField('tripadvisor');
+const opsWhatsapp = redField('whatsapp');
 const opsMaps = String(restaurante?.coordenadas_maps || '').trim();
 const opsMapsEmbed = googleMapsEmbedSrc(opsMaps);
 const opsMapsOpen = mapsOpenHref(opsMaps);
@@ -356,6 +408,15 @@ const marca = {
   nosotros_color_fondo: uiEstiloRaw?.nosotros?.color_fondo || '',
   nosotros_color_titulo: uiEstiloRaw?.nosotros?.color_titulo || '',
   nosotros_color_cuerpo: uiEstiloRaw?.nosotros?.color_cuerpo || '',
+  nosotros_contenedor_estilo: normalizeContenedorEstilo(
+    uiEstiloRaw?.nosotros?.contenedor_estilo,
+  ),
+  nosotros_fuente_titulo: resolveNosotrosFuenteTitulo(
+    uiEstiloRaw?.nosotros?.fuente_titulo,
+  ).id,
+  nosotros_fuente_cuerpo: resolveNosotrosFuenteCuerpo(
+    uiEstiloRaw?.nosotros?.fuente_cuerpo,
+  ).id,
   ubicacion_color_fondo: uiEstiloRaw?.ubicacion?.color_fondo || '',
   ubicacion_color_titulo: uiEstiloRaw?.ubicacion?.color_titulo || '',
   ubicacion_color_cuerpo: uiEstiloRaw?.ubicacion?.color_cuerpo || '',
@@ -379,7 +440,27 @@ const marca = {
         }),
   menu_font: resolveMenuFont(restaurante?.menu_font).family,
   menu_color_texto:
-    uiEstiloRaw?.menu?.color_texto || restaurante?.color_texto || '#ffffff',
+    uiEstiloRaw?.menu?.color_texto ||
+    uiEstiloRaw?.menu?.color_titulo ||
+    restaurante?.color_texto ||
+    '#ffffff',
+  menu_color_fondo:
+    uiEstiloRaw?.menu?.color_fondo || uiEstiloRaw?.menu?.color_chip || '#1a1a1a',
+  menu_color_acento:
+    uiEstiloRaw?.menu?.color_acento ||
+    uiEstiloRaw?.menu?.color_chip_activo ||
+    restaurante?.color_primario ||
+    '#9f1239',
+  menu_chips_layout: normalizeChipsLayout(uiEstiloRaw?.menu?.chips_layout),
+  menu_chips_estilo: normalizeChipsEstilo(uiEstiloRaw?.menu?.chips_estilo),
+  menu_platos_layout: normalizePlatosLayout(uiEstiloRaw?.menu?.platos_layout),
+  menu_estilo_tarjetas: normalizeEstiloTarjetas(uiEstiloRaw?.menu?.estilo_tarjetas),
+  menu_fuente_titulo: resolveNosotrosFuenteTitulo(
+    uiEstiloRaw?.menu?.fuente_titulo || restaurante?.menu_font || 'playfair',
+  ).id,
+  menu_fuente_cuerpo: resolveNosotrosFuenteCuerpo(
+    uiEstiloRaw?.menu?.fuente_cuerpo || 'plus-jakarta',
+  ).id,
   fondo_ubicacion_tipo: fondoUbicacion.tipo,
   fondo_ubicacion_valor: fondoUbicacion.valor,
   nosotros_bloques: nosotrosBloques,
@@ -389,8 +470,8 @@ const marca = {
   redes_facebook: redesById.facebook?.url || '',
   redes_tiktok: redesById.tiktok?.url || '',
   redes_tripadvisor: redesById.tripadvisor?.url || '',
-  whatsapp_url:
-    restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
+  redes_whatsapp: redesById.whatsapp?.url || '',
+  whatsapp_url: redesById.whatsapp?.url || '',
   horarios: restaurante?.horarios || '',
   gadget_wifi: Boolean(restaurante?.gadget_wifi),
   gadget_mesero: Boolean(
@@ -576,11 +657,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         {
           isSuperAdmin && restaurante ? (
             <button
-              type="submit"
-              form="marca-form"
+              type="button"
               id="marca-save"
               hidden
-              class="admin-action-btn inline-flex items-center justify-center rounded-lg bg-white px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-zinc-950 transition hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-50 sm:px-4"
+              data-save-state="idle"
+              class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
             >
               Guardar
             </button>
@@ -670,7 +751,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               aria-controls="panel-perfil"
               class={`${tabPillInactive}`}
             >
-              Perfil
+              Horarios y Ubicación
             </button>
               )
             }
@@ -1358,10 +1439,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             <section id="ops-contacto-card" class="perfil-studio" data-ops-contacto>
               <header class="perfil-studio__hero">
                 <div class="min-w-0">
-                  <p class="perfil-studio__kicker">Perfil del restaurante</p>
+                  <p class="perfil-studio__kicker">Horarios y Ubicación</p>
                   <h2 class="perfil-studio__title">{hubNombre || 'Restaurante'}</h2>
                   <p class="perfil-studio__lead">
-                    Horario, mapa y redes que ve el comensal. Nombre, logo y teléfono los define SuperAdmin.
+                    Horario, mapa y redes que ve el comensal en la WebApp. Plantilla y colores los define SuperAdmin.
                   </p>
                 </div>
                 <div class="perfil-studio__status-wrap">
@@ -1389,6 +1470,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 facebook={opsFacebook}
                 tiktok={opsTiktok}
                 tripadvisor={opsTripadvisor}
+                whatsapp={opsWhatsapp}
                 socialIdPrefix="ops-"
               />
 
@@ -1491,7 +1573,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       { id: 'home', label: 'Home / Core' },
                       { id: 'nosotros', label: 'Nosotros' },
                       { id: 'menu', label: 'Menú' },
-                      { id: 'ubicacion', label: 'Horarios' },
+                      { id: 'ubicacion', label: 'Horarios y Ubicación' },
                       { id: 'reservas', label: 'Reservas' },
                       { id: 'gadgets', label: 'Gadgets' },
                     ].map((tab, i) => (
@@ -2133,12 +2215,63 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           <option value="editorial" selected={marca.nosotros_theme === 'editorial'}>
                             Editorial
                           </option>
-                          <option value="split" selected={marca.nosotros_theme === 'split'}>
-                            Split
+                          <option
+                            value="cinematic"
+                            selected={
+                              marca.nosotros_theme === 'cinematic' ||
+                              marca.nosotros_theme === 'split'
+                            }
+                          >
+                            Cinematic
                           </option>
-                          <option value="bento" selected={marca.nosotros_theme === 'bento'}>
-                            Bento
+                          <option
+                            value="capsule"
+                            selected={
+                              marca.nosotros_theme === 'capsule' || marca.nosotros_theme === 'bento'
+                            }
+                          >
+                            Álbum
                           </option>
+                        </select>
+                      </label>
+
+                      <label class="id-ubicacion__field">
+                        <span>Tipografía títulos</span>
+                        <select
+                          id="marca-nosotros-fuente-titulo"
+                          name="nosotros_fuente_titulo"
+                          class="id-ubicacion__select"
+                        >
+                          {
+                            NOSOTROS_FUENTES_TITULO.map((opt) => (
+                              <option
+                                value={opt.id}
+                                selected={marca.nosotros_fuente_titulo === opt.id}
+                              >
+                                {opt.label}
+                              </option>
+                            ))
+                          }
+                        </select>
+                      </label>
+
+                      <label class="id-ubicacion__field">
+                        <span>Tipografía cuerpo</span>
+                        <select
+                          id="marca-nosotros-fuente-cuerpo"
+                          name="nosotros_fuente_cuerpo"
+                          class="id-ubicacion__select"
+                        >
+                          {
+                            NOSOTROS_FUENTES_CUERPO.map((opt) => (
+                              <option
+                                value={opt.id}
+                                selected={marca.nosotros_fuente_cuerpo === opt.id}
+                              >
+                                {opt.label}
+                              </option>
+                            ))
+                          }
                         </select>
                       </label>
 
@@ -2193,6 +2326,31 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         />
                       </label>
                       <input type="hidden" id="marca-fondo-nosotros-valor" name="fondo_nosotros_valor" value={marca.fondo_nosotros_valor} />
+
+                      <label class="id-ubicacion__field">
+                        <span>Estilo del contenedor</span>
+                        <select
+                          id="marca-nosotros-contenedor-estilo"
+                          name="nosotros_contenedor_estilo"
+                          class="id-ubicacion__select"
+                        >
+                          <option value="vidrio" selected={marca.nosotros_contenedor_estilo === 'vidrio'}>
+                            Vidrio
+                          </option>
+                          <option value="solido" selected={marca.nosotros_contenedor_estilo === 'solido'}>
+                            Sólido
+                          </option>
+                          <option value="linea" selected={marca.nosotros_contenedor_estilo === 'linea'}>
+                            Línea
+                          </option>
+                          <option
+                            value="ninguno"
+                            selected={marca.nosotros_contenedor_estilo === 'ninguno'}
+                          >
+                            Sin contenedor
+                          </option>
+                        </select>
+                      </label>
 
                       <div class="id-ubicacion__swatches">
                         <label class="id-swatch">
@@ -2260,7 +2418,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     <div id="nosotros-bloques-list" class="space-y-2.5">
                       {
-                        marca.nosotros_bloques.map((bloque, index) => (
+                        marca.nosotros_bloques.map((bloque, index) => {
+                          const mediaSlots = bloqueMediaForAdmin(bloque);
+                          return (
                           <div
                             class="nosotros-bloque"
                             data-nosotros-bloque
@@ -2297,13 +2457,44 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                 <span>Texto</span>
                                 <textarea data-bloque-texto rows="3" class="id-ubicacion__input">{bloque.texto}</textarea>
                               </label>
-                              <label class="id-ubicacion__field">
-                                <span>URL de media</span>
-                                <input type="text" inputmode="url" data-bloque-media value={bloque.media_url} placeholder="https://…" class="id-ubicacion__input" />
-                              </label>
+                              <div class="nosotros-bloque__media" data-bloque-media-list>
+                                <div class="nosotros-bloque__media-head">
+                                  <span>Media (imagen o video · máx. 3)</span>
+                                  <button
+                                    type="button"
+                                    class="nosotros-bloque__media-add"
+                                    data-add-media
+                                    hidden={mediaSlots.length >= 3}
+                                  >
+                                    + Media
+                                  </button>
+                                </div>
+                                {mediaSlots.map((url, mi) => (
+                                  <div class="nosotros-bloque__media-row" data-bloque-media-row>
+                                    <input
+                                      type="text"
+                                      inputmode="url"
+                                      data-bloque-media
+                                      value={url}
+                                      placeholder={mi === 0 ? 'https://… imagen o video' : `Media ${mi + 1}`}
+                                      class="id-ubicacion__input"
+                                    />
+                                    <button
+                                      type="button"
+                                      class="nosotros-bloque__media-remove"
+                                      data-remove-media
+                                      aria-label="Quitar media"
+                                      hidden={mediaSlots.length <= 1}
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       }
                     </div>
 
@@ -2317,127 +2508,269 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   </div>
 
                   {/* —— SECCIÓN MENÚ —— */}
-                  <div data-marca-panel="menu" class={`${studioCardClass} space-y-3`} hidden>
+                  <div data-marca-panel="menu" class="space-y-2" hidden>
                     <p class={labelClass}>Menú</p>
 
-                    <div
-                      id="menu-fondo-general"
-                      class="id-ubicacion"
-                      hidden={marca.menu_fondos_cinematicos}
-                    >
-                      <label class="id-ubicacion__field">
-                        <span>Fondo</span>
-                        <select id="marca-fondo-menu-tipo" name="fondo_menu_tipo" class="id-ubicacion__select">
-                          <option value="color" selected={marca.fondo_menu_tipo === 'color'}>Color</option>
-                          <option value="image" selected={marca.fondo_menu_tipo === 'image'}>Imagen</option>
-                          <option value="video" selected={marca.fondo_menu_tipo === 'video'}>Video</option>
-                        </select>
-                      </label>
-
-                      <label
-                        class="id-swatch"
-                        data-menu-fondo-color
-                        hidden={marca.fondo_menu_tipo !== 'color'}
-                      >
-                        <span>Color de fondo</span>
-                        <span class="id-swatch__ctrl">
-                          <input
-                            type="color"
-                            id="marca-fondo-menu-valor-picker"
-                            value={/^#([0-9a-f]{6})$/i.test(String(marca.fondo_menu_valor || ''))
-                              ? marca.fondo_menu_valor
-                              : /^#([0-9a-f]{3})$/i.test(String(marca.fondo_menu_valor || ''))
-                                ? `#${String(marca.fondo_menu_valor)[1]}${String(marca.fondo_menu_valor)[1]}${String(marca.fondo_menu_valor)[2]}${String(marca.fondo_menu_valor)[2]}${String(marca.fondo_menu_valor)[3]}${String(marca.fondo_menu_valor)[3]}`
-                                : '#0a0a0a'}
-                            class="id-swatch__dot"
-                          />
-                          <input
-                            type="text"
-                            id="marca-fondo-menu-valor-color"
-                            value={marca.fondo_menu_tipo === 'color' ? marca.fondo_menu_valor : ''}
-                            placeholder="#0a0a0a"
-                            spellcheck="false"
-                            class="id-swatch__hex"
-                          />
-                        </span>
-                      </label>
-
-                      <label
-                        class="id-ubicacion__field"
-                        data-menu-fondo-url
-                        hidden={marca.fondo_menu_tipo === 'color'}
-                      >
-                        <span data-menu-fondo-url-label>
-                          {marca.fondo_menu_tipo === 'video' ? 'URL del video' : 'URL de la imagen'}
-                        </span>
-                        <input
-                          type="text"
-                          inputmode="url"
-                          id="marca-fondo-menu-valor-url"
-                          value={marca.fondo_menu_tipo === 'color' ? '' : marca.fondo_menu_valor}
-                          placeholder="https://…"
-                          class="id-ubicacion__input"
-                        />
-                      </label>
-                      <input type="hidden" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} />
+                    <div class={`${studioCardClass} !p-3 space-y-2`}>
+                      <p class="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                        Estructura &amp; Layout
+                      </p>
+                      <div class="id-ubicacion id-ubicacion--dense">
+                        <div
+                          id="menu-fondo-general"
+                          class="id-ubicacion__row id-ubicacion__row--full"
+                          hidden={marca.menu_fondos_cinematicos}
+                        >
+                          <label class="id-ubicacion__field">
+                            <span>Fondo sección</span>
+                            <select id="marca-fondo-menu-tipo" name="fondo_menu_tipo" class="id-ubicacion__select">
+                              <option value="color" selected={marca.fondo_menu_tipo === 'color'}>Color</option>
+                              <option value="image" selected={marca.fondo_menu_tipo === 'image'}>Imagen</option>
+                              <option value="video" selected={marca.fondo_menu_tipo === 'video'}>Video</option>
+                            </select>
+                          </label>
+                          <label
+                            class="id-swatch"
+                            data-menu-fondo-color
+                            hidden={marca.fondo_menu_tipo !== 'color'}
+                          >
+                            <span>Color de fondo</span>
+                            <span class="id-swatch__ctrl">
+                              <input
+                                type="color"
+                                id="marca-fondo-menu-valor-picker"
+                                value={/^#([0-9a-f]{6})$/i.test(String(marca.fondo_menu_valor || ''))
+                                  ? marca.fondo_menu_valor
+                                  : /^#([0-9a-f]{3})$/i.test(String(marca.fondo_menu_valor || ''))
+                                    ? `#${String(marca.fondo_menu_valor)[1]}${String(marca.fondo_menu_valor)[1]}${String(marca.fondo_menu_valor)[2]}${String(marca.fondo_menu_valor)[2]}${String(marca.fondo_menu_valor)[3]}${String(marca.fondo_menu_valor)[3]}`
+                                    : '#0a0a0a'}
+                                class="id-swatch__dot"
+                              />
+                              <input
+                                type="text"
+                                id="marca-fondo-menu-valor-color"
+                                value={marca.fondo_menu_tipo === 'color' ? marca.fondo_menu_valor : ''}
+                                placeholder="#0a0a0a"
+                                spellcheck="false"
+                                class="id-swatch__hex"
+                              />
+                            </span>
+                          </label>
+                          <label
+                            class="id-ubicacion__field id-ubicacion__field--wide"
+                            data-menu-fondo-url
+                            hidden={marca.fondo_menu_tipo === 'color'}
+                          >
+                            <span data-menu-fondo-url-label>
+                              {marca.fondo_menu_tipo === 'video' ? 'URL video' : 'URL imagen'}
+                            </span>
+                            <input
+                              type="text"
+                              inputmode="url"
+                              id="marca-fondo-menu-valor-url"
+                              value={marca.fondo_menu_tipo === 'color' ? '' : marca.fondo_menu_valor}
+                              placeholder="https://…"
+                              class="id-ubicacion__input"
+                            />
+                          </label>
+                          <input type="hidden" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} />
+                        </div>
+                        <div class="id-ubicacion__row">
+                          <label class="id-ubicacion__field">
+                            <span>Layout de platos</span>
+                            <select
+                              id="marca-menu-platos-layout"
+                              name="menu_platos_layout"
+                              class="id-ubicacion__select"
+                            >
+                              <option value="lista" selected={marca.menu_platos_layout === 'lista'}>
+                                Lista (1 columna)
+                              </option>
+                              <option value="grid" selected={marca.menu_platos_layout === 'grid'}>
+                                Cuadrícula (2 columnas)
+                              </option>
+                              <option value="bento" selected={marca.menu_platos_layout === 'bento'}>
+                                Bento Box
+                              </option>
+                            </select>
+                          </label>
+                          <label class="id-ubicacion__field">
+                            <span>Estilo de tarjetas</span>
+                            <select
+                              id="marca-menu-estilo-tarjetas"
+                              name="menu_estilo_tarjetas"
+                              class="id-ubicacion__select"
+                            >
+                              <option value="cristal" selected={marca.menu_estilo_tarjetas === 'cristal'}>
+                                Cristal Ahumado
+                              </option>
+                              <option value="solido" selected={marca.menu_estilo_tarjetas === 'solido'}>
+                                Sólido Oscuro
+                              </option>
+                            </select>
+                          </label>
+                        </div>
+                        <div class="id-ubicacion__row">
+                          <label class="id-ubicacion__field">
+                            <span>Categorías (botones)</span>
+                            <select
+                              id="marca-menu-chips-layout"
+                              name="menu_chips_layout"
+                              class="id-ubicacion__select"
+                            >
+                              <option value="scroll" selected={marca.menu_chips_layout === 'scroll'}>
+                                Carril horizontal
+                              </option>
+                              <option value="grid" selected={marca.menu_chips_layout === 'grid'}>
+                                Grid 2×3
+                              </option>
+                              <option value="wrap" selected={marca.menu_chips_layout === 'wrap'}>
+                                Wrap fluido
+                              </option>
+                            </select>
+                          </label>
+                          <label class="id-ubicacion__field">
+                            <span>Estilo de botones</span>
+                            <select
+                              id="marca-menu-chips-estilo"
+                              name="menu_chips_estilo"
+                              class="id-ubicacion__select"
+                            >
+                              <option value="pildora" selected={marca.menu_chips_estilo === 'pildora'}>
+                                Píldora
+                              </option>
+                              <option value="cuadrado" selected={marca.menu_chips_estilo === 'cuadrado'}>
+                                Cuadrado
+                              </option>
+                              <option value="linea" selected={marca.menu_chips_estilo === 'linea'}>
+                                Línea
+                              </option>
+                            </select>
+                          </label>
+                        </div>
+                      </div>
                     </div>
 
-                    <div id="menu-tipo-block" class="id-ubicacion">
-                      <link rel="stylesheet" href={MENU_FONTS_PREVIEW_HREF} />
-                      <label class="id-ubicacion__field">
-                        <span>Fuente del menú</span>
-                        <select
-                          id="marca-menu-font"
-                          name="menu_font"
-                          class="id-ubicacion__select"
-                          style={`font-family:"${marca.menu_font || 'Playfair Display'}", ui-sans-serif, system-ui`}
-                        >
-                          {
-                            !MENU_GOOGLE_FONT_OPTIONS.includes(marca.menu_font) && marca.menu_font ? (
-                              <option value={marca.menu_font} selected>
-                                {marca.menu_font}
-                              </option>
-                            ) : null
-                          }
-                          {
-                            MENU_FONT_GROUPS.map((group) => (
-                              <optgroup label={group.label}>
-                                {group.fonts.map((font) => (
+                    <div class={`${studioCardClass} !p-3 space-y-2`}>
+                      <p class="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                        Tipografía
+                      </p>
+                      <div id="menu-tipo-block" class="id-ubicacion id-ubicacion--dense">
+                        <link rel="stylesheet" href={buildNosotrosFontsHref(marca.menu_fuente_titulo, marca.menu_fuente_cuerpo)} />
+                        <div class="id-ubicacion__row">
+                          <label class="id-ubicacion__field">
+                            <span>Títulos</span>
+                            <select
+                              id="marca-menu-fuente-titulo"
+                              name="menu_fuente_titulo"
+                              class="id-ubicacion__select"
+                            >
+                              {
+                                NOSOTROS_FUENTES_TITULO.map((opt) => (
                                   <option
-                                    value={font}
-                                    selected={marca.menu_font === font}
-                                    style={`font-family:"${font}", ui-sans-serif, system-ui`}
+                                    value={opt.id}
+                                    selected={marca.menu_fuente_titulo === opt.id}
+                                    data-family={opt.stack.replace(/^"/, '').split('"')[0].split(',')[0].trim()}
                                   >
-                                    {font}
+                                    {opt.label}
                                   </option>
-                                ))}
-                              </optgroup>
-                            ))
-                          }
-                        </select>
-                      </label>
-                      <label class="id-swatch">
-                        <span>Color de tipografía</span>
-                        <span class="id-swatch__ctrl">
-                          <input
-                            type="color"
-                            id="marca-menu-color-texto-picker"
-                            value={/^#([0-9a-f]{6})$/i.test(String(marca.menu_color_texto || ''))
-                              ? marca.menu_color_texto
-                              : '#ffffff'}
-                            class="id-swatch__dot"
-                          />
-                          <input
-                            type="text"
-                            id="marca-menu-color-texto"
-                            name="menu_color_texto"
-                            value={marca.menu_color_texto}
-                            placeholder="#ffffff"
-                            spellcheck="false"
-                            class="id-swatch__hex"
-                          />
-                        </span>
-                      </label>
+                                ))
+                              }
+                            </select>
+                          </label>
+                          <label class="id-ubicacion__field">
+                            <span>Cuerpo</span>
+                            <select
+                              id="marca-menu-fuente-cuerpo"
+                              name="menu_fuente_cuerpo"
+                              class="id-ubicacion__select"
+                            >
+                              {
+                                NOSOTROS_FUENTES_CUERPO.map((opt) => (
+                                  <option
+                                    value={opt.id}
+                                    selected={marca.menu_fuente_cuerpo === opt.id}
+                                  >
+                                    {opt.label}
+                                  </option>
+                                ))
+                              }
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+                      <input type="hidden" id="marca-menu-font" name="menu_font" value={marca.menu_font} />
+                    </div>
+
+                    <div class={`${studioCardClass} !p-3 space-y-2`}>
+                      <p class="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                        Colores Maestros
+                      </p>
+                      <div class="id-ubicacion__swatches id-ubicacion__swatches--menu-tokens">
+                        <label class="id-swatch">
+                          <span>Color de fondo</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-menu-color-fondo-picker"
+                              value={hexPickerValue(marca.menu_color_fondo, '#1a1a1a')}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-menu-color-fondo"
+                              name="menu_color_fondo"
+                              value={marca.menu_color_fondo}
+                              placeholder="#1a1a1a"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                        <label class="id-swatch">
+                          <span>Color de texto principal</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-menu-color-texto-picker"
+                              value={hexPickerValue(marca.menu_color_texto, '#ffffff')}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-menu-color-texto"
+                              name="menu_color_texto"
+                              value={marca.menu_color_texto}
+                              placeholder="#ffffff"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                        <label class="id-swatch">
+                          <span>Color de acento</span>
+                          <span class="id-swatch__ctrl">
+                            <input
+                              type="color"
+                              id="marca-menu-color-acento-picker"
+                              value={hexPickerValue(marca.menu_color_acento, marca.color_primario || '#9f1239')}
+                              class="id-swatch__dot"
+                            />
+                            <input
+                              type="text"
+                              id="marca-menu-color-acento"
+                              name="menu_color_acento"
+                              value={marca.menu_color_acento}
+                              placeholder="#9f1239"
+                              spellcheck="false"
+                              class="id-swatch__hex"
+                            />
+                          </span>
+                        </label>
+                      </div>
+                      <p class="text-[0.62rem] leading-snug text-zinc-500">
+                        El acento aplica a categoría activa, botón Ver detalle e íconos. El texto usa 70% de opacidad en descripciones.
+                      </p>
                     </div>
 
                     <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
@@ -2498,17 +2831,27 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     </div>
                   </div>
 
-                  {/* —— HORARIOS & UBICACIÓN —— */}
-                  <div data-marca-panel="ubicacion" class={`${studioCardClass} space-y-3`} hidden>
-                    <p class={labelClass}>Horarios &amp; Ubicación</p>
+                  {/* —— HORARIOS & UBICACIÓN (Identidad / SuperAdmin) —— */}
+                  <div data-marca-panel="ubicacion" class={`${studioCardClass} space-y-4`} hidden>
+                    <div>
+                      <p class={labelClass}>Horarios &amp; Ubicación</p>
+                      <p class="mt-1 text-xs leading-relaxed text-zinc-500">
+                        Configurá la plantilla y los colores; abajo editás el contenido que verá el comensal en la WebApp.
+                      </p>
+                    </div>
 
+                    <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                      <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Estructura y colores
+                      </p>
                     <div class="id-ubicacion">
                       <div class="id-ubicacion__row">
                         <label class="id-ubicacion__field">
                           <span>Plantilla</span>
                           <select id="marca-ubicacion-theme" name="ubicacion_theme" class="id-ubicacion__select">
-                            <option value="modal" selected={marca.ubicacion_theme === 'modal'}>Modal / Drawer</option>
-                            <option value="split" selected={marca.ubicacion_theme === 'split'}>Split mapa</option>
+                            <option value="modal" selected={marca.ubicacion_theme === 'modal'}>Modal / Drawer Subterráneo</option>
+                            <option value="split" selected={marca.ubicacion_theme === 'split'}>Split Map Interactivo</option>
+                            <option value="minimal" selected={marca.ubicacion_theme === 'minimal'}>Minimal Editorial</option>
                           </select>
                         </label>
                         <label class="id-ubicacion__field">
@@ -2520,17 +2863,55 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </select>
                         </label>
                       </div>
-                      <label class="id-ubicacion__field">
-                        <span>Valor del fondo</span>
+
+                      <label
+                        class="id-swatch"
+                        data-ubicacion-fondo-color
+                        hidden={marca.fondo_ubicacion_tipo !== 'color'}
+                      >
+                        <span>Color de fondo</span>
+                        <span class="id-swatch__ctrl">
+                          <input
+                            type="color"
+                            id="marca-fondo-ubicacion-valor-picker"
+                            value={hexPickerValue(marca.fondo_ubicacion_valor, '#0a0a0a')}
+                            class="id-swatch__dot"
+                          />
+                          <input
+                            type="text"
+                            id="marca-fondo-ubicacion-valor-color"
+                            value={marca.fondo_ubicacion_tipo === 'color' ? marca.fondo_ubicacion_valor : ''}
+                            placeholder="#0a0a0a"
+                            spellcheck="false"
+                            class="id-swatch__hex"
+                          />
+                        </span>
+                      </label>
+
+                      <label
+                        class="id-ubicacion__field"
+                        data-ubicacion-fondo-url
+                        hidden={marca.fondo_ubicacion_tipo === 'color'}
+                      >
+                        <span data-ubicacion-fondo-url-label>
+                          {marca.fondo_ubicacion_tipo === 'video' ? 'URL del video' : 'URL de la imagen'}
+                        </span>
                         <input
                           type="text"
-                          id="marca-fondo-ubicacion-valor"
-                          name="fondo_ubicacion_valor"
-                          value={marca.fondo_ubicacion_valor}
-                          placeholder="HEX, URL de imagen o video"
+                          inputmode="url"
+                          id="marca-fondo-ubicacion-valor-url"
+                          value={marca.fondo_ubicacion_tipo === 'color' ? '' : marca.fondo_ubicacion_valor}
+                          placeholder="https://…"
                           class="id-ubicacion__input"
                         />
                       </label>
+                      <input
+                        type="hidden"
+                        id="marca-fondo-ubicacion-valor"
+                        name="fondo_ubicacion_valor"
+                        value={marca.fondo_ubicacion_valor}
+                      />
+
                       <div class="id-ubicacion__swatches">
                         <label class="id-swatch">
                           <span>Fondo</span>
@@ -2593,36 +2974,36 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </span>
                         </label>
                       </div>
-                      <label class="id-ubicacion__field">
-                        <span>WhatsApp</span>
-                        <input
-                          type="text"
-                          id="marca-whatsapp"
-                          name="whatsapp_url"
-                          value={marca.whatsapp_url}
-                          placeholder="+58…"
-                          class="id-ubicacion__input"
-                        />
-                      </label>
+                    </div>
                     </div>
 
-                    <div class="marca-local-ops mt-1 w-full">
-                      <PerfilLocalCard
-                        scope="marca"
-                        mapsInputId="marca-coordenadas"
-                        horarioHiddenId="marca-horarios"
-                        horarioText={opsHorario}
-                        horarioSemana={horarioSemana}
-                        horarioHoy={horarioHoy}
-                        mapsUrl={opsMaps}
-                        mapsEmbed={opsMapsEmbed}
-                        mapsOpen={opsMapsOpen}
-                        instagram={opsInstagram}
-                        facebook={opsFacebook}
-                        tiktok={opsTiktok}
-                        tripadvisor={opsTripadvisor}
-                        socialIdPrefix="marca-redes-"
-                      />
+                    <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                      <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Contenido en la WebApp
+                      </p>
+                      <p class="text-xs leading-relaxed text-zinc-500">
+                        Horario de atención, mapa y redes sociales — lo mismo que edita el admin del restaurante en su pestaña Horarios y Ubicación.
+                      </p>
+
+                      <div class="marca-local-ops mt-1 w-full">
+                        <PerfilLocalCard
+                          scope="marca"
+                          mapsInputId="marca-coordenadas"
+                          horarioHiddenId="marca-horarios"
+                          horarioText={opsHorario}
+                          horarioSemana={horarioSemana}
+                          horarioHoy={horarioHoy}
+                          mapsUrl={opsMaps}
+                          mapsEmbed={opsMapsEmbed}
+                          mapsOpen={opsMapsOpen}
+                          instagram={opsInstagram}
+                          facebook={opsFacebook}
+                          tiktok={opsTiktok}
+                          tripadvisor={opsTripadvisor}
+                          whatsapp={opsWhatsapp}
+                          socialIdPrefix="marca-redes-"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -2688,12 +3069,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Muestra SSID y clave en la mesa del cliente.</p>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Wi‑Fi">
-                            <input type="checkbox" id="marca-gadget-wifi" name="gadget_wifi" checked={marca.gadget_wifi} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_wifi ? 'true' : 'false'} />
+                            <input type="checkbox" id="marca-gadget-wifi" name="gadget_wifi" checked={marca.gadget_wifi} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_wifi ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_wifi && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-wifi" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
                         <div class:list={['gadget-card__config', marca.gadget_wifi && 'is-open']} data-gadget-config aria-hidden={marca.gadget_wifi ? 'false' : 'true'}>
-                          <div class="gadget-card__config-inner grid gap-3 px-4 pb-4">
+                          <div class="gadget-card__config-inner grid gap-3 px-4 pb-4" data-gadget-config-inner>
                             <label class="block space-y-1.5">
                               <span class={labelClass}>SSID · Nombre de red</span>
                               <input type="text" id="marca-wifi-ssid" name="gadget_wifi_ssid" value={marca.wifi_ssid} placeholder="Nombre de la red" class={fieldClass} />
@@ -2726,7 +3107,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Botón en la WebApp para llamar al staff de mesa.</p>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Llamar mesero">
-                            <input type="checkbox" id="marca-gadget-mesero" name="gadget_mesero" checked={marca.gadget_mesero} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_mesero ? 'true' : 'false'} />
+                            <input type="checkbox" id="marca-gadget-mesero" name="gadget_mesero" checked={marca.gadget_mesero} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_mesero ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_mesero && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-mesero" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
@@ -2752,7 +3133,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Permite al cliente solicitar y dividir la cuenta desde la mesa.</p>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Pedir / Dividir cuenta">
-                            <input type="checkbox" id="marca-gadget-dividir" name="gadget_cuenta" checked={marca.gadget_cuenta} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_cuenta ? 'true' : 'false'} />
+                            <input type="checkbox" id="marca-gadget-dividir" name="gadget_cuenta" checked={marca.gadget_cuenta} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_cuenta ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_cuenta && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-dividir" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
@@ -2778,7 +3159,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Vitrina de productos destacados en el modal de la WebApp.</p>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Boutique">
-                            <input type="checkbox" id="marca-gadget-boutique" name="gadget_boutique" checked={marca.gadget_boutique} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_boutique ? 'true' : 'false'} />
+                            <input type="checkbox" id="marca-gadget-boutique" name="gadget_boutique" checked={marca.gadget_boutique} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_boutique ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_boutique && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-boutique" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
@@ -2831,7 +3212,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Kcal, macros y alérgenos por plato. Activa filtros de dieta en la WebApp.</p>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Ficha nutricional">
-                            <input type="checkbox" id="marca-gadget-nutricion" name="gadget_nutricion" checked={marca.gadget_nutricion} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_nutricion ? 'true' : 'false'} />
+                            <input type="checkbox" id="marca-gadget-nutricion" name="gadget_nutricion" checked={marca.gadget_nutricion} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_nutricion ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_nutricion && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-nutricion" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
@@ -2878,7 +3259,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Permite proyectar platos estrella en 3D sobre la mesa del comensal.</p>
                           </div>
                           <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Realidad Aumentada AR 3D">
-                            <input type="checkbox" id="marca-gadget-ar" name="gadget_ar" checked={marca.gadget_ar} class="peer sr-only" data-marca-gadget role="switch" aria-checked={marca.gadget_ar ? 'true' : 'false'} />
+                            <input type="checkbox" id="marca-gadget-ar" name="gadget_ar" checked={marca.gadget_ar} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_ar ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_ar && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-ar" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
@@ -5459,6 +5840,22 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     gap: 0.5rem;
   }
 
+  :global(.id-ubicacion--dense) {
+    gap: 0.45rem;
+  }
+
+  :global(.id-ubicacion__row--full) {
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+
+  :global(.id-ubicacion__field--wide) {
+    grid-column: 1 / -1;
+  }
+
+  :global(.id-ubicacion__swatches--menu-tokens) {
+    gap: 0.4rem;
+  }
+
   :global(.id-cat-fondo) {
     display: grid;
     grid-template-columns: 7.5rem minmax(0, 1fr);
@@ -5580,6 +5977,101 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   :global(.nosotros-bloque__remove:hover) {
+    background: color-mix(in srgb, #fb7185 12%, transparent);
+  }
+
+  :global(.marca-save-btn[data-save-state='idle']) {
+    background: #09090b;
+    color: #fafafa;
+  }
+
+  :global(.marca-save-btn[data-save-state='idle']:hover:not(:disabled)) {
+    background: #18181b;
+  }
+
+  :global(.marca-save-btn[data-save-state='dirty']) {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  :global(.marca-save-btn[data-save-state='dirty']:hover:not(:disabled)) {
+    background: #b91c1c;
+  }
+
+  :global(.marca-save-btn[data-save-state='saved']) {
+    background: #09090b;
+    color: #fafafa;
+  }
+
+  :global(.marca-save-btn[data-save-state='saved']:hover:not(:disabled)) {
+    background: #18181b;
+  }
+
+  :global(.nosotros-bloque__media) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  :global(.nosotros-bloque__media-head) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  :global(.nosotros-bloque__media-head > span) {
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted, #71717a);
+  }
+
+  :global(.nosotros-bloque__media-add) {
+    border: 0;
+    border-radius: 0.5rem;
+    padding: 0.2rem 0.55rem;
+    background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent);
+    color: var(--text-primary, #fff);
+    font-size: 0.55rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  :global(.nosotros-bloque__media-add:hover) {
+    background: color-mix(in srgb, var(--text-primary, #fff) 12%, transparent);
+  }
+
+  :global(.nosotros-bloque__media-row) {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  :global(.nosotros-bloque__media-row .id-ubicacion__input) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :global(.nosotros-bloque__media-remove) {
+    flex-shrink: 0;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 0;
+    border-radius: 0.55rem;
+    background: transparent;
+    color: color-mix(in srgb, #fb7185 85%, #fff);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  :global(.nosotros-bloque__media-remove:hover) {
     background: color-mix(in srgb, #fb7185 12%, transparent);
   }
 
@@ -6125,7 +6617,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     previewHorarioHoy,
     serializeHorarioSemana,
   } from '../../lib/horarios-semana.js';
-  import { googleMapsEmbedSrc, mapsOpenHref } from '../../lib/maps-preview.js';
+  import { googleMapsEmbedSrc, mapsOpenHref, normalizeMapsStorage } from '../../lib/maps-preview.js';
 
   const MACRO_ID_ORDER = [...MENU_MACROS.map((m) => m.id), 'otros'];
   const PLATOS_COLSPAN = 7;
@@ -6263,6 +6755,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const opsFacebookInput = document.getElementById('ops-facebook');
   const opsTiktokInput = document.getElementById('ops-tiktok');
   const opsTripadvisorInput = document.getElementById('ops-tripadvisor');
+  const opsWhatsappInput = document.getElementById('ops-whatsapp');
   const opsMapsInput = document.getElementById('ops-maps');
   const hubDatosSave = document.getElementById('hub-datos-save');
   const hubDatosStatus = document.getElementById('hub-datos-status');
@@ -7465,9 +7958,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const dest = to.querySelector(`[data-social="${id}"]`);
       if (!(dest instanceof HTMLElement)) return;
       setSocialOn(dest, row.dataset.on === 'true');
-      const srcInput = row.querySelector('input[type="url"]');
-      const destInput = dest.querySelector('input[type="url"]');
-      if (srcInput instanceof HTMLInputElement && destInput instanceof HTMLInputElement) {
+      const srcInput = row.querySelector('input, textarea');
+      const destInput = dest.querySelector('input, textarea');
+      if (
+        (srcInput instanceof HTMLInputElement || srcInput instanceof HTMLTextAreaElement) &&
+        (destInput instanceof HTMLInputElement || destInput instanceof HTMLTextAreaElement)
+      ) {
         destInput.value = srcInput.value;
       }
     });
@@ -7479,7 +7975,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(from instanceof HTMLElement) || !(to instanceof HTMLElement) || from === to) return;
     const src = from.querySelector('[data-maps-url]');
     const dest = to.querySelector('[data-maps-url]');
-    if (src instanceof HTMLInputElement && dest instanceof HTMLInputElement) {
+    if (
+      (src instanceof HTMLInputElement || src instanceof HTMLTextAreaElement) &&
+      (dest instanceof HTMLInputElement || dest instanceof HTMLTextAreaElement)
+    ) {
       dest.value = src.value;
       refreshMapsPreview(to.querySelector('[data-maps-preview]'));
     }
@@ -7526,7 +8025,19 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   });
 
   function fieldValue(el) {
-    return el instanceof HTMLInputElement ? el.value.trim() : '';
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      return el.value.trim();
+    }
+    return '';
+  }
+
+  function socialField(scope, id) {
+    const root = localOps(scope);
+    if (!(root instanceof HTMLElement)) return '';
+    const row = root.querySelector(`[data-social="${id}"]`);
+    if (!(row instanceof HTMLElement)) return '';
+    const input = row.querySelector('input, textarea');
+    return fieldValue(input);
   }
 
   function socialOn(id, scope = 'perfil') {
@@ -7568,7 +8079,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       : document.querySelector('[data-maps-preview]');
     if (!(box instanceof HTMLElement)) return;
     const input = box.querySelector('[data-maps-url]');
-    const url = input instanceof HTMLInputElement ? input.value.trim() : '';
+    const url =
+      input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement
+        ? input.value.trim()
+        : '';
     const embed = googleMapsEmbedSrc(url);
     const open = mapsOpenHref(url);
     const frame = box.querySelector('.perfil-map__frame');
@@ -7592,7 +8106,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       empty = document.createElement('span');
       empty.className = 'perfil-map__empty';
       empty.setAttribute('data-map-empty', '');
-      empty.textContent = 'Pegá el enlace de Google Maps';
+      empty.textContent = 'Pegá el enlace o el iframe de Google Maps';
       frame.prepend(empty);
     }
     if (hit instanceof HTMLAnchorElement) {
@@ -7644,11 +8158,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (!requireRestauranteId()) return;
       syncHorarioHidden('perfil');
       const horario = fieldValue(opsHorarioInput);
-      const instagramUrl = fieldValue(opsInstagramInput);
-      const facebookUrl = fieldValue(opsFacebookInput);
-      const tiktokUrl = fieldValue(opsTiktokInput);
-      const tripadvisorUrl = fieldValue(opsTripadvisorInput);
-      const coordenadasMaps = fieldValue(opsMapsInput);
+      const instagramUrl = socialField('perfil', 'instagram');
+      const facebookUrl = socialField('perfil', 'facebook');
+      const tiktokUrl = socialField('perfil', 'tiktok');
+      const tripadvisorUrl = socialField('perfil', 'tripadvisor');
+      const whatsappUrl = socialField('perfil', 'whatsapp');
+      const coordenadasMaps = normalizeMapsStorage(fieldValue(opsMapsInput));
 
       opsContactoSave.disabled = true;
       const prevLabel = opsContactoSave.textContent;
@@ -7670,10 +8185,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             facebook_url: facebookUrl,
             tiktok_url: tiktokUrl,
             tripadvisor_url: tripadvisorUrl,
+            whatsapp_url: whatsappUrl,
             instagram_activo: socialOn('instagram', 'perfil'),
             facebook_activo: socialOn('facebook', 'perfil'),
             tiktok_activo: socialOn('tiktok', 'perfil'),
             tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
+            whatsapp_activo: socialOn('whatsapp', 'perfil'),
           }),
         });
         const json = await res.json().catch(() => ({}));
@@ -7695,7 +8212,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (opsTripadvisorInput instanceof HTMLInputElement) {
           opsTripadvisorInput.value = saved.tripadvisor_url || tripadvisorUrl;
         }
-        if (opsMapsInput instanceof HTMLInputElement) {
+        if (opsWhatsappInput instanceof HTMLInputElement) {
+          opsWhatsappInput.value = saved.whatsapp_url || whatsappUrl;
+        }
+        if (opsMapsInput instanceof HTMLInputElement || opsMapsInput instanceof HTMLTextAreaElement) {
           opsMapsInput.value = saved.coordenadas_maps || coordenadasMaps;
         }
         const applyActivo = (id, flag) => {
@@ -7708,6 +8228,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         applyActivo('facebook', saved.facebook_activo);
         applyActivo('tiktok', saved.tiktok_activo);
         applyActivo('tripadvisor', saved.tripadvisor_activo);
+        applyActivo('whatsapp', saved.whatsapp_activo);
         refreshMapsPreview(localOps('perfil')?.querySelector('[data-maps-preview]'));
         syncLocalOps('perfil');
         if (opsContactoStatus) {
@@ -9927,20 +10448,55 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(picker instanceof HTMLInputElement) || !(text instanceof HTMLInputElement)) return;
 
     const syncPickerToText = () => {
+      picker.dataset.touched = '1';
       text.value = picker.value;
       text.dispatchEvent(new Event('input', { bubbles: true }));
     };
     const syncTextToPicker = () => {
-      const v = text.value.trim();
+      let v = text.value.trim();
+      if (v && v[0] !== '#') v = `#${v}`;
       if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) {
         picker.value =
           v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v;
+        text.value = picker.value;
       }
     };
     picker.addEventListener('input', syncPickerToText, { signal });
     picker.addEventListener('change', syncPickerToText, { signal });
     text.addEventListener('input', syncTextToPicker, { signal });
     text.addEventListener('change', syncTextToPicker, { signal });
+  }
+
+  /** Antes de guardar: si el usuario movió el picker y el hex está vacío, copiar el picker. */
+  function flushColorPairsForSave() {
+    const pairs = [
+      ['marca-fondo-nosotros-valor-picker', 'marca-fondo-nosotros-valor-color'],
+      ['marca-nosotros-color-fondo-picker', 'marca-nosotros-color-fondo'],
+      ['marca-nosotros-color-titulo-picker', 'marca-nosotros-color-titulo'],
+      ['marca-nosotros-color-cuerpo-picker', 'marca-nosotros-color-cuerpo'],
+      ['marca-ubicacion-color-fondo-picker', 'marca-ubicacion-color-fondo'],
+      ['marca-ubicacion-color-titulo-picker', 'marca-ubicacion-color-titulo'],
+      ['marca-ubicacion-color-cuerpo-picker', 'marca-ubicacion-color-cuerpo'],
+      ['marca-fondo-menu-valor-picker', 'marca-fondo-menu-valor-color'],
+      ['marca-menu-color-fondo-picker', 'marca-menu-color-fondo'],
+      ['marca-menu-color-texto-picker', 'marca-menu-color-texto'],
+      ['marca-menu-color-acento-picker', 'marca-menu-color-acento'],
+    ];
+    for (const [pickerId, textId] of pairs) {
+      const picker = document.getElementById(pickerId);
+      const text = document.getElementById(textId);
+      if (!(picker instanceof HTMLInputElement) || !(text instanceof HTMLInputElement)) continue;
+      const raw = text.value.trim();
+      if (raw) {
+        if (raw[0] !== '#' && /^[0-9a-f]{3,6}$/i.test(raw)) {
+          text.value = `#${raw}`;
+        }
+        continue;
+      }
+      if (picker.dataset.touched === '1' && picker.value) {
+        text.value = picker.value;
+      }
+    }
   }
 
   wireColorPair('marca-color-primario-picker', 'marca-color-primario');
@@ -9953,20 +10509,34 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   wireColorPair('marca-ubicacion-color-titulo-picker', 'marca-ubicacion-color-titulo');
   wireColorPair('marca-ubicacion-color-cuerpo-picker', 'marca-ubicacion-color-cuerpo');
   wireColorPair('marca-fondo-menu-valor-picker', 'marca-fondo-menu-valor-color');
+  wireColorPair('marca-menu-color-fondo-picker', 'marca-menu-color-fondo');
   wireColorPair('marca-menu-color-texto-picker', 'marca-menu-color-texto');
+  wireColorPair('marca-menu-color-acento-picker', 'marca-menu-color-acento');
   wireColorPair('marca-fondo-nosotros-valor-picker', 'marca-fondo-nosotros-valor-color');
+  wireColorPair('marca-fondo-ubicacion-valor-picker', 'marca-fondo-ubicacion-valor-color');
   wireColorPair('marca-nosotros-color-fondo-picker', 'marca-nosotros-color-fondo');
   wireColorPair('marca-nosotros-color-titulo-picker', 'marca-nosotros-color-titulo');
   wireColorPair('marca-nosotros-color-cuerpo-picker', 'marca-nosotros-color-cuerpo');
 
+  const menuFondoGeneral = document.getElementById('menu-fondo-general');
   const menuFondoTipo = document.getElementById('marca-fondo-menu-tipo');
-  const menuFondoColorWrap = document.querySelector('[data-menu-fondo-color]');
-  const menuFondoUrlWrap = document.querySelector('[data-menu-fondo-url]');
-  const menuFondoUrlLabel = document.querySelector('[data-menu-fondo-url-label]');
+  const menuFondoColorWrap = menuFondoGeneral?.querySelector('[data-menu-fondo-color]');
+  const menuFondoUrlWrap = menuFondoGeneral?.querySelector('[data-menu-fondo-url]');
+  const menuFondoUrlLabel = menuFondoGeneral?.querySelector('[data-menu-fondo-url-label]');
   const menuFondoColorVal = document.getElementById('marca-fondo-menu-valor-color');
   const menuFondoUrlVal = document.getElementById('marca-fondo-menu-valor-url');
   const menuFondoHidden = document.getElementById('marca-fondo-menu-valor');
-  const menuFontInput = document.getElementById('marca-menu-font');
+
+  const setMenuFondoFieldVisibility = (showColor) => {
+    if (menuFondoColorWrap instanceof HTMLElement) {
+      menuFondoColorWrap.hidden = !showColor;
+      menuFondoColorWrap.style.display = showColor ? '' : 'none';
+    }
+    if (menuFondoUrlWrap instanceof HTMLElement) {
+      menuFondoUrlWrap.hidden = showColor;
+      menuFondoUrlWrap.style.display = showColor ? 'none' : '';
+    }
+  };
 
   const syncMenuFondoHidden = () => {
     if (!(menuFondoHidden instanceof HTMLInputElement)) return;
@@ -9982,8 +10552,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const syncMenuFondoUi = () => {
     if (!(menuFondoTipo instanceof HTMLSelectElement)) return;
     const tipo = menuFondoTipo.value;
-    if (menuFondoColorWrap instanceof HTMLElement) menuFondoColorWrap.hidden = tipo !== 'color';
-    if (menuFondoUrlWrap instanceof HTMLElement) menuFondoUrlWrap.hidden = tipo === 'color';
+    const isColor = tipo === 'color';
+    setMenuFondoFieldVisibility(isColor);
     if (menuFondoUrlLabel instanceof HTMLElement) {
       menuFondoUrlLabel.textContent = tipo === 'video' ? 'URL del video' : 'URL de la imagen';
     }
@@ -10032,17 +10602,90 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   nosotrosFondoTipo?.addEventListener('change', syncNosotrosFondoUi, { signal });
   nosotrosFondoColorVal?.addEventListener('input', syncNosotrosFondoHidden, { signal });
   nosotrosFondoUrlVal?.addEventListener('input', syncNosotrosFondoHidden, { signal });
+  document
+    .getElementById('marca-fondo-nosotros-valor-picker')
+    ?.addEventListener(
+      'input',
+      () => {
+        if (nosotrosFondoColorVal instanceof HTMLInputElement) {
+          const picker = document.getElementById('marca-fondo-nosotros-valor-picker');
+          if (picker instanceof HTMLInputElement) {
+            nosotrosFondoColorVal.value = picker.value;
+          }
+        }
+        syncNosotrosFondoHidden();
+      },
+      { signal },
+    );
   syncNosotrosFondoUi();
 
-  if (menuFontInput instanceof HTMLSelectElement) {
-    const paintMenuFontPreview = () => {
-      const family = menuFontInput.value.trim() || 'Playfair Display';
-      const safe = family.replace(/["'`]/g, '');
-      menuFontInput.style.fontFamily = `"${safe}", ui-sans-serif, system-ui`;
-    };
-    menuFontInput.addEventListener('change', paintMenuFontPreview, { signal });
-    paintMenuFontPreview();
-  }
+  const ubicacionFondoTipo = document.getElementById('marca-fondo-ubicacion-tipo');
+  const ubicacionFondoColorWrap = document.querySelector('[data-ubicacion-fondo-color]');
+  const ubicacionFondoUrlWrap = document.querySelector('[data-ubicacion-fondo-url]');
+  const ubicacionFondoUrlLabel = document.querySelector('[data-ubicacion-fondo-url-label]');
+  const ubicacionFondoColorVal = document.getElementById('marca-fondo-ubicacion-valor-color');
+  const ubicacionFondoUrlVal = document.getElementById('marca-fondo-ubicacion-valor-url');
+  const ubicacionFondoHidden = document.getElementById('marca-fondo-ubicacion-valor');
+
+  const syncUbicacionFondoHidden = () => {
+    if (!(ubicacionFondoHidden instanceof HTMLInputElement)) return;
+    if (!(ubicacionFondoTipo instanceof HTMLSelectElement)) return;
+    const isColor = ubicacionFondoTipo.value === 'color';
+    const colorVal =
+      ubicacionFondoColorVal instanceof HTMLInputElement ? ubicacionFondoColorVal.value.trim() : '';
+    const urlVal =
+      ubicacionFondoUrlVal instanceof HTMLInputElement ? ubicacionFondoUrlVal.value.trim() : '';
+    ubicacionFondoHidden.value = isColor ? colorVal : urlVal;
+  };
+
+  const syncUbicacionFondoUi = () => {
+    if (!(ubicacionFondoTipo instanceof HTMLSelectElement)) return;
+    const tipo = ubicacionFondoTipo.value;
+    if (ubicacionFondoColorWrap instanceof HTMLElement) {
+      ubicacionFondoColorWrap.hidden = tipo !== 'color';
+    }
+    if (ubicacionFondoUrlWrap instanceof HTMLElement) {
+      ubicacionFondoUrlWrap.hidden = tipo === 'color';
+    }
+    if (ubicacionFondoUrlLabel instanceof HTMLElement) {
+      ubicacionFondoUrlLabel.textContent = tipo === 'video' ? 'URL del video' : 'URL de la imagen';
+    }
+    syncUbicacionFondoHidden();
+  };
+
+  ubicacionFondoTipo?.addEventListener('change', syncUbicacionFondoUi, { signal });
+  ubicacionFondoColorVal?.addEventListener('input', syncUbicacionFondoHidden, { signal });
+  ubicacionFondoUrlVal?.addEventListener('input', syncUbicacionFondoHidden, { signal });
+  document
+    .getElementById('marca-fondo-ubicacion-valor-picker')
+    ?.addEventListener(
+      'input',
+      () => {
+        if (ubicacionFondoColorVal instanceof HTMLInputElement) {
+          const picker = document.getElementById('marca-fondo-ubicacion-valor-picker');
+          if (picker instanceof HTMLInputElement) {
+            ubicacionFondoColorVal.value = picker.value;
+          }
+        }
+        syncUbicacionFondoHidden();
+      },
+      { signal },
+    );
+  syncUbicacionFondoUi();
+
+  const syncMenuLegacyFields = () => {
+    const tituloSel = document.getElementById('marca-menu-fuente-titulo');
+    const fontHidden = document.getElementById('marca-menu-font');
+    if (tituloSel instanceof HTMLSelectElement && fontHidden instanceof HTMLInputElement) {
+      const opt = tituloSel.selectedOptions[0];
+      const family = String(opt?.dataset.family || 'Playfair Display').trim();
+      fontHidden.value = family;
+    }
+  };
+
+  const menuFuenteTitulo = document.getElementById('marca-menu-fuente-titulo');
+  menuFuenteTitulo?.addEventListener('change', syncMenuLegacyFields, { signal });
+  syncMenuLegacyFields();
 
   /** Actualiza label/placeholder del valor de fondo Home según tipo */
   const fondoHomeTipo = document.getElementById('marca-fondo-home-tipo');
@@ -10248,8 +10891,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   });
   try {
     const savedSub = sessionStorage.getItem('xemilla-admin-marca-subtab');
-    if (savedSub && [...marcaSubtabs].some((b) => b instanceof HTMLElement && b.dataset.marcaSubtab === savedSub)) {
-      setMarcaSubtab(savedSub);
+    const subId = savedSub === 'perfil' ? 'ubicacion' : savedSub;
+    if (subId && [...marcaSubtabs].some((b) => b instanceof HTMLElement && b.dataset.marcaSubtab === subId)) {
+      setMarcaSubtab(subId);
     }
   } catch {
     /* ignore */
@@ -10270,6 +10914,36 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         title.textContent = `Bloque ${i + 1}`;
       }
     });
+  }
+
+  function createMediaRow(placeholder = 'https://… imagen o video', showRemove = false) {
+    const row = document.createElement('div');
+    row.className = 'nosotros-bloque__media-row';
+    row.dataset.bloqueMediaRow = '';
+    row.innerHTML = `
+      <input type="text" inputmode="url" data-bloque-media placeholder="${placeholder}" class="id-ubicacion__input" />
+      <button type="button" class="nosotros-bloque__media-remove" data-remove-media aria-label="Quitar media"${showRemove ? '' : ' hidden'}>×</button>
+    `;
+    return row;
+  }
+
+  function syncBloqueMediaUi(card) {
+    if (!(card instanceof HTMLElement)) return;
+    const list = card.querySelector('[data-bloque-media-list]');
+    if (!(list instanceof HTMLElement)) return;
+    const rows = list.querySelectorAll('[data-bloque-media-row]');
+    const n = rows.length;
+    const addBtn = list.querySelector('[data-add-media]');
+    if (addBtn instanceof HTMLElement) addBtn.hidden = n >= 3;
+    rows.forEach((row, i) => {
+      const input = row.querySelector('[data-bloque-media]');
+      if (input instanceof HTMLInputElement) {
+        input.placeholder = i === 0 ? 'https://… imagen o video' : `Media ${i + 1}`;
+      }
+      const rm = row.querySelector('[data-remove-media]');
+      if (rm instanceof HTMLElement) rm.hidden = n <= 1;
+    });
+    checkMarcaDirty();
   }
 
   function createBloqueEl(index = 1) {
@@ -10299,41 +10973,130 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           <span>Texto</span>
           <textarea data-bloque-texto rows="3" class="id-ubicacion__input"></textarea>
         </label>
-        <label class="id-ubicacion__field">
-          <span>URL de media</span>
-          <input type="text" inputmode="url" data-bloque-media placeholder="https://…" class="id-ubicacion__input" />
-        </label>
+        <div class="nosotros-bloque__media" data-bloque-media-list>
+          <div class="nosotros-bloque__media-head">
+            <span>Media (imagen o video · máx. 3)</span>
+            <button type="button" class="nosotros-bloque__media-add" data-add-media>+ Media</button>
+          </div>
+          <div class="nosotros-bloque__media-row" data-bloque-media-row>
+            <input type="text" inputmode="url" data-bloque-media placeholder="https://… imagen o video" class="id-ubicacion__input" />
+            <button type="button" class="nosotros-bloque__media-remove" data-remove-media aria-label="Quitar media" hidden>×</button>
+          </div>
+        </div>
       </div>
     `;
     stampAstroScopeTree(wrap);
     return wrap;
   }
 
+  function collectMediaUrls(card) {
+    /** @type {string[]} */
+    const out = [];
+    if (!(card instanceof HTMLElement)) return out;
+    card.querySelectorAll('input[data-bloque-media]').forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+      const url = input.value.trim();
+      if (!url || out.length >= 3) return;
+      out.push(url);
+    });
+    return out;
+  }
+
   function collectNosotrosBloques() {
-    if (!(bloquesList instanceof HTMLElement)) return [];
-    return Array.from(bloquesList.querySelectorAll('[data-nosotros-bloque]'))
+    const list =
+      document.getElementById('nosotros-bloques-list') ||
+      (bloquesList instanceof HTMLElement ? bloquesList : null);
+    if (!(list instanceof HTMLElement)) return [];
+
+    const cards = Array.from(list.querySelectorAll('[data-nosotros-bloque]'));
+    const seen = new Set();
+
+    return cards
       .map((el) => {
+        if (!(el instanceof HTMLElement) || seen.has(el)) return null;
+        seen.add(el);
         const titulo =
           /** @type {HTMLInputElement | null} */ (el.querySelector('[data-bloque-titulo]'))
             ?.value || '';
         const texto =
           /** @type {HTMLTextAreaElement | null} */ (el.querySelector('[data-bloque-texto]'))
             ?.value || '';
-        const media_url =
-          /** @type {HTMLInputElement | null} */ (el.querySelector('[data-bloque-media]'))
-            ?.value || '';
+        const media = collectMediaUrls(el);
         const alineacion =
           /** @type {HTMLSelectElement | null} */ (el.querySelector('[data-bloque-alineacion]'))
             ?.value || 'alternada';
         return {
           titulo: titulo.trim(),
           texto: texto.trim(),
-          media_url: media_url.trim(),
+          media_url: media[0] || '',
+          media,
           alineacion: alineacion === 'inversa' ? 'inversa' : 'alternada',
         };
       })
-      .filter((b) => b.titulo || b.texto || b.media_url);
+      .filter((b) => b && (b.titulo || b.texto || (b.media && b.media.length > 0)));
   }
+
+  /** @type {string} */
+  let marcaSnapshotBaseline = '';
+  /** @type {string} */
+  let marcaLastSavedSnapshot = '';
+
+  function collectMarcaSnapshot() {
+    if (!(marcaForm instanceof HTMLFormElement)) return '';
+    /** @type {string[]} */
+    const parts = [];
+    marcaForm.querySelectorAll('input, textarea, select').forEach((el) => {
+      if (el instanceof HTMLInputElement) {
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          parts.push(`${el.name || el.id || 'cb'}:${el.checked}`);
+        } else if (el.type !== 'file') {
+          parts.push(`${el.name || el.id || 'in'}:${el.value}`);
+        }
+      } else if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+        parts.push(`${el.name || el.id || 'fld'}:${el.value}`);
+      }
+    });
+    parts.push(`bloques:${JSON.stringify(collectNosotrosBloques())}`);
+    return parts.join('\n');
+  }
+
+  /** @param {'idle' | 'dirty' | 'saved'} state */
+  function setMarcaSaveState(state, btn = marcaSave) {
+    if (!(btn instanceof HTMLButtonElement)) return;
+    btn.dataset.saveState = state;
+    if (btn.disabled) return;
+    btn.textContent = state === 'saved' ? 'Guardado' : 'Guardar';
+  }
+
+  function checkMarcaDirty() {
+    if (!(marcaSave instanceof HTMLButtonElement)) return;
+    const current = collectMarcaSnapshot();
+    if (current !== marcaSnapshotBaseline) {
+      setMarcaSaveState('dirty');
+      return;
+    }
+    setMarcaSaveState(
+      marcaLastSavedSnapshot && marcaLastSavedSnapshot === marcaSnapshotBaseline
+        ? 'saved'
+        : 'idle',
+    );
+  }
+
+  function markMarcaSaved() {
+    marcaSnapshotBaseline = collectMarcaSnapshot();
+    marcaLastSavedSnapshot = marcaSnapshotBaseline;
+    setMarcaSaveState('saved');
+  }
+
+  function initMarcaSaveState() {
+    marcaSnapshotBaseline = collectMarcaSnapshot();
+    marcaLastSavedSnapshot = '';
+    setMarcaSaveState('idle');
+  }
+
+  marcaForm?.addEventListener('input', checkMarcaDirty, { signal });
+  marcaForm?.addEventListener('change', checkMarcaDirty, { signal });
+  requestAnimationFrame(() => initMarcaSaveState());
 
   function collectCategoriasFondos() {
     return Array.from(document.querySelectorAll('[data-cat-fondo]'))
@@ -10397,11 +11160,57 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(bloquesList instanceof HTMLElement)) return;
     const n = bloquesList.querySelectorAll('[data-nosotros-bloque]').length + 1;
     bloquesList.appendChild(createBloqueEl(n));
+    checkMarcaDirty();
   }, { signal });
 
   bloquesList?.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    const rawTarget = event.target;
+    const target =
+      rawTarget instanceof Element
+        ? rawTarget
+        : rawTarget instanceof Node
+          ? rawTarget.parentElement
+          : null;
+    if (!(target instanceof Element)) return;
+
+    const addMediaBtn = target.closest('[data-add-media]');
+    if (addMediaBtn) {
+      event.preventDefault();
+      const card = addMediaBtn.closest('[data-nosotros-bloque]');
+      const list = card?.querySelector('[data-bloque-media-list]');
+      if (!(list instanceof HTMLElement) || !(card instanceof HTMLElement)) return;
+      const count = list.querySelectorAll('[data-bloque-media-row]').length;
+      if (count >= 3) return;
+      const row = createMediaRow(`Media ${count + 1}`, true);
+      stampAstroScopeTree(row);
+      list.appendChild(row);
+      syncBloqueMediaUi(card);
+      const input = row.querySelector('[data-bloque-media]');
+      if (input instanceof HTMLInputElement) input.focus();
+      checkMarcaDirty();
+      return;
+    }
+
+    const removeMediaBtn = target.closest('[data-remove-media]');
+    if (removeMediaBtn) {
+      event.preventDefault();
+      const card = removeMediaBtn.closest('[data-nosotros-bloque]');
+      const row = removeMediaBtn.closest('[data-bloque-media-row]');
+      const list = card?.querySelector('[data-bloque-media-list]');
+      if (!(row instanceof HTMLElement) || !(list instanceof HTMLElement) || !(card instanceof HTMLElement)) {
+        return;
+      }
+      if (list.querySelectorAll('[data-bloque-media-row]').length <= 1) {
+        const input = row.querySelector('[data-bloque-media]');
+        if (input instanceof HTMLInputElement) input.value = '';
+        return;
+      }
+      row.remove();
+      syncBloqueMediaUi(card);
+      checkMarcaDirty();
+      return;
+    }
+
     const btn = target.closest('[data-remove-bloque]');
     if (!btn) return;
     const card = btn.closest('[data-nosotros-bloque]');
@@ -10414,17 +11223,28 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       });
       const sel = card.querySelector('[data-bloque-alineacion]');
       if (sel instanceof HTMLSelectElement) sel.value = 'alternada';
+      const mediaList = card.querySelector('[data-bloque-media-list]');
+      if (mediaList instanceof HTMLElement) {
+        mediaList.querySelectorAll('[data-bloque-media-row]').forEach((row, i) => {
+          if (i === 0) return;
+          row.remove();
+        });
+        syncBloqueMediaUi(card);
+      }
+      checkMarcaDirty();
       return;
     }
     card.remove();
     renumberBloques();
+    checkMarcaDirty();
   }, { signal });
 
-  // Sync visual ios-toggle + estado de tarjetas gadget
+  // Sync visual ios-toggle + tarjetas gadget (switches reales del catálogo)
   document.querySelectorAll('[data-marca-gadget]').forEach((input) => {
     if (!(input instanceof HTMLInputElement)) return;
+    const isGadgetSwitch = input.hasAttribute('data-gadget-switch');
     const ui = document.querySelector(`[data-marca-toggle-ui][data-for="${input.id}"]`);
-    const card = input.closest('[data-gadget-card]');
+    const card = isGadgetSwitch ? input.closest('[data-gadget-card]') : null;
     const config = card?.querySelector('[data-gadget-config]');
 
     const sync = () => {
@@ -10442,10 +11262,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         config.setAttribute('aria-hidden', on ? 'false' : 'true');
       }
 
-      // Update status badge text
-      const badge = card?.querySelector('[data-gadget-status]');
-      if (badge instanceof HTMLElement) {
-        badge.textContent = on ? 'Activo' : 'Inactivo';
+      if (isGadgetSwitch) {
+        const badge = card?.querySelector('[data-gadget-status]');
+        if (badge instanceof HTMLElement) {
+          badge.textContent = on ? 'Activo' : 'Inactivo';
+        }
       }
 
       if (input.id === 'marca-menu-fondos-cinematicos') {
@@ -10455,7 +11276,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (fondoGeneral instanceof HTMLElement) fondoGeneral.hidden = on;
       }
 
-      // Nutrition-specific: show/hide menu tools without leaving Identidad
       if (input.id === 'marca-gadget-nutricion') {
         document.querySelectorAll('[data-shows-when-nutricion]').forEach((el) => {
           if (!(el instanceof HTMLElement)) return;
@@ -10466,7 +11286,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (!on) setNutricionBulkPanelOpen(false);
       }
 
-      // AR gadget: sync root attr + plato modal AR section visibility
       if (input.id === 'marca-gadget-ar') {
         if (root instanceof HTMLElement) root.dataset.gadgetAr = on ? 'true' : 'false';
         document.querySelectorAll('[data-shows-when-ar]').forEach((el) => {
@@ -10487,84 +11306,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     );
     input.addEventListener('change', sync, { signal });
     sync();
+  });
 
-    if (input.id === 'marca-gadget-nutricion') {
-      input.addEventListener(
-        'change',
-        async () => {
-          if (!restauranteId) return;
-          const prev = !input.checked;
-          input.disabled = true;
-          try {
-            const res = await fetch('/api/update-gadget-nutricion', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                restaurante_id: restauranteId,
-                activo: input.checked,
-              }),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(json.error || 'No se pudo guardar el gadget');
-            showToast(
-              json.message ||
-                (input.checked
-                  ? 'Gadget nutricional activo. En Menú aparece Carga nutricional y el botón en cada plato.'
-                  : 'Gadget nutricional apagado'),
-              'ok',
-            );
-          } catch (err) {
-            input.checked = prev;
-            sync();
-            showToast(
-              err instanceof Error ? err.message : 'Error al guardar nutrición',
-              'error',
-            );
-          } finally {
-            input.disabled = false;
-          }
-        },
-        { signal },
-      );
-    }
-
-    if (input.id === 'marca-gadget-ar') {
-      input.addEventListener(
-        'change',
-        async () => {
-          if (!restauranteId) return;
-          const prev = !input.checked;
-          input.disabled = true;
-          try {
-            const res = await fetch('/api/update-gadget-ar', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                restaurante_id: restauranteId,
-                activo: input.checked,
-              }),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(json.error || 'No se pudo guardar el gadget');
-            showToast(
-              json.message ||
-                (input.checked ? 'Gadget AR activo' : 'Gadget AR apagado'),
-              'ok',
-            );
-          } catch (err) {
-            input.checked = prev;
-            sync();
-            showToast(
-              err instanceof Error ? err.message : 'Error al guardar AR',
-              'error',
-            );
-          } finally {
-            input.disabled = false;
-          }
-        },
-        { signal },
-      );
-    }
+  document.querySelectorAll('[data-gadget-config-inner]').forEach((panel) => {
+    panel.addEventListener(
+      'click',
+      (e) => {
+        e.stopPropagation();
+      },
+      { signal },
+    );
   });
 
   // Mantener --gadget-accent alineado con el color primario del form
@@ -10579,9 +11330,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   colorPrimarioInput?.addEventListener('input', syncGadgetAccent, { signal });
   syncGadgetAccent();
 
-  marcaForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!(marcaSave instanceof HTMLButtonElement)) return;
+  async function saveIdentidadMarca() {
+    const saveBtn =
+      document.getElementById('marca-save') instanceof HTMLButtonElement
+        ? /** @type {HTMLButtonElement} */ (document.getElementById('marca-save'))
+        : marcaSave instanceof HTMLButtonElement
+          ? marcaSave
+          : null;
+
+    if (!saveBtn) {
+      showToast('Botón Guardar no disponible', 'error');
+      return;
+    }
     if (!restauranteId) {
       showToast('Restaurante no disponible', 'error');
       return;
@@ -10589,7 +11349,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
     const val = (id) => {
       const el = document.getElementById(id);
-      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+      ) {
         return el.value;
       }
       return '';
@@ -10600,18 +11364,35 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       return el instanceof HTMLInputElement ? el.checked : false;
     };
 
+    if (typeof flushColorPairsForSave === 'function') flushColorPairsForSave();
     if (typeof syncMenuFondoHidden === 'function') syncMenuFondoHidden();
     if (typeof syncNosotrosFondoHidden === 'function') syncNosotrosFondoHidden();
+    if (typeof syncUbicacionFondoHidden === 'function') syncUbicacionFondoHidden();
+    if (typeof syncMenuLegacyFields === 'function') syncMenuLegacyFields();
+    if (localOps('perfil') && localOps('marca')) {
+      copySocials('perfil', 'marca');
+      copyMaps('perfil', 'marca');
+    }
 
-    marcaSave.disabled = true;
-    marcaSave.textContent = 'Guardando…';
+    const nosotrosBloquesPayload = collectNosotrosBloques();
+    const nosotrosThemePayload = val('marca-nosotros-theme') || 'editorial';
+
+    console.info('[identidad] GUARDAR', {
+      restauranteId,
+      nosotros_theme: nosotrosThemePayload,
+      bloques: nosotrosBloquesPayload.length,
+      media: nosotrosBloquesPayload.map((b) => (b.media || []).length),
+    });
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Guardando…';
+    showToast('Guardando identidad…', 'ok');
     if (marcaFeedback) {
       marcaFeedback.classList.add('hidden');
       marcaFeedback.textContent = '';
     }
 
     try {
-      // Ruta relativa — nunca hardcodear localhost ni dominio fijo
       const res = await fetch('/api/update-marca', {
         method: 'POST',
         credentials: 'same-origin',
@@ -10644,7 +11425,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           eslogan_size: Number(val('marca-home-eslogan-size')) || 14,
           menu_size: Number(val('marca-home-menu-size')) || 16,
           home_tracking: val('marca-home-tracking'),
-          // Legacy: sin input UI; sincroniza con color de eslogan para no romper CSS --home-subtitulo-color
           home_subtitulo_color: val('marca-home-eslogan-color'),
           home_titulo_color: val('marca-home-titulo-color'),
           home_eslogan_color: val('marca-home-eslogan-color'),
@@ -10671,6 +11451,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           nosotros_color_fondo: val('marca-nosotros-color-fondo'),
           nosotros_color_titulo: val('marca-nosotros-color-titulo'),
           nosotros_color_cuerpo: val('marca-nosotros-color-cuerpo'),
+          nosotros_contenedor_estilo: val('marca-nosotros-contenedor-estilo') || 'vidrio',
+          nosotros_fuente_titulo: val('marca-nosotros-fuente-titulo') || 'cinzel',
+          nosotros_fuente_cuerpo: val('marca-nosotros-fuente-cuerpo') || 'plus-jakarta',
           ubicacion_color_fondo: val('marca-ubicacion-color-fondo'),
           ubicacion_color_titulo: val('marca-ubicacion-color-titulo'),
           ubicacion_color_cuerpo: val('marca-ubicacion-color-cuerpo'),
@@ -10682,21 +11465,31 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           fondo_menu_valor: val('marca-fondo-menu-valor'),
           menu_fondos_cinematicos: checked('marca-menu-fondos-cinematicos'),
           menu_font: val('marca-menu-font'),
+          menu_color_fondo: val('marca-menu-color-fondo'),
           menu_color_texto: val('marca-menu-color-texto'),
+          menu_color_acento: val('marca-menu-color-acento'),
+          menu_chips_layout: val('marca-menu-chips-layout') || 'scroll',
+          menu_chips_estilo: val('marca-menu-chips-estilo') || 'pildora',
+          menu_platos_layout: val('marca-menu-platos-layout') || 'grid',
+          menu_estilo_tarjetas: val('marca-menu-estilo-tarjetas') || 'cristal',
+          menu_fuente_titulo: val('marca-menu-fuente-titulo'),
+          menu_fuente_cuerpo: val('marca-menu-fuente-cuerpo'),
           fondo_ubicacion_tipo: val('marca-fondo-ubicacion-tipo'),
           fondo_ubicacion_valor: val('marca-fondo-ubicacion-valor'),
-          nosotros_bloques: collectNosotrosBloques(),
-          coordenadas_maps: val('marca-coordenadas'),
-          redes_instagram: val('marca-redes-instagram'),
-          redes_facebook: val('marca-redes-facebook'),
-          redes_tiktok: val('marca-redes-tiktok'),
-          redes_tripadvisor: val('marca-redes-tripadvisor'),
+          nosotros_bloques: nosotrosBloquesPayload,
+          nosotros_theme: nosotrosThemePayload,
+          coordenadas_maps: normalizeMapsStorage(val('marca-coordenadas')),
+          redes_instagram: socialField('marca', 'instagram'),
+          redes_facebook: socialField('marca', 'facebook'),
+          redes_tiktok: socialField('marca', 'tiktok'),
+          redes_tripadvisor: socialField('marca', 'tripadvisor'),
+          redes_whatsapp: socialField('marca', 'whatsapp'),
           redes_instagram_activo: socialOn('instagram', 'marca'),
           redes_facebook_activo: socialOn('facebook', 'marca'),
           redes_tiktok_activo: socialOn('tiktok', 'marca'),
           redes_tripadvisor_activo: socialOn('tripadvisor', 'marca'),
-          instagram_url: val('marca-redes-instagram'),
-          whatsapp_url: val('marca-whatsapp'),
+          redes_whatsapp_activo: socialOn('whatsapp', 'marca'),
+          instagram_url: socialField('marca', 'instagram'),
           horarios: (() => {
             syncHorarioHidden('marca');
             return val('marca-horarios');
@@ -10720,11 +11513,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           gadget_ar: checked('marca-gadget-ar'),
           boutique_productos: collectBoutiqueProductos(),
           home_theme: val('marca-home-theme') || 'editorial',
-          nosotros_theme: val('marca-nosotros-theme') || 'editorial',
           ubicacion_theme: val('marca-ubicacion-theme') || 'modal',
         }),
       });
       const json = await res.json().catch(() => ({}));
+      console.info('[identidad] respuesta update-marca', res.status, json);
       if (!res.ok) throw new Error(json.error || `No se pudo guardar (${res.status})`);
 
       if (root instanceof HTMLElement) {
@@ -10738,14 +11531,22 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         el.hidden = !on;
       });
 
-      showToast(
-        json.message || '¡Identidad de marca actualizada con éxito!',
-        'ok',
+      const themeOk = String(json.nosotros_theme || nosotrosThemePayload || 'editorial');
+      const bloquesOk =
+        Number(json.nosotros_bloques_count ?? nosotrosBloquesPayload.length) || 0;
+      const mediaOk = nosotrosBloquesPayload.reduce(
+        (n, b) => n + (Array.isArray(b.media) ? b.media.length : 0),
+        0,
       );
+      showToast(
+        json.message ||
+          `Identidad guardada · Nosotros: ${themeOk} · ${bloquesOk} bloque${bloquesOk === 1 ? '' : 's'} · ${mediaOk} media`,
+        bloquesOk === 0 ? 'error' : 'ok',
+      );
+      markMarcaSaved();
       syncLocalOps('marca');
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'Error al guardar';
-      // TypeError: Failed to fetch / NetworkError → endpoint caído o sin respuesta
       if (
         err instanceof TypeError ||
         /failed to fetch|networkerror|load failed/i.test(msg)
@@ -10753,6 +11554,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         msg =
           'No se pudo conectar con /api/update-marca. Revisá que el servidor esté activo y que la respuesta sea JSON.';
       }
+      console.error('[identidad] GUARDAR falló', err);
       if (marcaFeedback) {
         marcaFeedback.textContent = msg;
         marcaFeedback.classList.remove('hidden');
@@ -10760,10 +11562,34 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       }
       showToast(msg, 'error');
     } finally {
-      marcaSave.disabled = false;
-      marcaSave.textContent = 'Guardar';
+      saveBtn.disabled = false;
+      setMarcaSaveState(saveBtn.dataset.saveState || 'idle', saveBtn);
     }
-  }, { signal });
+  }
+
+  console.info('[identidad] listeners', {
+    form: Boolean(marcaForm),
+    saveBtn: Boolean(marcaSave),
+    restauranteId,
+  });
+
+  marcaSave?.addEventListener(
+    'click',
+    (event) => {
+      event.preventDefault();
+      void saveIdentidadMarca();
+    },
+    { signal },
+  );
+
+  marcaForm?.addEventListener(
+    'submit',
+    (event) => {
+      event.preventDefault();
+      void saveIdentidadMarca();
+    },
+    { signal },
+  );
 
   }
 
@@ -10775,6 +11601,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   });
   document.addEventListener('astro:before-preparation', teardownAdminDashboard);
+
+  // Primera carga: módulos deferred pueden registrarse después del primer astro:page-load
+  try {
+    initAdminDashboard();
+  } catch (err) {
+    console.error('Error en menú (boot):', err);
+  }
 </script>
 
 <script>

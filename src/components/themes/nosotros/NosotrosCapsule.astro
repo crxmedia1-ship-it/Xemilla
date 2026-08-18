@@ -1,0 +1,283 @@
+---
+/**
+ * Nosotros Álbum — scrapbook polaroid (Mobbin: Superr, Savor, Assembly Coffee).
+ * Título editorial + texto en tarjeta + fotos inclinadas con marco blanco.
+ */
+import {
+  resolveNosotrosBloques,
+  renderTitleHtml,
+  renderBodyHtml,
+  isVideoUrl,
+  normalizeContenedorEstilo,
+  contenedorCardStyle,
+} from '../../../lib/nosotros-layout.js';
+
+interface BloqueEditorial {
+  subtitulo?: string;
+  titulo?: string;
+  tituloAcento?: string;
+  caption?: string;
+  imagen?: string | null;
+  media_url?: string | null;
+  media?: string[];
+  texto?: string;
+  contenido?: string;
+  alineacion?: string;
+  acentos?: string[];
+}
+
+interface Props {
+  bloques?: BloqueEditorial[];
+  texto?: string;
+  highlights?: string[];
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+    contenedor_estilo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  bloques = [],
+  texto = '',
+  highlights = [],
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const containerBg = (sectionColors.color_fondo || '').trim();
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const cardSkin = contenedorCardStyle(
+  normalizeContenedorEstilo(sectionColors.contenedor_estilo),
+  containerBg,
+);
+
+const items = resolveNosotrosBloques({ bloques, texto, highlights });
+
+/** Rotaciones alternadas para efecto álbum (1–3 fotos). */
+const polaroidTilts = ['-2.8deg', '1.2deg', '-1.5deg'];
+const polaroidOffsets = ['', 'translate-y-3 sm:translate-y-5', '-translate-y-2 sm:translate-y-0'];
+---
+
+<div
+  class="nosotros-capsule mx-auto w-full max-w-2xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-5 font-[family-name:var(--font-body,var(--fuente-principal))] sm:px-6 md:max-w-3xl md:pt-9 lg:max-w-4xl"
+>
+  {
+    items.length === 0 ? (
+      <p class={`mx-auto max-w-prose text-center text-sm leading-relaxed ${estilos.mutedColor}`}>
+        Pronto contaremos nuestra historia.
+      </p>
+    ) : (
+      <div class="flex flex-col gap-14 md:gap-16">
+        {items.map((bloque, index) => {
+          const mediaList = Array.isArray(bloque.media) ? bloque.media.slice(0, 3) : [];
+          const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
+          const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);
+          const count = mediaList.length;
+
+          return (
+            <article class="nosotros-capsule__block" data-reveal>
+              {bloque.subtitulo && (
+                <p
+                  class={`mb-2 text-[0.58rem] font-semibold uppercase tracking-[0.28em] ${estilos.softColor}`}
+                >
+                  {bloque.subtitulo}
+                </p>
+              )}
+
+              {bloque.titulo && (
+                <h2
+                  class={`nosotros-copy mb-4 break-words text-[clamp(1.65rem,5.5vw,2.35rem)] font-semibold leading-[1.08] tracking-[0.01em] font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                  style={titleStyle}
+                  set:html={titleHtml}
+                />
+              )}
+
+              {bloque.texto && (
+                <div
+                  class="nosotros-card mb-6 rounded-2xl p-4 sm:rounded-3xl sm:p-5"
+                  style={cardSkin || undefined}
+                >
+                  <p
+                    class={`nosotros-copy break-words text-[0.92rem] leading-[1.75] sm:text-[0.98rem] ${!bodyColor ? estilos.textColor : ''}`}
+                    style={bodyStyle}
+                    set:html={bodyHtml}
+                  />
+                </div>
+              )}
+
+              {count > 0 && (
+                <div
+                  class:list={[
+                    'nosotros-capsule__gallery',
+                    count === 1 && 'nosotros-capsule__gallery--solo',
+                    count === 2 && 'nosotros-capsule__gallery--duo',
+                    count >= 3 && 'nosotros-capsule__gallery--trio',
+                  ]}
+                >
+                  {mediaList.map((url, i) => (
+                    <figure
+                      class:list={[
+                        'nosotros-capsule__polaroid',
+                        polaroidOffsets[i] || '',
+                      ]}
+                      style={`--tilt:${polaroidTilts[i] || '0deg'}`}
+                      data-reveal-media
+                    >
+                      <div class="nosotros-capsule__frame">
+                        {isVideoUrl(url) ? (
+                          <video
+                            src={url}
+                            class="nosotros-capsule__asset"
+                            autoplay
+                            muted
+                            loop
+                            playsinline
+                          />
+                        ) : (
+                          <img
+                            src={url}
+                            alt=""
+                            class="nosotros-capsule__asset"
+                            loading={i === 0 ? 'eager' : 'lazy'}
+                            decoding="async"
+                          />
+                        )}
+                      </div>
+                      <figcaption class={`mt-2 text-center text-[0.5rem] uppercase tracking-[0.2em] ${estilos.softColor}`}>
+                        {String(i + 1).padStart(2, '0')}
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .editorial-accent {
+    color: var(--color-primario);
+  }
+
+  .nosotros-copy {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .nosotros-capsule__gallery {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 0.85rem;
+    padding: 0.25rem 0 0.5rem;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .nosotros-capsule__gallery--solo {
+    justify-content: flex-start;
+  }
+
+  .nosotros-capsule__gallery--duo {
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .nosotros-capsule__gallery--duo {
+      gap: 1.35rem;
+    }
+  }
+
+  .nosotros-capsule__gallery--trio {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 0.65rem;
+  }
+
+  @media (max-width: 479px) {
+    .nosotros-capsule__gallery--trio {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .nosotros-capsule__gallery--trio .nosotros-capsule__polaroid:last-child {
+      grid-column: 1 / -1;
+      justify-self: center;
+      max-width: 62%;
+    }
+  }
+
+  .nosotros-capsule__polaroid {
+    flex: 0 1 auto;
+    width: min(100%, 11.5rem);
+    transform: rotate(var(--tilt, 0deg));
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .nosotros-capsule__gallery--duo .nosotros-capsule__polaroid {
+    width: min(calc(50% - 0.5rem), 12.5rem);
+    flex: 1 1 calc(50% - 0.5rem);
+    max-width: 12.5rem;
+  }
+
+  @media (max-width: 399px) {
+    .nosotros-capsule__gallery--duo .nosotros-capsule__polaroid {
+      width: min(calc(50% - 0.35rem), 10.5rem);
+      flex-basis: calc(50% - 0.35rem);
+    }
+
+    .nosotros-capsule__polaroid {
+      width: min(100%, 10rem);
+    }
+  }
+
+  .nosotros-capsule__gallery--solo .nosotros-capsule__polaroid {
+    width: min(100%, 16rem);
+  }
+
+  .nosotros-capsule__frame {
+    padding: 0.45rem 0.45rem 0.65rem;
+    background: #fff;
+    border-radius: 0.35rem;
+    box-shadow:
+      0 1px 2px color-mix(in srgb, #000 8%, transparent),
+      0 10px 28px color-mix(in srgb, #000 14%, transparent);
+  }
+
+  .nosotros-capsule__asset {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: 0.15rem;
+    background: color-mix(in srgb, var(--color-primario) 6%, #f4f4f5);
+  }
+
+  .nosotros-capsule__gallery--duo .nosotros-capsule__asset {
+    aspect-ratio: 3 / 4;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nosotros-capsule__polaroid {
+      transform: none !important;
+    }
+  }
+</style>

@@ -13,6 +13,7 @@ import HomeBentoGrid from '../themes/home/HomeBentoGrid.astro';
 import HomeMinimal from '../themes/home/HomeMinimal.astro';
 import UbicacionModal from '../themes/ubicacion/UbicacionModal.astro';
 import UbicacionSplitMap from '../themes/ubicacion/UbicacionSplitMap.astro';
+import UbicacionMinimal from '../themes/ubicacion/UbicacionMinimal.astro';
 import { themeToCssVars, homeBackgroundCssVars, DEFAULT_THEME } from '../../lib/theme.js';
 import {
   sanitizeTheme,
@@ -231,8 +232,8 @@ const ubicacionProps = {
   redes: Array.isArray(ubicacion?.redes) ? ubicacion.redes : [],
   mapaLabel: ubicacion?.mapaLabel || '',
   mapaUrl: ubicacion?.mapaUrl || '',
-  horarios: ubicacion?.horarios || [],
-  horariosRows: ubicacion?.horariosRows || [],
+  horarios: ubicacion?.horarios ?? '',
+  horariosRows: ubicacion?.horariosRows ?? [],
   sectionColors: uiEstilo?.ubicacion,
   estilos: homeProps.estilos,
 };
@@ -416,7 +417,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
               data-open-section="ubicacion"
               class="w-full py-3 text-3xl font-light uppercase tracking-widest text-white/70 transition-all duration-500 hover:tracking-[0.3em] hover:text-white focus-visible:tracking-[0.3em] focus-visible:text-white focus-visible:outline-none sm:text-4xl"
             >
-              Ubicación
+              Horarios y Ubicación
             </button>
             {
               showWifi ? (
@@ -523,7 +524,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             <path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z"></path>
             <circle cx="12" cy="10" r="2.5"></circle>
           </svg>
-          Ubicación
+          Horarios y Ubicación
         </button>
       </nav>
     ) : null
@@ -536,9 +537,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       title="IL MENÚ"
       fondoTipo={String(fondoMenu?.valor || '').trim() ? fondoMenu.tipo : 'color'}
       fondoValor={String(fondoMenu?.valor || '').trim() || theme.colorFondo}
-      overlayEstilo={homeOverlayEstilo}
-      overlayOpacity={homeOverlayOpacity}
-      fondoAnimacion={homeFondoAnimacion}
+      overlayEstilo="puro"
+      overlayOpacity={0}
       categoryCrossfade={menuFondosCinematicos}
       categoryBackgrounds={Object.fromEntries(
         (menu?.categorias || []).map((cat) => [
@@ -546,6 +546,11 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           { tipo: cat.bgType || 'color', valor: cat.bgValor || '' },
         ]),
       )}
+      sectionColors={{
+        color_header: uiEstilo?.menu?.color_texto || '',
+        color_titulo: uiEstilo?.menu?.color_texto || '',
+        color_cuerpo: uiEstilo?.menu?.color_texto || '',
+      }}
       estilos={{ ...estilos, panelColor: 'bg-transparent' }}
     >
       <MenuPanel
@@ -562,6 +567,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             : 0.92
         }
         tasaEur={tasasCambio.eurVes}
+        menuUi={uiEstilo?.menu}
+        menuFont={restaurante?.menu_font || restaurante?.theme?.menuFont || ''}
         estilos={estilos}
       />
     </OverlayPanel>
@@ -586,19 +593,25 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     </OverlayPanel>
 
     {
-      ubicacionTheme === 'split' ? (
+      ubicacionTheme === 'modal' ? (
+        <UbicacionModal {...ubicacionProps} />
+      ) : (
         <OverlayPanel
           sectionId="ubicacion"
-          title={ubicacion?.titulo || 'UBICACIÓN Y HORARIOS'}
+          title={ubicacion?.titulo || 'HORARIOS Y UBICACIÓN'}
           fondoTipo={fondoUbicacion.tipo}
           fondoValor={fondoUbicacion.valor}
           sectionColors={uiEstilo.ubicacion}
           estilos={estilos}
         >
-          <UbicacionSplitMap {...ubicacionProps} />
+          {
+            ubicacionTheme === 'split' ? (
+              <UbicacionSplitMap {...ubicacionProps} />
+            ) : (
+              <UbicacionMinimal {...ubicacionProps} />
+            )
+          }
         </OverlayPanel>
-      ) : (
-        <UbicacionModal {...ubicacionProps} />
       )
     }
 
@@ -1128,6 +1141,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 </style>
 
 <script>
+  import { refreshUbicacionLiveStatus } from '../../lib/ubicacion-live-client.js';
   import { syncMesaSession, hasValidMesaSession, getStoredMesa } from '../../lib/mesa-session.js';
 
   const OPEN_CLASSES = ['opacity-100', 'pointer-events-auto'];
@@ -1188,6 +1202,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     drawer.classList.add('is-open');
     drawer.dataset.open = 'true';
     drawer.setAttribute('aria-hidden', 'false');
+    const panel = drawer.querySelector('[data-ubicacion-panel]');
+    if (panel instanceof HTMLElement) refreshUbicacionLiveStatus(panel);
     document.documentElement.style.overflow = 'hidden';
   }
 
@@ -1229,12 +1245,12 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       return;
     }
 
-    // Ubicación: modal/drawer (default) o overlay split
+    // Ubicación: modal = drawer; split/minimal = OverlayPanel
     if (id === 'ubicacion') {
       const ubiTheme = String(app.dataset.ubicacionTheme || 'modal')
         .trim()
         .toLowerCase();
-      if (ubiTheme !== 'split') {
+      if (ubiTheme === 'modal') {
         const home = app.querySelector('[data-linktree-home]');
         openUbicacionDrawer(app);
         home?.classList.add('scale-[0.98]', 'opacity-40');

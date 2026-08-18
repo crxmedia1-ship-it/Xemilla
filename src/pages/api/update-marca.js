@@ -7,8 +7,10 @@ import {
   buildRedesSocialesFromBody,
   buildUiEstiloFromBody,
   sanitizeCssAvanzado,
+  normalizeMenuUi,
 } from '../../lib/secciones-ui.js';
 import { buildBoutiqueConfig } from '../../lib/boutique.js';
+import { normalizeMapsStorage } from '../../lib/maps-preview.js';
 import {
   normalizeHomeTheme,
   normalizeNosotrosTheme,
@@ -62,6 +64,7 @@ export async function POST({ request, cookies }) {
  * @param {{ request: Request, cookies: import('astro').AstroCookies }} ctx
  */
 async function handleUpdateMarca({ request, cookies }) {
+  console.info('[api/update-marca] POST recibido');
   const supabase = createSupabaseServerClient({ request, cookies });
 
   const {
@@ -140,12 +143,36 @@ async function handleUpdateMarca({ request, cookies }) {
   patch.share_image_url = normalizeUrlOrText(raw.share_image_url);
   patch.app_icon_url = normalizeUrlOrText(raw.app_icon_url);
 
-  // Tokens tipográficos Home + colores por sección
-  const uiEstilo = buildUiEstiloFromBody(raw);
+  // Tokens tipográficos Home + colores por sección (merge: no borrar hub ni claves previas)
+  const uiEstiloBuilt = buildUiEstiloFromBody(raw);
   const nosotrosTheme = normalizeNosotrosTheme(raw.nosotros_theme);
-  if (uiEstilo?.nosotros && typeof uiEstilo.nosotros === 'object') {
-    uiEstilo.nosotros.theme = nosotrosTheme;
-  }
+
+  const { data: existingRow } = await writeClient
+    .from('restaurantes')
+    .select('ui_estilo')
+    .eq('id', restauranteId)
+    .maybeSingle();
+
+  const prevUi =
+    existingRow?.ui_estilo &&
+    typeof existingRow.ui_estilo === 'object' &&
+    !Array.isArray(existingRow.ui_estilo)
+      ? /** @type {Record<string, any>} */ (existingRow.ui_estilo)
+      : {};
+
+  const uiEstilo = {
+    ...prevUi,
+    ...uiEstiloBuilt,
+    hub: prevUi.hub ?? uiEstiloBuilt.hub,
+    home: { ...(prevUi.home || {}), ...(uiEstiloBuilt.home || {}) },
+    menu: normalizeMenuUi({ ...(prevUi.menu || {}), ...(uiEstiloBuilt.menu || {}) }),
+    nosotros: {
+      ...(prevUi.nosotros || {}),
+      ...(uiEstiloBuilt.nosotros || {}),
+      theme: nosotrosTheme,
+    },
+    ubicacion: { ...(prevUi.ubicacion || {}), ...(uiEstiloBuilt.ubicacion || {}) },
+  };
   patch.ui_estilo = uiEstilo;
 
   // Plantillas de estructura (Layout Themes)
@@ -187,25 +214,37 @@ async function handleUpdateMarca({ request, cookies }) {
   if (raw.direccion !== undefined) {
     patch.direccion = normalizeText(raw.direccion);
   }
-  patch.coordenadas_maps = normalizeUrlOrText(raw.coordenadas_maps);
+  patch.coordenadas_maps = normalizeMapsStorage(normalizeUrlOrText(raw.coordenadas_maps));
   patch.horarios = normalizeText(raw.horarios, { keepNewlines: true });
 
-  const redes = buildRedesSocialesFromBody(raw);
+  const { data: redesRow } = await writeClient
+    .from('restaurantes')
+    .select('redes_sociales')
+    .eq('id', restauranteId)
+    .maybeSingle();
+
+  const redes = buildRedesSocialesFromBody(raw, redesRow?.redes_sociales);
   patch.redes_sociales = redes;
   const igPublica = redes.find((r) => r.red === 'instagram' && r.activo !== false);
   patch.instagram_url = igPublica?.url || null;
 
-  const whatsapp = normalizeWhatsapp(raw.whatsapp_url);
-  patch.whatsapp_url = whatsapp;
+  const waRed = redes.find((r) => r.red === 'whatsapp');
+  const whatsapp =
+    waRed?.activo !== false && waRed?.url
+      ? normalizeWhatsapp(waRed.url)
+      : normalizeWhatsapp(raw.whatsapp_url);
+  patch.whatsapp_url = whatsapp || null;
   if (whatsapp) {
     const digits = whatsapp.replace(/\D/g, '');
     patch.whatsapp_num = digits ? `+${digits}` : whatsapp;
-  } else if (raw.whatsapp_url === '' || raw.whatsapp_url === null) {
+  } else {
     patch.whatsapp_num = null;
   }
 
   // Reservas
-  patch.gadget_reservas = toBool(raw.gadget_reservas);
+  if (raw.gadget_reservas !== undefined) {
+    patch.gadget_reservas = toBool(raw.gadget_reservas);
+  }
   const reservasLabel =
     normalizeText(raw.reservas_label) ||
     normalizeText(raw.reservas_boton) ||
@@ -225,33 +264,56 @@ async function handleUpdateMarca({ request, cookies }) {
   };
 
   // Gadgets mesa (columnas canónicas + sync legacy)
-  const gadgetWifi = toBool(raw.gadget_wifi);
-  const gadgetMesero = toBool(
-    raw.gadget_mesero !== undefined ? raw.gadget_mesero : raw.gadget_llamar_mesero,
-  );
-  const gadgetCuenta = toBool(
-    raw.gadget_cuenta !== undefined
-      ? raw.gadget_cuenta
-      : raw.gadget_dividir_cuenta,
-  );
+  if (raw.gadget_wifi !== undefined) {
+    patch.gadget_wifi = toBool(raw.gadget_wifi);
+  }
+  if (raw.gadget_mesero !== undefined || raw.gadget_llamar_mesero !== undefined) {
+    const gadgetMesero = toBool(
+      raw.gadget_mesero !== undefined ? raw.gadget_mesero : raw.gadget_llamar_mesero,
+    );
+    patch.gadget_mesero = gadgetMesero;
+    patch.gadget_llamar_mesero = gadgetMesero;
+  }
+  if (raw.gadget_cuenta !== undefined || raw.gadget_dividir_cuenta !== undefined) {
+    const gadgetCuenta = toBool(
+      raw.gadget_cuenta !== undefined
+        ? raw.gadget_cuenta
+        : raw.gadget_dividir_cuenta,
+    );
+    patch.gadget_cuenta = gadgetCuenta;
+    patch.gadget_dividir_cuenta = gadgetCuenta;
+  }
+  if (raw.gadget_boutique !== undefined) {
+    patch.gadget_boutique = toBool(raw.gadget_boutique);
+  }
+  if (raw.gadget_nutricion !== undefined) {
+    patch.gadget_nutricion = toBool(raw.gadget_nutricion);
+  }
+  if (raw.gadget_ar !== undefined) {
+    patch.gadget_ar = toBool(raw.gadget_ar);
+  }
 
-  patch.gadget_wifi = gadgetWifi;
-  patch.gadget_mesero = gadgetMesero;
-  patch.gadget_cuenta = gadgetCuenta;
-  // Aliases legacy (compatibilidad con filas / clientes previos)
-  patch.gadget_llamar_mesero = gadgetMesero;
-  patch.gadget_dividir_cuenta = gadgetCuenta;
+  const wifiTouched =
+    raw.gadget_wifi !== undefined ||
+    raw.gadget_wifi_ssid !== undefined ||
+    raw.wifi_ssid !== undefined ||
+    raw.gadget_wifi_clave !== undefined ||
+    raw.wifi_password !== undefined;
 
-  const wifiSsid =
-    normalizeText(raw.gadget_wifi_ssid) || normalizeText(raw.wifi_ssid) || '';
-  const wifiClave =
-    normalizeText(raw.gadget_wifi_clave) ||
-    normalizeText(raw.wifi_password) ||
-    normalizeText(raw.wifi_clave) ||
-    '';
-  patch.gadget_wifi_ssid = wifiSsid || null;
-  patch.gadget_wifi_clave = wifiClave || null;
-  patch.config_wifi = { ssid: wifiSsid, password: wifiClave };
+  if (wifiTouched) {
+    const wifiOn = raw.gadget_wifi !== undefined ? toBool(raw.gadget_wifi) : undefined;
+    const wifiSsid =
+      normalizeText(raw.gadget_wifi_ssid) || normalizeText(raw.wifi_ssid) || '';
+    const wifiClave =
+      normalizeText(raw.gadget_wifi_clave) ||
+      normalizeText(raw.wifi_password) ||
+      normalizeText(raw.wifi_clave) ||
+      '';
+    if (wifiOn !== undefined) patch.gadget_wifi = wifiOn;
+    patch.gadget_wifi_ssid = wifiSsid || null;
+    patch.gadget_wifi_clave = wifiClave || null;
+    patch.config_wifi = { ssid: wifiSsid, password: wifiClave };
+  }
 
   // Boutique / merch
   patch.gadget_boutique = toBool(raw.gadget_boutique);
@@ -269,153 +331,9 @@ async function handleUpdateMarca({ request, cookies }) {
   }
   patch.config_boutique = buildBoutiqueConfig(boutiqueProductos);
 
-  const { data, error } = await writeClient
-    .from('restaurantes')
-    .update(patch)
-    .eq('id', restauranteId)
-    .select(
-      [
-        'id',
-        'nombre_comercial',
-        'logo_url',
-        'eslogan',
-        'color_primario',
-        'color_fondo',
-        'color_texto',
-        'estilo_adn',
-        'menu_font',
-        'tipo_letra',
-        'share_image_url',
-        'app_icon_url',
-        'ui_estilo',
-        'home_theme',
-        'nosotros_theme',
-        'ubicacion_theme',
-        'imagen_fondo',
-        'custom_css',
-        'secciones_fondo',
-        'nosotros_bloques',
-        'redes_sociales',
-        'direccion',
-        'horarios',
-        'instagram_url',
-        'whatsapp_url',
-        'coordenadas_maps',
-        'nosotros_subtitulo',
-        'nosotros_titulo',
-        'nosotros_imagen',
-        'nosotros_texto',
-        'whatsapp_num',
-        'gadget_wifi',
-        'gadget_wifi_ssid',
-        'gadget_wifi_clave',
-        'gadget_mesero',
-        'gadget_cuenta',
-        'gadget_dividir_cuenta',
-        'gadget_reservas',
-        'gadget_llamar_mesero',
-        'gadget_boutique',
-        'gadget_nutricion',
-        'gadget_ar',
-        'config_wifi',
-        'config_reservas',
-        'config_boutique',
-      ].join(', '),
-    )
-    .maybeSingle();
+  const { data, error } = await updateRestauranteMarca(writeClient, restauranteId, patch);
 
   if (error) {
-    // Si faltan columnas nuevas en Supabase, reintentar sin ellas (legacy)
-    const missingNew =
-      /gadget_wifi_ssid|gadget_wifi_clave|gadget_mesero|gadget_cuenta|gadget_boutique|gadget_nutricion|config_boutique|home_theme|nosotros_theme|ubicacion_theme|column|schema cache/i.test(
-        error.message || '',
-      );
-    if (missingNew) {
-      console.warn(
-        '[api/update-marca] columnas planas de gadgets no disponibles; fallback legacy.',
-        error.message,
-      );
-      const legacyPatch = { ...patch };
-      delete legacyPatch.gadget_wifi_ssid;
-      delete legacyPatch.gadget_wifi_clave;
-      delete legacyPatch.gadget_mesero;
-      delete legacyPatch.gadget_cuenta;
-      delete legacyPatch.gadget_boutique;
-      delete legacyPatch.gadget_nutricion;
-      delete legacyPatch.gadget_ar;
-      delete legacyPatch.config_boutique;
-      delete legacyPatch.home_theme;
-      // Keep nosotros_theme mirrored in ui_estilo even if the flat column fails.
-      delete legacyPatch.nosotros_theme;
-      delete legacyPatch.ubicacion_theme;
-      if (
-        legacyPatch.ui_estilo &&
-        typeof legacyPatch.ui_estilo === 'object' &&
-        patch.nosotros_theme
-      ) {
-        const ui = /** @type {Record<string, any>} */ (legacyPatch.ui_estilo);
-        ui.nosotros = { ...(ui.nosotros || {}), theme: patch.nosotros_theme };
-        legacyPatch.ui_estilo = ui;
-      }
-      const retry = await writeClient
-        .from('restaurantes')
-        .update(legacyPatch)
-        .eq('id', restauranteId)
-        .select(
-          [
-            'id',
-            'nombre_comercial',
-            'logo_url',
-            'eslogan',
-            'color_primario',
-            'color_fondo',
-            'color_texto',
-            'estilo_adn',
-            'menu_font',
-            'tipo_letra',
-            'share_image_url',
-            'app_icon_url',
-            'ui_estilo',
-            'imagen_fondo',
-            'custom_css',
-            'secciones_fondo',
-            'nosotros_bloques',
-            'redes_sociales',
-            'direccion',
-            'horarios',
-            'instagram_url',
-            'whatsapp_url',
-            'coordenadas_maps',
-            'nosotros_subtitulo',
-            'nosotros_titulo',
-            'nosotros_imagen',
-            'nosotros_texto',
-            'whatsapp_num',
-            'gadget_wifi',
-            'gadget_dividir_cuenta',
-            'gadget_reservas',
-            'gadget_llamar_mesero',
-            'config_wifi',
-            'config_reservas',
-          ].join(', '),
-        )
-        .maybeSingle();
-      if (retry.error) {
-        console.error('[api/update-marca]', retry.error.message);
-        return json({ error: retry.error.message }, 400);
-      }
-      if (!retry.data) {
-        return json(
-          {
-            error: isSuper
-              ? 'Restaurante no encontrado. Revisá RLS / service role.'
-              : 'Restaurante no encontrado o sin permiso',
-          },
-          404,
-        );
-      }
-      return afterMarcaUpdate(writeClient, restauranteId, raw, retry.data);
-    }
     console.error('[api/update-marca]', error.message);
     return json({ error: error.message }, 400);
   }
@@ -432,6 +350,96 @@ async function handleUpdateMarca({ request, cookies }) {
   }
 
   return afterMarcaUpdate(writeClient, restauranteId, raw, data);
+}
+
+/**
+ * Update con reintento: quita solo la columna que PostgREST reporta como ausente.
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {string} restauranteId
+ * @param {Record<string, unknown>} patch
+ */
+async function updateRestauranteMarca(client, restauranteId, patch) {
+  /** @type {string[]} */
+  let selectCols = [
+    'id',
+    'nombre_comercial',
+    'logo_url',
+    'eslogan',
+    'ui_estilo',
+    'home_theme',
+    'nosotros_theme',
+    'ubicacion_theme',
+    'secciones_fondo',
+    'nosotros_bloques',
+    'nosotros_titulo',
+    'nosotros_texto',
+    'nosotros_imagen',
+  ];
+
+  /** @type {Record<string, unknown>} */
+  let current = { ...patch };
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { data, error } = await client
+      .from('restaurantes')
+      .update(current)
+      .eq('id', restauranteId)
+      .select(selectCols.join(', '))
+      .maybeSingle();
+
+    if (!error) return { data, error: null };
+
+    const msg = error.message || '';
+    const colMatch =
+      msg.match(/Could not find the ['"]([\w_]+)['"] column/i) ||
+      msg.match(/column [\w.]+\.([\w_]+) does not exist/i) ||
+      msg.match(/['"]([\w_]+)['"] column of ['"]restaurantes['"]/i);
+
+    const badCol = colMatch?.[1];
+    if (badCol && Object.prototype.hasOwnProperty.call(current, badCol)) {
+      console.warn('[api/update-marca] omitiendo columna ausente:', badCol, msg);
+      delete current[badCol];
+      // Si falla nosotros_theme plano, ya va en ui_estilo.nosotros.theme
+      continue;
+    }
+
+    if (badCol && selectCols.includes(badCol)) {
+      console.warn('[api/update-marca] omitiendo columna del SELECT:', badCol, msg);
+      selectCols = selectCols.filter((c) => c !== badCol);
+      continue;
+    }
+
+    // Fallback amplio solo si el mensaje es genérico de schema cache
+    if (/schema cache|column|does not exist/i.test(msg) && attempt < 6) {
+      const optional = [
+        'gadget_ar',
+        'gadget_nutricion',
+        'gadget_boutique',
+        'gadget_wifi_ssid',
+        'gadget_wifi_clave',
+        'gadget_mesero',
+        'gadget_cuenta',
+        'config_boutique',
+        'nosotros_theme',
+        'home_theme',
+        'ubicacion_theme',
+        'menu_font',
+      ];
+      const next = optional.find((k) => Object.prototype.hasOwnProperty.call(current, k));
+      if (next) {
+        console.warn('[api/update-marca] fallback omit:', next, msg);
+        delete current[next];
+        continue;
+      }
+    }
+
+    return { data: null, error };
+  }
+
+  return {
+    data: null,
+    error: { message: 'No se pudo guardar tras reintentos de columnas' },
+  };
 }
 
 /**
@@ -499,11 +507,23 @@ async function afterMarcaUpdate(writeClient, restauranteId, raw, data) {
   }
 
   const savedFields = Object.keys(data || {}).filter((k) => k !== 'id');
+  const bloquesSaved = Array.isArray(data?.nosotros_bloques)
+    ? data.nosotros_bloques.length
+    : Array.isArray(raw.nosotros_bloques)
+      ? raw.nosotros_bloques.length
+      : 0;
+  const themeSaved =
+    data?.nosotros_theme ||
+    /** @type {any} */ (data?.ui_estilo)?.nosotros?.theme ||
+    raw.nosotros_theme ||
+    'editorial';
 
   return json({
     ok: true,
-    message: '¡Identidad de marca actualizada con éxito!',
+    message: `Identidad guardada · Nosotros: ${themeSaved} · ${bloquesSaved} bloque${bloquesSaved === 1 ? '' : 's'}`,
     restaurante: data,
+    nosotros_theme: themeSaved,
+    nosotros_bloques_count: bloquesSaved,
     saved_fields: savedFields,
     ...(categoriaWarnings.length > 0
       ? { categoria_warnings: categoriaWarnings }

@@ -1,13 +1,17 @@
 ---
 /**
- * Nosotros Split — 50/50: media fija a un lado + historia en tarjetas deslizantes.
+ * Nosotros Split — Eat Hungry Tiger / Bond.
+ * Desktop: media fija 50% + historia scroll. Móvil: hero arriba + tarjetas apiladas (sin overflow horizontal).
  */
 import {
   resolveNosotrosBloques,
   renderTitleHtml,
   renderBodyHtml,
   isVideoUrl,
+  normalizeContenedorEstilo,
+  contenedorCardStyle,
 } from '../../../lib/nosotros-layout.js';
+import NosotrosMediaStack from './NosotrosMediaStack.astro';
 
 interface BloqueEditorial {
   subtitulo?: string;
@@ -16,6 +20,7 @@ interface BloqueEditorial {
   caption?: string;
   imagen?: string | null;
   media_url?: string | null;
+  media?: string[];
   texto?: string;
   contenido?: string;
   alineacion?: string;
@@ -30,6 +35,7 @@ interface Props {
     color_fondo?: string;
     color_titulo?: string;
     color_cuerpo?: string;
+    contenedor_estilo?: string;
   };
   estilos: {
     mutedColor: string;
@@ -48,20 +54,31 @@ const {
   estilos,
 } = Astro.props;
 
+const containerBg = (sectionColors.color_fondo || '').trim();
 const titleColor = (sectionColors.color_titulo || '').trim();
 const bodyColor = (sectionColors.color_cuerpo || '').trim();
 const titleStyle = titleColor ? `color:${titleColor}` : undefined;
 const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const cardSkin = contenedorCardStyle(
+  normalizeContenedorEstilo(sectionColors.contenedor_estilo),
+  containerBg,
+);
 
 const items = resolveNosotrosBloques({ bloques, texto, highlights });
-const heroMedia =
-  items.find((b) => typeof b.media_url === 'string' && b.media_url.trim())?.media_url?.trim() ||
-  null;
+const heroBlock =
+  items.find((b) => Array.isArray(b.media) && b.media.length > 0) || items[0];
+const heroMediaList = Array.isArray(heroBlock?.media) ? heroBlock.media : [];
+const heroMedia = heroMediaList[0] || null;
 const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
+const lead = items[0];
+
+function panelStyle(extra = '') {
+  return [cardSkin, extra].filter(Boolean).join('; ') || undefined;
+}
 ---
 
 <div
-  class="nosotros-split mx-auto flex w-full max-w-none flex-col pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-4 font-[family-name:var(--font-body,var(--fuente-principal))] md:min-h-[min(70dvh,40rem)] md:flex-row md:items-stretch md:gap-0"
+  class="nosotros-split w-full font-[family-name:var(--font-body,var(--fuente-principal))] md:flex md:min-h-[min(72dvh,42rem)] md:items-stretch"
 >
   {
     items.length === 0 ? (
@@ -70,12 +87,20 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
       </p>
     ) : (
       <>
-        <aside class="nosotros-split__media relative w-full shrink-0 overflow-hidden md:sticky md:top-0 md:h-[min(70dvh,40rem)] md:w-1/2 md:self-start">
-          {heroMedia ? (
+        <aside class="nosotros-split__media relative w-full shrink-0 overflow-hidden md:sticky md:top-0 md:h-[min(72dvh,42rem)] md:w-1/2 md:self-start">
+          {heroMediaList.length > 1 ? (
+            <div class="h-[42vw] min-h-[12.5rem] max-h-[18rem] w-full md:h-full md:max-h-none">
+              <NosotrosMediaStack
+                media={heroMediaList}
+                aspectClass="h-full w-full"
+                softColor={estilos.softColor}
+              />
+            </div>
+          ) : heroMedia ? (
             heroVideo ? (
               <video
                 src={heroMedia}
-                class="h-56 w-full object-cover md:h-full"
+                class="h-[42vw] min-h-[12.5rem] max-h-[18rem] w-full object-cover md:h-full md:max-h-none"
                 autoplay
                 muted
                 loop
@@ -86,7 +111,7 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
               <img
                 src={heroMedia}
                 alt=""
-                class="h-56 w-full object-cover md:h-full"
+                class="h-[42vw] min-h-[12.5rem] max-h-[18rem] w-full object-cover md:h-full md:max-h-none"
                 loading="lazy"
                 decoding="async"
                 data-reveal-media
@@ -94,9 +119,9 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
             )
           ) : (
             <div
-              class="flex h-56 w-full items-center justify-center border border-dashed border-current/15 md:h-full"
+              class="flex h-[42vw] min-h-[12.5rem] max-h-[18rem] w-full items-center justify-center md:h-full md:max-h-none"
               aria-hidden="true"
-              style="background:color-mix(in srgb, var(--color-primario) 12%, transparent)"
+              style="background:color-mix(in srgb, var(--color-primario) 14%, transparent)"
             >
               <span class={`text-[0.55rem] uppercase tracking-[0.18em] ${estilos.softColor}`}>
                 Media
@@ -104,42 +129,60 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
             </div>
           )}
           <div
-            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-black/35"
+            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-black/40"
             aria-hidden="true"
           />
+          {lead?.titulo && (
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 p-4 md:hidden">
+              <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.24em] ${estilos.softColor}`}>
+                {lead.subtitulo || 'Nuestra historia'}
+              </p>
+              <h3
+                class={`nosotros-copy mt-1.5 line-clamp-2 break-words text-[1.25rem] font-semibold uppercase leading-tight tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? 'text-white' : ''}`}
+                style={titleStyle}
+                set:html={renderTitleHtml(lead.titulo, lead.tituloAcento)}
+              />
+            </div>
+          )}
         </aside>
 
         <div
-          class="nosotros-split__stories flex w-full flex-col gap-3 overflow-x-auto overflow-y-visible px-4 py-5 md:w-1/2 md:overflow-x-visible md:overflow-y-auto md:px-6 md:py-8"
-          data-reveal
+          class="nosotros-split__stories flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-5 md:w-1/2 md:overflow-y-auto md:px-7 md:py-8 lg:px-9"
         >
-          <p
-            class={`mb-1 text-[0.55rem] font-semibold uppercase tracking-[0.28em] ${estilos.softColor}`}
-          >
-            Nuestra historia
-          </p>
+          <header class="hidden md:block" data-reveal>
+            <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.28em] ${estilos.softColor}`}>
+              Nuestra historia
+            </p>
+            {lead?.titulo && (
+              <h3
+                class={`nosotros-copy mt-3 break-words text-[1.75rem] font-semibold uppercase leading-[1.1] tracking-[0.03em] font-[family-name:var(--font-heading,var(--fuente-display))] lg:text-[2rem] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                style={titleStyle}
+                set:html={renderTitleHtml(lead.titulo, lead.tituloAcento)}
+              />
+            )}
+          </header>
 
-          <div class="flex snap-x snap-mandatory gap-3 md:flex-col md:snap-none md:gap-4">
+          <div class="flex flex-col gap-3.5">
             {items.map((bloque, index) => {
               const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
               const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);
-              const cardMedia =
-                typeof bloque.media_url === 'string' &&
-                bloque.media_url.trim() &&
-                bloque.media_url.trim() !== heroMedia
-                  ? bloque.media_url.trim()
-                  : null;
-              const cardVideo = cardMedia ? isVideoUrl(cardMedia) : false;
+              const mediaList = Array.isArray(bloque.media) ? bloque.media : [];
+              const isLead = index === 0;
+              // El lead ya usa sus medias en el hero; en tarjeta solo extras de otros bloques
+              const cardMediaList = isLead ? [] : mediaList;
 
               return (
                 <article
-                  class="glass-panel studio-card flex w-[min(85vw,20rem)] shrink-0 snap-center flex-col gap-3 p-4 md:w-full"
+                  class="glass-panel flex w-full min-w-0 flex-col gap-3 rounded-2xl p-4 sm:rounded-[1.35rem] sm:p-5"
                   data-reveal
-                  style="border-color:color-mix(in srgb, var(--color-primario) 22%, transparent)"
+                  style={panelStyle(
+                    'border-color:color-mix(in srgb, var(--color-primario) 24%, transparent)',
+                  )}
                 >
-                  <div class="flex items-baseline justify-between gap-3">
+                  <div class="flex items-center justify-between gap-3">
                     <span
-                      class={`text-[0.55rem] font-semibold uppercase tracking-[0.22em] ${estilos.softColor}`}
+                      class="inline-flex size-7 items-center justify-center rounded-full text-[0.62rem] font-semibold tabular-nums"
+                      style="background:color-mix(in srgb, var(--color-primario) 22%, transparent); color:var(--color-primario)"
                     >
                       {String(index + 1).padStart(2, '0')}
                     </span>
@@ -150,34 +193,26 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
                     )}
                   </div>
 
-                  {cardMedia && (
+                  {cardMediaList.length > 0 && (
                     <div class="overflow-hidden rounded-xl">
-                      {cardVideo ? (
-                        <video
-                          src={cardMedia}
-                          class="aspect-[16/10] w-full object-cover"
-                          autoplay
-                          muted
-                          loop
-                          playsinline
-                          data-reveal-media
-                        />
-                      ) : (
-                        <img
-                          src={cardMedia}
-                          alt=""
-                          class="aspect-[16/10] w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                          data-reveal-media
-                        />
-                      )}
+                      <NosotrosMediaStack
+                        media={cardMediaList}
+                        aspectClass="aspect-[16/10]"
+                        softColor={estilos.softColor}
+                      />
                     </div>
                   )}
 
-                  {bloque.titulo && (
+                  {bloque.titulo && !isLead && (
                     <h3
-                      class={`text-[1.15rem] font-semibold leading-snug tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                      class={`nosotros-copy break-words text-[1.12rem] font-semibold leading-snug tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] sm:text-[1.2rem] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                      style={titleStyle}
+                      set:html={titleHtml}
+                    />
+                  )}
+                  {bloque.titulo && isLead && (
+                    <h3
+                      class={`nosotros-copy break-words text-[1.12rem] font-semibold leading-snug tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] md:hidden ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
                       style={titleStyle}
                       set:html={titleHtml}
                     />
@@ -185,7 +220,7 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
 
                   {bloque.texto && (
                     <p
-                      class={`text-[0.88rem] leading-[1.7] ${!bodyColor ? estilos.textColor : ''}`}
+                      class={`nosotros-copy break-words text-[0.9rem] leading-[1.7] sm:text-[0.95rem] sm:leading-[1.75] ${!bodyColor ? estilos.textColor : ''}`}
                       style={bodyStyle}
                       set:html={bodyHtml}
                     />
@@ -205,6 +240,11 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
     color: var(--color-primario);
   }
 
+  .nosotros-copy {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   .nosotros-split__stories {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
@@ -212,7 +252,7 @@ const heroVideo = heroMedia ? isVideoUrl(heroMedia) : false;
 
   @media (min-width: 768px) {
     .nosotros-split__stories {
-      max-height: min(70dvh, 40rem);
+      max-height: min(72dvh, 42rem);
     }
   }
 </style>

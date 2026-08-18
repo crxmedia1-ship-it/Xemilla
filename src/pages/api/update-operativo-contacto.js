@@ -5,6 +5,7 @@ import {
 import { parseRedesSociales } from '../../lib/secciones-ui.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
+import { normalizeMapsStorage } from '../../lib/maps-preview.js';
 
 export const prerender = false;
 
@@ -89,7 +90,8 @@ export async function POST({ request, cookies }) {
     patch.direccion = String(raw.direccion ?? '').trim() || null;
   }
   if (raw.coordenadas_maps !== undefined) {
-    patch.coordenadas_maps = String(raw.coordenadas_maps ?? '').trim() || null;
+    patch.coordenadas_maps =
+      normalizeMapsStorage(String(raw.coordenadas_maps ?? '').trim()) || null;
   }
 
   const instagramRaw =
@@ -114,13 +116,16 @@ export async function POST({ request, cookies }) {
   const facebookActivo = parseActivoFlag(raw.facebook_activo);
   const tiktokActivo = parseActivoFlag(raw.tiktok_activo);
   const tripadvisorActivo = parseActivoFlag(raw.tripadvisor_activo);
+  const whatsappActivo = parseActivoFlag(raw.whatsapp_activo);
 
   const needsRedes =
     instagramRaw !== undefined ||
     facebookRaw !== undefined ||
     tiktokRaw !== undefined ||
     tripadvisorRaw !== undefined ||
-    socialAltRaw !== undefined;
+    socialAltRaw !== undefined ||
+    telefonoRaw !== undefined ||
+    whatsappActivo !== undefined;
 
   const writeClient = isSuper
     ? getSuperAdminWriteClient(supabase, user)
@@ -129,7 +134,7 @@ export async function POST({ request, cookies }) {
   if (needsRedes) {
     const { data: current, error: readError } = await writeClient
       .from('restaurantes')
-      .select('redes_sociales, instagram_url')
+      .select('redes_sociales, instagram_url, whatsapp_url')
       .eq('id', restauranteId)
       .maybeSingle();
 
@@ -189,6 +194,32 @@ export async function POST({ request, cookies }) {
         tripadvisorActivo !== false,
       );
     }
+    if (telefonoRaw !== undefined) {
+      const wa = String(telefonoRaw ?? '').trim();
+      const on = whatsappActivo !== false;
+      redes = upsertRed(redes, 'whatsapp', wa, on);
+    } else if (
+      whatsappActivo !== undefined &&
+      current.whatsapp_url &&
+      !redes.some((r) => r.red === 'whatsapp')
+    ) {
+      redes = upsertRed(
+        redes,
+        'whatsapp',
+        String(current.whatsapp_url).trim(),
+        whatsappActivo !== false,
+      );
+    } else if (
+      current.whatsapp_url &&
+      !redes.some((r) => r.red === 'whatsapp')
+    ) {
+      redes = upsertRed(
+        redes,
+        'whatsapp',
+        String(current.whatsapp_url).trim(),
+        true,
+      );
+    }
     if (socialAltRaw !== undefined) {
       const alt = String(socialAltRaw ?? '').trim();
       const kind = detectSocialAltKind(alt, redes);
@@ -237,12 +268,13 @@ export async function POST({ request, cookies }) {
   const tripadvisorUrl =
     redesOut.find((r) => r.red === 'tripadvisor')?.url || '';
   const igRow = redesOut.find((r) => r.red === 'instagram');
+  const waRow = redesOut.find((r) => r.red === 'whatsapp');
 
   return json({
     ok: true,
     restaurante: {
       id: data.id,
-      whatsapp_url: data.whatsapp_url || '',
+      whatsapp_url: waRow?.url || data.whatsapp_url || '',
       horarios: data.horarios || '',
       instagram_url: data.instagram_url || igRow?.url || '',
       facebook_url: facebookUrl,
@@ -256,6 +288,9 @@ export async function POST({ request, cookies }) {
       tripadvisor_activo:
         redesOut.find((r) => r.red === 'tripadvisor')?.activo !== false &&
         Boolean(tripadvisorUrl),
+      whatsapp_activo: waRow
+        ? waRow.activo !== false
+        : Boolean(data.whatsapp_url),
       coordenadas_maps: data.coordenadas_maps || '',
     },
   });

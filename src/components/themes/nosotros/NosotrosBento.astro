@@ -1,13 +1,16 @@
 ---
 /**
- * Nosotros Bento — grid asimétrico de cápsulas (historia + métricas/frases).
+ * Nosotros Bento — Bond / Clay / Cosmos.
+ * Grid asimétrico de cápsulas glass. Móvil: 2 cols; desktop: 6 cols con spans.
  */
 import {
   resolveNosotrosBloques,
   renderTitleHtml,
   renderBodyHtml,
-  isVideoUrl,
+  normalizeContenedorEstilo,
+  contenedorCardStyle,
 } from '../../../lib/nosotros-layout.js';
+import NosotrosMediaStack from './NosotrosMediaStack.astro';
 
 interface BloqueEditorial {
   subtitulo?: string;
@@ -16,6 +19,7 @@ interface BloqueEditorial {
   caption?: string;
   imagen?: string | null;
   media_url?: string | null;
+  media?: string[];
   texto?: string;
   contenido?: string;
   alineacion?: string;
@@ -30,6 +34,7 @@ interface Props {
     color_fondo?: string;
     color_titulo?: string;
     color_cuerpo?: string;
+    contenedor_estilo?: string;
   };
   estilos: {
     mutedColor: string;
@@ -48,10 +53,15 @@ const {
   estilos,
 } = Astro.props;
 
+const containerBg = (sectionColors.color_fondo || '').trim();
 const titleColor = (sectionColors.color_titulo || '').trim();
 const bodyColor = (sectionColors.color_cuerpo || '').trim();
 const titleStyle = titleColor ? `color:${titleColor}` : undefined;
 const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const cardSkin = contenedorCardStyle(
+  normalizeContenedorEstilo(sectionColors.contenedor_estilo),
+  containerBg,
+);
 
 const items = resolveNosotrosBloques({ bloques, texto, highlights });
 const [hero, ...rest] = items;
@@ -72,10 +82,14 @@ function wordMetric(text: string) {
     .filter(Boolean).length;
   return words > 0 ? String(words) : '—';
 }
+
+function panelStyle(extra = '') {
+  return [cardSkin, extra].filter(Boolean).join('; ') || undefined;
+}
 ---
 
 <div
-  class="nosotros-bento mx-auto w-full max-w-none px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-6 font-[family-name:var(--font-body,var(--fuente-principal))] sm:px-5"
+  class="nosotros-bento mx-auto w-full max-w-5xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-5 font-[family-name:var(--font-body,var(--fuente-principal))] sm:px-5 md:pt-8"
 >
   {
     items.length === 0 ? (
@@ -83,54 +97,44 @@ function wordMetric(text: string) {
         Pronto contaremos nuestra historia.
       </p>
     ) : (
-      <div class="nosotros-bento__grid grid grid-cols-2 gap-3 sm:gap-3.5 md:grid-cols-6 md:auto-rows-[minmax(7.5rem,auto)]">
+      <div class="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-6 md:auto-rows-[minmax(7rem,auto)] md:gap-3.5">
         {hero && (
           <article
-            class="glass-panel studio-card col-span-2 flex flex-col justify-between gap-4 p-4 sm:p-5 md:col-span-4 md:row-span-2"
+            class="glass-panel col-span-2 flex flex-col justify-between gap-3.5 rounded-2xl p-4 sm:rounded-[1.35rem] sm:p-5 md:col-span-4 md:row-span-2 md:gap-4"
             data-reveal
-            style="border-color:color-mix(in srgb, var(--color-primario) 28%, transparent)"
+            style={panelStyle(
+              'border-color:color-mix(in srgb, var(--color-primario) 28%, transparent)',
+            )}
           >
-            <div class="space-y-2">
-              <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.28em] ${estilos.softColor}`}>
+            <div class="min-w-0 space-y-2">
+              <span
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.18em]"
+                style="background:color-mix(in srgb, var(--color-primario) 18%, transparent); color:var(--color-primario)"
+              >
                 {hero.subtitulo || 'Historia'}
-              </p>
+              </span>
               {hero.titulo && (
                 <h3
-                  class={`text-[1.45rem] font-semibold leading-[1.15] tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] sm:text-[1.7rem] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                  class={`nosotros-copy break-words text-[1.35rem] font-semibold leading-[1.12] tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))] sm:text-[1.55rem] md:text-[1.75rem] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
                   style={titleStyle}
                   set:html={renderTitleHtml(hero.titulo, hero.tituloAcento)}
                 />
               )}
             </div>
 
-            {hero.media_url && (
+            {(Array.isArray(hero.media) ? hero.media : []).length > 0 && (
               <div class="overflow-hidden rounded-2xl">
-                {isVideoUrl(hero.media_url) ? (
-                  <video
-                    src={hero.media_url}
-                    class="aspect-[16/10] w-full object-cover"
-                    autoplay
-                    muted
-                    loop
-                    playsinline
-                    data-reveal-media
-                  />
-                ) : (
-                  <img
-                    src={hero.media_url}
-                    alt=""
-                    class="aspect-[16/10] w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                    data-reveal-media
-                  />
-                )}
+                <NosotrosMediaStack
+                  media={hero.media}
+                  aspectClass="aspect-[16/10]"
+                  softColor={estilos.softColor}
+                />
               </div>
             )}
 
             {hero.texto && (
               <p
-                class={`text-[0.9rem] leading-[1.75] ${!bodyColor ? estilos.textColor : ''}`}
+                class={`nosotros-copy break-words text-[0.88rem] leading-[1.7] sm:text-[0.94rem] ${!bodyColor ? estilos.textColor : ''}`}
                 style={bodyStyle}
                 set:html={renderBodyHtml(hero.texto, hero.acentos)}
               />
@@ -140,38 +144,43 @@ function wordMetric(text: string) {
 
         {hero?.texto && (
           <article
-            class="glass-panel studio-card col-span-1 flex flex-col justify-between p-4 md:col-span-2"
+            class="glass-panel col-span-1 flex min-w-0 flex-col justify-between rounded-2xl p-3.5 sm:rounded-[1.25rem] sm:p-4 md:col-span-2"
             data-reveal
-            style="background:color-mix(in srgb, var(--color-primario) 16%, transparent); border-color:color-mix(in srgb, var(--color-primario) 40%, transparent)"
+            style={panelStyle(
+              containerBg
+                ? ''
+                : 'background:color-mix(in srgb, var(--color-primario) 16%, transparent); border-color:color-mix(in srgb, var(--color-primario) 40%, transparent)',
+            )}
           >
-            <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.22em] ${estilos.softColor}`}>
+            <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}>
               Palabras
             </p>
             <p
-              class={`mt-3 text-3xl font-semibold tabular-nums tracking-tight font-[family-name:var(--font-heading,var(--fuente-display))] ${!titleColor ? estilos.textColor : ''}`}
+              class={`mt-2 break-words text-[2rem] font-semibold tabular-nums leading-none tracking-tight font-[family-name:var(--font-heading,var(--fuente-display))] sm:text-[2.35rem] ${!titleColor ? estilos.textColor : ''}`}
               style={titleStyle}
             >
               {wordMetric(hero.texto)}
             </p>
-            <p class={`mt-2 text-[0.72rem] leading-snug ${estilos.softColor}`}>
-              en nuestra historia principal
+            <p class={`mt-2 text-[0.7rem] leading-snug ${estilos.softColor}`}>
+              en la historia principal
             </p>
           </article>
         )}
 
         {hero?.titulo && (
           <article
-            class="glass-panel studio-card col-span-1 flex flex-col justify-center gap-2 p-4 md:col-span-2"
+            class="glass-panel col-span-1 flex min-w-0 flex-col justify-center gap-2 rounded-2xl p-3.5 sm:rounded-[1.25rem] sm:p-4 md:col-span-2"
             data-reveal
+            style={panelStyle()}
           >
-            <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.22em] ${estilos.softColor}`}>
+            <p class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}>
               Frase
             </p>
             <p
-              class={`text-[0.95rem] font-medium leading-snug font-[family-name:var(--font-heading,var(--fuente-display))] ${!titleColor ? estilos.textColor : ''}`}
+              class={`nosotros-copy break-words text-[0.92rem] font-medium leading-snug font-[family-name:var(--font-heading,var(--fuente-display))] sm:text-[1rem] ${!titleColor ? estilos.textColor : ''}`}
               style={titleStyle}
             >
-              “{shortPhrase(hero.titulo, 48)}”
+              “{shortPhrase(hero.titulo, 42)}”
             </p>
           </article>
         )}
@@ -179,61 +188,47 @@ function wordMetric(text: string) {
         {rest.map((bloque, index) => {
           const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
           const bodyHtml = renderBodyHtml(
-            shortPhrase(bloque.texto || '', 140),
+            shortPhrase(bloque.texto || '', 120),
             bloque.acentos,
           );
           const wide = index % 3 === 0;
-          const media = bloque.media_url?.trim() || null;
-          const video = media ? isVideoUrl(media) : false;
+          const mediaList = Array.isArray(bloque.media) ? bloque.media : [];
 
           return (
             <article
               class:list={[
-                'glass-panel studio-card flex flex-col gap-3 p-4',
+                'glass-panel flex min-w-0 flex-col gap-2.5 rounded-2xl p-3.5 sm:rounded-[1.25rem] sm:p-4',
                 wide ? 'col-span-2 md:col-span-3' : 'col-span-1 md:col-span-2',
               ]}
               data-reveal
-              style="border-color:color-mix(in srgb, var(--color-primario) 18%, transparent)"
+              style={panelStyle(
+                'border-color:color-mix(in srgb, var(--color-primario) 18%, transparent)',
+              )}
             >
               <div class="flex items-center justify-between gap-2">
-                <span class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}>
+                <span class={`text-[0.55rem] font-semibold uppercase tracking-[0.18em] ${estilos.softColor}`}>
                   {String(index + 2).padStart(2, '0')}
                 </span>
                 {bloque.subtitulo && (
-                  <span class={`truncate text-[0.55rem] uppercase tracking-[0.14em] ${estilos.softColor}`}>
+                  <span class={`truncate text-[0.55rem] uppercase tracking-[0.12em] ${estilos.softColor}`}>
                     {bloque.subtitulo}
                   </span>
                 )}
               </div>
 
-              {media && (
+              {mediaList.length > 0 && (
                 <div class="overflow-hidden rounded-xl">
-                  {video ? (
-                    <video
-                      src={media}
-                      class="aspect-[4/3] w-full object-cover"
-                      autoplay
-                      muted
-                      loop
-                      playsinline
-                      data-reveal-media
-                    />
-                  ) : (
-                    <img
-                      src={media}
-                      alt=""
-                      class="aspect-[4/3] w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                      data-reveal-media
-                    />
-                  )}
+                  <NosotrosMediaStack
+                    media={mediaList}
+                    aspectClass="aspect-[4/3]"
+                    softColor={estilos.softColor}
+                  />
                 </div>
               )}
 
               {bloque.titulo && (
                 <h3
-                  class={`text-[1.05rem] font-semibold leading-snug font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                  class={`nosotros-copy break-words text-[1rem] font-semibold leading-snug font-[family-name:var(--font-heading,var(--fuente-display))] sm:text-[1.05rem] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
                   style={titleStyle}
                   set:html={titleHtml}
                 />
@@ -241,7 +236,7 @@ function wordMetric(text: string) {
 
               {bloque.texto && (
                 <p
-                  class={`text-[0.82rem] leading-[1.65] ${!bodyColor ? estilos.textColor : ''}`}
+                  class={`nosotros-copy break-words text-[0.8rem] leading-[1.6] sm:text-[0.84rem] ${!bodyColor ? estilos.textColor : ''}`}
                   style={bodyStyle}
                   set:html={bodyHtml}
                 />
@@ -257,5 +252,10 @@ function wordMetric(text: string) {
 <style>
   .editorial-accent {
     color: var(--color-primario);
+  }
+
+  .nosotros-copy {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 </style>

@@ -10,10 +10,10 @@ export const HOME_THEME_IDS = /** @type {const} */ ([
 ]);
 export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
   'editorial',
-  'split',
-  'bento',
+  'cinematic',
+  'capsule',
 ]);
-export const UBICACION_THEME_IDS = /** @type {const} */ (['modal', 'split']);
+export const UBICACION_THEME_IDS = /** @type {const} */ (['modal', 'split', 'minimal']);
 
 /** Fallback cuando Supabase no trae home_theme. */
 export const DEFAULT_HOME_THEME = 'bento';
@@ -57,7 +57,7 @@ export const HOME_THEME_MAP = Object.freeze({
 
 /**
  * @param {unknown} value
- * @returns {'editorial' | 'split' | 'bento'}
+ * @returns {'editorial' | 'cinematic' | 'capsule'}
  */
 export function normalizeNosotrosTheme(value) {
   const key = String(value ?? '')
@@ -68,9 +68,26 @@ export function normalizeNosotrosTheme(value) {
 
   if (!key) return DEFAULT_NOSOTROS_THEME;
 
-  if (key.includes('split') || key.includes('divid')) return 'split';
-  if (key.includes('bento') || key.includes('grid') || key.includes('capsul')) {
-    return 'bento';
+  if (
+    key.includes('cinematic') ||
+    key.includes('cinemat') ||
+    key.includes('hero') ||
+    key.includes('palmer') ||
+    key.includes('split') ||
+    key.includes('divid')
+  ) {
+    return 'cinematic';
+  }
+  if (
+    key.includes('capsule') ||
+    key.includes('capsul') ||
+    key.includes('album') ||
+    key.includes('scrapbook') ||
+    key.includes('polaroid') ||
+    key.includes('bento') ||
+    key.includes('grid')
+  ) {
+    return 'capsule';
   }
   if (
     key.includes('editorial') ||
@@ -87,7 +104,7 @@ export function normalizeNosotrosTheme(value) {
 
 /**
  * @param {unknown} value
- * @returns {'modal' | 'split'}
+ * @returns {'modal' | 'split' | 'minimal'}
  */
 export function normalizeUbicacionTheme(value) {
   const key = String(value ?? '')
@@ -103,6 +120,16 @@ export function normalizeUbicacionTheme(value) {
     .replace(/[/\s]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+
+  if (
+    key === 'minimal' ||
+    key.includes('minimal') ||
+    key.includes('editorial') ||
+    slug === 'minimal' ||
+    slug === 'minimal-editorial'
+  ) {
+    return 'minimal';
+  }
 
   if (
     key === 'split' ||
@@ -148,7 +175,7 @@ export function homeNavSubtitle(id, fallbackTagline, wifi = {}) {
   const map = {
     menu: '',
     nosotros: 'NUESTRA FILOSOFÍA',
-    ubicacion: 'HORARIOS Y CONTACTO',
+    ubicacion: 'HORARIOS Y UBICACIÓN',
     dividir: 'SPLIT THE BILL',
     mesero: 'CALL YOUR SERVER',
     boutique: 'EXPLORA NUESTRA TIENDA OFICIAL',
@@ -212,7 +239,7 @@ export function buildHomeNavSequence(opts = {}) {
   const trailing = [
     {
       id: 'ubicacion',
-      label: compact ? 'UBICACIÓN' : 'UBICACIÓN Y HORARIOS',
+      label: compact ? 'HORARIOS' : 'HORARIOS Y UBICACIÓN',
       subtitle: homeNavSubtitle('ubicacion', tagline, wifi),
       kind: 'section',
     },

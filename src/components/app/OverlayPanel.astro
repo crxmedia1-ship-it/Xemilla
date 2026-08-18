@@ -15,6 +15,7 @@ interface Props {
     color_fondo?: string;
     color_titulo?: string;
     color_cuerpo?: string;
+    color_header?: string;
   };
   estilos: {
     textColor: string;
@@ -40,27 +41,70 @@ const {
 } = Astro.props;
 
 const containerBg = (sectionColors.color_fondo || '').trim();
-const titleColor = (sectionColors.color_titulo || '').trim();
+const titleColor = (sectionColors.color_header || sectionColors.color_titulo || '').trim();
 const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const fondoValorTrim = String(fondoValor || '').trim();
+const fondoTipoNorm = String(fondoTipo || 'color').trim().toLowerCase();
 
+/** Atmósfera = fondo general (no se cancela si hay color de contenedor). */
 const hasAtmosphere =
-  !containerBg &&
-  (categoryCrossfade ||
-    ((fondoTipo === 'image' || fondoTipo === 'video' || fondoTipo === 'color') &&
-      Boolean(String(fondoValor || '').trim())));
+  categoryCrossfade ||
+  ((fondoTipoNorm === 'image' ||
+    fondoTipoNorm === 'video' ||
+    fondoTipoNorm === 'color' ||
+    fondoTipoNorm === 'carrusel') &&
+    Boolean(fondoValorTrim));
 
+/**
+ * Color sólido sin overlay salvo que el caller pida uno (p.ej. menú con Home oscuro).
+ * Media: overlay del caller o puro.
+ */
+const hasExplicitOverlay = Boolean(
+  overlayEstilo && String(overlayEstilo).trim().toLowerCase() !== 'puro',
+);
+const atmosphereOverlay =
+  fondoTipoNorm === 'color' ? hasExplicitOverlay : true;
+const atmosphereOverlayEstilo =
+  fondoTipoNorm === 'color'
+    ? hasExplicitOverlay
+      ? overlayEstilo
+      : 'puro'
+    : overlayEstilo || 'puro';
+
+/**
+ * Contenedor:
+ * - Sin atmósfera → pinta el sheet completo.
+ * - Con atmósfera → solo CSS var para tarjetas/contenido (no tapa el fondo).
+ */
 const sheetStyle = [
-  containerBg ? `background-color:${containerBg}` : '',
   containerBg ? `--sec-fondo:${containerBg}` : '',
   titleColor ? `--sec-titulo:${titleColor}` : '',
   bodyColor ? `--sec-cuerpo:${bodyColor}` : '',
-  !containerBg && hasAtmosphere && fondoTipo === 'color' ? `background-color:${fondoValor}` : '',
-  !containerBg && hasAtmosphere && fondoTipo !== 'color'
+  !hasAtmosphere && containerBg ? `background-color:${containerBg}` : '',
+  !hasAtmosphere && !containerBg && fondoTipoNorm === 'color' && fondoValorTrim
+    ? `background-color:${fondoValorTrim}`
+    : '',
+  hasAtmosphere && fondoTipoNorm !== 'color'
     ? 'background-color:var(--color-fondo)'
     : '',
 ]
   .filter(Boolean)
   .join('; ');
+
+const headerStyle = [
+  containerBg && !hasAtmosphere
+    ? `background-color:color-mix(in srgb, ${containerBg} 92%, transparent)`
+    : hasAtmosphere && fondoTipoNorm === 'color' && fondoValorTrim
+      ? `background-color:color-mix(in srgb, ${fondoValorTrim} 88%, transparent)`
+      : hasAtmosphere
+        ? 'background-color:color-mix(in srgb, var(--color-fondo) 72%, transparent)'
+        : '',
+  titleColor ? `color:${titleColor}` : '',
+]
+  .filter(Boolean)
+  .join('; ');
+
+const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('; ');
 ---
 
 <section
@@ -70,16 +114,17 @@ const sheetStyle = [
   class:list={[
     'panel-sheet pointer-events-none fixed inset-0 z-50 mx-auto flex w-full translate-y-full flex-col opacity-0 transition-[transform,opacity] duration-300 ease-out',
     !hasAtmosphere && !containerBg && estilos.panelColor,
-    estilos.textColor,
+    !titleColor && !bodyColor ? estilos.textColor : '',
   ]}
   style={sheetStyle || undefined}
   aria-hidden="true"
 >
-  {!containerBg && (
+  {hasAtmosphere && (
     <SectionAtmosphere
-      tipo={fondoTipo}
-      valor={fondoValor}
-      overlayEstilo={overlayEstilo}
+      tipo={fondoTipoNorm}
+      valor={fondoValorTrim}
+      overlay={atmosphereOverlay}
+      overlayEstilo={atmosphereOverlayEstilo}
       overlayOpacity={overlayOpacity}
       fondoAnimacion={fondoAnimacion}
       categoryCrossfade={categoryCrossfade}
@@ -93,13 +138,7 @@ const sheetStyle = [
       !hasAtmosphere && !containerBg && estilos.panelColor,
       estilos.borderColor,
     ]}
-    style={
-      containerBg
-        ? `background-color:color-mix(in srgb, ${containerBg} 88%, transparent)`
-        : hasAtmosphere
-          ? 'background-color:color-mix(in srgb, var(--color-fondo) 78%, transparent)'
-          : undefined
-    }
+    style={headerStyle || undefined}
   >
     <h2
       class={`relative z-10 text-[0.72rem] font-semibold tracking-[0.28em] uppercase ${estilos.displayClass}`}
@@ -133,7 +172,7 @@ const sheetStyle = [
       'relative z-10 flex-1 overflow-y-auto overscroll-contain',
       !hasAtmosphere && !containerBg && estilos.panelColor,
     ]}
-    style={bodyColor ? `color:${bodyColor}` : undefined}
+    style={bodyStyle || undefined}
   >
     <slot />
   </div>

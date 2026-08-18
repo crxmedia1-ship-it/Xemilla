@@ -1,0 +1,217 @@
+---
+/**
+ * Ubicación Minimal — tarjetas apiladas, mobile-first.
+ */
+import { googleMapsEmbedSrc } from '../../../lib/maps-preview.js';
+import {
+  resolveHorarioFilas,
+  resolveRedesActivas,
+  resolveMapsHref,
+} from '../../../lib/ubicacion-theme-data.js';
+import UbicacionActionPills from './UbicacionActionPills.astro';
+
+interface Props {
+  direccion: string;
+  ciudad: string;
+  telefono: string;
+  email?: string;
+  instagram?: string;
+  whatsapp?: string;
+  redes?: Array<{ red: string; url: string; activo?: boolean }>;
+  mapaLabel: string;
+  mapaUrl: string;
+  horarios: string | Array<{ dia: string; horas: string }>;
+  horariosRows?: Array<{ dia: string; horas: string }>;
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  direccion,
+  ciudad,
+  telefono,
+  instagram = '',
+  whatsapp = '',
+  redes = [],
+  mapaUrl,
+  horarios,
+  horariosRows,
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+
+const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
+const addressLine = mapsQuery || 'Nuestro local';
+const mapsHref = resolveMapsHref(mapaUrl, direccion, ciudad);
+const mapsEmbed = googleMapsEmbedSrc(mapaUrl, mapsQuery);
+const redesActivas = resolveRedesActivas(
+  instagram,
+  redes,
+  whatsapp || telefono,
+);
+
+const horarioFilas = resolveHorarioFilas(horarios, horariosRows);
+const horariosJson = JSON.stringify(horarioFilas);
+
+const cardClass =
+  'rounded-2xl border border-white/10 bg-black/35 p-4 backdrop-blur-xl sm:p-5';
+---
+
+<div
+  class="ubicacion-minimal mx-auto w-full max-w-xl px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8"
+  data-ubicacion-panel
+  data-ubicacion-theme="minimal"
+  data-horarios={horariosJson}
+>
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <p
+        class={`text-[0.58rem] font-semibold uppercase tracking-[0.28em] ${estilos.softColor}`}
+        style={bodyStyle}
+      >
+        Horarios y ubicación
+      </p>
+      <h3
+        class={`mt-2 font-[family-name:var(--font-heading,var(--fuente-titulos))] text-lg font-medium leading-snug sm:text-xl ${estilos.textColor}`}
+        style={titleStyle}
+      >
+        {addressLine}
+      </h3>
+    </div>
+    <div
+      class="live-badge inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 backdrop-blur-xl"
+      data-live-badge
+      role="status"
+      aria-live="polite"
+    >
+      <span data-live-dot class="size-2 rounded-full bg-current opacity-40" aria-hidden="true"></span>
+      <span
+        data-live-label
+        class={`text-[0.55rem] font-semibold uppercase tracking-[0.18em] ${estilos.mutedColor}`}
+        style={bodyStyle}
+      >
+        …
+      </span>
+    </div>
+  </div>
+
+  {
+    mapsEmbed ? (
+      <div class={`${cardClass} mt-5 overflow-hidden p-0`}>
+        <div class="relative aspect-[16/10] w-full bg-black/40">
+          <iframe
+            title="Mapa del restaurante"
+            src={mapsEmbed}
+            class="absolute inset-0 h-full w-full border-0"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          />
+        </div>
+      </div>
+    ) : null
+  }
+
+  <div class={`${cardClass} mt-4`}>
+    <p
+      class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}
+      style={bodyStyle}
+    >
+      Horario semanal
+    </p>
+    <ul class="mt-3 divide-y divide-white/10">
+      {
+        horarioFilas.length === 0 ? (
+          <li class={`py-3 text-sm ${estilos.mutedColor}`} style={bodyStyle}>
+            Sin horarios
+          </li>
+        ) : (
+          horarioFilas.map((h, index) => (
+            <li
+              class="horario-row flex items-baseline justify-between gap-4 py-2.5 sm:py-3"
+              data-horario-row
+              data-horario-index={index}
+              data-dia={h.dia}
+              data-horas={h.horas}
+            >
+              <span class={`text-sm ${estilos.mutedColor}`} style={bodyStyle}>{h.dia}</span>
+              <span
+                class={`text-sm font-medium tabular-nums ${estilos.textColor}`}
+                style={titleStyle}
+              >
+                {h.horas}
+              </span>
+            </li>
+          ))
+        )
+      }
+    </ul>
+  </div>
+
+  {
+    redesActivas.length > 0 || mapsHref ? (
+      <div class={`${cardClass} mt-4`}>
+        <p
+          class={`text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}
+          style={bodyStyle}
+        >
+          Redes y contacto
+        </p>
+        <div class="mt-4 flex justify-center sm:justify-start">
+          <UbicacionActionPills
+            mapsHref={mapsHref}
+            redesActivas={redesActivas}
+            layout="grid"
+          />
+        </div>
+      </div>
+    ) : null
+  }
+</div>
+
+<style>
+  .live-badge.is-open [data-live-dot] {
+    background: #22c55e;
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+  }
+
+  .live-badge.is-closed [data-live-dot] {
+    background: #ef4444;
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  }
+
+  [data-horario-row].is-today {
+    background: color-mix(in srgb, white 7%, transparent);
+    margin-inline: -0.35rem;
+    padding-inline: 0.35rem;
+    border-radius: 0.65rem;
+    font-weight: 600;
+  }
+
+  [data-horario-row].is-today span:first-child {
+    color: var(--color-texto, #fff);
+  }
+</style>
+
+<script>
+  import { initUbicacionLivePanels } from '../../../lib/ubicacion-live-client.js';
+
+  initUbicacionLivePanels();
+  document.addEventListener('astro:page-load', () => initUbicacionLivePanels());
+</script>

@@ -1,8 +1,14 @@
 ---
 /**
- * Ubicación Split Map — cabecera mapa + tabs Horarios / Contacto.
+ * Ubicación Split Map — mapa hero + tabs (Uber Eats / Escape Cafe).
  */
-import { googleMapsEmbedSrc, mapsOpenHref } from '../../../lib/maps-preview.js';
+import { googleMapsEmbedSrc } from '../../../lib/maps-preview.js';
+import {
+  resolveHorarioFilas,
+  resolveRedesActivas,
+  resolveMapsHref,
+} from '../../../lib/ubicacion-theme-data.js';
+import UbicacionActionPills from './UbicacionActionPills.astro';
 
 interface Props {
   direccion: string;
@@ -11,6 +17,7 @@ interface Props {
   email?: string;
   instagram?: string;
   whatsapp?: string;
+  redes?: Array<{ red: string; url: string; activo?: boolean }>;
   mapaLabel: string;
   mapaUrl: string;
   horarios: string | Array<{ dia: string; horas: string }>;
@@ -34,51 +41,38 @@ const {
   ciudad,
   telefono,
   email = '',
+  instagram = '',
   whatsapp = '',
+  redes = [],
   mapaUrl,
   horarios,
   horariosRows,
+  sectionColors = {},
   estilos,
 } = Astro.props;
 
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+
 const telHref = String(telefono || '').replace(/[^\d+]/g, '');
 const emailHref = email.trim();
-const waRaw = String(whatsapp || telefono).trim();
-const waDigits = waRaw.replace(/\D/g, '');
-const waHref = /^https?:\/\//i.test(waRaw)
-  ? waRaw
-  : waDigits
-    ? `https://wa.me/${waDigits}`
-    : '';
-
 const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
-const mapsHref =
-  mapsOpenHref(mapaUrl, mapsQuery) ||
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery || 'restaurante')}`;
+const mapsHref = resolveMapsHref(mapaUrl, direccion, ciudad);
 const wazeHref = `https://waze.com/ul?q=${encodeURIComponent(mapsQuery || 'restaurante')}&navigate=yes`;
 const mapsEmbed = googleMapsEmbedSrc(mapaUrl, mapsQuery);
+const redesActivas = resolveRedesActivas(
+  instagram,
+  redes,
+  whatsapp || telefono,
+);
 
-function parseHorariosTexto(text: string) {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const idx = line.indexOf(':');
-      if (idx === -1) return { dia: '', horas: line };
-      return { dia: line.slice(0, idx).trim(), horas: line.slice(idx + 1).trim() };
-    });
-}
-
-const horarioFilas: Array<{ dia: string; horas: string }> = Array.isArray(horariosRows)
-  ? horariosRows
-  : Array.isArray(horarios)
-    ? horarios
-    : typeof horarios === 'string' && horarios.trim()
-      ? parseHorariosTexto(horarios)
-      : [];
-
+const horarioFilas = resolveHorarioFilas(horarios, horariosRows);
 const horariosJson = JSON.stringify(horarioFilas);
+
+const glassCard =
+  'rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl';
 ---
 
 <div
@@ -87,14 +81,14 @@ const horariosJson = JSON.stringify(horarioFilas);
   data-ubicacion-theme="split"
   data-horarios={horariosJson}
 >
-  <header class="overflow-hidden rounded-3xl border border-white/12 bg-white/[0.03]">
+  <header class={`overflow-hidden ${glassCard}`}>
     <div class="relative aspect-[16/10] w-full overflow-hidden bg-black/40">
       {
         mapsEmbed ? (
           <iframe
             title="Mapa del restaurante"
             src={mapsEmbed}
-            class="absolute inset-0 h-full w-full border-0 grayscale-[30%] contrast-110"
+            class="absolute inset-0 h-full w-full border-0 grayscale-[25%] contrast-110"
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
           />
@@ -104,26 +98,42 @@ const horariosJson = JSON.stringify(horarioFilas);
           </div>
         )
       }
-      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20"></div>
+      <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/40"></div>
+
       <div
-        class="live-badge absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/55 px-2.5 py-1.5 backdrop-blur-md"
+        class="live-badge absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1.5 backdrop-blur-xl"
         data-live-badge
         role="status"
         aria-live="polite"
       >
         <span data-live-dot class="size-2 rounded-full bg-current opacity-40" aria-hidden="true"></span>
-        <span
-          data-live-label
-          class="text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-white"
-        >
+        <span data-live-label class="text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-white">
           …
         </span>
       </div>
+
+      {
+        mapsQuery ? (
+          <div class="absolute bottom-3 left-3 right-3 z-10 flex items-end justify-between gap-2">
+            <p class="max-w-[70%] truncate rounded-full border border-white/12 bg-black/55 px-3 py-1.5 text-xs text-white/85 backdrop-blur-xl">
+              {mapsQuery}
+            </p>
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="shrink-0 rounded-full border border-white/12 bg-white/95 px-3.5 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-black transition active:scale-95"
+            >
+              Cómo llegar
+            </a>
+          </div>
+        ) : null
+      }
     </div>
   </header>
 
   <div
-    class="mt-5 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1"
+    class={`mt-5 grid grid-cols-2 gap-1 p-1 ${glassCard}`}
     role="tablist"
     aria-label="Secciones de ubicación"
   >
@@ -140,82 +150,98 @@ const horariosJson = JSON.stringify(horarioFilas);
       type="button"
       role="tab"
       aria-selected="false"
-      data-ubicacion-tab="contacto"
+      data-ubicacion-tab="redes"
       class="ubicacion-tab rounded-xl px-3 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-white/55 transition-all duration-200"
     >
-      Dirección / Contacto
+      Redes
     </button>
   </div>
 
   <div class="mt-4" data-ubicacion-pane="horarios">
-    <ul class="space-y-0 divide-y divide-white/8 rounded-2xl border border-white/10 px-4">
-      {
-        horarioFilas.length === 0 ? (
-          <li class={`py-4 text-sm ${estilos.mutedColor}`}>Sin horarios</li>
-        ) : (
-          horarioFilas.map((h, index) => (
-            <li
-              class="flex items-baseline justify-between gap-3 py-3 transition-colors duration-200"
-              data-horario-row
-              data-horario-index={index}
-              data-dia={h.dia}
-              data-horas={h.horas}
-            >
-              <span class={`text-sm ${estilos.mutedColor}`}>{h.dia}</span>
-              <span class={`text-sm font-medium tabular-nums ${estilos.textColor}`}>{h.horas}</span>
+    <div class={`overflow-hidden ${glassCard}`}>
+      <div class="flex items-center gap-2 border-b border-white/8 px-4 py-3">
+        <span class="split-icon split-icon--clock" aria-hidden="true"></span>
+        <p
+          class={`text-[0.58rem] font-semibold uppercase tracking-[0.18em] ${estilos.softColor}`}
+          style={bodyStyle}
+        >
+          Horario semanal
+        </p>
+      </div>
+      <ul class="divide-y divide-white/8 px-3 py-1">
+        {
+          horarioFilas.length === 0 ? (
+            <li class={`px-1 py-4 text-sm ${estilos.mutedColor}`} style={bodyStyle}>
+              Sin horarios
             </li>
-          ))
-        )
-      }
-    </ul>
+          ) : (
+            horarioFilas.map((h, index) => (
+              <li
+                class="horario-row flex items-baseline justify-between gap-3 rounded-xl px-2 py-3 transition-colors"
+                data-horario-row
+                data-horario-index={index}
+                data-dia={h.dia}
+                data-horas={h.horas}
+              >
+                <span class={`text-sm ${estilos.mutedColor}`} style={bodyStyle}>{h.dia}</span>
+                <span
+                  class={`text-sm font-medium tabular-nums ${estilos.textColor}`}
+                  style={titleStyle}
+                >
+                  {h.horas}
+                </span>
+              </li>
+            ))
+          )
+        }
+      </ul>
+    </div>
   </div>
 
-  <div class="mt-4 hidden" data-ubicacion-pane="contacto" hidden>
-    <div class="space-y-3 rounded-2xl border border-white/10 p-4">
+  <div class="mt-4 hidden" data-ubicacion-pane="redes" hidden>
+    <div class={`space-y-4 p-4 ${glassCard}`}>
+      <UbicacionActionPills
+        mapsHref={mapsHref}
+        redesActivas={redesActivas}
+        layout="grid"
+      />
+
       {
-        telefono && (
+        telefono && telHref ? (
           <a
             href={`tel:${telHref}`}
-            class={`flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-sm transition-all duration-200 active:scale-[0.99] ${estilos.borderColor} ${estilos.textColor}`}
+            class={`flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm transition active:scale-[0.99] ${estilos.textColor}`}
+            style={titleStyle}
           >
-            <span class={`text-[0.55rem] uppercase tracking-[0.16em] ${estilos.mutedColor}`}>
+            <span class={`text-[0.55rem] uppercase tracking-[0.16em] ${estilos.mutedColor}`} style={bodyStyle}>
               Llamar
             </span>
             <span class="font-medium">{telefono}</span>
           </a>
-        )
+        ) : null
       }
       {
-        emailHref && (
+        emailHref ? (
           <a
             href={`mailto:${emailHref}`}
-            class={`flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-sm transition-all duration-200 active:scale-[0.99] ${estilos.borderColor} ${estilos.textColor}`}
+            class={`flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm transition active:scale-[0.99] ${estilos.textColor}`}
+            style={titleStyle}
           >
-            <span class={`text-[0.55rem] uppercase tracking-[0.16em] ${estilos.mutedColor}`}>
+            <span class={`text-[0.55rem] uppercase tracking-[0.16em] ${estilos.mutedColor}`} style={bodyStyle}>
               Email
             </span>
             <span class="truncate font-medium">{emailHref}</span>
           </a>
-        )
+        ) : null
       }
-      {
-        waHref && (
-          <a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            class={`flex w-full items-center justify-center rounded-xl border px-4 py-3.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em] transition-all duration-200 active:scale-[0.99] ${estilos.borderColor} ${estilos.textColor}`}
-          >
-            WhatsApp
-          </a>
-        )
-      }
-      <div class="grid grid-cols-2 gap-2">
+
+      <div class="grid grid-cols-2 gap-2 border-t border-white/8 pt-3">
         <a
           href={mapsHref}
           target="_blank"
           rel="noopener noreferrer"
-          class={`rounded-xl border px-3 py-3.5 text-center text-[0.55rem] font-semibold uppercase tracking-[0.14em] transition-all duration-200 active:scale-95 ${estilos.borderColor} ${estilos.textColor}`}
+          class={`rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-center text-[0.55rem] font-semibold uppercase tracking-[0.14em] backdrop-blur-xl transition active:scale-95 ${estilos.textColor}`}
+          style={titleStyle}
         >
           Google Maps
         </a>
@@ -223,7 +249,8 @@ const horariosJson = JSON.stringify(horarioFilas);
           href={wazeHref}
           target="_blank"
           rel="noopener noreferrer"
-          class={`rounded-xl border px-3 py-3.5 text-center text-[0.55rem] font-semibold uppercase tracking-[0.14em] transition-all duration-200 active:scale-95 ${estilos.borderColor} ${estilos.textColor}`}
+          class={`rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-center text-[0.55rem] font-semibold uppercase tracking-[0.14em] backdrop-blur-xl transition active:scale-95 ${estilos.textColor}`}
+          style={titleStyle}
         >
           Waze
         </a>
@@ -248,8 +275,26 @@ const horariosJson = JSON.stringify(horarioFilas);
     color: var(--color-texto);
   }
 
+  .split-icon {
+    width: 1rem;
+    height: 1rem;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.75;
+  }
+
+  .split-icon--clock {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23a1a1aa' stroke-width='1.8' viewBox='0 0 24 24'><circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/></svg>");
+  }
+
   [data-horario-row].is-today {
+    background: color-mix(in srgb, white 7%, transparent);
     font-weight: 600;
+  }
+
+  [data-horario-row].is-today span:first-child {
+    color: var(--color-texto, #fff);
   }
 </style>
 

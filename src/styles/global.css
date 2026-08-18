@@ -562,3 +562,103 @@
   width: 100%;
   max-width: 100%;
 }
+
+/* Drawer ubicación — estados explícitos (evita conflicto con utilidades Tailwind) */
+.restaurant-app [data-ubicacion-drawer] {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.restaurant-app [data-ubicacion-drawer].is-open {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.restaurant-app [data-ubicacion-drawer] .ubicacion-drawer {
+  transform: translateY(100%);
+}
+
+.restaurant-app [data-ubicacion-drawer].is-open .ubicacion-drawer {
+  transform: translateY(0);
+}
+
+/* Iconos de redes — global para evitar roturas de scope en drawer/modal */
+.restaurant-app .ubicacion-socials--scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: none;
+}
+
+.restaurant-app .ubicacion-socials--scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.restaurant-app .ubicacion-socials--grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-start;
+}
+
+@media (min-width: 640px) {
+  .restaurant-app .ubicacion-socials--grid {
+    justify-content: center;
+  }
+}
+
+.restaurant-app .ubicacion-social-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, white 12%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.restaurant-app .ubicacion-social-btn:active {
+  transform: scale(0.94);
+}
+
+.restaurant-app .ubicacion-social-icon__svg {
+  width: 1.65rem;
+  height: 1.65rem;
+  display: block;
+}
+
+.restaurant-app .ubicacion-social-btn--maps {
+  background: #ffffff;
+}
+
+.restaurant-app .ubicacion-social-btn--whatsapp {
+  background: #25d366;
+}
+
+.restaurant-app .ubicacion-social-btn--instagram {
+  background: transparent;
+  padding: 0;
+}
+
+.restaurant-app .ubicacion-social-btn--instagram .ubicacion-social-icon__svg {
+  width: 3rem;
+  height: 3rem;
+}
+
+.restaurant-app .ubicacion-social-btn--facebook {
+  background: #1877f2;
+}
+
+.restaurant-app .ubicacion-social-btn--tiktok {
+  background: #010101;
+}
+
+.restaurant-app .ubicacion-social-btn--tripadvisor {
+  background: #34e0a1;
+}

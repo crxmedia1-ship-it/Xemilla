@@ -1,0 +1,43 @@
+---
+import { buildContactActions } from '../../../lib/ubicacion-theme-data.js';
+import UbicacionSocialIcon from './UbicacionSocialIcon.astro';
+
+interface Props {
+  mapsHref: string;
+  redesActivas: Array<{ red: string; url: string }>;
+  layout?: 'scroll' | 'grid';
+}
+
+const { mapsHref, redesActivas, layout = 'scroll' } = Astro.props;
+const actions = buildContactActions(mapsHref, redesActivas);
+---
+
+{
+  actions.length > 0 ? (
+    <div
+      class:list={[
+        'ubicacion-socials',
+        layout === 'scroll' && 'ubicacion-socials--scroll',
+        layout === 'grid' && 'ubicacion-socials--grid',
+      ]}
+      role="list"
+      aria-label="Contacto y redes"
+    >
+      {
+        actions.map((action) => (
+          <a
+            href={action.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            class={`ubicacion-social-btn ubicacion-social-btn--${action.icon}`}
+            role="listitem"
+            aria-label={action.label}
+            title={action.label}
+          >
+            <UbicacionSocialIcon id={action.icon} uid={action.id} />
+          </a>
+        ))
+      }
+    </div>
+  ) : null
+}

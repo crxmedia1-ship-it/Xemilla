@@ -1,6 +1,6 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-08-10 00:05 -04  
+> **Última Actualización:** 2026-08-10 00:16 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)
@@ -120,7 +120,7 @@ Shared CSS `home-anim-*` / `home-enter` / `home-reveal-inner` (~800–1200ms, st
 
 ### White-label
 
-La WebApp pública (**no** muestra “Powered by CRX”). Branding CRX solo en `index.astro` / `admin/login`.
+La WebApp pública (**no** muestra “Powered by CRX”). Branding CRX solo en `index.astro` / `admin/login`. Landing `/` = fullscreen Alchemist (video + grain + CTA WhatsApp placeholder).
 
 ### Tipografías (`typography-combos.js`)
 

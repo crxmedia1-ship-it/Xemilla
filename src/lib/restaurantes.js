@@ -360,15 +360,24 @@ function buildNosotros(row, brand) {
   if (bloquesJson.length > 0) {
     return {
       titulo: 'NOSOTROS',
-      bloques: bloquesJson.map((b, i) => ({
-        titulo: b.titulo || `Bloque ${i + 1}`,
-        texto: b.texto,
-        contenido: b.texto,
-        imagen: b.media_url || null,
-        media_url: b.media_url || null,
-        alineacion: b.alineacion,
-        acentos: [],
-      })),
+      bloques: bloquesJson.map((b, i) => {
+        const media = Array.isArray(b.media) && b.media.length
+          ? b.media
+          : b.media_url
+            ? [b.media_url]
+            : [];
+        const primary = media[0] || null;
+        return {
+          titulo: b.titulo || `Bloque ${i + 1}`,
+          texto: b.texto,
+          contenido: b.texto,
+          imagen: primary,
+          media_url: primary,
+          media,
+          alineacion: b.alineacion,
+          acentos: [],
+        };
+      }),
       texto: bloquesJson[0]?.texto || '',
       highlights: [],
     };
@@ -416,23 +425,27 @@ function buildUbicacion(row, brand) {
     row.horarios,
     row.instagram_url,
     row.whatsapp_url,
+    row.whatsapp_num,
     row.coordenadas_maps,
     redes.length > 0,
   ].some((v) => (typeof v === 'boolean' ? v : hasContent(v)));
 
   if (fromDb) {
     const horariosRaw = asText(row.horarios);
-    const whatsapp = resolveWhatsapp(row.whatsapp_url) || asText(row.whatsapp_num);
+    const legacyWa = resolveWhatsapp(row.whatsapp_url) || asText(row.whatsapp_num);
     const legacyIg = asText(row.instagram_url);
-    const redesFinal =
-      redes.length > 0
-        ? redes
-        : legacyIg
-          ? [{ red: 'instagram', url: legacyIg, activo: true }]
-          : [];
+    let redesFinal = redes.length > 0 ? [...redes] : [];
+    if (legacyWa && !redesFinal.some((r) => r.red === 'whatsapp')) {
+      redesFinal.unshift({ red: 'whatsapp', url: legacyWa, activo: true });
+    }
+    if (!redesFinal.some((r) => r.red === 'instagram') && legacyIg) {
+      redesFinal.push({ red: 'instagram', url: legacyIg, activo: true });
+    }
     const redesPublicas = redesFinal.filter((r) => r.activo !== false);
     const igPublica =
       redesPublicas.find((r) => r.red === 'instagram')?.url || '';
+    const waPublica =
+      redesPublicas.find((r) => r.red === 'whatsapp')?.url || legacyWa;
 
     return {
       titulo: 'UBICACIÓN Y HORARIOS',
@@ -442,10 +455,10 @@ function buildUbicacion(row, brand) {
       mapaUrl: asText(row.coordenadas_maps) || 'https://maps.google.com',
       horarios: horariosRaw,
       horariosRows: normalizeHorarios(horariosRaw),
-      telefono: whatsapp,
+      telefono: waPublica,
       email: '',
       instagram: igPublica,
-      whatsapp,
+      whatsapp: waPublica,
       redes: redesPublicas,
     };
   }

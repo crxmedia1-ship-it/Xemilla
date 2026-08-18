@@ -3,6 +3,12 @@
  * Persistido en restaurantes.secciones_fondo (JSONB).
  */
 
+import { normalizeContenedorEstilo } from './nosotros-layout.js';
+import {
+  resolveNosotrosFuenteTitulo,
+  resolveNosotrosFuenteCuerpo,
+} from '../config/nosotros-typography.js';
+
 const FONDO_TIPOS = new Set(['color', 'image', 'carrusel', 'video']);
 
 /**
@@ -163,7 +169,13 @@ export function parseReservasConfig(config) {
   };
 }
 
-const REDES_ALLOWED = new Set(['instagram', 'facebook', 'tiktok', 'tripadvisor']);
+const REDES_ALLOWED = new Set([
+  'whatsapp',
+  'instagram',
+  'facebook',
+  'tiktok',
+  'tripadvisor',
+]);
 
 /**
  * @param {unknown} value
@@ -203,6 +215,10 @@ export function parseRedesSociales(value) {
 function normalizeSocialUrl(red, url) {
   if (/^https?:\/\//i.test(url)) return url;
   const handle = url.replace(/^@/, '');
+  if (red === 'whatsapp') {
+    const digits = url.replace(/\D/g, '');
+    return digits ? `https://wa.me/${digits}` : url;
+  }
   if (red === 'instagram') return `https://instagram.com/${handle}`;
   if (red === 'facebook') return `https://facebook.com/${handle}`;
   if (red === 'tiktok') return `https://www.tiktok.com/@${handle}`;
@@ -214,8 +230,9 @@ function normalizeSocialUrl(red, url) {
  * Body dashboard → redes_sociales JSONB.
  * Acepta array o campos planos redes_instagram, etc.
  * @param {Record<string, unknown>} raw
+ * @param {unknown} [existingRedes]
  */
-export function buildRedesSocialesFromBody(raw) {
+export function buildRedesSocialesFromBody(raw, existingRedes = []) {
   if (Array.isArray(raw.redes_sociales)) {
     return parseRedesSociales(raw.redes_sociales);
   }
@@ -223,14 +240,35 @@ export function buildRedesSocialesFromBody(raw) {
     return parseRedesSociales(raw.redes_sociales);
   }
 
+  const existing = parseRedesSociales(existingRedes);
+  const existingById = Object.fromEntries(existing.map((r) => [r.red, r]));
+
   /** @type {Array<{ red: string, url: string, activo: boolean }>} */
   const list = [];
   for (const red of REDES_ALLOWED) {
-    const url = String(raw[`redes_${red}`] ?? '').trim();
+    const urlKey = `redes_${red}`;
+    const legacyKey = `${red}_url`;
+    const activoKey = `redes_${red}_activo`;
+    const legacyActivoKey = `${red}_activo`;
+
+    const urlProvided = raw[urlKey] !== undefined || raw[legacyKey] !== undefined;
+    const activoProvided =
+      raw[activoKey] !== undefined || raw[legacyActivoKey] !== undefined;
+
+    let url = urlProvided
+      ? String(raw[urlKey] ?? raw[legacyKey] ?? '').trim()
+      : String(existingById[red]?.url || '').trim();
+
     if (!url) continue;
-    const flag = raw[`redes_${red}_activo`];
-    const activo =
-      flag === undefined ? true : flag !== false && flag !== 'false' && flag !== 0;
+
+    let activo = true;
+    if (activoProvided) {
+      const flag = raw[activoKey] ?? raw[legacyActivoKey];
+      activo = flag !== false && flag !== 'false' && flag !== 0;
+    } else if (existingById[red]) {
+      activo = existingById[red].activo !== false;
+    }
+
     list.push({ red, url: normalizeSocialUrl(red, url), activo });
   }
   return list;
@@ -238,7 +276,7 @@ export function buildRedesSocialesFromBody(raw) {
 
 /**
  * @param {unknown} value
- * @returns {Array<{ titulo: string, texto: string, media_url: string, alineacion: string }>}
+ * @returns {Array<{ titulo: string, texto: string, media_url: string, media: string[], alineacion: string }>}
  */
 export function parseNosotrosBloques(value) {
   let raw = value;
@@ -256,9 +294,26 @@ export function parseNosotrosBloques(value) {
       if (!item || typeof item !== 'object') return null;
       const titulo = String(item.titulo || item.title || '').trim();
       const texto = String(item.texto || item.contenido || item.body || '').trim();
-      const media_url = String(
-        item.media_url || item.imagen || item.media || item.url || '',
-      ).trim();
+      /** @type {string[]} */
+      const media = [];
+      const pushMedia = (v) => {
+        const url = String(v || '').trim();
+        if (!url || media.length >= 3) return;
+        media.push(url);
+      };
+      const hasMediaArray = Array.isArray(item.media) && item.media.length > 0;
+      if (hasMediaArray) {
+        for (const m of item.media) pushMedia(m);
+      } else {
+        if (Array.isArray(item.media_urls)) {
+          for (const m of item.media_urls) pushMedia(m);
+        }
+        pushMedia(item.media_url);
+        pushMedia(item.imagen);
+        if (typeof item.media === 'string') pushMedia(item.media);
+      }
+
+      const media_url = media[0] || '';
       const alineacionRaw = String(item.alineacion || item.alignment || 'alternada')
         .trim()
         .toLowerCase();
@@ -266,8 +321,8 @@ export function parseNosotrosBloques(value) {
         alineacionRaw === 'inversa' || alineacionRaw === 'inverse'
           ? 'inversa'
           : 'alternada';
-      if (!titulo && !texto && !media_url) return null;
-      return { titulo, texto, media_url, alineacion };
+      if (!titulo && !texto && media.length === 0) return null;
+      return { titulo, texto, media_url, media, alineacion };
     })
     .filter(Boolean);
 }
@@ -454,8 +509,9 @@ export function scaleLabel() {
  */
 function normalizeHexColor(value, fallback = '') {
   if (value == null) return fallback;
-  const v = String(value).trim();
+  let v = String(value).trim();
   if (!v) return fallback;
+  if (v[0] !== '#') v = `#${v}`;
   if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return v.toLowerCase();
   return fallback;
 }
@@ -672,6 +728,138 @@ function parseBoolish(value, fallback = false) {
   return fallback;
 }
 
+/** @param {unknown} value */
+export function normalizeChipsLayout(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (v === 'grid' || v === 'rejilla' || v === 'grid2' || v === 'grid-2') return 'grid';
+  if (v === 'wrap' || v === 'flujo' || v === 'wrap-grid' || v === 'fluido') return 'wrap';
+  return 'scroll';
+}
+
+/** @param {unknown} value */
+export function normalizeChipsEstilo(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (v === 'cuadrado' || v === 'square' || v === 'rect') return 'cuadrado';
+  if (v === 'linea' || v === 'line' || v === 'ghost' || v === 'outline') return 'linea';
+  return 'pildora';
+}
+
+/** @param {unknown} value */
+export function normalizePlatosLayout(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (v === 'grid' || v === 'cuadricula' || v === '2' || v === '2col' || v === '2-columnas') {
+    return 'grid';
+  }
+  if (v === 'bento' || v === 'bento-box' || v === 'bentobox') return 'bento';
+  if (v === 'lista' || v === 'list' || v === '1' || v === '1col') return 'lista';
+  if (!v) return 'grid';
+  return 'lista';
+}
+
+/** @param {unknown} value */
+export function normalizeEstiloTarjetas(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (v === 'solido' || v === 'solid' || v === 'opaco' || v === 'oscuro') return 'solido';
+  return 'cristal';
+}
+
+/**
+ * Deriva tokens visuales del menú a partir de los 3 colores maestros.
+ * @param {{ color_fondo?: string, color_texto?: string, color_acento?: string }} menu
+ */
+export function expandMenuMasterTokens(menu = {}) {
+  const texto = normalizeHexColor(menu.color_texto, '');
+  const acento = normalizeHexColor(menu.color_acento, '');
+  const fondo = normalizeHexColor(menu.color_fondo, '');
+  return {
+    color_texto: texto,
+    color_titulo: texto,
+    color_header: texto,
+    color_precio: texto,
+    color_cuerpo: texto,
+    color_chip: fondo,
+    color_chip_texto: texto,
+    color_chip_activo: acento,
+    color_boton: acento,
+    color_boton_texto: '#ffffff',
+  };
+}
+
+/**
+ * UI independiente de la sección Menú (no hereda Home).
+ * @param {Record<string, unknown>} menu
+ * @param {Record<string, unknown>} [extras]
+ */
+export function normalizeMenuUi(menu = {}, extras = {}) {
+  const m = menu && typeof menu === 'object' ? menu : {};
+  const x = extras && typeof extras === 'object' ? extras : {};
+  const pickFuenteTitulo = m.fuente_titulo || x.fuente_titulo || x.menu_font || '';
+  const pickFuenteCuerpo = m.fuente_cuerpo || x.fuente_cuerpo || '';
+
+  const colorTexto = normalizeHexColor(
+    m.color_texto ||
+      m.colorTexto ||
+      x.color_texto ||
+      m.color_titulo ||
+      x.color_titulo ||
+      m.color_header ||
+      x.color_header,
+    '',
+  );
+  const colorAcento = normalizeHexColor(
+    m.color_acento ||
+      m.colorAcento ||
+      x.color_acento ||
+      m.color_chip_activo ||
+      x.color_chip_activo ||
+      m.color_boton ||
+      x.color_boton,
+    '',
+  );
+  const colorFondo = normalizeHexColor(
+    m.color_fondo || m.colorFondo || x.color_fondo || m.color_chip || x.color_chip,
+    '',
+  );
+
+  return {
+    fondos_cinematicos: parseBoolish(
+      m.fondos_cinematicos ?? m.fondosCinematicos ?? x.fondos_cinematicos,
+      x.fondosDefault === undefined ? false : x.fondosDefault,
+    ),
+    color_fondo: colorFondo,
+    color_texto: colorTexto,
+    color_acento: colorAcento,
+    chips_layout: normalizeChipsLayout(m.chips_layout || m.chipsLayout || x.chips_layout),
+    chips_estilo: normalizeChipsEstilo(m.chips_estilo || m.chipsEstilo || x.chips_estilo),
+    platos_layout: normalizePlatosLayout(m.platos_layout || m.platosLayout || x.platos_layout),
+    estilo_tarjetas: normalizeEstiloTarjetas(
+      m.estilo_tarjetas || m.estiloTarjetas || x.estilo_tarjetas,
+    ),
+    fuente_titulo: pickFuenteTitulo
+      ? resolveNosotrosFuenteTitulo(pickFuenteTitulo).id
+      : '',
+    fuente_cuerpo: pickFuenteCuerpo
+      ? resolveNosotrosFuenteCuerpo(pickFuenteCuerpo).id
+      : '',
+  };
+}
+
 /**
  * @param {unknown} value
  */
@@ -791,22 +979,23 @@ export function parseUiEstilo(value) {
         home.efecto_entrada ?? home.efectoEntrada ?? home.entrada_animacion,
       ),
     },
-    menu: {
-      fondos_cinematicos: parseBoolish(
-        /** @type {Record<string, unknown>} */ (raw.menu || {}).fondos_cinematicos ??
-          /** @type {Record<string, unknown>} */ (raw.menu || {}).fondosCinematicos,
-        null,
-      ),
-      color_texto: normalizeHexColor(
-        /** @type {Record<string, unknown>} */ (raw.menu || {}).color_texto ??
-          /** @type {Record<string, unknown>} */ (raw.menu || {}).colorTexto,
-        '',
-      ),
-    },
+    menu: normalizeMenuUi(
+      /** @type {Record<string, unknown>} */ (raw.menu || {}),
+      { fondosDefault: null },
+    ),
     nosotros: {
       color_fondo: normalizeHexColor(nosotros.color_fondo || nosotros.colorFondo, ''),
       color_titulo: normalizeHexColor(nosotros.color_titulo || nosotros.colorTitulo, ''),
       color_cuerpo: normalizeHexColor(nosotros.color_cuerpo || nosotros.colorCuerpo, ''),
+      contenedor_estilo: normalizeContenedorEstilo(
+        nosotros.contenedor_estilo || nosotros.contenedorEstilo,
+      ),
+      fuente_titulo: resolveNosotrosFuenteTitulo(
+        nosotros.fuente_titulo || nosotros.fuenteTitulo,
+      ).id,
+      fuente_cuerpo: resolveNosotrosFuenteCuerpo(
+        nosotros.fuente_cuerpo || nosotros.fuenteCuerpo,
+      ).id,
       theme: String(nosotros.theme || '').trim().toLowerCase() || '',
     },
     ubicacion: {
@@ -931,22 +1120,38 @@ export function buildUiEstiloFromBody(raw) {
         raw.home_efecto_entrada ?? raw.efecto_entrada,
       ),
     },
-    menu: {
-      fondos_cinematicos: parseBoolish(
-        raw.menu_fondos_cinematicos ??
+    menu: normalizeMenuUi(
+      /** @type {Record<string, unknown>} */ (raw.menu || {}),
+      {
+        fondos_cinematicos:
+          raw.menu_fondos_cinematicos ??
           raw.fondos_cinematicos_categoria ??
           raw.menu?.fondos_cinematicos,
-        false,
-      ),
-      color_texto: normalizeHexColor(
-        raw.menu_color_texto ?? raw.menu?.color_texto,
-        '',
-      ),
-    },
+        fondosDefault: false,
+        color_texto: raw.menu_color_texto,
+        color_fondo: raw.menu_color_fondo,
+        color_acento: raw.menu_color_acento,
+        chips_layout: raw.menu_chips_layout,
+        chips_estilo: raw.menu_chips_estilo,
+        platos_layout: raw.menu_platos_layout,
+        estilo_tarjetas: raw.menu_estilo_tarjetas ?? raw.estilo_tarjetas,
+        fuente_titulo: raw.menu_fuente_titulo || raw.menu_font,
+        fuente_cuerpo: raw.menu_fuente_cuerpo,
+      },
+    ),
     nosotros: {
       color_fondo: normalizeHexColor(raw.nosotros_color_fondo, ''),
       color_titulo: normalizeHexColor(raw.nosotros_color_titulo, ''),
       color_cuerpo: normalizeHexColor(raw.nosotros_color_cuerpo, ''),
+      contenedor_estilo: normalizeContenedorEstilo(
+        raw.nosotros_contenedor_estilo ?? raw.nosotros?.contenedor_estilo,
+      ),
+      fuente_titulo: resolveNosotrosFuenteTitulo(
+        raw.nosotros_fuente_titulo ?? raw.nosotros?.fuente_titulo,
+      ).id,
+      fuente_cuerpo: resolveNosotrosFuenteCuerpo(
+        raw.nosotros_fuente_cuerpo ?? raw.nosotros?.fuente_cuerpo,
+      ).id,
       theme: String(raw.nosotros_theme ?? raw.nosotros?.theme ?? '')
         .trim()
         .toLowerCase() || 'editorial',
@@ -1084,10 +1289,44 @@ export function uiEstiloToCssVars(ui, fallbackPrimario = '#9f1239') {
     nosotros.color_fondo ? `--sec-nosotros-fondo: ${nosotros.color_fondo}` : '',
     nosotros.color_titulo ? `--sec-nosotros-titulo: ${nosotros.color_titulo}` : '',
     nosotros.color_cuerpo ? `--sec-nosotros-cuerpo: ${nosotros.color_cuerpo}` : '',
+    `--sec-nosotros-contenedor: ${normalizeContenedorEstilo(nosotros.contenedor_estilo)}`,
+    nosotros.fuente_titulo
+      ? `--nosotros-font-heading: ${resolveNosotrosFuenteTitulo(nosotros.fuente_titulo).stack}`
+      : '',
+    nosotros.fuente_cuerpo
+      ? `--nosotros-font-body: ${resolveNosotrosFuenteCuerpo(nosotros.fuente_cuerpo).stack}`
+      : '',
     ubicacion.color_fondo ? `--sec-ubicacion-fondo: ${ubicacion.color_fondo}` : '',
     ubicacion.color_titulo ? `--sec-ubicacion-titulo: ${ubicacion.color_titulo}` : '',
     ubicacion.color_cuerpo ? `--sec-ubicacion-cuerpo: ${ubicacion.color_cuerpo}` : '',
     ui?.menu?.color_texto ? `--menu-texto-color: ${ui.menu.color_texto}` : '',
+    ui?.menu?.color_fondo ? `--menu-surface-color: ${ui.menu.color_fondo}` : '',
+    ui?.menu?.color_acento ? `--menu-accent-color: ${ui.menu.color_acento}` : '',
+    (() => {
+      const t = expandMenuMasterTokens(ui?.menu || {});
+      return [
+        t.color_titulo ? `--menu-titulo-color: ${t.color_titulo}` : '',
+        t.color_header ? `--menu-header-color: ${t.color_header}` : '',
+        t.color_precio ? `--menu-precio-color: ${t.color_precio}` : '',
+        t.color_chip ? `--menu-chip-bg: ${t.color_chip}` : '',
+        t.color_chip_texto ? `--menu-chip-texto: ${t.color_chip_texto}` : '',
+        t.color_chip_activo ? `--menu-chip-activo: ${t.color_chip_activo}` : '',
+        t.color_boton ? `--menu-boton-bg: ${t.color_boton}` : '',
+        t.color_boton_texto ? `--menu-boton-texto: ${t.color_boton_texto}` : '',
+      ]
+        .filter(Boolean)
+        .join('; ');
+    })(),
+    ui?.menu?.chips_layout ? `--menu-chips-layout: ${ui.menu.chips_layout}` : '',
+    ui?.menu?.chips_estilo ? `--menu-chips-estilo: ${ui.menu.chips_estilo}` : '',
+    ui?.menu?.platos_layout ? `--menu-platos-layout: ${ui.menu.platos_layout}` : '',
+    ui?.menu?.estilo_tarjetas ? `--menu-estilo-tarjetas: ${ui.menu.estilo_tarjetas}` : '',
+    ui?.menu?.fuente_titulo
+      ? `--menu-font-heading: ${resolveNosotrosFuenteTitulo(ui.menu.fuente_titulo).stack}`
+      : '',
+    ui?.menu?.fuente_cuerpo
+      ? `--menu-font-body: ${resolveNosotrosFuenteCuerpo(ui.menu.fuente_cuerpo).stack}`
+      : '',
   ]
     .filter(Boolean)
     .join('; ');

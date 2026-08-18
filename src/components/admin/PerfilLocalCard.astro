@@ -19,6 +19,7 @@ interface Props {
   facebook: RedState;
   tiktok: RedState;
   tripadvisor: RedState;
+  whatsapp: RedState;
   socialIdPrefix: string;
 }
 
@@ -36,16 +37,26 @@ const {
   facebook,
   tiktok,
   tripadvisor,
+  whatsapp,
   socialIdPrefix,
 } = Astro.props;
 
 const redes = [
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    placeholder: '+58… o https://wa.me/…',
+    state: whatsapp,
+    icon: 'wa',
+    inputType: 'text',
+  },
   {
     id: 'instagram',
     label: 'Instagram',
     placeholder: 'https://instagram.com/',
     state: instagram,
     icon: 'ig',
+    inputType: 'url',
   },
   {
     id: 'facebook',
@@ -53,6 +64,7 @@ const redes = [
     placeholder: 'https://facebook.com/',
     state: facebook,
     icon: 'fb',
+    inputType: 'url',
   },
   {
     id: 'tiktok',
@@ -60,6 +72,7 @@ const redes = [
     placeholder: 'https://tiktok.com/@',
     state: tiktok,
     icon: 'tt',
+    inputType: 'url',
   },
   {
     id: 'tripadvisor',
@@ -67,6 +80,7 @@ const redes = [
     placeholder: 'https://tripadvisor.com/',
     state: tripadvisor,
     icon: 'ta',
+    inputType: 'url',
   },
 ];
 ---
@@ -145,7 +159,7 @@ const redes = [
     <div class="perfil-group__head">
       <div>
         <h3>Mapa</h3>
-        <p class="perfil-group__sub">Vista de Google Maps en la WebApp</p>
+        <p class="perfil-group__sub">Enlace de Google Maps o código iframe de «Incorporar mapa»</p>
       </div>
     </div>
     <div class="perfil-map" data-maps-preview>
@@ -161,7 +175,7 @@ const redes = [
             />
           ) : (
             <span class="perfil-map__empty" data-map-empty>
-              Pegá el enlace de Google Maps
+              Pegá el enlace o el iframe de Google Maps
             </span>
           )
         }
@@ -176,15 +190,15 @@ const redes = [
         />
       </div>
       <label class="perfil-field perfil-field--map">
-        <span>Enlace de Google Maps</span>
-        <input
-          type="url"
+        <span>Google Maps — enlace o iframe</span>
+        <textarea
           id={mapsInputId}
-          value={mapsUrl}
-          placeholder="https://maps.google.com/"
+          rows={3}
+          placeholder="https://maps.google.com/…&#10;o&#10;&lt;iframe src=&quot;https://www.google.com/maps/embed?pb=…&quot; …&gt;&lt;/iframe&gt;"
           autocomplete="off"
           data-maps-url
-        />
+          class="perfil-map__textarea"
+        >{mapsUrl}</textarea>
       </label>
     </div>
   </div>
@@ -222,7 +236,7 @@ const redes = [
               </button>
             </div>
             <input
-              type="url"
+              type={net.inputType || 'url'}
               id={`${socialIdPrefix}${net.id}`}
               value={net.state.url}
               placeholder={net.placeholder}
@@ -502,10 +516,20 @@ const redes = [
     color: var(--text-muted, #71717a);
   }
 
-  .perfil-field input {
+  .perfil-field input,
+  .perfil-field textarea {
     width: 100%;
     min-width: 0;
     font-size: 0.84rem;
+  }
+
+  .perfil-map__textarea {
+    min-height: 5.5rem;
+    resize: vertical;
+    line-height: 1.45;
+    padding: 0.58rem 0.75rem;
+    border-radius: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
   .perfil-social {
@@ -539,6 +563,10 @@ const redes = [
     background-repeat: no-repeat;
     background-position: center;
     background-size: 0.95rem;
+  }
+
+  .perfil-social__glyph--wa {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%23a1a1aa' viewBox='0 0 24 24'><path d='M17.5 14.1c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.1-.3.2-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-1-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1 2.6c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.7.6.4 1.2.3 1.6.2.5-.1 1.8-.7 2.1-1.4.2-.7.2-1.3.2-1.4 0-.1-.2-.2-.5-.3z'/><path d='M12 2C6.5 2 2 6.1 2 11.2c0 1.8.5 3.5 1.4 5L2 22l5.9-1.5c1.6.9 3.5 1.3 5.5 1.3 5.5 0 10-4.1 10-9.2S17.5 2 12 2z'/></svg>");
   }
 
   .perfil-social__glyph--ig {

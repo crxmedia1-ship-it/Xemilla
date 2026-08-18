@@ -2,6 +2,12 @@
 import {
   NUTRICION_FILTROS_PUBLICOS,
 } from '../../config/nutricion.js';
+import {
+  resolveNosotrosFuenteTitulo,
+  resolveNosotrosFuenteCuerpo,
+  buildNosotrosFontsHref,
+} from '../../config/nosotros-typography.js';
+import { normalizeChipsLayout, normalizeChipsEstilo, normalizePlatosLayout, normalizeEstiloTarjetas, expandMenuMasterTokens } from '../../lib/secciones-ui.js';
 
 interface Plato {
   id?: number;
@@ -44,6 +50,18 @@ interface Props {
   tasaEurUsd?: number;
   /** VES por 1 EUR (BCV) — opcional, solo para hint de tasa */
   tasaEur?: number;
+  menuUi?: {
+    color_fondo?: string;
+    color_texto?: string;
+    color_acento?: string;
+    chips_layout?: string;
+    chips_estilo?: string;
+    platos_layout?: string;
+    estilo_tarjetas?: string;
+    fuente_titulo?: string;
+    fuente_cuerpo?: string;
+  };
+  menuFont?: string;
   estilos: {
     panelColor: string;
     borderColor: string;
@@ -68,6 +86,8 @@ const {
   tasaBcv = 36.5,
   tasaEurUsd = 0.92,
   tasaEur = 0,
+  menuUi = {},
+  menuFont = '',
   estilos,
 } = Astro.props;
 
@@ -96,17 +116,75 @@ function precioUsd(precio: string): string {
 
 const CHIP_BASE =
   'border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase active:scale-95';
-const CHIP_ACTIVE =
-  'border-[color-mix(in_srgb,var(--color-primario)_65%,transparent)] bg-[var(--color-primario)] text-white shadow-inner';
-const CHIP_IDLE =
-  'border-white/15 bg-white/5 text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)] backdrop-blur-md';
 
 const globalBgType = fondoGlobal.tipo || 'color';
 const globalBgValor = fondoGlobal.valor || '';
+const chipsLayout = normalizeChipsLayout(menuUi.chips_layout);
+const chipsEstilo = normalizeChipsEstilo(menuUi.chips_estilo);
+const platosLayout = normalizePlatosLayout(menuUi.platos_layout);
+const estiloTarjetas = normalizeEstiloTarjetas(menuUi.estilo_tarjetas);
+const menuTokens = expandMenuMasterTokens(menuUi);
+const accentColor = menuUi.color_acento || menuTokens.color_chip_activo || '';
+const detalleBtnStyle = accentColor
+  ? `background-color:${accentColor};border-color:${accentColor};color:#ffffff`
+  : '';
+const platoCardSurfaceClass =
+  estiloTarjetas === 'solido'
+    ? 'bg-zinc-900 border border-white/5 shadow-xl'
+    : 'bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl';
+const chipsNavClass =
+  chipsLayout === 'scroll'
+    ? 'menu-chips-nav overflow-x-auto whitespace-nowrap scrollbar-none px-4 py-3.5'
+    : 'menu-chips-nav menu-chips-nav--static px-4 py-3.5';
+const chipsRowClass =
+  chipsLayout === 'grid'
+    ? 'menu-chips-row menu-chips-row--grid gap-2'
+    : chipsLayout === 'wrap'
+      ? 'menu-chips-row menu-chips-row--wrap gap-2'
+      : 'menu-chips-row menu-chips-row--scroll inline-flex gap-2';
+const fuenteTitulo = resolveNosotrosFuenteTitulo(menuUi.fuente_titulo || menuFont || 'playfair');
+const fuenteCuerpo = resolveNosotrosFuenteCuerpo(menuUi.fuente_cuerpo || 'plus-jakarta');
+const fontsHref = buildNosotrosFontsHref(fuenteTitulo.id, fuenteCuerpo.id);
+
+const menuPanelStyle = [
+  menuUi.color_texto || menuTokens.color_texto
+    ? `--menu-texto-color:${menuUi.color_texto || menuTokens.color_texto}`
+    : '',
+  menuUi.color_fondo || menuTokens.color_chip
+    ? `--menu-surface-color:${menuUi.color_fondo || menuTokens.color_chip}`
+    : '',
+  menuUi.color_acento || menuTokens.color_chip_activo
+    ? `--menu-accent-color:${menuUi.color_acento || menuTokens.color_chip_activo}`
+    : '',
+  menuTokens.color_titulo ? `--menu-titulo-color:${menuTokens.color_titulo}` : '',
+  menuTokens.color_header ? `--menu-header-color:${menuTokens.color_header}` : '',
+  menuTokens.color_precio ? `--menu-precio-color:${menuTokens.color_precio}` : '',
+  menuTokens.color_chip ? `--menu-chip-bg:${menuTokens.color_chip}` : '',
+  menuTokens.color_chip_texto ? `--menu-chip-texto:${menuTokens.color_chip_texto}` : '',
+  menuTokens.color_chip_activo ? `--menu-chip-activo:${menuTokens.color_chip_activo}` : '',
+  menuTokens.color_boton ? `--menu-boton-bg:${menuTokens.color_boton}` : '',
+  menuTokens.color_boton_texto ? `--menu-boton-texto:${menuTokens.color_boton_texto}` : '',
+  `--menu-font-heading:${fuenteTitulo.stack}`,
+  `--menu-font-body:${fuenteCuerpo.stack}`,
+  globalBgTipoColor(),
+]
+  .filter(Boolean)
+  .join(';');
+
+function globalBgTipoColor() {
+  if (globalBgType === 'color' && globalBgValor) {
+    return `--menu-sticky-bg:${globalBgValor}`;
+  }
+  return '';
+}
 ---
 
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href={fontsHref} />
+
 <div
-  class="menu-panel relative z-10 min-h-full overflow-x-clip overflow-y-visible bg-transparent pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[color:var(--menu-texto-color,var(--color-texto))] font-[family-name:var(--fuente-menu,var(--fuente-display))]"
+  class="menu-panel relative z-10 min-h-full overflow-x-clip overflow-y-visible bg-transparent pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[color:var(--menu-cuerpo-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-body,var(--fuente-menu,var(--fuente-display)))]"
   data-menu-panel
   data-menu-filter="all"
   data-cinematic-cat-bg={cinematicCategoryBg ? 'true' : 'false'}
@@ -116,20 +194,21 @@ const globalBgValor = fondoGlobal.valor || '';
   data-tasa-bcv={String(tasaBcv)}
   data-tasa-eur-usd={String(tasaEurUsd)}
   data-tasa-eur={String(tasaEur || '')}
+  data-chips-layout={chipsLayout}
+  data-chips-estilo={chipsEstilo}
+  data-platos-layout={platosLayout}
+  data-estilo-tarjetas={estiloTarjetas}
+  style={menuPanelStyle || undefined}
 >
   <div class="relative z-10">
-  <div class="sticky top-0 z-20 border-b border-white/10 bg-[color-mix(in_srgb,var(--color-fondo)_92%,transparent)]">
-    <nav
-      class="overflow-x-auto whitespace-nowrap scrollbar-none px-4 py-3.5"
-      aria-label="Categorías del menú"
-      data-menu-cats
-    >
-      <div class="inline-flex gap-2">
+  <div class="sticky top-0 z-20 border-b border-white/10 menu-sticky">
+    <nav class={chipsNavClass} aria-label="Categorías del menú" data-menu-cats>
+      <div class={chipsRowClass}>
         <button
           type="button"
           data-cat-btn="all"
           data-cat-filter="all"
-          class={`tab-categoria menu-chip ${CHIP_BASE} ${CHIP_ACTIVE}`}
+          class={`tab-categoria menu-chip ${CHIP_BASE} is-active`}
         >
           Todos
         </button>
@@ -141,7 +220,7 @@ const globalBgValor = fondoGlobal.valor || '';
               data-cat-filter={cat.id}
               data-cat-bg-type={cat.bgType || ''}
               data-cat-bg-valor={cat.bgValor || ''}
-              class={`tab-categoria menu-chip ${CHIP_BASE} ${CHIP_IDLE}`}
+              class={`tab-categoria menu-chip ${CHIP_BASE}`}
             >
               {cat.nombre}
             </button>
@@ -186,7 +265,7 @@ const globalBgValor = fondoGlobal.valor || '';
 
     {/* —— Selector de Divisas (visual, client-side) —— */}
     <div
-      class="currency-bar"
+      class="currency-bar mx-[0.85rem] mb-3 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-white/10 bg-black/40 p-2 shadow-lg backdrop-blur-xl"
       data-currency-switcher
       data-tasa-bcv={String(tasaBcv)}
       data-tasa-eur-usd={String(tasaEurUsd)}
@@ -215,7 +294,7 @@ const globalBgValor = fondoGlobal.valor || '';
         data-destacados
         aria-label="Sugerencias del Chef"
       >
-        <h3 class="mb-4 px-5 font-[family-name:var(--fuente-display)] text-[0.78rem] font-semibold tracking-[0.22em] uppercase text-[color:color-mix(in_srgb,var(--color-texto)_70%,transparent)]">
+        <h3 class="mb-4 px-5 font-[family-name:var(--menu-font-heading,var(--fuente-display))] text-[0.78rem] font-semibold tracking-[0.22em] uppercase text-[color:var(--menu-titulo-color,color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_70%,transparent))]">
           Sugerencias del Chef
         </h3>
         <div
@@ -265,10 +344,10 @@ const globalBgValor = fondoGlobal.valor || '';
                     {catName}
                   </span>
                 </div>
-                <h4 class="line-clamp-2 text-[1.05rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                <h4 class="line-clamp-2 text-[1.05rem] font-semibold leading-snug font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-titulo-color,var(--menu-texto-color,inherit))]">
                   {plato.nombre}
                 </h4>
-                <p class="mt-1.5 text-[1.05rem] font-semibold tabular-nums text-[color:var(--menu-texto-color,var(--color-texto))] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                <p class="mt-1.5 text-[1.05rem] font-semibold tabular-nums text-[color:var(--menu-precio-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))]">
                   <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                 </p>
               </button>
@@ -292,7 +371,7 @@ const globalBgValor = fondoGlobal.valor || '';
         >
           <h3
             id={`menu-cat-heading-${cat.id}`}
-            class="mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)]"
+            class="mb-5 text-[0.65rem] font-semibold tracking-[0.32em] uppercase text-[color:var(--menu-titulo-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))]"
           >
             {cat.nombre}
           </h3>
@@ -303,25 +382,44 @@ const globalBgValor = fondoGlobal.valor || '';
               return (
                 <li
                   id={`plato-${plato.id}`}
-                  class="menu-plato-item group scroll-mt-40"
+                  class:list={[
+                    'menu-plato-item group scroll-mt-40',
+                    platoCardSurfaceClass,
+                    hasMedia(mediaUrl) && platosLayout === 'bento' && 'menu-plato-item--bento-media',
+                  ]}
                   data-reveal
                   data-plato-id={plato.id}
                   data-alergias={alergiasCsv(plato)}
                   data-plato-nombre={plato.nombre}
                   data-ingredientes={plato.ingredientesDetalle || ''}
+                  data-has-media={hasMedia(mediaUrl) ? 'true' : 'false'}
+                  data-estilo-tarjeta={estiloTarjetas}
                 >
+                  {
+                    platosLayout === 'bento' && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) ? (
+                      <div class="menu-bento-media mb-3 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                        <img
+                          src={mediaUrl}
+                          alt=""
+                          class="h-36 w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                    ) : null
+                  }
                   <div class="flex items-baseline gap-1">
-                    <h4 class="min-w-0 flex-1 text-[1.02rem] font-semibold leading-snug font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                    <h4 class="min-w-0 flex-1 text-[1.02rem] font-semibold leading-snug font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-titulo-color,var(--menu-texto-color,inherit))]">
                       {plato.nombre}
                     </h4>
                     <span class="menu-leader" aria-hidden="true" />
-                    <span class="shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide text-[color:var(--menu-texto-color,var(--color-texto))] font-[family-name:var(--fuente-menu,var(--fuente-display))]">
+                    <span class="shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide text-[color:var(--menu-precio-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))]">
                       <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                     </span>
                   </div>
 
                   {plato.descripcion && (
-                    <p class="mt-2 w-full text-[0.8rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_50%,transparent)]">
+                    <p class="menu-plato-desc mt-2 w-full text-[0.8rem] leading-relaxed text-current/70 font-[family-name:var(--menu-font-body,inherit)]">
                       {plato.descripcion}
                     </p>
                   )}
@@ -343,6 +441,7 @@ const globalBgValor = fondoGlobal.valor || '';
                       data-plato-has-nut={showNutricion ? 'true' : 'false'}
                       data-plato-modelo3d-url={plato.modelo3dUrl || ''}
                       class="menu-btn menu-btn--detalle mt-3"
+                      style={detalleBtnStyle || undefined}
                     >
                       Ver detalle
                       <span aria-hidden="true">›</span>
@@ -363,10 +462,143 @@ const globalBgValor = fondoGlobal.valor || '';
 </div>
 
 <style>
+  .menu-panel {
+    color: var(--menu-texto-color, var(--color-texto));
+    font-family: var(--menu-font-body, var(--fuente-menu, var(--fuente-display)));
+  }
+
+  .menu-plato-desc {
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 70%, transparent);
+  }
+
+  .menu-sticky {
+    background: color-mix(in srgb, var(--menu-sticky-bg, var(--color-fondo)) 90%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
   .menu-chip {
     border-radius: var(--radius-chip, 9999px);
+    background: var(--menu-chip-bg, color-mix(in srgb, var(--menu-surface-color, currentColor) 88%, transparent));
+    color: var(
+      --menu-chip-texto,
+      color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 70%, transparent)
+    );
+    border-color: color-mix(in srgb, var(--menu-chip-texto, currentColor) 22%, transparent);
     transition: transform var(--motion-spring, 220ms ease), background-color 200ms ease,
       border-color 200ms ease, color 200ms ease;
+  }
+
+  .menu-chip.is-active {
+    background: var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario)));
+    color: #fff;
+    border-color: color-mix(
+      in srgb,
+      var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario))) 80%,
+      transparent
+    );
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+  }
+
+  .menu-chips-nav--static {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .menu-chips-row--scroll {
+    width: max-content;
+    min-width: min(100%, max-content);
+  }
+
+  .menu-panel[data-chips-layout='wrap'] .menu-chips-row--wrap {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .menu-panel[data-chips-layout='wrap'] .menu-chip {
+    flex: 0 1 auto;
+    max-width: 100%;
+  }
+
+  .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .menu-panel[data-chips-layout='grid'] .menu-chip {
+    width: 100%;
+    min-height: 2.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.35;
+    padding-inline: 0.65rem;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .menu-panel[data-chips-estilo='cuadrado'] .menu-chip {
+    border-radius: 0.55rem;
+  }
+
+  .menu-panel[data-chips-estilo='linea'] .menu-chip {
+    background: transparent;
+    border-color: color-mix(in srgb, var(--menu-chip-texto, currentColor) 28%, transparent);
+    box-shadow: none;
+  }
+
+  .menu-panel[data-chips-estilo='linea'] .menu-chip.is-active {
+    background: transparent;
+    color: var(--menu-chip-activo, var(--color-primario));
+    border-color: var(--menu-chip-activo, var(--color-primario));
+  }
+
+  .menu-panel[data-chips-layout='scroll'][data-chips-estilo='linea'] .menu-chip {
+    border-radius: 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    padding-inline: 0.85rem;
+    box-shadow: none;
+  }
+
+  .menu-panel[data-chips-layout='scroll'][data-chips-estilo='linea'] .menu-chip.is-active {
+    color: var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario)));
+    border-bottom-color: var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario)));
+    background: transparent;
+  }
+
+  .menu-btn--detalle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.52rem 0.95rem 0.52rem 1.05rem;
+    border: 1px solid transparent;
+    background: var(--menu-boton-bg, var(--menu-accent-color, var(--color-primario)));
+    color: var(--menu-boton-texto, #fff);
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-family: var(--menu-font-body, inherit);
+    box-shadow: none;
+  }
+
+  .menu-btn--detalle span {
+    font-size: 1.05rem;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.85;
   }
 
   .menu-card,
@@ -382,28 +614,6 @@ const globalBgValor = fondoGlobal.valor || '';
   .menu-btn {
     border-radius: var(--radius-button, 9999px);
     transition: transform var(--motion-spring, 220ms ease), opacity 200ms ease;
-  }
-
-  .menu-btn--detalle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.52rem 0.95rem 0.52rem 1.05rem;
-    border: 1px solid color-mix(in srgb, var(--color-texto) 16%, transparent);
-    background: color-mix(in srgb, var(--color-texto) 8%, transparent);
-    color: var(--color-texto);
-    font-size: 0.68rem;
-    font-weight: 650;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    box-shadow: none;
-    backdrop-filter: blur(10px);
-  }
-
-  .menu-btn--detalle span {
-    font-size: 1.05rem;
-    line-height: 1;
-    opacity: 0.7;
   }
 
   .menu-featured {
@@ -426,14 +636,44 @@ const globalBgValor = fondoGlobal.valor || '';
     gap: var(--space-item, 1.25rem);
   }
 
-  @media (min-width: 900px) {
-    .menu-items {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      column-gap: 2.5rem;
-      row-gap: 1.75rem;
+  .menu-panel[data-platos-layout='grid'] .menu-items {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 1.5rem;
+    row-gap: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .menu-panel[data-platos-layout='grid'] .menu-items {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .menu-panel[data-platos-layout='bento'] .menu-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 768px) {
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media {
+      grid-column: span 1;
     }
 
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media:nth-child(3n + 1) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (min-width: 900px) {
     .menu-featured {
       width: 22rem;
     }
@@ -450,20 +690,29 @@ const globalBgValor = fondoGlobal.valor || '';
   }
 
   .menu-plato-item {
-    border-radius: var(--radius-card, 0.75rem);
-    padding: 0.35rem 0.4rem;
-    margin-inline: -0.4rem;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-card, 1rem);
+    padding: 1rem 1.05rem;
+    margin-inline: 0;
+    color: var(--menu-texto-color, var(--color-texto));
     transition:
       box-shadow 400ms ease,
       background-color 400ms ease,
-      transform 400ms ease;
+      border-color 400ms ease,
+      transform 400ms ease,
+      backdrop-filter 400ms ease;
+  }
+
+  .menu-panel[data-estilo-tarjetas='cristal'] .menu-plato-item {
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
   }
 
   .menu-plato-item.is-focus-plato {
-    background: color-mix(in srgb, var(--color-primario) 12%, transparent);
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--color-primario) 55%, transparent),
-      0 0 24px color-mix(in srgb, var(--color-primario) 22%, transparent);
+      0 0 0 1px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 55%, transparent),
+      0 0 24px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 22%, transparent);
     transform: scale(1.015);
   }
 
@@ -513,20 +762,7 @@ const globalBgValor = fondoGlobal.valor || '';
 
   /* ── Currency Bar ────────────────────────────────────────── */
   .currency-bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.45rem 0.7rem;
-    margin: 0.35rem 0.85rem 0.7rem;
-    padding: 0.4rem 0.5rem 0.4rem 0.85rem;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--color-texto) 14%, transparent);
-    background: color-mix(in srgb, var(--color-texto) 7%, transparent);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--color-texto) 10%, transparent),
-      0 10px 28px rgba(0, 0, 0, 0.12);
-    backdrop-filter: blur(18px) saturate(1.25);
-    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(24px);
   }
 
   .currency-bar__label {
@@ -537,7 +773,7 @@ const globalBgValor = fondoGlobal.valor || '';
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-texto) 45%, transparent);
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 70%, transparent);
     user-select: none;
   }
 
@@ -579,21 +815,21 @@ const globalBgValor = fondoGlobal.valor || '';
   }
 
   .cpill--active {
-    background: var(--color-primario);
+    background: var(--menu-accent-color, var(--color-primario));
     color: #fff;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
   .currency-bar__rate {
     font-size: 0.6rem;
-    color: color-mix(in srgb, var(--color-texto) 40%, transparent);
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 65%, transparent);
     white-space: nowrap;
     letter-spacing: 0.02em;
   }
 
   .currency-bar__rate strong {
     font-weight: 600;
-    color: color-mix(in srgb, var(--color-texto) 65%, transparent);
+    color: var(--menu-texto-color, var(--color-texto));
   }
 
   /* ── Allergen Bar ────────────────────────────────────────── */
@@ -656,8 +892,8 @@ const globalBgValor = fondoGlobal.valor || '';
   }
 
   .alergia-pill[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--color-primario) 90%, transparent);
-    border-color: var(--color-primario);
+    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 90%, transparent);
+    border-color: var(--menu-accent-color, var(--color-primario));
   }
 
   .alergia-pill[aria-pressed="true"] .alergia-pill__label {
@@ -707,10 +943,6 @@ const globalBgValor = fondoGlobal.valor || '';
 <script>
   const CHIP_BASE =
     'menu-chip border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase active:scale-95';
-  const CHIP_ACTIVE =
-    'border-[color-mix(in_srgb,var(--color-primario)_65%,transparent)] bg-[var(--color-primario)] text-white shadow-inner';
-  const CHIP_IDLE =
-    'border-white/15 bg-white/5 text-[color:color-mix(in_srgb,var(--color-texto)_55%,transparent)] backdrop-blur-md';
 
   const AUTOPLAY_MS = 4000;
   const HIGHLIGHT_MS = 1100;
@@ -863,7 +1095,8 @@ const globalBgValor = fondoGlobal.valor || '';
         buttons.forEach((btn) => {
           if (!(btn instanceof HTMLElement)) return;
           const active = btn.dataset.catFilter === activeId;
-          btn.className = `tab-categoria menu-chip ${CHIP_BASE} ${active ? CHIP_ACTIVE : CHIP_IDLE}`;
+          btn.className = `tab-categoria menu-chip ${CHIP_BASE}`;
+          btn.classList.toggle('is-active', active);
         });
       };
 
@@ -888,13 +1121,15 @@ const globalBgValor = fondoGlobal.valor || '';
         paintChips(id);
         emitCategory(id);
 
-        const activeChip = panel.querySelector(`[data-cat-filter="${id}"]`);
-        if (activeChip instanceof HTMLElement) {
-          activeChip.scrollIntoView({
-            behavior: 'smooth',
-            inline: 'center',
-            block: 'nearest',
-          });
+        if (panel.dataset.chipsLayout === 'scroll') {
+          const activeChip = panel.querySelector(`[data-cat-filter="${id}"]`);
+          if (activeChip instanceof HTMLElement) {
+            activeChip.scrollIntoView({
+              behavior: 'smooth',
+              inline: 'center',
+              block: 'nearest',
+            });
+          }
         }
       };
 

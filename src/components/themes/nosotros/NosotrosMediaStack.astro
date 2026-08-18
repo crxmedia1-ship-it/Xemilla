@@ -1,0 +1,243 @@
+---
+/**
+ * Collage 1–3 medias (imagen o video) para bloques Nosotros.
+ * variant="hero" → rellena contenedor (Cinematic). default → editorial stagger.
+ */
+import { isVideoUrl } from '../../../lib/nosotros-layout.js';
+
+interface Props {
+  media?: string[];
+  aspectClass?: string;
+  softColor?: string;
+  /** default | hero (sin stagger, rellena altura) */
+  variant?: 'default' | 'hero';
+}
+
+const {
+  media = [],
+  aspectClass = 'aspect-[4/5] sm:aspect-[4/3]',
+  softColor = 'text-white/40',
+  variant = 'default',
+} = Astro.props;
+
+const items = (Array.isArray(media) ? media : [])
+  .map((u) => String(u || '').trim())
+  .filter(Boolean)
+  .slice(0, 3);
+
+const count = items.length;
+const layout = count >= 3 ? '3' : count === 2 ? '2' : '1';
+const isHero = variant === 'hero';
+---
+
+{
+  count === 0 ? (
+    <div
+      class:list={[
+        'flex w-full items-center justify-center border border-dashed border-current/15',
+        aspectClass,
+      ]}
+      aria-hidden="true"
+      style="background:color-mix(in srgb, var(--color-primario) 10%, transparent)"
+    >
+      <span class={`text-[0.55rem] uppercase tracking-[0.18em] ${softColor}`}>Media</span>
+    </div>
+  ) : (
+    <div
+      class:list={[
+        'nosotros-media w-full overflow-hidden',
+        layout === '1' && aspectClass,
+        layout === '2' && !isHero && 'nosotros-media--duo',
+        isHero && 'nosotros-media--hero-fill',
+      ]}
+      data-media-count={layout}
+      data-media-variant={variant}
+    >
+      {items.map((url, i) => (
+        <div
+          class:list={[
+            'nosotros-media__cell',
+            layout === '3' && i === 0 && 'nosotros-media__cell--hero',
+            layout === '2' && !isHero && i === 1 && 'nosotros-media__cell--offset',
+          ]}
+          data-media-index={i}
+        >
+          {isVideoUrl(url) ? (
+            <video
+              src={url}
+              class="nosotros-media__asset"
+              autoplay
+              muted
+              loop
+              playsinline
+              data-reveal-media
+            />
+          ) : (
+            <img
+              src={url}
+              alt=""
+              class="nosotros-media__asset"
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              data-reveal-media
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+<style>
+  .nosotros-media {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    gap: 0.45rem;
+  }
+
+  .nosotros-media[data-media-count='1'] {
+    grid-template-columns: 1fr;
+  }
+
+  /* Duo editorial — stagger en desktop, alineado en móvil estrecho */
+  .nosotros-media[data-media-count='2']:not([data-media-variant='hero']) {
+    grid-template-columns: 1.06fr 0.94fr;
+    align-items: start;
+    gap: 0.55rem;
+  }
+
+  .nosotros-media--duo .nosotros-media__cell {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primario) 14%, transparent);
+  }
+
+  .nosotros-media__cell--offset {
+    margin-top: 1.65rem;
+  }
+
+  .nosotros-media[data-media-count='3'] {
+    grid-template-columns: 1.2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .nosotros-media__cell--hero {
+    grid-row: 1 / span 2;
+  }
+
+  .nosotros-media__cell {
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 0.85rem;
+    background: color-mix(in srgb, var(--color-primario) 8%, transparent);
+  }
+
+  .nosotros-media__asset {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    min-height: 9rem;
+  }
+
+  .nosotros-media[data-media-count='1'] .nosotros-media__asset {
+    aspect-ratio: 4 / 3;
+  }
+
+  .nosotros-media[data-media-count='2']:not([data-media-variant='hero']) .nosotros-media__asset {
+    aspect-ratio: 3 / 4;
+    min-height: 10.5rem;
+  }
+
+  /* Hero fill (Cinematic) */
+  .nosotros-media--hero-fill {
+    height: 100%;
+    min-height: inherit;
+  }
+
+  .nosotros-media--hero-fill[data-media-count='1'] {
+    grid-template-columns: 1fr;
+  }
+
+  .nosotros-media--hero-fill[data-media-count='2'] {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .nosotros-media--hero-fill[data-media-count='3'] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1.15fr 0.85fr;
+  }
+
+  .nosotros-media--hero-fill[data-media-count='3'] .nosotros-media__cell--hero {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .nosotros-media--hero-fill .nosotros-media__cell {
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+  }
+
+  .nosotros-media--hero-fill .nosotros-media__asset {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    aspect-ratio: unset;
+    object-fit: cover;
+  }
+
+  @media (max-width: 639px) {
+    .nosotros-media[data-media-count='3']:not([data-media-variant='hero']) {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+    }
+
+    .nosotros-media[data-media-count='3']:not([data-media-variant='hero']) .nosotros-media__cell--hero {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .nosotros-media__cell--offset {
+      margin-top: 0.85rem;
+    }
+  }
+
+  @media (max-width: 399px) {
+    .nosotros-media[data-media-count='2']:not([data-media-variant='hero']) {
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+    }
+
+    .nosotros-media__cell--offset {
+      margin-top: 0.5rem;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .nosotros-media[data-media-count='1'] .nosotros-media__asset {
+      aspect-ratio: 4 / 3;
+    }
+
+    .nosotros-media[data-media-count='2']:not([data-media-variant='hero']) {
+      gap: 0.65rem;
+    }
+
+    .nosotros-media__cell--offset {
+      margin-top: 2.15rem;
+    }
+
+    .nosotros-media[data-media-count='2']:not([data-media-variant='hero']) .nosotros-media__asset {
+      min-height: 13rem;
+      aspect-ratio: 4 / 5;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .nosotros-media[data-media-count='3']:not([data-media-variant='hero']) {
+      min-height: 14rem;
+    }
+  }
+</style>

@@ -1,0 +1,223 @@
+---
+/**
+ * Nosotros Cinematic — Palmer / Craft / VanMoof (Mobbin).
+ * Hero por bloque: media a sangre + scrim + título y texto superpuestos.
+ */
+import {
+  resolveNosotrosBloques,
+  renderTitleHtml,
+  renderBodyHtml,
+  isVideoUrl,
+  normalizeContenedorEstilo,
+  contenedorCardStyle,
+} from '../../../lib/nosotros-layout.js';
+import NosotrosMediaStack from './NosotrosMediaStack.astro';
+
+interface BloqueEditorial {
+  subtitulo?: string;
+  titulo?: string;
+  tituloAcento?: string;
+  media?: string[];
+  texto?: string;
+  contenido?: string;
+  acentos?: string[];
+}
+
+interface Props {
+  bloques?: BloqueEditorial[];
+  texto?: string;
+  highlights?: string[];
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+    contenedor_estilo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  bloques = [],
+  texto = '',
+  highlights = [],
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const containerBg = (sectionColors.color_fondo || '').trim();
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const contenedor = normalizeContenedorEstilo(sectionColors.contenedor_estilo);
+const overlayCardStyle = contenedorCardStyle(contenedor, containerBg);
+const textOnMedia = contenedor === 'ninguno' || contenedor === 'linea';
+
+const items = resolveNosotrosBloques({ bloques, texto, highlights });
+---
+
+<div
+  class="nosotros-cinematic mx-auto w-full max-w-3xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-5 font-[family-name:var(--font-body,var(--fuente-principal))] sm:px-5 md:max-w-4xl md:pt-8 lg:max-w-5xl lg:px-6"
+>
+  {
+    items.length === 0 ? (
+      <p class={`mx-auto max-w-prose text-center text-sm leading-relaxed ${estilos.mutedColor}`}>
+        Pronto contaremos nuestra historia.
+      </p>
+    ) : (
+      <div class="flex flex-col gap-10 md:gap-12">
+        {items.map((bloque, index) => {
+          const mediaList = Array.isArray(bloque.media) ? bloque.media.slice(0, 3) : [];
+          const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
+          const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);
+          const hasMedia = mediaList.length > 0;
+          const primary = mediaList[0] || '';
+
+          return (
+            <article class="nosotros-cinematic__block" data-reveal>
+              {hasMedia ? (
+                <div class="nosotros-cinematic__hero relative min-h-[15rem] overflow-hidden rounded-2xl sm:min-h-[18rem] sm:rounded-3xl md:min-h-[22rem] lg:min-h-[24rem]">
+                  <div class="absolute inset-0">
+                    {mediaList.length > 1 ? (
+                      <NosotrosMediaStack
+                        media={mediaList}
+                        variant="hero"
+                        aspectClass="h-full min-h-[15rem] sm:min-h-[18rem] md:min-h-[22rem]"
+                        softColor={estilos.softColor}
+                      />
+                    ) : isVideoUrl(primary) ? (
+                      <video
+                        src={primary}
+                        class="h-full w-full object-cover"
+                        autoplay
+                        muted
+                        loop
+                        playsinline
+                        data-reveal-media
+                      />
+                    ) : (
+                      <img
+                        src={primary}
+                        alt=""
+                        class="h-full w-full object-cover"
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        data-reveal-media
+                      />
+                    )}
+                  </div>
+                  <div
+                    class="nosotros-cinematic__scrim pointer-events-none absolute inset-0"
+                    aria-hidden="true"
+                  />
+                  <div
+                    class:list={[
+                      'relative z-[1] flex h-full min-h-[15rem] flex-col justify-end gap-2.5 p-4 sm:min-h-[18rem] sm:gap-3 sm:p-6 md:min-h-[22rem] md:p-8 lg:min-h-[24rem]',
+                      textOnMedia ? '' : 'nosotros-card m-3 rounded-2xl sm:m-5',
+                    ]}
+                    style={textOnMedia ? undefined : overlayCardStyle || undefined}
+                  >
+                    {bloque.subtitulo && (
+                      <p
+                        class={`text-[0.58rem] font-semibold uppercase tracking-[0.28em] ${textOnMedia ? 'text-white/75' : estilos.softColor}`}
+                      >
+                        {bloque.subtitulo}
+                      </p>
+                    )}
+                    {bloque.titulo && (
+                      <h2
+                        class:list={[
+                          'nosotros-copy max-w-xl break-words text-[clamp(1.5rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[0.02em] font-[family-name:var(--font-heading,var(--fuente-display))]',
+                          textOnMedia ? 'text-white' : estilos.displayClass,
+                          !textOnMedia && !titleColor ? estilos.textColor : '',
+                        ]}
+                        style={textOnMedia ? undefined : titleStyle}
+                        set:html={titleHtml}
+                      />
+                    )}
+                    {bloque.texto && (
+                      <p
+                        class:list={[
+                          'nosotros-copy max-w-prose break-words text-[0.875rem] leading-[1.68] sm:text-[0.95rem] sm:leading-[1.72]',
+                          textOnMedia ? 'text-white/90' : '',
+                          !textOnMedia && !bodyColor ? estilos.textColor : '',
+                        ]}
+                        style={textOnMedia ? undefined : bodyStyle}
+                        set:html={bodyHtml}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  class="nosotros-card rounded-2xl p-5 sm:rounded-3xl sm:p-6"
+                  style={overlayCardStyle || undefined}
+                >
+                  {bloque.titulo && (
+                    <h2
+                      class={`nosotros-copy break-words text-[1.5rem] font-semibold leading-tight font-[family-name:var(--font-heading,var(--fuente-display))] ${estilos.displayClass} ${!titleColor ? estilos.textColor : ''}`}
+                      style={titleStyle}
+                      set:html={titleHtml}
+                    />
+                  )}
+                  {bloque.texto && (
+                    <p
+                      class={`nosotros-copy mt-3 break-words text-[0.92rem] leading-[1.7] ${!bodyColor ? estilos.textColor : ''}`}
+                      style={bodyStyle}
+                      set:html={bodyHtml}
+                    />
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .editorial-accent {
+    color: var(--color-primario);
+  }
+
+  .nosotros-copy {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .nosotros-cinematic__scrim {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, #000 10%, transparent) 0%,
+      color-mix(in srgb, #000 22%, transparent) 38%,
+      color-mix(in srgb, #000 78%, transparent) 100%
+    );
+  }
+
+  @media (min-width: 768px) {
+    .nosotros-cinematic__scrim {
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, #000 6%, transparent) 0%,
+        color-mix(in srgb, #000 16%, transparent) 45%,
+        color-mix(in srgb, #000 68%, transparent) 100%
+      );
+    }
+  }
+
+  .nosotros-cinematic__hero :global(.nosotros-media),
+  .nosotros-cinematic__hero :global(.nosotros-media__cell),
+  .nosotros-cinematic__hero :global(.nosotros-media__asset) {
+    min-height: 100%;
+    height: 100%;
+    aspect-ratio: unset;
+  }
+</style>
