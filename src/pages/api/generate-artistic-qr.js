@@ -12,9 +12,9 @@ export const prerender = false;
 
 const CLOUDINARY_FOLDER = 'xemilla/qr-artisticos';
 
-/** Endpoint moderno de Replicate: modelo oficial sin hash de versión */
+/** Endpoint moderno: nateraw/qrcode-stable-diffusion (público y estable) */
 const REPLICATE_MODEL_PREDICTIONS =
-  'https://api.replicate.com/v1/models/zylim0702/qr_code_controlnet/predictions';
+  'https://api.replicate.com/v1/models/nateraw/qrcode-stable-diffusion/predictions';
 
 /**
  * Genera un QR artístico vía Replicate ControlNet + lo sube a Cloudinary.
@@ -45,7 +45,7 @@ export async function POST({ request, cookies }) {
   const promptPersonalizado = String(raw.prompt_personalizado ?? '')
     .trim()
     .slice(0, 800);
-  // ControlNet conditioning scale (default 1.2 para el modelo zylim0702)
+  // ControlNet conditioning scale (default 1.2)
   const pesoIa = Number.parseFloat(
     String(raw.controlnet_conditioning_scale ?? raw.peso_ia ?? ''),
   );
@@ -141,10 +141,11 @@ async function generateWithReplicate({ webAppUrl, pesoIa, prompt, token }) {
     },
     body: JSON.stringify({
       input: {
-        url: webAppUrl,
+        qr_code_content: webAppUrl,
         prompt,
-        negative_prompt: 'ugly, disfigured, low quality, blurry, nsfw',
         controlnet_conditioning_scale: scale,
+        guidance_scale: 7.5,
+        negative_prompt: 'ugly, disfigured, low quality, blurry, nsfw',
       },
     }),
   });
@@ -190,19 +191,15 @@ async function generateWithReplicate({ webAppUrl, pesoIa, prompt, token }) {
 
 /**
  * Extrae la URL de imagen del output de Replicate (array o string).
+ * imagen_url: Array.isArray(output) ? output[0] : output
  * @param {Record<string, unknown>} prediction
  * @returns {string}
  */
 function extractOutputUrl(prediction) {
   if (!prediction || prediction.status !== 'succeeded') return '';
   const output = prediction.output;
-  if (Array.isArray(output) && output.length > 0) {
-    return String(output[0] || '').trim();
-  }
-  if (typeof output === 'string') {
-    return output.trim();
-  }
-  return '';
+  const imagenUrl = Array.isArray(output) ? output[0] : output;
+  return String(imagenUrl || '').trim();
 }
 
 /**
