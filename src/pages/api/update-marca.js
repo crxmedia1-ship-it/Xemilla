@@ -263,25 +263,9 @@ async function handleUpdateMarca({ request, cookies }) {
     url: destinoValor,
   };
 
-  // Gadgets mesa (columnas canónicas + sync legacy)
+  // Gadgets Studio (pasivos / valor agregado) — legacy live/mesero/cuenta se ignoran
   if (raw.gadget_wifi !== undefined) {
     patch.gadget_wifi = toBool(raw.gadget_wifi);
-  }
-  if (raw.gadget_mesero !== undefined || raw.gadget_llamar_mesero !== undefined) {
-    const gadgetMesero = toBool(
-      raw.gadget_mesero !== undefined ? raw.gadget_mesero : raw.gadget_llamar_mesero,
-    );
-    patch.gadget_mesero = gadgetMesero;
-    patch.gadget_llamar_mesero = gadgetMesero;
-  }
-  if (raw.gadget_cuenta !== undefined || raw.gadget_dividir_cuenta !== undefined) {
-    const gadgetCuenta = toBool(
-      raw.gadget_cuenta !== undefined
-        ? raw.gadget_cuenta
-        : raw.gadget_dividir_cuenta,
-    );
-    patch.gadget_cuenta = gadgetCuenta;
-    patch.gadget_dividir_cuenta = gadgetCuenta;
   }
   if (raw.gadget_boutique !== undefined) {
     patch.gadget_boutique = toBool(raw.gadget_boutique);
@@ -291,9 +275,6 @@ async function handleUpdateMarca({ request, cookies }) {
   }
   if (raw.gadget_ar !== undefined) {
     patch.gadget_ar = toBool(raw.gadget_ar);
-  }
-  if (raw.gadget_live_module !== undefined) {
-    patch.gadget_live_module = toBool(raw.gadget_live_module);
   }
 
   const wifiTouched =
@@ -415,14 +396,11 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
     // Fallback amplio solo si el mensaje es genérico de schema cache
     if (/schema cache|column|does not exist/i.test(msg) && attempt < 6) {
       const optional = [
-        'gadget_live_module',
         'gadget_ar',
         'gadget_nutricion',
         'gadget_boutique',
         'gadget_wifi_ssid',
         'gadget_wifi_clave',
-        'gadget_mesero',
-        'gadget_cuenta',
         'config_boutique',
         'nosotros_theme',
         'home_theme',

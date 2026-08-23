@@ -10,44 +10,15 @@ import { v2 as cloudinary } from 'cloudinary';
 
 export const prerender = false;
 
-const QR_CONCEPTS = {
-  sushi: {
-    prompt:
-      'Japanese sushi restaurant, zen minimalist interior, dark wood and stone textures, soft ambient lighting, cherry blossom motifs, elegant black and red palette, food photography style',
-    negative:
-      'ugly, blurry, distorted, western, colorful chaos, neon, cartoon',
-  },
-  burger: {
-    prompt:
-      'American grill burger restaurant, rustic industrial interior, exposed brick, warm Edison lights, dark metal and wood tones, smoky atmosphere, bold textures',
-    negative:
-      'ugly, blurry, distorted, japanese, sushi, elegant fine dining, pastel',
-  },
-  pizza: {
-    prompt:
-      'Italian pizzeria, mediterranean rustic interior, terracotta and cream tones, vine leaves, warm candlelight, artisan wood-fire oven in background, tuscany aesthetic',
-    negative:
-      'ugly, blurry, distorted, neon, modern industrial, dark, burger, sushi',
-  },
-  cocktails: {
-    prompt:
-      'Upscale cocktail bar, neon lights, dark moody atmosphere, purple and cyan glow, geometric patterns, luxury night club aesthetic, smoke and mirrors',
-    negative:
-      'ugly, blurry, distorted, natural daylight, rustic, wood, farmhouse',
-  },
-  finedining: {
-    prompt:
-      'Fine dining luxury restaurant, white tablecloths, crystal glassware, gold and ivory palette, soft elegant lighting, Michelin star aesthetic, minimalist modern',
-    negative:
-      'ugly, blurry, distorted, casual, fast food, neon, loud colors, busy patterns',
-  },
-};
-
 const CLOUDINARY_FOLDER = 'xemilla/qr-artisticos';
+
+/** Endpoint moderno de Replicate: modelo oficial sin hash de versión */
+const REPLICATE_MODEL_PREDICTIONS =
+  'https://api.replicate.com/v1/models/zylim0702/qr_code_controlnet/predictions';
 
 /**
  * Genera un QR artístico vía Replicate ControlNet + lo sube a Cloudinary.
- * Body JSON: { restaurante_id, slug, concepto, peso_ia }
+ * Body JSON: { restaurante_id, slug, peso_ia, prompt_personalizado }
  */
 export async function POST({ request, cookies }) {
   const supabase = createSupabaseServerClient({ request, cookies });
@@ -61,10 +32,6 @@ export async function POST({ request, cookies }) {
     return json({ error: 'No autenticado' }, 401);
   }
 
-  if (!isSuperAdminUser(user)) {
-    return json({ error: 'Solo el SuperAdmin puede generar QR artísticos' }, 403);
-  }
-
   /** @type {Record<string, unknown>} */
   let raw = {};
   try {
@@ -75,49 +42,69 @@ export async function POST({ request, cookies }) {
 
   const restauranteId = String(raw.restaurante_id ?? '').trim();
   const slug = String(raw.slug ?? '').trim();
-  const concepto = String(raw.concepto ?? 'sushi').toLowerCase().trim();
-  const pesoIa = Math.min(0.5, Math.max(0.2, Number(raw.peso_ia ?? 0.35)));
+  const promptPersonalizado = String(raw.prompt_personalizado ?? '')
+    .trim()
+    .slice(0, 800);
+  // ControlNet conditioning scale (default 1.2 para el modelo zylim0702)
+  const pesoIa = Number.parseFloat(
+    String(raw.controlnet_conditioning_scale ?? raw.peso_ia ?? ''),
+  );
 
   if (!restauranteId || !slug) {
     return json({ error: 'restaurante_id y slug son requeridos' }, 400);
   }
 
+  if (!promptPersonalizado) {
+    return json({ error: 'prompt_personalizado es requerido' }, 400);
+  }
+
+  if (!isSuperAdminUser(user)) {
+    return json({ error: 'Solo SuperAdmin puede generar QR artísticos' }, 403);
+  }
+
   const webAppUrl = `https://xemilla.app/${slug}`;
 
-  const replicateToken =
+  // 1. Lectura transparente de la variable de entorno (sin hardcodear claves)
+  const replicateToken = String(
     import.meta.env.REPLICATE_API_TOKEN ||
-    process.env.REPLICATE_API_TOKEN ||
-    '';
+      process.env.REPLICATE_API_TOKEN ||
+      '',
+  ).trim();
 
+  if (!replicateToken) {
+    return json(
+      { error: 'Falta la API Key de Replicate en el archivo .env local.' },
+      401,
+    );
+  }
+
+  // 2. Generación vía Replicate — errores de saldo/auth se propagan al frontend
   let imageUrl = '';
-
-  if (replicateToken) {
-    try {
-      imageUrl = await generateWithReplicate({
-        webAppUrl,
-        concepto,
-        pesoIa,
-        token: replicateToken,
-      });
-    } catch (err) {
-      console.warn('[generate-artistic-qr] Replicate falló, usando QR estándar:', err?.message);
-    }
+  try {
+    imageUrl = await generateWithReplicate({
+      webAppUrl,
+      pesoIa,
+      prompt: promptPersonalizado,
+      token: replicateToken,
+    });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : 'Error desconocido en Replicate';
+    console.error('[generate-artistic-qr] Replicate:', message);
+    return json({ error: message }, 500);
   }
 
-  // Fallback: QR estándar de alta resolución (800px)
   if (!imageUrl) {
-    imageUrl = buildStandardQrUrl(webAppUrl, 800);
+    return json({ error: 'Replicate no devolvió una imagen válida' }, 500);
   }
 
-  // Subir a Cloudinary si la URL es de Replicate (imagen generada)
+  // Subir a Cloudinary
   let cloudinaryUrl = imageUrl;
-  if (imageUrl && !imageUrl.includes('qrserver.com')) {
-    try {
-      cloudinaryUrl = await uploadUrlToCloudinary(imageUrl, slug);
-    } catch (err) {
-      console.warn('[generate-artistic-qr] Cloudinary upload falló:', err?.message);
-      cloudinaryUrl = imageUrl;
-    }
+  try {
+    cloudinaryUrl = await uploadUrlToCloudinary(imageUrl, slug);
+  } catch (err) {
+    console.warn('[generate-artistic-qr] Cloudinary upload falló:', err?.message);
+    cloudinaryUrl = imageUrl;
   }
 
   // Persistir en Supabase
@@ -131,46 +118,36 @@ export async function POST({ request, cookies }) {
     console.warn('[generate-artistic-qr] Supabase update falló:', err?.message);
   }
 
+  // 3. Formato de salida exitoso
   return json({
     ok: true,
-    url: cloudinaryUrl,
-    isArtistic: Boolean(replicateToken && !imageUrl.includes('qrserver.com')),
-    webAppUrl,
+    imagen_url: cloudinaryUrl,
   });
 }
 
 /**
- * @param {{ webAppUrl: string, concepto: string, pesoIa: number, token: string }} params
+ * @param {{ webAppUrl: string, pesoIa: number, prompt: string, token: string }} params
  * @returns {Promise<string>}
  */
-async function generateWithReplicate({ webAppUrl, concepto, pesoIa, token }) {
-  const concept = QR_CONCEPTS[concepto] || QR_CONCEPTS.sushi;
+async function generateWithReplicate({ webAppUrl, pesoIa, prompt, token }) {
+  const scale = Number.parseFloat(String(pesoIa)) || 1.2;
 
-  // Iniciar predicción
-  const startRes = await fetch(
-    'https://api.replicate.com/v1/models/monster-labs/control_v1p_sd15_qrcode_monster/predictions',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Token ${token}`,
-        'Content-Type': 'application/json',
-        Prefer: 'wait',
-      },
-      body: JSON.stringify({
-        input: {
-          image: buildStandardQrUrl(webAppUrl, 768),
-          prompt: concept.prompt,
-          negative_prompt: concept.negative,
-          num_inference_steps: 40,
-          guidance_scale: 7.5,
-          controlnet_conditioning_scale: pesoIa,
-          seed: Math.floor(Math.random() * 1_000_000),
-          width: 768,
-          height: 768,
-        },
-      }),
+  const startRes = await fetch(REPLICATE_MODEL_PREDICTIONS, {
+    method: 'POST',
+    headers: {
+      Authorization: `Token ${token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'wait',
     },
-  );
+    body: JSON.stringify({
+      input: {
+        url: webAppUrl,
+        prompt,
+        negative_prompt: 'ugly, disfigured, low quality, blurry, nsfw',
+        controlnet_conditioning_scale: scale,
+      },
+    }),
+  });
 
   if (!startRes.ok) {
     const errText = await startRes.text();
@@ -179,15 +156,20 @@ async function generateWithReplicate({ webAppUrl, concepto, pesoIa, token }) {
 
   const prediction = await startRes.json();
 
-  // `Prefer: wait` devuelve el resultado directamente si termina en <60s
-  if (prediction.status === 'succeeded' && Array.isArray(prediction.output)) {
-    return prediction.output[0];
+  // `Prefer: wait` puede devolver el resultado completo si termina en <60s
+  const immediate = extractOutputUrl(prediction);
+  if (immediate) return immediate;
+
+  if (prediction.status === 'failed') {
+    throw new Error(
+      `Replicate predicción fallida: ${prediction.error || 'sin detalle'}`,
+    );
   }
 
-  // Polling hasta 120 segundos
   const predId = prediction.id;
   if (!predId) throw new Error('Replicate no devolvió ID de predicción');
 
+  // Polling hasta ~120s
   for (let i = 0; i < 24; i++) {
     await sleep(5000);
     const pollRes = await fetch(
@@ -196,15 +178,31 @@ async function generateWithReplicate({ webAppUrl, concepto, pesoIa, token }) {
     );
     if (!pollRes.ok) continue;
     const poll = await pollRes.json();
-    if (poll.status === 'succeeded' && Array.isArray(poll.output)) {
-      return poll.output[0];
-    }
+    const url = extractOutputUrl(poll);
+    if (url) return url;
     if (poll.status === 'failed') {
-      throw new Error(`Replicate predicción fallida: ${poll.error}`);
+      throw new Error(`Replicate predicción fallida: ${poll.error || 'sin detalle'}`);
     }
   }
 
   throw new Error('Replicate timeout: la generación tardó más de 2 minutos');
+}
+
+/**
+ * Extrae la URL de imagen del output de Replicate (array o string).
+ * @param {Record<string, unknown>} prediction
+ * @returns {string}
+ */
+function extractOutputUrl(prediction) {
+  if (!prediction || prediction.status !== 'succeeded') return '';
+  const output = prediction.output;
+  if (Array.isArray(output) && output.length > 0) {
+    return String(output[0] || '').trim();
+  }
+  if (typeof output === 'string') {
+    return output.trim();
+  }
+  return '';
 }
 
 /**
@@ -241,22 +239,6 @@ async function uploadUrlToCloudinary(url, slug) {
   });
 
   return optimizedPublicUrl(result);
-}
-
-/**
- * URL de QR estándar vía qrserver.com (sin API key, alta resolución).
- * @param {string} data
- * @param {number} size
- */
-function buildStandardQrUrl(data, size = 512) {
-  const params = new URLSearchParams({
-    size: `${size}x${size}`,
-    data,
-    format: 'png',
-    ecc: 'H',
-    margin: '4',
-  });
-  return `https://api.qrserver.com/v1/create-qr-code/?${params}`;
 }
 
 /** @param {number} ms */

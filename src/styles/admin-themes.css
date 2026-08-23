@@ -1338,12 +1338,112 @@ html.admin-panel .hover\:bg-neutral-800\/50:hover {
   background-color: var(--overlay-soft) !important;
 }
 
-html.admin-panel .crx-toast,
 html.admin-panel .bg-zinc-950\/95,
 html.admin-panel .bg-zinc-950 {
   border-color: var(--border-subtle) !important;
   background: color-mix(in srgb, var(--bg-principal) 88%, transparent) !important;
   color: var(--text-primary) !important;
+}
+
+/* QR Studio — selección en gris suave (legible en light y dark) */
+html.admin-panel [data-marca-panel='qr'] .qr-mode-btn,
+html.admin-panel [data-marca-panel='qr'] .qr-style-btn {
+  background: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #3f3f46 !important;
+  box-shadow: none !important;
+}
+html.admin-panel [data-marca-panel='qr'] .qr-mode-btn span,
+html.admin-panel [data-marca-panel='qr'] .qr-style-btn span {
+  color: #71717a !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'],
+html.admin-panel [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
+  background: #e4e4e7 !important;
+  border-color: #a1a1aa !important;
+  color: #18181b !important;
+  box-shadow: inset 0 0 0 1px #a1a1aa !important;
+}
+html.admin-panel [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'] span,
+html.admin-panel [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] span {
+  color: #52525b !important;
+}
+
+html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn,
+html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #d4d4d8 !important;
+}
+html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn span,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn span,
+html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn span,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn span {
+  color: #a1a1aa !important;
+}
+
+html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'],
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'],
+html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'],
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
+  background: #3f3f46 !important;
+  border-color: #71717a !important;
+  color: #fafafa !important;
+}
+html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'] span,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'] span,
+html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] span,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] span {
+  color: #d4d4d8 !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] .qr-action-btn {
+  background: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
+}
+html.admin-panel [data-marca-panel='qr'] .qr-action-btn:hover {
+  background: #e4e4e7 !important;
+  border-color: #a1a1aa !important;
+}
+
+html.admin-panel.dark [data-marca-panel='qr'] .qr-action-btn,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-action-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+}
+html.admin-panel.dark [data-marca-panel='qr'] .qr-action-btn:hover,
+html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-action-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] #qr-generate-artistic {
+  background-color: #059669 !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+}
+html.admin-panel [data-marca-panel='qr'] #qr-generate-artistic:hover {
+  background-color: #10b981 !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] .bg-white {
+  background-color: #ffffff !important;
+  color: inherit !important;
+}
+
+/* Placa de logo centrada en el QR (~34% del lado del preview) */
+html.admin-panel [data-marca-panel='qr'] .qr-logo-plate {
+  width: 34% !important;
+  height: auto !important;
+  min-width: 4.75rem;
+  max-width: 5.75rem;
+  aspect-ratio: 1 / 1;
+  padding: 0.5rem !important;
+  background-color: #ffffff !important;
 }
 
 html.admin-panel header.sticky,
@@ -1450,6 +1550,34 @@ html.admin-panel[data-theme='light'] .admin-studio-header__link:hover {
   color: #18181b;
   background: rgba(24, 24, 27, 0.06);
   border-color: rgba(24, 24, 27, 0.08);
+}
+
+/* Chip SuperAdmin: fuera del grid de acciones, justo debajo */
+html.admin-panel .admin-superadmin-chip {
+  background: #e4e4e7 !important;
+  border-color: #a1a1aa !important;
+  color: #18181b !important;
+}
+html.admin-panel .admin-superadmin-chip:hover {
+  background: #d4d4d8 !important;
+  border-color: #71717a !important;
+  color: #09090b !important;
+}
+html.admin-panel.dark .admin-superadmin-chip,
+html.admin-panel[data-theme='dark'] .admin-superadmin-chip {
+  background: #3f3f46 !important;
+  border-color: #71717a !important;
+  color: #fafafa !important;
+}
+html.admin-panel.dark .admin-superadmin-chip:hover,
+html.admin-panel[data-theme='dark'] .admin-superadmin-chip:hover {
+  background: #52525b !important;
+  border-color: #a1a1aa !important;
+}
+
+/* Deja aire bajo el header para el chip absoluto en desktop */
+html.admin-panel .admin-studio-header:has(.admin-superadmin-chip) {
+  padding-bottom: 2.15rem !important;
 }
 
 html.admin-panel .placeholder\:text-zinc-600::placeholder,
@@ -1653,21 +1781,24 @@ html.admin-panel[data-theme='light'] .admin-brand-pill {
   height: 2.55rem;
   min-width: 2.55rem;
   max-width: min(46vw, 9rem);
-  padding: 0.28rem 0.55rem;
+  padding: 0.35rem 0.6rem;
   border-radius: 0.85rem;
 }
 
 .admin-studio-brand__logo {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   object-position: center;
 }
 
 .admin-studio-brand__logo--mark {
   width: auto;
-  height: 100%;
+  height: auto;
   max-width: 7.75rem;
+  max-height: 100%;
   object-fit: contain;
   object-position: center;
 }
@@ -1765,23 +1896,29 @@ html.admin-panel[data-theme='light'] .admin-studio-brand__plate--mono {
 
 .admin-studio-foot-brand__plate--logo {
   width: auto;
-  height: 2.85rem;
+  height: auto;
+  min-height: 2.85rem;
   min-width: 2.85rem;
   max-width: min(70vw, 11rem);
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.95rem;
 }
 
 .admin-studio-foot-brand__plate img {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 4rem;
   object-fit: contain;
+  object-position: center;
 }
 
 .admin-studio-foot-brand__plate--logo img {
   width: auto;
-  height: 100%;
+  height: auto;
   max-width: 9.5rem;
+  max-height: 4rem;
+  object-fit: contain;
 }
 
 html.admin-panel.light .admin-studio-foot-brand__plate--logo,
@@ -1900,7 +2037,7 @@ html.admin-panel[data-theme='organico'] .admin-mode-toggle__icon--moon {
   height: 8rem;
   flex-shrink: 0;
   overflow: hidden;
-  padding: 1rem;
+  padding: 0.625rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
   background: var(--logo-pedestal-bg);
@@ -1909,10 +2046,12 @@ html.admin-panel[data-theme='organico'] .admin-mode-toggle__icon--moon {
 
 .admin-logo-preview__img {
   max-width: 100%;
-  max-height: 100%;
+  max-height: 4rem;
   width: auto;
   height: auto;
+  margin-inline: auto;
   object-fit: contain;
+  object-position: center;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35));
 }
 
@@ -2323,15 +2462,16 @@ html.admin-panel[data-theme='dark'] .kit-metrics {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  padding: 0.625rem;
 }
 
 .kit-metrics__logo-img {
   display: block;
   width: auto;
   height: auto;
-  max-width: 78%;
-  max-height: 3.25rem;
+  max-width: 100%;
+  max-height: 4rem;
+  margin-inline: auto;
   object-fit: contain;
   object-position: center;
 }

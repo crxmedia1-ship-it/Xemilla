@@ -178,7 +178,7 @@ const showUpload = allowLogoUpload && restauranteId;
           <img
             src={safeLogo}
             alt=""
-            class="kit-metrics__logo-img"
+            class="kit-metrics__logo-img mx-auto max-h-16 w-auto object-contain"
             data-metrics-logo-img
             loading="lazy"
             decoding="async"
@@ -392,7 +392,7 @@ const showUpload = allowLogoUpload && restauranteId;
             const next = document.createElement('img');
             next.src = url;
             next.alt = '';
-            next.className = 'kit-metrics__logo-img';
+            next.className = 'kit-metrics__logo-img mx-auto max-h-16 w-auto object-contain';
             next.dataset.metricsLogoImg = '';
             slot.prepend(next);
           }

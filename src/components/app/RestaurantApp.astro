@@ -4,8 +4,6 @@ import MenuPanel from './MenuPanel.astro';
 import NosotrosPanel from './NosotrosPanel.astro';
 import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
-import DividirCuenta from '../gadgets/DividirCuenta.astro';
-import LlamarMeseroGadget from '../gadgets/LlamarMeseroGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
 import GadgetFloatingButton from './GadgetFloatingButton.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
@@ -53,9 +51,7 @@ const theme = restaurante?.theme ?? DEFAULT_THEME;
 const gadgets = restaurante?.gadgets || {};
 const uiEstilo = restaurante?.uiEstilo || {};
 const showWifi = Boolean(gadgets?.wifi);
-const showDividir = Boolean(gadgets?.dividirCuenta);
 const showReservas = Boolean(gadgets?.reservas);
-const showLlamarMesero = Boolean(gadgets?.llamarMesero);
 const showBoutique = Boolean(gadgets?.boutique);
 const showNutricion = Boolean(gadgets?.nutricion);
 const showAr = Boolean(gadgets?.ar);
@@ -211,8 +207,6 @@ let homeProps = {
       (restaurante?.slug ? `/${restaurante.slug}/menu` : ''),
     estilos: restaurante?.estilos,
     showWifi: hasOperationalFloating ? false : showWifi,
-    showDividir: hasOperationalFloating ? false : showDividir,
-    showLlamarMesero: hasOperationalFloating ? false : showLlamarMesero,
     showBoutique: hasOperationalFloating ? false : showBoutique,
     wifiSsid: restaurante?.wifi?.ssid || '',
     wifiClave: restaurante?.wifi?.password || '',
@@ -606,36 +600,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       )
     }
 
-    {
-      showDividir && (
-        <OverlayPanel sectionId="dividir" title="PEDIR / DIVIDIR CUENTA" estilos={estilos}>
-          <div class="px-5 py-8">
-            <DividirCuenta
-              restauranteId={restaurante?.id || ''}
-              textColor={estilos?.textColor || ''}
-              mutedColor={estilos?.mutedColor || ''}
-              accentText={estilos?.accentText || ''}
-            />
-          </div>
-        </OverlayPanel>
-      )
-    }
-
-    {
-      showLlamarMesero && (
-        <OverlayPanel sectionId="mesero" title="LLAMAR MESERO" estilos={estilos}>
-          <div class="px-5 py-8">
-            <LlamarMeseroGadget
-              restauranteId={restaurante?.id || ''}
-              whatsapp={restaurante?.whatsapp || ubicacion?.whatsapp || ''}
-              nombreRestaurante={restaurante?.nombre || homeProps.nombre}
-              textColor={estilos?.textColor || ''}
-              mutedColor={estilos?.mutedColor || ''}
-            />
-          </div>
-        </OverlayPanel>
-      )
-    }
 
     {
       showBoutique && (
@@ -1132,28 +1096,16 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
   const OPEN_CLASSES = ['opacity-100', 'pointer-events-auto'];
   const CLOSED_CLASSES = ['translate-y-full', 'opacity-0', 'pointer-events-none'];
-  const MESA_GATED_SECTIONS = new Set(['mesero', 'dividir']);
 
   // Persist ?mesa= ASAP (también si el hub aún no montó el gate)
   syncMesaSession();
 
   /**
-   * Aplica bloqueo Carrd de mesero/cuenta sin mesa (todos los home themes).
+   * Sync mesa query param state for white-label session continuity.
    */
   function applyMesaGate() {
     const mesa = syncMesaSession();
     const unlocked = Boolean(mesa);
-
-    document.querySelectorAll('[data-requires-mesa="true"]').forEach((el) => {
-      if (!(el instanceof HTMLElement)) return;
-      el.classList.toggle('is-mesa-locked', !unlocked);
-      el.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
-      if (unlocked) {
-        el.removeAttribute('tabindex');
-      } else {
-        el.setAttribute('tabindex', '-1');
-      }
-    });
 
     document.documentElement.dataset.mesaAsignada = unlocked ? 'true' : 'false';
     if (mesa) {
@@ -1227,7 +1179,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     applyMesaGate();
     closeAppNavOverlay(app);
 
-    if (MESA_GATED_SECTIONS.has(id) && !hasValidMesaSession()) {
+    if (false) {
       return;
     }
 
@@ -1263,7 +1215,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       document.dispatchEvent(new CustomEvent('xemilla:wifi-open'));
     }
 
-    if (MESA_GATED_SECTIONS.has(id)) {
+    if (false) {
       document.dispatchEvent(
         new CustomEvent('xemilla:mesa-panel-open', {
           detail: { section: id, mesa: getStoredMesa() },

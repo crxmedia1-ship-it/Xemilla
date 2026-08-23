@@ -4,8 +4,6 @@ import { createSupabaseServerClient } from './lib/supabase/server.js';
 
 /**
  * Solo refresca sesión en rutas on-demand del panel.
- * Las páginas públicas (incl. /[slug] SSR) no necesitan cookies.
- * Endurece: Admin Operativo no puede entrar a /admin/super/*.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
@@ -14,7 +12,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (!needsAuth) {
     const response = await next();
-    // Menús públicos SSR: no cachear plantillas home_theme / ubicacion_theme
     response.headers.set(
       'Cache-Control',
       'private, no-store, no-cache, must-revalidate, max-age=0',

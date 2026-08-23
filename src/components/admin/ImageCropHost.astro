@@ -452,6 +452,10 @@
   .hub-ficha-slot--logo {
     aspect-ratio: var(--hub-crop-logo-aspect);
     background: var(--hub-logo-plate, #000);
+    padding: 0.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .hub-ficha-slot--logo-glass {
@@ -459,6 +463,10 @@
   }
 
   .hub-ficha-slot--logo img {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain !important;
     background: transparent;
   }

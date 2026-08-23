@@ -136,17 +136,13 @@ const RESTAURANTE_SELECT_BASE = [
   'nombre_comercial',
   'whatsapp_num',
   'gadget_wifi',
-  'gadget_dividir_cuenta',
   'gadget_reservas',
-  'gadget_llamar_mesero',
 ].join(', ');
 
 const RESTAURANTE_SELECT_FULL = [
   RESTAURANTE_SELECT_BASE,
   'gadget_wifi_ssid',
   'gadget_wifi_clave',
-  'gadget_mesero',
-  'gadget_cuenta',
   'gadget_boutique',
   'gadget_nutricion',
   'gadget_ar',
@@ -834,11 +830,7 @@ async function loadRestauranteBySlug(slug) {
     },
     gadgets: {
       wifi: Boolean(row.gadget_wifi),
-      dividirCuenta:
-        Boolean(row.gadget_cuenta) || Boolean(row.gadget_dividir_cuenta),
       reservas: Boolean(row.gadget_reservas),
-      llamarMesero:
-        Boolean(row.gadget_mesero) || Boolean(row.gadget_llamar_mesero),
       boutique: Boolean(row.gadget_boutique),
       nutricion: Boolean(row.gadget_nutricion),
       ar: Boolean(row.gadget_ar),

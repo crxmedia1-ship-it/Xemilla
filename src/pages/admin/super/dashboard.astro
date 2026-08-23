@@ -514,7 +514,7 @@ function resolveMapsEmbed(direccion) {
                                 src={logoUrl}
                                 alt=""
                                 data-ficha-logo-img
-                                style="object-fit:contain;width:100%;height:100%;"
+                                class="mx-auto max-h-16 w-auto object-contain"
                               />
                             ) : (
                               <span class="hub-ficha-slot__empty" data-ficha-logo-empty>Sin logo</span>
@@ -1203,7 +1203,7 @@ function resolveMapsEmbed(direccion) {
                   if (kind === 'cover') img.dataset.fichaCoverImg = '';
                   else {
                     img.dataset.fichaLogoImg = '';
-                    img.style.cssText = 'object-fit:contain;width:100%;height:100%;';
+                    img.className = 'mx-auto max-h-16 w-auto object-contain';
                   }
                   preview.appendChild(img);
                 }
@@ -1383,7 +1383,7 @@ function resolveMapsEmbed(direccion) {
               if (!(pImg instanceof HTMLImageElement)) {
                 pImg = document.createElement('img');
                 pImg.dataset.fichaLogoImg = '';
-                pImg.style.cssText = 'object-fit:contain;width:100%;height:100%;';
+                pImg.className = 'mx-auto max-h-16 w-auto object-contain';
                 fichaLogoPreview.appendChild(pImg);
               }
               pImg.src = savedLogo;

@@ -136,6 +136,10 @@ if (isSuperAdmin && restId) {
 }
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
 const publicWebAppUrl = publicSlug ? `/${publicSlug}` : '';
+const replicateConfigured = Boolean(
+  import.meta.env.REPLICATE_API_TOKEN ||
+    (typeof process !== 'undefined' && process.env?.REPLICATE_API_TOKEN),
+);
 const categoriasJson = JSON.stringify(categorias);
 const opsTelefono = String(
   restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
@@ -484,19 +488,7 @@ const marca = {
   whatsapp_url: redesById.whatsapp?.url || '',
   horarios: restaurante?.horarios || '',
   gadget_wifi: Boolean(restaurante?.gadget_wifi),
-  gadget_mesero: Boolean(
-    restaurante?.gadget_mesero || restaurante?.gadget_llamar_mesero,
-  ),
-  gadget_cuenta: Boolean(
-    restaurante?.gadget_cuenta || restaurante?.gadget_dividir_cuenta,
-  ),
-  gadget_dividir_cuenta: Boolean(
-    restaurante?.gadget_cuenta || restaurante?.gadget_dividir_cuenta,
-  ),
   gadget_reservas: Boolean(restaurante?.gadget_reservas),
-  gadget_llamar_mesero: Boolean(
-    restaurante?.gadget_mesero || restaurante?.gadget_llamar_mesero,
-  ),
   wifi_ssid:
     restaurante?.gadget_wifi_ssid || configWifi.ssid || '',
   wifi_password:
@@ -504,9 +496,7 @@ const marca = {
   gadget_boutique: Boolean(restaurante?.gadget_boutique),
   gadget_nutricion: Boolean(restaurante?.gadget_nutricion),
   gadget_ar: Boolean(restaurante?.gadget_ar),
-  gadget_live_module: Boolean(restaurante?.gadget_live_module),
   qr_artistico_url: String(restaurante?.qr_artistico_url || '').trim(),
-  num_mesas: Number(restaurante?.num_mesas ?? 10) || 10,
   boutique_productos: boutiqueConfig.productos,
   home_theme: normalizeHomeTheme(restaurante?.home_theme),
   nosotros_theme: normalizeNosotrosTheme(
@@ -527,8 +517,6 @@ const marca = {
 
 const marcaHasOperationalGadgets = hasOperationalGadgets({
   wifi: marca.gadget_wifi,
-  llamarMesero: marca.gadget_mesero,
-  dividirCuenta: marca.gadget_cuenta,
   boutique: marca.gadget_boutique,
 });
 
@@ -628,9 +616,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 <img
                   src={hubLogoUrl}
                   alt=""
-                  class="admin-studio-brand__logo admin-studio-brand__logo--mark"
-                  width="120"
-                  height="40"
+                  class="admin-studio-brand__logo admin-studio-brand__logo--mark mx-auto max-h-16 w-auto object-contain"
                 />
               </span>
             ) : restaurante ? (
@@ -651,82 +637,83 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       </div>
 
       <div class="flex shrink-0 items-center gap-2 sm:order-3 sm:gap-4">
-        <div class="admin-studio-header__utils hidden items-center gap-1 md:flex">
+          <div class="admin-studio-header__utils hidden items-center gap-1 md:flex">
+            <a
+              href="/admin/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="admin-studio-header__link"
+            >
+              Login ↗
+            </a>
+          </div>
+
           {
-            publicWebAppUrl ? (
-              <a
-                href={publicWebAppUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="admin-studio-header__link"
+            isSuperAdmin && restaurante ? (
+              <button
+                type="button"
+                id="marca-save"
+                hidden
+                data-save-state="idle"
+                class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
               >
-                WebApp ↗
-              </a>
+                Guardar
+              </button>
             ) : null
           }
-          <a
-            href="/admin/login"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="admin-studio-header__link"
-          >
-            Login ↗
-          </a>
-        </div>
 
-        {
-          isSuperAdmin && restaurante ? (
+          <AdminThemeSwitcher />
+          <div class="relative" data-admin-profile>
             <button
               type="button"
-              id="marca-save"
-              hidden
-              data-save-state="idle"
-              class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
+              id="admin-profile-trigger"
+              class="admin-profile-trigger"
+              aria-expanded="false"
+              aria-haspopup="menu"
+              aria-controls="admin-profile-menu"
+              title={userEmail || 'Perfil'}
+              data-admin-profile-trigger
             >
-              Guardar
+              <span class="admin-profile-trigger__initials">{userInitials}</span>
             </button>
-          ) : null
-        }
-
-        <AdminThemeSwitcher />
-        <div class="relative" data-admin-profile>
-          <button
-            type="button"
-            id="admin-profile-trigger"
-            class="admin-profile-trigger"
-            aria-expanded="false"
-            aria-haspopup="menu"
-            aria-controls="admin-profile-menu"
-            title={userEmail || 'Perfil'}
-            data-admin-profile-trigger
-          >
-            <span class="admin-profile-trigger__initials">{userInitials}</span>
-          </button>
-          <div
-            id="admin-profile-menu"
-            class="admin-profile-dropdown"
-            role="menu"
-            aria-labelledby="admin-profile-trigger"
-            hidden
-            data-admin-profile-menu
-          >
-            <div class="admin-profile-dropdown__meta">
-              <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
-              {
-                userEmail ? (
-                  <p class="admin-profile-dropdown__email">{userEmail}</p>
-                ) : null
-              }
+            <div
+              id="admin-profile-menu"
+              class="admin-profile-dropdown"
+              role="menu"
+              aria-labelledby="admin-profile-trigger"
+              hidden
+              data-admin-profile-menu
+            >
+              <div class="admin-profile-dropdown__meta">
+                <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
+                {
+                  userEmail ? (
+                    <p class="admin-profile-dropdown__email">{userEmail}</p>
+                  ) : null
+                }
+              </div>
+              <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
+                <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
+                  Cerrar Sesión
+                </button>
+              </form>
             </div>
-            <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
-              <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
-                Cerrar Sesión
-              </button>
-            </form>
           </div>
         </div>
       </div>
-    </div>
+
+      {
+        (managingAsSuperAdmin || isSuperAdmin) && restaurante ? (
+          <div class="flex w-full justify-end sm:absolute sm:bottom-1.5 sm:right-6 sm:top-auto sm:z-10 sm:w-auto">
+            <a
+              href="/admin/super/dashboard"
+              class="admin-superadmin-chip inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.12em] shadow-sm transition"
+            >
+              ← SuperAdmin
+            </a>
+          </div>
+        ) : null
+      }
 
     {/* Nav pills — desktop centered; mobile uses bottom dock */}
     {
@@ -840,17 +827,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 <span id="platos-count">{platos.length}</span> platos · edición en vivo
               </p>
             </div>
-            {
-              managingAsSuperAdmin || isSuperAdmin ? (
-                <a
-                  href="/admin/super/dashboard"
-                  class="inline-flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.28em] text-zinc-500 transition hover:text-zinc-300"
-                >
-                  <span aria-hidden="true">←</span>
-                  SuperAdmin
-                </a>
-              ) : null
-            }
           </div>
 
           <div
@@ -1569,18 +1545,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 <h2 class="font-blacksushi-display text-lg font-semibold tracking-tight text-white">
                   Identidad de Marca
                 </h2>
-                {
-                  publicWebAppUrl ? (
-                    <a
-                      href={publicWebAppUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:text-zinc-200"
-                    >
-                      Abrir WebApp ↗
-                    </a>
-                  ) : null
-                }
               </div>
 
               <div class="space-y-4">
@@ -1761,17 +1725,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                       <div class="space-y-3">
                         <div
-                          class="admin-logo-pedestal group w-full h-32 bg-black/40"
+                          class="admin-logo-pedestal group flex h-32 w-full items-center justify-center bg-black/40 p-2.5"
                           data-logo-preview
                           aria-hidden="true"
                         >
                           <img
-                            class="admin-logo-preview__img max-h-full max-w-full object-contain drop-shadow-lg transition-transform duration-300 group-hover:scale-105"
+                            class="admin-logo-preview__img mx-auto max-h-16 w-auto object-contain drop-shadow-lg transition-transform duration-300 group-hover:scale-105"
                             data-logo-preview-img
                             src={marca.logo_url || undefined}
                             alt=""
-                            width="320"
-                            height="128"
                             hidden={!marca.logo_url}
                             loading="lazy"
                             decoding="async"
@@ -3173,58 +3135,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
-                      {/* ── Llamar mesero ── */}
-                      <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300', marca.gadget_mesero && 'gadget-card--on']}
-                        data-gadget-card
-                        data-gadget-id="mesero"
-                      >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v3m0 0a6 6 0 0 1 6 6v1.5a3 3 0 0 0 1.5 2.6L21 17H3l1.5-1.4A3 3 0 0 0 6 13.5V12a6 6 0 0 1 6-6zm-3.5 14a3.5 3.5 0 0 0 7 0" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Llamar mesero</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_mesero ? 'Activo' : 'Inactivo'}</span>
-                            </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Botón en la WebApp para llamar al staff de mesa.</p>
-                          </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Llamar mesero">
-                            <input type="checkbox" id="marca-gadget-mesero" name="gadget_mesero" checked={marca.gadget_mesero} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_mesero ? 'true' : 'false'} />
-                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_mesero && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-mesero" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
-                          </label>
-                        </div>
-                      </article>
-
-                      {/* ── Pedir / Dividir cuenta ── */}
-                      <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300', marca.gadget_cuenta && 'gadget-card--on']}
-                        data-gadget-card
-                        data-gadget-id="dividir"
-                      >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h.01M16 17h.01M7 17 17 7M9.5 7a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm8 10a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Pedir / Dividir cuenta</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_cuenta ? 'Activo' : 'Inactivo'}</span>
-                            </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Permite al cliente solicitar y dividir la cuenta desde la mesa.</p>
-                          </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Pedir / Dividir cuenta">
-                            <input type="checkbox" id="marca-gadget-dividir" name="gadget_cuenta" checked={marca.gadget_cuenta} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_cuenta ? 'true' : 'false'} />
-                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_cuenta && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-dividir" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
-                          </label>
-                        </div>
-                      </article>
-
                       {/* ── Boutique / Tienda ── */}
                       <article
                         class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300', marca.gadget_boutique && 'gadget-card--on']}
@@ -3364,286 +3274,343 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
-                      {/* ── Xemilla Live (Autopedido) ── full-width */}
-                      <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300 sm:col-span-2', marca.gadget_live_module && 'gadget-card--on']}
-                        data-gadget-card
-                        data-gadget-id="live"
-                        style="--gadget-accent: #7c3aed;"
-                      >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Xemilla Live · Autopedido</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_live_module ? 'Activo' : 'Inactivo'}</span>
-                              {marca.gadget_live_module && publicSlug ? (
-                                <a
-                                  href={`/admin/live?restaurante=${restId}`}
-                                  class="ml-auto shrink-0 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-violet-300 transition hover:text-violet-100"
-                                >
-                                  Portal Mesonero ↗
-                                </a>
-                              ) : null}
-                            </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Sesiones de mesa con PIN, autopedido colaborativo en tiempo real y monitor de comanda.</p>
-                          </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Xemilla Live">
-                            <input type="checkbox" id="marca-gadget-live-module" name="gadget_live_module" checked={marca.gadget_live_module} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_live_module ? 'true' : 'false'} />
-                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_live_module && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-live-module" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
-                          </label>
-                        </div>
-
-                        <div class:list={['gadget-card__config', marca.gadget_live_module && 'is-open']} data-gadget-config aria-hidden={marca.gadget_live_module ? 'false' : 'true'}>
-                          <div class="gadget-card__config-inner space-y-3 px-4 pb-4">
-                            <div class="grid gap-2 sm:grid-cols-3">
-                              {publicSlug ? (
-                                <>
-                                  <a
-                                    href={`/admin/live?restaurante=${restId}`}
-                                    class="flex items-center justify-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2.5 text-[11px] font-semibold text-violet-300 transition hover:bg-violet-500/20"
-                                  >
-                                    🟢 Portal Mesonero
-                                  </a>
-                                  <a
-                                    href={`/admin/comanda?restaurante=${restId}`}
-                                    class="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/20"
-                                  >
-                                    📋 Monitor Comanda
-                                  </a>
-                                  <a
-                                    href={`/live/${publicSlug}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/60 px-3 py-2.5 text-[11px] font-semibold text-zinc-400 transition hover:bg-zinc-800"
-                                  >
-                                    👁 Vista Comensal ↗
-                                  </a>
-                                </>
-                              ) : null}
-                            </div>
-                            <p class="text-[10px] leading-relaxed text-zinc-600">
-                              El mesonero abre la mesa → genera PIN → el comensal escanea QR e ingresa PIN → autopedido colaborativo → monitor de comanda en cocina/barra.
-                            </p>
-                          </div>
-                        </div>
-                      </article>
-
                     </div>
                   </div>
 
                   {/* —— QR & IMPRESIÓN —— */}
                   <div
                     data-marca-panel="qr"
-                    class="space-y-4"
+                    class={`${studioCardClass} space-y-5`}
                     hidden
+                    data-qr-slug={publicSlug}
+                    data-qr-logo={marca.logo_url || ''}
+                    data-qr-brand={marca.color_primario || '#9f1239'}
+                    data-qr-artistic={marca.qr_artistico_url || ''}
+                    data-qr-replicate={replicateConfigured ? '1' : '0'}
                   >
-                    {/* Card principal — Glassmorphism */}
-                    <section
-                      class="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-xl backdrop-blur-xl space-y-5"
-                      aria-labelledby="qr-section-title"
-                    >
-                      {/* Glow decoration */}
-                      <div class="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-indigo-500/10 blur-3xl" aria-hidden="true" />
-                      <div class="pointer-events-none absolute -bottom-12 -left-12 size-48 rounded-full bg-violet-500/10 blur-3xl" aria-hidden="true" />
+                    <header class="space-y-1">
+                      <p id="qr-section-title" class={labelClass}>QR & Impresión</p>
+                      <p class="text-sm text-zinc-500">Apunta siempre a <span class="font-mono text-zinc-400">xemilla.app/{publicSlug || '…'}</span></p>
+                    </header>
 
-                      <div class="relative flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p id="qr-section-title" class={labelClass}>Códigos QR &amp; Impresión</p>
-                          <p class="mt-1 text-[11px] leading-snug text-zinc-500">Genera el QR de marca del local y lotes de mesas para imprenta.</p>
-                        </div>
-                        {publicWebAppUrl ? (
-                          <a
-                            href={publicWebAppUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:text-zinc-200"
-                          >
-                            xemilla.app/{publicSlug} ↗
-                          </a>
-                        ) : null}
-                      </div>
-
-                      {/* ── Selector de modalidad ── */}
-                      <div class="relative space-y-2">
-                        <p class={labelClass}>Modalidad de QR</p>
-                        <div id="qr-mode-tabs" class="flex gap-2 flex-wrap" role="group" aria-label="Modalidad">
+                    {/* Selector de modalidad — Artístico solo SuperAdmin */}
+                    {
+                      isSuperAdmin ? (
+                        <div class="grid gap-2 sm:grid-cols-2" role="tablist" aria-label="Modalidad de QR">
                           <button
                             type="button"
+                            id="qr-mode-standard"
                             data-qr-mode="standard"
-                            class="qr-mode-btn flex-1 min-w-[140px] rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:border-indigo-500/50 aria-pressed:border-indigo-500 aria-pressed:bg-indigo-500/20 aria-pressed:text-indigo-200"
-                            aria-pressed="true"
+                            role="tab"
+                            aria-selected="true"
+                            class="qr-mode-btn rounded-xl border px-3 py-3.5 text-left text-sm font-semibold leading-snug transition"
                           >
-                            QR Estándar Vectorial
+                            🎯 QR Estándar Vectorial
                           </button>
                           <button
                             type="button"
+                            id="qr-mode-artistic"
                             data-qr-mode="artistic"
-                            class="qr-mode-btn flex-1 min-w-[140px] rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-zinc-400 transition-all hover:border-indigo-500/50 aria-pressed:border-indigo-500 aria-pressed:bg-indigo-500/20 aria-pressed:text-indigo-200"
-                            aria-pressed="false"
+                            role="tab"
+                            aria-selected="false"
+                            class="qr-mode-btn rounded-xl border px-3 py-3.5 text-left text-sm font-semibold leading-snug transition"
                           >
-                            QR Artístico IA (ControlNet)
+                            🎨 QR Artístico IA
                           </button>
                         </div>
-                      </div>
+                      ) : null
+                    }
 
-                      {/* ── Opciones Artístico IA ── */}
-                      <div id="qr-artistic-options" class="space-y-4 hidden">
-                        <div class="grid gap-3 sm:grid-cols-2">
-                          <div class="space-y-1.5">
-                            <p class={labelClass}>Concepto / Preset Visual</p>
-                            <select id="qr-concepto" class={fieldClass}>
-                              <option value="sushi">Sushi / Asiático</option>
-                              <option value="burger">Burger / Grill</option>
-                              <option value="pizza">Pizza / Italiano</option>
-                              <option value="cocktails">Cocktails / Neón</option>
-                              <option value="finedining">Fine Dining</option>
-                            </select>
+                    <div class="grid gap-5 lg:grid-cols-2 lg:items-start">
+                      {/* Columna izquierda — Controles */}
+                      <div class="space-y-4">
+                        {/* Vista 1: Estándar */}
+                        <div id="qr-view-standard" data-qr-view="standard" class="space-y-4">
+                          <div class="space-y-2">
+                            <p class={labelClass}>Estilo del QR</p>
+                            <div class="grid grid-cols-2 gap-2" role="group" aria-label="Estilo del QR">
+                              <button
+                                type="button"
+                                data-qr-style="standard"
+                                class="qr-style-btn rounded-xl border px-3 py-3 text-sm font-semibold transition"
+                                aria-pressed="true"
+                              >
+                                Negro / Blanco
+                              </button>
+                              <button
+                                type="button"
+                                data-qr-style="brand"
+                                class="qr-style-btn rounded-xl border px-3 py-3 text-sm font-semibold transition"
+                                aria-pressed="false"
+                              >
+                                Color de marca
+                              </button>
+                            </div>
                           </div>
-                          <div class="space-y-1.5">
-                            <p class={labelClass}>
-                              Nivel de integración IA
-                              <span class="ml-1 text-zinc-500" id="qr-peso-display">(0.35)</span>
-                            </p>
+
+                          <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3.5">
+                            <span class="min-w-0">
+                              <span class="block text-sm font-semibold text-zinc-100">Incluir logo en el centro</span>
+                              <span class="mt-0.5 block text-xs text-zinc-500">Usa el logo de Identidad sobre el QR</span>
+                            </span>
+                            <input
+                              type="checkbox"
+                              id="qr-include-logo"
+                              class="peer sr-only"
+                              role="switch"
+                              aria-checked="false"
+                            />
+                            <span
+                              class="relative h-7 w-12 shrink-0 rounded-full bg-zinc-600/60 transition peer-checked:bg-emerald-500 after:absolute after:left-0.5 after:top-0.5 after:size-6 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"
+                              aria-hidden="true"
+                            ></span>
+                          </label>
+
+                          <div class="space-y-2">
+                            <p class={labelClass}>Enlace del local</p>
+                            <div class="flex gap-2">
+                              <input
+                                type="text"
+                                id="qr-public-url"
+                                readonly
+                                value={publicSlug ? `https://xemilla.app/${publicSlug}` : ''}
+                                class={`${fieldClass} min-w-0 flex-1 !rounded-xl !px-3.5 !py-3`}
+                              />
+                              <button
+                                type="button"
+                                id="qr-copy-link"
+                                class="qr-action-btn shrink-0 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:border-white/20"
+                              >
+                                Copiar
+                              </button>
+                            </div>
+                          </div>
+
+                          <div class="space-y-2.5 pt-1">
+                            <button
+                              type="button"
+                              id="qr-download-svg"
+                              class="qr-action-btn flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={!publicSlug}
+                            >
+                              📥 Descargar QR SVG (Alta Calidad)
+                            </button>
+                            <button
+                              type="button"
+                              id="qr-download-png"
+                              class="qr-action-btn flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={!publicSlug}
+                            >
+                              🖼️ Descargar PNG (Para Redes)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Vista 2: Artístico IA — solo SuperAdmin */}
+                        {
+                          isSuperAdmin ? (
+                        <div id="qr-view-artistic" data-qr-view="artistic" class="hidden space-y-4" hidden>
+                          {!replicateConfigured && (
+                            <div
+                              id="qr-replicate-alert"
+                              class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-xs leading-relaxed text-amber-200"
+                              role="status"
+                            >
+                              Replicate no está configurado (<code class="font-mono">REPLICATE_API_TOKEN</code>).
+                              Puedes generar un QR de respaldo; el modo artístico se activará al añadir la API key.
+                            </div>
+                          )}
+
+                          <div class="space-y-2">
+                            <label for="prompt_personalizado" class={labelClass}>Prompt personalizado</label>
+                            <textarea
+                              id="prompt_personalizado"
+                              name="prompt_personalizado"
+                              rows="5"
+                              maxlength="800"
+                              placeholder="Ej: Estilo neón futurista, madera oscura, iluminación dramática cinemática, minimalista..."
+                              class={`${fieldClass} !min-h-[8rem] resize-y !rounded-xl !px-3.5 !py-3.5 !text-sm !leading-relaxed`}
+                            ></textarea>
+                            <p class="text-[11px] text-zinc-500">Describe el estilo visual; la IA lo aplica sobre el QR del local.</p>
+                          </div>
+
+                          <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                              <label for="controlnet_conditioning_scale" class={labelClass}>Nivel de intervención IA</label>
+                              <span id="qr-peso-ia-value" class="font-mono text-xs font-semibold text-zinc-200">0.85</span>
+                            </div>
                             <input
                               type="range"
-                              id="qr-peso-ia"
-                              min="0.2"
-                              max="0.5"
+                              id="controlnet_conditioning_scale"
+                              name="controlnet_conditioning_scale"
+                              min="0.6"
+                              max="1.4"
                               step="0.05"
-                              value="0.35"
-                              class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+                              value="0.85"
+                              class="w-full accent-emerald-500"
                             />
-                            <div class="flex justify-between text-[0.6rem] text-zinc-600">
-                              <span>0.2 · Más legible</span>
-                              <span>0.5 · Más artístico</span>
+                            <p class="text-[11px] text-zinc-500">0.6 legible → 1.4 más artístico</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            id="btn-generar-artistico"
+                            data-qr-generate
+                            class="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/35 bg-emerald-600/90 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!publicSlug}
+                          >
+                            <span id="qr-generate-label">⚡ Generar QR Artístico con IA</span>
+                            <span id="qr-generate-spinner" class="hidden size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true"></span>
+                          </button>
+
+                          <a
+                            id="btn-descargar-artistico"
+                            href={marca.qr_artistico_url || '#'}
+                            download={`qr-artistico-${publicSlug || 'local'}.png`}
+                            class:list={[
+                              'qr-action-btn flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:border-white/20',
+                              !marca.qr_artistico_url && 'pointer-events-none opacity-40 opacity-50',
+                            ]}
+                            aria-disabled={!marca.qr_artistico_url ? 'true' : 'false'}
+                            tabindex={!marca.qr_artistico_url ? -1 : 0}
+                          >
+                            ⬇️ Descargar QR Artístico
+                          </a>
+                        </div>
+                          ) : null
+                        }
+
+                        <p id="qr-error-msg" class="hidden rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-300" role="alert"></p>
+                        <p id="qr-status-msg" class="hidden text-xs font-medium text-emerald-400" role="status"></p>
+                      </div>
+
+                      {/* Columna derecha — Preview */}
+                      <div class="rounded-2xl border border-white/10 bg-black/20 p-5 sm:p-6">
+                        <p class={labelClass}>Vista previa</p>
+                        <div class="mt-4 flex flex-col items-center">
+                          <div class="relative flex size-[220px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white p-3 shadow-inner sm:size-[240px]">
+                            {publicSlug ? (
+                              <img
+                                id="qr-preview-img"
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=12&ecc=H&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`https://xemilla.app/${publicSlug}`)}`}
+                                alt={`QR de ${publicSlug}`}
+                                width="220"
+                                height="220"
+                                class="size-full object-contain"
+                                loading="eager"
+                                data-qr-preview-mode="standard"
+                              />
+                            ) : (
+                              <p id="qr-preview-empty" class="px-4 text-center text-sm font-medium text-zinc-500">Guarda un slug para generar el QR</p>
+                            )}
+                            <div
+                              id="qr-preview-logo-wrap"
+                              class="qr-logo-plate pointer-events-none absolute left-1/2 top-1/2 z-10 flex hidden aspect-square w-[34%] min-w-[4.75rem] max-w-[5.75rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-xl bg-white p-2 shadow-md"
+                              hidden
+                            >
+                              <img
+                                id="qr-preview-logo"
+                                src={marca.logo_url || ''}
+                                alt=""
+                                class="h-full w-full object-contain"
+                                decoding="async"
+                              />
+                            </div>
+                            <div
+                              id="qr-preview-loading"
+                              class="absolute inset-0 z-20 hidden flex-col items-center justify-center gap-2.5 bg-zinc-950/80 px-4 text-center backdrop-blur-[2px]"
+                              hidden
+                              role="status"
+                              aria-live="polite"
+                            >
+                              <span class="size-8 animate-spin rounded-full border-2 border-white/25 border-t-emerald-400" aria-hidden="true"></span>
+                              <span class="text-xs font-semibold tracking-wide text-white">Generando QR con IA (8-12s)…</span>
                             </div>
                           </div>
-                        </div>
-
-                        <div class="flex items-start gap-2.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-3.5 py-3">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-indigo-400">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
-                          </svg>
-                          <p class="text-[11px] leading-relaxed text-indigo-300/80">
-                            Requiere <code class="rounded border border-indigo-400/20 bg-indigo-500/10 px-1 font-mono text-[10px]">REPLICATE_API_TOKEN</code> en las variables de entorno del servidor. Sin token usa QR estándar de alta resolución.
+                          <p class="mt-4 text-center font-mono text-[11px] text-zinc-500" id="qr-preview-caption">
+                            {publicSlug ? `xemilla.app/${publicSlug}` : 'Sin URL pública'}
                           </p>
                         </div>
                       </div>
-
-                      {/* ── Botón Generar + Preview ── */}
-                      <div class="space-y-3">
-                        <button
-                          type="button"
-                          id="qr-generate-btn"
-                          class="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-600/20 px-5 py-3 text-sm font-semibold text-indigo-200 transition-all hover:border-indigo-500/70 hover:bg-indigo-600/30 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <span id="qr-gen-icon">🎨</span>
-                          <span id="qr-gen-label">Generar QR con IA</span>
-                          <svg id="qr-gen-spinner" class="hidden size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                        </button>
-
-                        {/* Preview */}
-                        <div id="qr-preview-wrap" class={`${marca.qr_artistico_url ? '' : 'hidden'} rounded-2xl border border-white/10 bg-black/30 p-4 space-y-3`}>
-                          <p class={labelClass}>Vista previa</p>
-                          <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-                            <img
-                              id="qr-preview-img"
-                              src={marca.qr_artistico_url || ''}
-                              alt="QR de marca"
-                              width="200"
-                              height="200"
-                              class="size-[160px] shrink-0 rounded-xl border border-white/10 bg-zinc-900 object-contain shadow-lg sm:size-[180px]"
-                              loading="lazy"
-                            />
-                            <div class="flex flex-col gap-2 min-w-0">
-                              <p class="text-[11px] text-zinc-400 break-all" id="qr-preview-url">{marca.qr_artistico_url}</p>
-                              <a
-                                id="qr-download-btn"
-                                href={marca.qr_artistico_url || '#'}
-                                download={`qr-${publicSlug}.png`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-600/25"
-                              >
-                                ⬇️ Descargar PNG (Alta Res) [Cloudinary]
-                              </a>
-                              <p class="text-[10px] text-zinc-600">El QR apunta a: <code class="text-zinc-400">xemilla.app/{publicSlug}</code></p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div id="qr-error-msg" class="hidden rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-400" role="alert"></div>
-                      </div>
-                    </section>
-
-                    {/* ── Lote de Mesas / Chips NFC ── */}
-                    <section
-                      class="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-xl backdrop-blur-xl space-y-5"
-                      aria-labelledby="qr-mesas-title"
-                    >
-                      <div class="pointer-events-none absolute -right-12 -bottom-12 size-48 rounded-full bg-amber-500/8 blur-3xl" aria-hidden="true" />
-
-                      <div>
-                        <p id="qr-mesas-title" class={labelClass}>Impresión en Lote · Mesas / Chips NFC</p>
-                        <p class="mt-1 text-[11px] leading-snug text-zinc-500">Genera un pliego PDF listo para imprenta con QR individual por mesa.</p>
-                      </div>
-
-                      <div class="grid gap-3 sm:grid-cols-2">
-                        <label class="block space-y-1.5">
-                          <span class={labelClass}>Número de mesas del local</span>
-                          <input
-                            type="number"
-                            id="qr-num-mesas"
-                            min="1"
-                            max="200"
-                            step="1"
-                            value={marca.num_mesas}
-                            placeholder="10"
-                            inputmode="numeric"
-                            class={fieldClass}
-                          />
-                        </label>
-                        <div class="flex flex-col justify-end space-y-1.5">
-                          <p class={labelClass}>URL base generada</p>
-                          <p class="truncate rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-[0.68rem] font-mono text-zinc-400">
-                            xemilla.app/{publicSlug}?mesa=1…{'{N}'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        id="qr-batch-btn"
-                        class="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-600/15 px-5 py-3 text-sm font-semibold text-amber-200 transition-all hover:border-amber-500/60 hover:bg-amber-600/25 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <span id="qr-batch-icon">🖨️</span>
-                        <span id="qr-batch-label">Descargar Pliego de Mesas en PDF</span>
-                        <svg id="qr-batch-spinner" class="hidden size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      </button>
-
-                      <div id="qr-batch-error" class="hidden rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-400" role="alert"></div>
-
-                      <div class="flex items-start gap-2.5 rounded-xl border border-amber-500/15 bg-amber-500/5 px-3.5 py-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-amber-400">
-                          <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
-                        </svg>
-                        <p class="text-[11px] leading-relaxed text-amber-300/80">
-                          El PDF se abre en ventana de impresión del navegador. Cada QR incluye la etiqueta de mesa y la URL. Compatible con NFC chips (misma URL destino).
-                        </p>
-                      </div>
-                    </section>
+                    </div>
                   </div>
+
+                  <script is:inline>
+                    (function () {
+                      if (window.__xemillaQrArtisticClickBound) return;
+                      window.__xemillaQrArtisticClickBound = true;
+
+                      document.addEventListener('click', async (e) => {
+                        const btn = e.target.closest('#btn-generar-artistico');
+                        if (!btn) return;
+
+                        e.preventDefault();
+
+                        const promptInput = document.getElementById('prompt_personalizado');
+                        const scaleInput = document.getElementById('controlnet_conditioning_scale');
+                        const previewImg = document.getElementById('qr-preview-img');
+                        const downloadBtn = document.getElementById('btn-descargar-artistico');
+                        const panel = document.querySelector('[data-marca-panel="qr"]');
+                        const root = document.getElementById('dashboard-root');
+
+                        if (!promptInput || !promptInput.value.trim()) {
+                          alert('Escribe un prompt para generar el QR.');
+                          return;
+                        }
+
+                        const slug = String(
+                          (panel && panel.dataset.qrSlug) || (root && root.dataset.slug) || ''
+                        ).trim();
+                        const restauranteId = String(
+                          (root && root.dataset.restauranteId) || ''
+                        ).trim();
+
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.innerText = '⏳ Generando QR... (10s)';
+
+                        try {
+                          const res = await fetch('/api/generate-artistic-qr', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              restaurante_id: restauranteId,
+                              slug,
+                              prompt_personalizado: promptInput.value,
+                              controlnet_conditioning_scale: scaleInput
+                                ? Number(scaleInput.value)
+                                : 0.85,
+                            }),
+                          });
+
+                          const data = await res.json().catch(() => ({}));
+
+                          if (!res.ok || !data.imagen_url) {
+                            throw new Error(data.error || 'No se pudo generar la imagen');
+                          }
+
+                          if (previewImg) previewImg.src = data.imagen_url;
+                          if (panel) panel.dataset.qrArtistic = data.imagen_url;
+                          if (downloadBtn) {
+                            downloadBtn.href = data.imagen_url;
+                            downloadBtn.classList.remove(
+                              'opacity-50',
+                              'opacity-40',
+                              'pointer-events-none'
+                            );
+                            downloadBtn.setAttribute('aria-disabled', 'false');
+                            downloadBtn.tabIndex = 0;
+                          }
+                        } catch (err) {
+                          alert('Error al generar QR Artístico: ' + err.message);
+                        } finally {
+                          btn.disabled = false;
+                          btn.style.opacity = '';
+                          btn.innerText = '⚡ Generar QR Artístico con IA';
+                        }
+                      });
+                    })();
+                  </script>
 
                   <p id="marca-feedback" class="hidden text-xs text-zinc-500" role="status"></p>
                 </div>
@@ -3664,7 +3631,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             class="admin-studio-foot-brand__plate admin-studio-foot-brand__plate--logo"
             style={hubLogoBg ? `--studio-brand-plate:${hubLogoBg}` : undefined}
           >
-            <img src={hubLogoUrl} alt="" width="160" height="48" loading="lazy" decoding="async" />
+            <img
+              src={hubLogoUrl}
+              alt=""
+              class="mx-auto max-h-16 w-auto object-contain"
+              loading="lazy"
+              decoding="async"
+            />
           </span>
           <p class="admin-studio-foot-brand__name">{hubNombre}</p>
         </footer>
@@ -11713,13 +11686,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   const syncOperationalGadgetsUi = () => {
     const wifi = document.getElementById('marca-gadget-wifi');
-    const mesero = document.getElementById('marca-gadget-mesero');
-    const dividir = document.getElementById('marca-gadget-dividir');
     const boutique = document.getElementById('marca-gadget-boutique');
     const on =
       (wifi instanceof HTMLInputElement && wifi.checked) ||
-      (mesero instanceof HTMLInputElement && mesero.checked) ||
-      (dividir instanceof HTMLInputElement && dividir.checked) ||
       (boutique instanceof HTMLInputElement && boutique.checked);
     document.querySelectorAll('[data-shows-when-operational-gadgets]').forEach((el) => {
       if (!(el instanceof HTMLElement)) return;
@@ -11758,8 +11727,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         }
         if (
           input.id === 'marca-gadget-wifi' ||
-          input.id === 'marca-gadget-mesero' ||
-          input.id === 'marca-gadget-dividir' ||
           input.id === 'marca-gadget-boutique'
         ) {
           syncOperationalGadgetsUi();
@@ -11829,296 +11796,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   colorPrimarioInput?.addEventListener('input', syncGadgetAccent, { signal });
   syncGadgetAccent();
 
-  // ── QR & Impresión ──────────────────────────────────────────────
-  (function initQrPanel() {
-    const qrModeBtns = document.querySelectorAll('[data-qr-mode]');
-    const qrArtisticOptions = document.getElementById('qr-artistic-options');
-    const qrGenBtn = document.getElementById('qr-generate-btn');
-    const qrGenLabel = document.getElementById('qr-gen-label');
-    const qrGenIcon = document.getElementById('qr-gen-icon');
-    const qrGenSpinner = document.getElementById('qr-gen-spinner');
-    const qrPreviewWrap = document.getElementById('qr-preview-wrap');
-    const qrPreviewImg = document.getElementById('qr-preview-img');
-    const qrPreviewUrl = document.getElementById('qr-preview-url');
-    const qrDownloadBtn = document.getElementById('qr-download-btn');
-    const qrErrorMsg = document.getElementById('qr-error-msg');
-    const qrPesoIa = document.getElementById('qr-peso-ia');
-    const qrPesoDisplay = document.getElementById('qr-peso-display');
-    const qrBatchBtn = document.getElementById('qr-batch-btn');
-    const qrBatchLabel = document.getElementById('qr-batch-label');
-    const qrBatchIcon = document.getElementById('qr-batch-icon');
-    const qrBatchSpinner = document.getElementById('qr-batch-spinner');
-    const qrBatchError = document.getElementById('qr-batch-error');
-    const qrNumMesas = document.getElementById('qr-num-mesas');
-
-    let qrMode = 'standard';
-
-    // Modo selector
-    qrModeBtns.forEach((btn) => {
-      if (!(btn instanceof HTMLElement)) return;
-      btn.addEventListener('click', () => {
-        qrMode = btn.dataset.qrMode || 'standard';
-        qrModeBtns.forEach((b) => {
-          if (!(b instanceof HTMLElement)) return;
-          const active = b.dataset.qrMode === qrMode;
-          b.setAttribute('aria-pressed', active ? 'true' : 'false');
-          b.classList.toggle('bg-white/10', !active);
-          b.classList.toggle('bg-indigo-500/20', active);
-          b.classList.toggle('text-white', !active);
-          b.classList.toggle('text-indigo-200', active);
-          b.classList.toggle('border-indigo-500', active);
-          b.classList.toggle('border-white/15', !active);
-        });
-        if (qrArtisticOptions instanceof HTMLElement) {
-          qrArtisticOptions.classList.toggle('hidden', qrMode !== 'artistic');
-        }
-        if (qrGenLabel) {
-          qrGenLabel.textContent =
-            qrMode === 'artistic' ? 'Generar QR con IA' : 'Generar QR Estándar';
-        }
-        if (qrGenIcon) qrGenIcon.textContent = qrMode === 'artistic' ? '🎨' : '⚡';
-      }, { signal });
-    });
-
-    // Slider peso IA
-    if (qrPesoIa instanceof HTMLInputElement) {
-      const updatePeso = () => {
-        if (qrPesoDisplay) qrPesoDisplay.textContent = `(${parseFloat(qrPesoIa.value).toFixed(2)})`;
-      };
-      qrPesoIa.addEventListener('input', updatePeso, { signal });
-      updatePeso();
-    }
-
-    // Botón Generar QR
-    if (qrGenBtn instanceof HTMLButtonElement) {
-      qrGenBtn.addEventListener('click', async () => {
-        if (!restauranteId) {
-          showQrError('Restaurante no disponible');
-          return;
-        }
-
-        setQrLoading(true);
-        hideQrError();
-
-        try {
-          const concepto = (() => {
-            const el = document.getElementById('qr-concepto');
-            return el instanceof HTMLSelectElement ? el.value : 'sushi';
-          })();
-          const pesoIa = qrPesoIa instanceof HTMLInputElement
-            ? parseFloat(qrPesoIa.value)
-            : 0.35;
-
-          const res = await fetch('/api/generate-artistic-qr', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              restaurante_id: restauranteId,
-              slug: _qrSlug(),
-              concepto,
-              peso_ia: pesoIa,
-            }),
-          });
-
-          const data = await res.json();
-          if (!res.ok || !data.ok) {
-            throw new Error(data.error || `HTTP ${res.status}`);
-          }
-
-          showQrPreview(data.url, _qrSlug());
-          showToast(
-            data.isArtistic ? '✨ QR artístico generado y guardado' : '✅ QR estándar generado',
-            'ok',
-          );
-        } catch (err) {
-          showQrError(err instanceof Error ? err.message : String(err));
-        } finally {
-          setQrLoading(false);
-        }
-      }, { signal });
-    }
-
-    // Botón Pliego de Mesas PDF
-    if (qrBatchBtn instanceof HTMLButtonElement) {
-      qrBatchBtn.addEventListener('click', async () => {
-        if (!restauranteId) {
-          showBatchError('Restaurante no disponible');
-          return;
-        }
-        const numMesas = qrNumMesas instanceof HTMLInputElement
-          ? Math.max(1, parseInt(qrNumMesas.value, 10) || 10)
-          : 10;
-
-        setBatchLoading(true);
-        hideBatchError();
-
-        try {
-          const res = await fetch('/api/generate-table-qrs', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              restaurante_id: restauranteId,
-              slug: _qrSlug(),
-              num_mesas: numMesas,
-            }),
-          });
-
-          const data = await res.json();
-          if (!res.ok || !data.ok) {
-            throw new Error(data.error || `HTTP ${res.status}`);
-          }
-
-          openPrintWindow(data.mesas, data.slug || _qrSlug());
-          showToast(`🖨️ Pliego de ${numMesas} mesas listo para imprimir`, 'ok');
-        } catch (err) {
-          showBatchError(err instanceof Error ? err.message : String(err));
-        } finally {
-          setBatchLoading(false);
-        }
-      }, { signal });
-    }
-
-    /** Lee el slug del local actual desde el elemento raíz del dashboard */
-    function _qrSlug() {
-      const root = document.getElementById('dashboard-root');
-      return (root instanceof HTMLElement && root.dataset.slug) ? root.dataset.slug : '';
-    }
-
-    function setQrLoading(on) {
-      if (!(qrGenBtn instanceof HTMLButtonElement)) return;
-      qrGenBtn.disabled = on;
-      if (qrGenLabel) qrGenLabel.textContent = on ? 'Generando…' : (qrMode === 'artistic' ? 'Generar QR con IA' : 'Generar QR Estándar');
-      if (qrGenIcon) qrGenIcon.textContent = on ? '' : (qrMode === 'artistic' ? '🎨' : '⚡');
-      if (qrGenSpinner instanceof HTMLElement) qrGenSpinner.classList.toggle('hidden', !on);
-    }
-
-    function setBatchLoading(on) {
-      if (!(qrBatchBtn instanceof HTMLButtonElement)) return;
-      qrBatchBtn.disabled = on;
-      if (qrBatchLabel) qrBatchLabel.textContent = on ? 'Generando pliego…' : 'Descargar Pliego de Mesas en PDF';
-      if (qrBatchIcon) qrBatchIcon.textContent = on ? '' : '🖨️';
-      if (qrBatchSpinner instanceof HTMLElement) qrBatchSpinner.classList.toggle('hidden', !on);
-    }
-
-    function showQrPreview(url, slug) {
-      if (!url) return;
-      if (qrPreviewImg instanceof HTMLImageElement) qrPreviewImg.src = url;
-      if (qrPreviewUrl) qrPreviewUrl.textContent = url;
-      if (qrDownloadBtn instanceof HTMLAnchorElement) {
-        qrDownloadBtn.href = url;
-        qrDownloadBtn.download = `qr-${slug}.png`;
-      }
-      if (qrPreviewWrap instanceof HTMLElement) qrPreviewWrap.classList.remove('hidden');
-    }
-
-    function showQrError(msg) {
-      if (!(qrErrorMsg instanceof HTMLElement)) return;
-      qrErrorMsg.textContent = msg;
-      qrErrorMsg.classList.remove('hidden');
-    }
-
-    function hideQrError() {
-      if (!(qrErrorMsg instanceof HTMLElement)) return;
-      qrErrorMsg.classList.add('hidden');
-    }
-
-    function showBatchError(msg) {
-      if (!(qrBatchError instanceof HTMLElement)) return;
-      qrBatchError.textContent = msg;
-      qrBatchError.classList.remove('hidden');
-    }
-
-    function hideBatchError() {
-      if (!(qrBatchError instanceof HTMLElement)) return;
-      qrBatchError.classList.add('hidden');
-    }
-
-    /**
-     * Abre ventana de impresión con el pliego de mesas.
-     * @param {{ numero: number, appUrl: string, qrUrl: string }[]} mesas
-     * @param {string} slug
-     */
-    function openPrintWindow(mesas, slug) {
-      const win = window.open('', '_blank', 'width=900,height=700');
-      if (!win) {
-        showBatchError('El navegador bloqueó la ventana emergente. Permitila para imprimir.');
-        return;
-      }
-
-      const cards = mesas
-        .map(
-          ({ numero, appUrl, qrUrl }) => `
-            <div class="mesa-card">
-              <img src="${escHtml(qrUrl)}" alt="QR Mesa ${numero}" width="220" height="220" loading="eager" />
-              <div class="mesa-info">
-                <p class="mesa-label">Mesa ${numero}</p>
-                <p class="mesa-url">${escHtml(appUrl)}</p>
-              </div>
-            </div>`,
-        )
-        .join('');
-
-      win.document.write(`<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Pliego QR Mesas – ${escHtml(slug)}</title>
-  <style>
-    @page { size: A4; margin: 15mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #111; }
-    h1 { font-size: 14pt; font-weight: 700; text-align: center; margin-bottom: 4mm; color: #1a1a1a; letter-spacing: 0.02em; }
-    p.subtitle { font-size: 8pt; text-align: center; color: #666; margin-bottom: 8mm; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
-    .mesa-card { border: 1px solid #ddd; border-radius: 8px; padding: 5mm; display: flex; flex-direction: column; align-items: center; gap: 3mm; page-break-inside: avoid; break-inside: avoid; }
-    .mesa-card img { width: 55mm; height: 55mm; object-fit: contain; display: block; }
-    .mesa-info { text-align: center; }
-    .mesa-label { font-size: 13pt; font-weight: 800; letter-spacing: 0.04em; color: #111; }
-    .mesa-url { font-size: 5.5pt; color: #888; font-family: monospace; margin-top: 1mm; word-break: break-all; }
-    .footer { margin-top: 8mm; text-align: center; font-size: 7pt; color: #aaa; }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .no-print { display: none; }
-    }
-    .btn-print { display: block; margin: 6mm auto 0; padding: 3mm 8mm; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-size: 11pt; font-weight: 600; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <h1>Códigos QR de Mesa — ${escHtml(slug)}</h1>
-  <p class="subtitle">xemilla.app · Escanea para acceder al menú digital de tu mesa</p>
-  <div class="grid">${cards}</div>
-  <p class="footer">Generado por Xemilla · ${new Date().toLocaleDateString('es-VE')}</p>
-  <button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
-  <script>
-    window.addEventListener('load', () => {
-      // Esperar que todas las imágenes carguen antes de auto-imprimir
-      const imgs = Array.from(document.images);
-      const pending = imgs.filter(i => !i.complete);
-      if (pending.length === 0) { window.print(); return; }
-      let done = 0;
-      pending.forEach(img => {
-        img.addEventListener('load', () => { if (++done === pending.length) window.print(); });
-        img.addEventListener('error', () => { if (++done === pending.length) window.print(); });
-      });
-    });
-  <\/script>
-</body>
-</html>`);
-      win.document.close();
-    }
-
-    /** @param {string} s */
-    function escHtml(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-  })();
-  // ── /QR & Impresión ─────────────────────────────────────────────
+  // QR Panel gestionado por bloque standalone astro:page-load (ver más abajo)
 
   async function saveIdentidadMarca() {
     const saveBtn =
@@ -12299,10 +11977,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           reservas_destino_tipo: val('marca-reservas-destino-tipo'),
           reservas_destino_valor: val('marca-reservas-destino-valor'),
           gadget_wifi: checked('marca-gadget-wifi'),
-          gadget_mesero: checked('marca-gadget-mesero'),
-          gadget_cuenta: checked('marca-gadget-dividir'),
-          gadget_dividir_cuenta: checked('marca-gadget-dividir'),
-          gadget_llamar_mesero: checked('marca-gadget-mesero'),
           gadget_wifi_ssid: val('marca-wifi-ssid'),
           gadget_wifi_clave: val('marca-wifi-password'),
           wifi_ssid: val('marca-wifi-ssid'),
@@ -12310,7 +11984,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           gadget_boutique: checked('marca-gadget-boutique'),
           gadget_nutricion: checked('marca-gadget-nutricion'),
           gadget_ar: checked('marca-gadget-ar'),
-          gadget_live_module: checked('marca-gadget-live-module'),
           boutique_productos: collectBoutiqueProductos(),
           home_theme: val('marca-home-theme') || 'editorial',
           ubicacion_theme: val('marca-ubicacion-theme') || 'modal',
@@ -12408,6 +12081,371 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   } catch (err) {
     console.error('Error en menú (boot):', err);
   }
+
+  // ── QR Panel standalone — supervivencia ViewTransitions ──────────
+  // Bloque completamente independiente con su propio AbortController
+  // para que el botón "Generar QR Artístico" sobreviva a navegaciones.
+
+  /** @type {AbortController | null} */
+  let __qrPanelAc = null;
+
+  function teardownQrPanel() {
+    __qrPanelAc?.abort();
+    __qrPanelAc = null;
+  }
+
+  function initQrPanel() {
+    teardownQrPanel();
+
+    const panel = document.querySelector('[data-marca-panel="qr"]');
+    if (!(panel instanceof HTMLElement)) return;
+
+    const ac = new AbortController();
+    __qrPanelAc = ac;
+    const { signal } = ac;
+
+    // ── Refs ────────────────────────────────────────────────────────
+    const root = document.getElementById('dashboard-root');
+    const isSuper = root?.dataset?.isSuperAdmin === 'true';
+
+    const styleBtns   = panel.querySelectorAll('[data-qr-style]');
+    const modeBtns    = panel.querySelectorAll('[data-qr-mode]');
+    const viewStd     = document.getElementById('qr-view-standard');
+    const viewArt     = document.getElementById('qr-view-artistic');
+    const logoToggle  = document.getElementById('qr-include-logo');
+    const logoWrap    = document.getElementById('qr-preview-logo-wrap');
+    const logoPreview = document.getElementById('qr-preview-logo');
+    const previewImg  = document.getElementById('qr-preview-img');
+    const copyBtn     = document.getElementById('qr-copy-link');
+    const urlInput    = document.getElementById('qr-public-url');
+    const dlSvg       = document.getElementById('qr-download-svg');
+    const dlPng       = document.getElementById('qr-download-png');
+    // Botón artístico — puede ser null si no es SuperAdmin
+    const generateBtn     = document.getElementById('btn-generar-artistico');
+    const generateLabel   = document.getElementById('qr-generate-label');
+    const generateSpinner = document.getElementById('qr-generate-spinner');
+    const dlArtistic      = document.getElementById('btn-descargar-artistico');
+    const previewLoading  = document.getElementById('qr-preview-loading');
+    const pesoRange       = document.getElementById('controlnet_conditioning_scale');
+    const pesoValue       = document.getElementById('qr-peso-ia-value');
+    const errorMsg        = document.getElementById('qr-error-msg');
+    const statusMsg       = document.getElementById('qr-status-msg');
+    const brandInput      = document.getElementById('marca-color-primario');
+
+    let qrStyle    = 'standard';
+    let qrMode     = 'standard';
+    let artisticUrl = isSuper ? String(panel.dataset.qrArtistic || '').trim() : '';
+
+    // ── Helpers ─────────────────────────────────────────────────────
+    function getSlug() {
+      return String(panel.dataset.qrSlug || root?.dataset?.slug || '').trim();
+    }
+    function getRestauranteId() {
+      return String(root?.dataset?.restauranteId || '').trim();
+    }
+    function getPublicUrl() {
+      const s = getSlug();
+      return s ? `https://xemilla.app/${s}` : '';
+    }
+    function getBrandColor() {
+      if (brandInput instanceof HTMLInputElement && brandInput.value.trim())
+        return brandInput.value.trim();
+      return String(panel.dataset.qrBrand || '#9f1239').trim() || '#9f1239';
+    }
+    function getLogoUrl() {
+      return String(panel.dataset.qrLogo || '').trim();
+    }
+    function hexForApi(hex) {
+      return String(hex || '000000').replace(/^#/, '').replace(/[^0-9a-f]/gi, '').slice(0, 6) || '000000';
+    }
+    function buildQrUrl({ format = 'png', size = 480 } = {}) {
+      const data = getPublicUrl();
+      if (!data) return '';
+      const color = qrStyle === 'brand' ? hexForApi(getBrandColor()) : '000000';
+      const p = new URLSearchParams({ size: `${size}x${size}`, margin: '12', ecc: 'H', color, bgcolor: 'ffffff', format, data });
+      return `https://api.qrserver.com/v1/create-qr-code/?${p}`;
+    }
+    function showError(msg) {
+      if (!(errorMsg instanceof HTMLElement)) return;
+      errorMsg.textContent = msg;
+      errorMsg.classList.toggle('hidden', !msg);
+    }
+    function showStatus(msg) {
+      if (!(statusMsg instanceof HTMLElement)) return;
+      statusMsg.textContent = msg || '';
+      statusMsg.classList.toggle('hidden', !msg);
+      if (msg) setTimeout(() => showStatus(''), 2600);
+    }
+    function setPreviewLoading(on) {
+      if (!(previewLoading instanceof HTMLElement)) return;
+      previewLoading.hidden = !on;
+      previewLoading.classList.toggle('hidden', !on);
+      previewLoading.classList.toggle('flex', on);
+    }
+    function updateArtisticDownload(url) {
+      if (!(dlArtistic instanceof HTMLAnchorElement)) return;
+      const has = Boolean(url);
+      dlArtistic.href = has ? url : '#';
+      dlArtistic.classList.toggle('pointer-events-none', !has);
+      dlArtistic.classList.toggle('opacity-40', !has);
+      dlArtistic.classList.toggle('opacity-100', has);
+      dlArtistic.classList.toggle('bg-zinc-800', has);
+      dlArtistic.setAttribute('aria-disabled', has ? 'false' : 'true');
+      dlArtistic.tabIndex = has ? 0 : -1;
+      if (has) dlArtistic.setAttribute('download', `qr-artistico-${getSlug() || 'local'}.png`);
+    }
+    function setLogoOverlayVisible(show) {
+      if (logoWrap instanceof HTMLElement) {
+        logoWrap.hidden = !show;
+        logoWrap.classList.toggle('hidden', !show);
+      }
+    }
+    function refreshPreview() {
+      if (!(previewImg instanceof HTMLImageElement)) return;
+      if (qrMode === 'artistic' && artisticUrl) {
+        previewImg.src = artisticUrl;
+        previewImg.dataset.qrPreviewMode = 'artistic';
+        setLogoOverlayVisible(false);
+        return;
+      }
+      const url = buildQrUrl({ format: 'png', size: 480 });
+      if (url) {
+        previewImg.src = url;
+        previewImg.dataset.qrPreviewMode = 'standard';
+        previewImg.classList.remove('hidden');
+      }
+      const includeLogo = logoToggle instanceof HTMLInputElement && logoToggle.checked;
+      const logo = getLogoUrl();
+      const showLogo = Boolean(includeLogo && logo && qrMode === 'standard');
+      if (logoPreview instanceof HTMLImageElement && showLogo) logoPreview.src = logo;
+      setLogoOverlayVisible(showLogo);
+      if (logoToggle instanceof HTMLInputElement)
+        logoToggle.setAttribute('aria-checked', includeLogo ? 'true' : 'false');
+    }
+    function setMode(next) {
+      if (!isSuper && next === 'artistic') next = 'standard';
+      qrMode = next === 'artistic' ? 'artistic' : 'standard';
+      modeBtns.forEach((btn) => {
+        if (btn instanceof HTMLElement)
+          btn.setAttribute('aria-selected', btn.dataset.qrMode === qrMode ? 'true' : 'false');
+      });
+      if (viewStd instanceof HTMLElement) {
+        viewStd.hidden = qrMode !== 'standard';
+        viewStd.classList.toggle('hidden', qrMode !== 'standard');
+      }
+      if (viewArt instanceof HTMLElement) {
+        const show = isSuper && qrMode === 'artistic';
+        viewArt.hidden = !show;
+        viewArt.classList.toggle('hidden', !show);
+      }
+      refreshPreview();
+    }
+    function setStyle(next) {
+      qrStyle = next === 'brand' ? 'brand' : 'standard';
+      styleBtns.forEach((btn) => {
+        if (btn instanceof HTMLElement)
+          btn.setAttribute('aria-pressed', btn.dataset.qrStyle === qrStyle ? 'true' : 'false');
+      });
+      if (qrMode === 'standard') refreshPreview();
+    }
+
+    // ── Generar QR Artístico (lógica principal) ──────────────────────
+    async function generateArtisticQr(ev) {
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+
+      // PRIMERO: deshabilitar botón e indicar carga inmediatamente
+      if (generateBtn instanceof HTMLButtonElement) generateBtn.disabled = true;
+      if (generateLabel) generateLabel.textContent = '⏳ Generando QR... (puede tardar ~30s)';
+      generateSpinner?.classList.remove('hidden');
+      setPreviewLoading(true);
+      showError('');
+
+      try {
+        if (!isSuper) throw new Error('Solo SuperAdmin puede generar QR artísticos');
+
+        const promptEl = document.getElementById('prompt_personalizado');
+        const scaleEl  = document.getElementById('controlnet_conditioning_scale');
+        const prompt   = promptEl instanceof HTMLTextAreaElement ? promptEl.value.trim() : '';
+        const scale    = scaleEl instanceof HTMLInputElement ? scaleEl.value : '0.85';
+        const slug     = getSlug();
+        const rid      = getRestauranteId();
+
+        if (!slug || !rid) throw new Error('Guarda el restaurante y un slug antes de generar');
+        if (!prompt) {
+          if (promptEl instanceof HTMLElement) promptEl.focus();
+          throw new Error('Escribe un prompt personalizado para generar el QR artístico');
+        }
+
+        updateArtisticDownload(''); // deshabilitar descarga mientras genera
+
+        const res  = await fetch('/api/generate-artistic-qr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurante_id: rid,
+            slug,
+            prompt_personalizado: prompt,
+            controlnet_conditioning_scale: Number(scale),
+            peso_ia: Number(scale),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Error ${res.status} del servidor`);
+
+        const imagenUrl = String(data.imagen_url || data.url || '').trim();
+        if (!imagenUrl) throw new Error('La API no devolvió una URL de imagen válida');
+
+        artisticUrl = imagenUrl;
+        panel.dataset.qrArtistic = artisticUrl;
+
+        if (previewImg instanceof HTMLImageElement) {
+          previewImg.src = artisticUrl;
+          previewImg.classList.remove('hidden');
+          previewImg.dataset.qrPreviewMode = 'artistic';
+        }
+        setLogoOverlayVisible(false);
+        updateArtisticDownload(artisticUrl);
+        showStatus('QR artístico generado ✓');
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido al generar QR artístico';
+        console.error('[qr-artistic]', err);
+        showError(msg);
+        alert('Error al generar QR: ' + msg);
+        updateArtisticDownload(artisticUrl); // restaurar descarga previa si la hay
+
+      } finally {
+        setPreviewLoading(false);
+        generateSpinner?.classList.add('hidden');
+        if (generateLabel) generateLabel.textContent = '⚡ Generar QR Artístico con IA';
+        // Siempre rehabilitar para que el usuario pueda reintentar
+        if (generateBtn instanceof HTMLButtonElement) generateBtn.disabled = false;
+      }
+    }
+
+    // ── Descarga helpers ─────────────────────────────────────────────
+    async function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+        img.src = src;
+      });
+    }
+    function triggerDownload(blob, filename) {
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 1500);
+    }
+
+    // ── Event listeners ──────────────────────────────────────────────
+    modeBtns.forEach((btn) =>
+      btn.addEventListener('click', () => setMode(btn.getAttribute('data-qr-mode') || 'standard'), { signal })
+    );
+    styleBtns.forEach((btn) =>
+      btn.addEventListener('click', () => setStyle(btn.getAttribute('data-qr-style') || 'standard'), { signal })
+    );
+    logoToggle?.addEventListener('change', refreshPreview, { signal });
+    brandInput?.addEventListener('input', () => {
+      if (qrStyle === 'brand' && qrMode === 'standard') refreshPreview();
+    }, { signal });
+    pesoRange?.addEventListener('input', () => {
+      if (pesoValue instanceof HTMLElement && pesoRange instanceof HTMLInputElement)
+        pesoValue.textContent = Number(pesoRange.value).toFixed(2);
+    }, { signal });
+    copyBtn?.addEventListener('click', async () => {
+      const url = getPublicUrl();
+      if (!url) { showError('No hay slug público para copiar'); return; }
+      try {
+        await navigator.clipboard.writeText(url);
+        showError(''); showStatus('Enlace copiado');
+        if (copyBtn instanceof HTMLButtonElement) {
+          const prev = copyBtn.textContent;
+          copyBtn.textContent = '¡Copiado!';
+          setTimeout(() => { copyBtn.textContent = prev || 'Copiar'; }, 1600);
+        }
+      } catch {
+        if (urlInput instanceof HTMLInputElement) { urlInput.select(); document.execCommand('copy'); showStatus('Enlace copiado'); }
+      }
+    }, { signal });
+
+    dlSvg?.addEventListener('click', async () => {
+      const slug = getSlug(); const svgUrl = buildQrUrl({ format: 'svg', size: 1024 });
+      if (!slug || !svgUrl) { showError('Guarda un slug para descargar el QR'); return; }
+      showError('');
+      try {
+        const res = await fetch(svgUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        triggerDownload(await res.blob(), `qr-${slug}.svg`);
+        showStatus('SVG descargado');
+      } catch (err) { showError(err instanceof Error ? err.message : 'Error al descargar SVG'); }
+    }, { signal });
+
+    dlPng?.addEventListener('click', async () => {
+      const slug = getSlug(); const pngUrl = buildQrUrl({ format: 'png', size: 1024 });
+      if (!slug || !pngUrl) { showError('Guarda un slug para descargar el QR'); return; }
+      showError('');
+      try {
+        const qrImg = await loadImage(pngUrl);
+        const size = 1024;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas no disponible');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(qrImg, 0, 0, size, size);
+        const includeLogo = logoToggle instanceof HTMLInputElement && logoToggle.checked;
+        const logoUrl = getLogoUrl();
+        if (includeLogo && logoUrl) {
+          try {
+            const logo = await loadImage(logoUrl);
+            const box = Math.round(size * 0.34); const pad = Math.round(box * 0.1);
+            const boxX = (size - box) / 2; const boxY = (size - box) / 2;
+            const inner = box - pad * 2;
+            const sc = Math.min(inner / logo.naturalWidth, inner / logo.naturalHeight);
+            const drawW = Math.max(1, Math.round(logo.naturalWidth * sc));
+            const drawH = Math.max(1, Math.round(logo.naturalHeight * sc));
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            const r = Math.max(12, Math.round(box * 0.12));
+            ctx.moveTo(boxX + r, boxY);
+            ctx.arcTo(boxX + box, boxY, boxX + box, boxY + box, r);
+            ctx.arcTo(boxX + box, boxY + box, boxX, boxY + box, r);
+            ctx.arcTo(boxX, boxY + box, boxX, boxY, r);
+            ctx.arcTo(boxX, boxY, boxX + box, boxY, r);
+            ctx.closePath(); ctx.fill();
+            ctx.drawImage(logo, boxX + (box - drawW) / 2, boxY + (box - drawH) / 2, drawW, drawH);
+          } catch { /* logo opcional */ }
+        }
+        const blob = await new Promise((res, rej) =>
+          canvas.toBlob((b) => (b ? res(b) : rej(new Error('No se pudo exportar PNG'))), 'image/png')
+        );
+        triggerDownload(blob, `qr-${slug}.png`);
+        showStatus('PNG descargado');
+      } catch (err) { showError(err instanceof Error ? err.message : 'Error al descargar PNG'); }
+    }, { signal });
+
+    // Generación artística: delegación en <script is:inline> (#btn-generar-artistico)
+    // — no registrar click aquí para evitar doble fetch.
+
+    // ── Estado inicial ───────────────────────────────────────────────
+    updateArtisticDownload(artisticUrl);
+    setMode('standard');
+    refreshPreview();
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    try { initQrPanel(); } catch (err) { console.error('[qrPanel] astro:page-load error:', err); }
+  });
+  document.addEventListener('astro:before-preparation', teardownQrPanel);
+
+  // Carga inicial (antes del primer astro:page-load)
+  try { initQrPanel(); } catch (err) { console.error('[qrPanel] boot error:', err); }
+  // ── /QR Panel standalone ─────────────────────────────────────────
 </script>
 
 <script>

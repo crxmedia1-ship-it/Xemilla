@@ -1,6 +1,7 @@
 /**
- * Gadgets operativos (botón flotante) vs experienciales (menú/plato).
- * @typedef {{ wifi?: boolean, llamarMesero?: boolean, dividirCuenta?: boolean, boutique?: boolean, nutricion?: boolean, ar?: boolean, reservas?: boolean }} GadgetFlags
+ * Gadgets pasivos / valor agregado (FAB: Wi‑Fi + Boutique).
+ * Experienciales (nutrición, AR) viven en el detalle del plato.
+ * @typedef {{ wifi?: boolean, boutique?: boolean, nutricion?: boolean, ar?: boolean, reservas?: boolean }} GadgetFlags
  */
 
 /** @type {ReadonlySet<string>} */
@@ -23,19 +24,17 @@ export function normalizeGadgetServiciosEstilo(value) {
  */
 export function hasOperationalGadgets(gadgets) {
   if (!gadgets || typeof gadgets !== 'object') return false;
-  return Boolean(
-    gadgets.wifi || gadgets.llamarMesero || gadgets.dividirCuenta || gadgets.boutique,
-  );
+  return Boolean(gadgets.wifi || gadgets.boutique);
 }
 
 /**
  * @param {GadgetFlags | null | undefined} gadgets
- * @returns {Array<{ id: string, label: string, subtitle: string, kind: 'section' | 'boutique', requiresMesa?: boolean }>}
+ * @returns {Array<{ id: string, label: string, subtitle: string, kind: 'section' | 'boutique' }>}
  */
 export function buildOperationalGadgetItems(gadgets) {
   if (!hasOperationalGadgets(gadgets)) return [];
 
-  /** @type {Array<{ id: string, label: string, subtitle: string, kind: 'section' | 'boutique', requiresMesa?: boolean }>} */
+  /** @type {Array<{ id: string, label: string, subtitle: string, kind: 'section' | 'boutique' }>} */
   const items = [];
 
   if (gadgets?.wifi) {
@@ -44,24 +43,6 @@ export function buildOperationalGadgetItems(gadgets) {
       label: 'Wi‑Fi',
       subtitle: 'Conectar a la red',
       kind: 'section',
-    });
-  }
-  if (gadgets?.llamarMesero) {
-    items.push({
-      id: 'mesero',
-      label: 'Llamar mesonero',
-      subtitle: 'Asistencia en mesa',
-      kind: 'section',
-      requiresMesa: true,
-    });
-  }
-  if (gadgets?.dividirCuenta) {
-    items.push({
-      id: 'dividir',
-      label: 'Dividir cuenta',
-      subtitle: 'Pedir o dividir la cuenta',
-      kind: 'section',
-      requiresMesa: true,
     });
   }
   if (gadgets?.boutique) {

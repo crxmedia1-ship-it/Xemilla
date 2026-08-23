@@ -31,11 +31,11 @@ export async function listAllRestaurantes(supabase, user = null) {
   const client = user ? getSuperAdminWriteClient(supabase, user) : supabase;
   // ui_estilo siempre incluido: ahí persistimos cover/logo_bg si faltan columnas Hub
   const selectSafe =
-    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, logo_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, gadget_dividir_cuenta, created_at';
+    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, logo_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at';
   const selectMid =
-    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, gadget_dividir_cuenta, created_at, activo';
+    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at, activo';
   const selectFull =
-    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, hub_logo_bg, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, gadget_dividir_cuenta, created_at, activo';
+    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, hub_logo_bg, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at, activo';
 
   let { data, error } = await client
     .from('restaurantes')
@@ -58,7 +58,7 @@ export async function listAllRestaurantes(supabase, user = null) {
       const midNoActivo = await client
         .from('restaurantes')
         .select(
-          'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, gadget_dividir_cuenta, created_at',
+          'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at',
         )
         .order('nombre_comercial', { ascending: true });
       if (!midNoActivo.error) {
@@ -153,7 +153,6 @@ export async function createRestauranteAsSuperAdmin(supabase, user, input) {
     direccion,
     logo_url: logoUrl,
     gadget_wifi: false,
-    gadget_dividir_cuenta: false,
   };
 
   if (hubCoverUrl) baseRow.hub_cover_url = hubCoverUrl;

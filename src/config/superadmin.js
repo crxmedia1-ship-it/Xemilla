@@ -10,10 +10,11 @@ export const SUPERADMIN_EMAIL = String(
   .trim()
   .toLowerCase();
 
-/** @typedef {'superadmin' | 'admin_operativo'} AdminRole */
+/** @typedef {'superadmin' | 'admin_operativo' | 'mesonero'} AdminRole */
 
 export const ADMIN_ROLE_SUPER = 'superadmin';
 export const ADMIN_ROLE_OPERATIVO = 'admin_operativo';
+export const ADMIN_ROLE_MESONERO = 'mesonero';
 
 /**
  * Lee `role` desde app_metadata (preferido) o user_metadata.
@@ -41,6 +42,15 @@ export function isSuperAdminUser(user) {
 }
 
 /**
+ * Staff de mesa: `role === 'mesonero' | 'staff'` en metadata (nunca SuperAdmin).
+ */
+export function isMesoneroUser(user) {
+  if (!user || isSuperAdminUser(user)) return false;
+  const role = readMetaRole(user);
+  return role === ADMIN_ROLE_MESONERO || role === 'staff';
+}
+
+/**
  * Rol efectivo del usuario autenticado.
  * Fuente de verdad: `isSuperAdminUser` (allowlist + role metadata).
  *
@@ -50,6 +60,7 @@ export function isSuperAdminUser(user) {
 export function getUserAdminRole(user) {
   if (!user) return ADMIN_ROLE_OPERATIVO;
   if (isSuperAdminUser(user)) return ADMIN_ROLE_SUPER;
+  if (isMesoneroUser(user)) return ADMIN_ROLE_MESONERO;
   return ADMIN_ROLE_OPERATIVO;
 }
 
