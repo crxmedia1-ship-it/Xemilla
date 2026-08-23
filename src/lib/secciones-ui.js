@@ -746,7 +746,10 @@ export function normalizeChipsLayout(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-  if (v === 'grid' || v === 'rejilla' || v === 'grid2' || v === 'grid-2') return 'grid';
+  if (v === 'grid3' || v === 'grid-3' || v === '3col' || v === '3-columnas') return 'grid-3';
+  if (v === 'grid' || v === 'rejilla' || v === 'grid2' || v === 'grid-2' || v === '2col') {
+    return 'grid';
+  }
   if (v === 'wrap' || v === 'flujo' || v === 'wrap-grid' || v === 'fluido') return 'wrap';
   return 'scroll';
 }
@@ -759,7 +762,7 @@ export function normalizeChipsEstilo(value) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
   if (v === 'cuadrado' || v === 'square' || v === 'rect') return 'cuadrado';
-  if (v === 'linea' || v === 'line' || v === 'ghost' || v === 'outline') return 'linea';
+  if (v === 'linea' || v === 'line' || v === 'ghost' || v === 'underline') return 'linea';
   return 'pildora';
 }
 
@@ -787,6 +790,9 @@ export function normalizeEstiloTarjetas(value) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
   if (v === 'solido' || v === 'solid' || v === 'opaco' || v === 'oscuro') return 'solido';
+  if (v === 'outline' || v === 'contorno' || v === 'borde' || v === 'linea' || v === 'minimal') {
+    return 'outline';
+  }
   return 'cristal';
 }
 
@@ -808,8 +814,28 @@ export function expandMenuMasterTokens(menu = {}) {
     color_chip_texto: texto,
     color_chip_activo: acento,
     color_boton: acento,
-    color_boton_texto: '#ffffff',
+    // Si el acento es claro (casi blanco), el label del botón debe ser oscuro
+    color_boton_texto: isLightHex(acento) ? '#111111' : '#ffffff',
   };
+}
+
+/**
+ * @param {string} hex
+ * @returns {boolean}
+ */
+function isLightHex(hex) {
+  const h = normalizeHexColor(hex, '');
+  if (!h) return false;
+  const full =
+    h.length === 4
+      ? `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`
+      : h;
+  const r = Number.parseInt(full.slice(1, 3), 16);
+  const g = Number.parseInt(full.slice(3, 5), 16);
+  const b = Number.parseInt(full.slice(5, 7), 16);
+  // Luminancia relativa aproximada
+  const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luma > 0.72;
 }
 
 /**

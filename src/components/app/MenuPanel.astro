@@ -115,7 +115,7 @@ function precioUsd(precio: string): string {
 }
 
 const CHIP_BASE =
-  'border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase active:scale-95';
+  'menu-chip border font-semibold uppercase active:scale-[0.98]';
 
 const globalBgType = fondoGlobal.tipo || 'color';
 const globalBgValor = fondoGlobal.valor || '';
@@ -126,22 +126,24 @@ const estiloTarjetas = normalizeEstiloTarjetas(menuUi.estilo_tarjetas);
 const menuTokens = expandMenuMasterTokens(menuUi);
 const accentColor = menuUi.color_acento || menuTokens.color_chip_activo || '';
 const detalleBtnStyle = accentColor
-  ? `background-color:${accentColor};border-color:${accentColor};color:#ffffff`
+  ? `background-color:${accentColor};border-color:${accentColor};color:${menuTokens.color_boton_texto || '#ffffff'}`
   : '';
 const platoCardSurfaceClass =
   estiloTarjetas === 'solido'
     ? 'bg-zinc-900 border border-white/5 shadow-xl'
-    : 'bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl';
+    : estiloTarjetas === 'outline'
+      ? 'bg-transparent border border-white/25 shadow-none'
+      : 'bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl';
 const chipsNavClass =
   chipsLayout === 'scroll'
-    ? 'menu-chips-nav overflow-x-auto whitespace-nowrap scrollbar-none px-4 py-3.5'
-    : 'menu-chips-nav menu-chips-nav--static px-4 py-3.5';
+    ? 'menu-chips-nav menu-chips-nav--scroll overflow-x-auto whitespace-nowrap scrollbar-none'
+    : 'menu-chips-nav menu-chips-nav--static';
 const chipsRowClass =
-  chipsLayout === 'grid'
-    ? 'menu-chips-row menu-chips-row--grid gap-2'
+  chipsLayout === 'grid' || chipsLayout === 'grid-3'
+    ? 'menu-chips-row menu-chips-row--grid'
     : chipsLayout === 'wrap'
-      ? 'menu-chips-row menu-chips-row--wrap gap-2'
-      : 'menu-chips-row menu-chips-row--scroll inline-flex gap-2';
+      ? 'menu-chips-row menu-chips-row--wrap'
+      : 'menu-chips-row menu-chips-row--scroll';
 const fuenteTitulo = resolveNosotrosFuenteTitulo(menuUi.fuente_titulo || menuFont || 'playfair');
 const fuenteCuerpo = resolveNosotrosFuenteCuerpo(menuUi.fuente_cuerpo || 'plus-jakarta');
 const fontsHref = buildNosotrosFontsHref(fuenteTitulo.id, fuenteCuerpo.id);
@@ -172,10 +174,22 @@ const menuPanelStyle = [
   .join(';');
 
 function globalBgTipoColor() {
-  if (globalBgType === 'color' && globalBgValor) {
+  // Solo colores hex/rgb — nunca URLs (rompe color-mix del sticky)
+  if (globalBgType === 'color' && globalBgValor && isCssColorValue(globalBgValor)) {
     return `--menu-sticky-bg:${globalBgValor}`;
   }
   return '';
+}
+
+function isCssColorValue(value) {
+  const v = String(value || '').trim();
+  if (!v) return false;
+  if (/^https?:\/\//i.test(v) || v.includes('/')) return false;
+  return (
+    /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ||
+    /^(rgb|rgba|hsl|hsla)\(/i.test(v) ||
+    /^[a-z]+$/i.test(v)
+  );
 }
 ---
 
@@ -358,7 +372,7 @@ function globalBgTipoColor() {
     )
   }
 
-  <div class="menu-list px-5 pt-7" data-menu-list>
+  <div class="menu-list" data-menu-list>
     {
       (categorias || []).map((cat) => (
         <section
@@ -408,18 +422,18 @@ function globalBgTipoColor() {
                       </div>
                     ) : null
                   }
-                  <div class="flex items-baseline gap-1">
-                    <h4 class="min-w-0 flex-1 text-[1.02rem] font-semibold leading-snug font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-titulo-color,var(--menu-texto-color,inherit))]">
+                  <div class="menu-plato-head">
+                    <h4 class="menu-plato-name font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-titulo-color,var(--menu-texto-color,inherit))]">
                       {plato.nombre}
                     </h4>
                     <span class="menu-leader" aria-hidden="true" />
-                    <span class="shrink-0 text-[1.05rem] font-semibold tabular-nums tracking-wide text-[color:var(--menu-precio-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))]">
+                    <span class="menu-plato-precio font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-precio-color,var(--menu-texto-color,var(--color-texto)))]">
                       <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                     </span>
                   </div>
 
                   {plato.descripcion && (
-                    <p class="menu-plato-desc mt-2 w-full text-[0.8rem] leading-relaxed text-current/70 font-[family-name:var(--menu-font-body,inherit)]">
+                    <p class="menu-plato-desc font-[family-name:var(--menu-font-body,inherit)]">
                       {plato.descripcion}
                     </p>
                   )}
@@ -440,7 +454,7 @@ function globalBgTipoColor() {
                       data-plato-alergias={showNutricion ? alergiasCsv(plato) : ''}
                       data-plato-has-nut={showNutricion ? 'true' : 'false'}
                       data-plato-modelo3d-url={plato.modelo3dUrl || ''}
-                      class="menu-btn menu-btn--detalle mt-3"
+                      class="menu-btn menu-btn--detalle"
                       style={detalleBtnStyle || undefined}
                     >
                       Ver detalle
@@ -465,39 +479,33 @@ function globalBgTipoColor() {
   .menu-panel {
     color: var(--menu-texto-color, var(--color-texto));
     font-family: var(--menu-font-body, var(--fuente-menu, var(--fuente-display)));
+    container-type: inline-size;
+    container-name: menu;
   }
 
   .menu-plato-desc {
-    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 70%, transparent);
+    margin-top: 0.55rem;
+    width: 100%;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 68%, transparent);
   }
 
   .menu-sticky {
-    background: color-mix(in srgb, var(--menu-sticky-bg, var(--color-fondo)) 90%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: color-mix(in srgb, var(--menu-sticky-bg, var(--color-fondo)) 88%, transparent);
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
   }
 
-  .menu-chip {
-    border-radius: var(--radius-chip, 9999px);
-    background: var(--menu-chip-bg, color-mix(in srgb, var(--menu-surface-color, currentColor) 88%, transparent));
-    color: var(
-      --menu-chip-texto,
-      color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 70%, transparent)
-    );
-    border-color: color-mix(in srgb, var(--menu-chip-texto, currentColor) 22%, transparent);
-    transition: transform var(--motion-spring, 220ms ease), background-color 200ms ease,
-      border-color 200ms ease, color 200ms ease;
+  .menu-chips-nav {
+    padding: 0.85rem 1rem 0.7rem;
   }
 
-  .menu-chip.is-active {
-    background: var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario)));
-    color: #fff;
-    border-color: color-mix(
-      in srgb,
-      var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario))) 80%,
-      transparent
-    );
-    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+  .menu-chips-nav--scroll {
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    mask-image: linear-gradient(90deg, transparent, #000 1.1rem, #000 calc(100% - 1.1rem), transparent);
   }
 
   .menu-chips-nav--static {
@@ -505,62 +513,186 @@ function globalBgTipoColor() {
     white-space: normal;
   }
 
+  .menu-chips-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
   .menu-chips-row--scroll {
     width: max-content;
     min-width: min(100%, max-content);
+    padding-inline: 0.15rem;
   }
 
+  /* PC: carril de categorías a ancho completo */
+  @container menu (min-width: 48rem) {
+    .menu-panel[data-chips-layout='scroll'] .menu-chips-nav--scroll {
+      overflow: visible;
+      white-space: normal;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+
+    .menu-panel[data-chips-layout='scroll'] .menu-chips-row--scroll {
+      display: flex;
+      width: 100%;
+      min-width: 100%;
+      gap: 0.55rem;
+    }
+
+    .menu-panel[data-chips-layout='scroll'] .menu-chip {
+      flex: 1 1 0;
+      min-width: 0;
+      justify-content: center;
+      text-align: center;
+      white-space: normal;
+      line-height: 1.25;
+      padding-inline: 0.65rem;
+    }
+  }
+
+  .menu-chip {
+    border-radius: var(--radius-chip, 9999px);
+    background: color-mix(
+      in srgb,
+      var(--menu-chip-bg, var(--menu-surface-color, #18181b)) 82%,
+      transparent
+    );
+    color: var(
+      --menu-chip-texto,
+      color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 78%, transparent)
+    );
+    border-color: color-mix(in srgb, var(--menu-chip-texto, currentColor) 18%, transparent);
+    padding: 0.55rem 1rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.16em;
+    line-height: 1.2;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    transition:
+      transform 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .menu-chip:hover {
+    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 42%, transparent);
+  }
+
+  .menu-chip.is-active {
+    background: var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario)));
+    color: #fff;
+    border-color: color-mix(
+      in srgb,
+      var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario))) 85%,
+      transparent
+    );
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, #fff 12%, transparent) inset,
+      0 8px 20px color-mix(in srgb, var(--menu-chip-activo, var(--menu-accent-color, var(--color-primario))) 28%, transparent);
+  }
+
+  /* —— Wrap fluido —— */
   .menu-panel[data-chips-layout='wrap'] .menu-chips-row--wrap {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
+    gap: 0.45rem;
   }
 
   .menu-panel[data-chips-layout='wrap'] .menu-chip {
     flex: 0 1 auto;
     max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* —— Grids de categorías (responsive por ancho real del panel) —— */
+  .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid,
+  .menu-panel[data-chips-layout='grid-3'] .menu-chips-row--grid {
+    display: grid;
+    width: 100%;
+    gap: 0.45rem;
   }
 
   .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid {
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
   }
 
-  @media (min-width: 640px) {
-    .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+  .menu-panel[data-chips-layout='grid-3'] .menu-chips-row--grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .menu-panel[data-chips-layout='grid'] .menu-chip {
+  .menu-panel[data-chips-layout='grid'] .menu-chip,
+  .menu-panel[data-chips-layout='grid-3'] .menu-chip {
     width: 100%;
-    min-height: 2.65rem;
+    min-height: 2.7rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     white-space: normal;
-    line-height: 1.35;
-    padding-inline: 0.65rem;
-    hyphens: auto;
+    line-height: 1.25;
+    letter-spacing: 0.12em;
+    padding: 0.55rem 0.55rem;
     overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
+  .menu-panel[data-chips-layout='grid-3'] .menu-chip {
+    min-height: 2.55rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding-inline: 0.35rem;
+  }
+
+  @container menu (min-width: 28rem) {
+    .menu-panel[data-chips-layout='grid-3'] .menu-chips-row--grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .menu-panel[data-chips-layout='grid-3'] .menu-chip {
+      font-size: 0.62rem;
+      min-height: 2.65rem;
+    }
+  }
+
+  @container menu (min-width: 36rem) {
+    .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container menu (min-width: 52rem) {
+    .menu-panel[data-chips-layout='grid'] .menu-chips-row--grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.55rem;
+    }
+
+    .menu-panel[data-chips-layout='grid-3'] .menu-chips-row--grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.55rem;
+    }
   }
 
   .menu-panel[data-chips-estilo='cuadrado'] .menu-chip {
-    border-radius: 0.55rem;
+    border-radius: 0.7rem;
   }
 
   .menu-panel[data-chips-estilo='linea'] .menu-chip {
     background: transparent;
-    border-color: color-mix(in srgb, var(--menu-chip-texto, currentColor) 28%, transparent);
+    border-color: color-mix(in srgb, var(--menu-chip-texto, currentColor) 24%, transparent);
     box-shadow: none;
   }
 
   .menu-panel[data-chips-estilo='linea'] .menu-chip.is-active {
-    background: transparent;
+    background: color-mix(in srgb, var(--menu-chip-activo, var(--color-primario)) 14%, transparent);
     color: var(--menu-chip-activo, var(--color-primario));
     border-color: var(--menu-chip-activo, var(--color-primario));
+    box-shadow: none;
   }
 
   .menu-panel[data-chips-layout='scroll'][data-chips-estilo='linea'] .menu-chip {
@@ -568,7 +700,7 @@ function globalBgTipoColor() {
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
-    padding-inline: 0.85rem;
+    padding-inline: 0.9rem;
     box-shadow: none;
   }
 
@@ -582,11 +714,12 @@ function globalBgTipoColor() {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.52rem 0.95rem 0.52rem 1.05rem;
+    margin-top: 1.35rem;
+    padding: 0.5rem 0.9rem 0.5rem 1rem;
     border: 1px solid transparent;
     background: var(--menu-boton-bg, var(--menu-accent-color, var(--color-primario)));
     color: var(--menu-boton-texto, #fff);
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     font-weight: 650;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -624,35 +757,45 @@ function globalBgTipoColor() {
   .menu-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-section, 2.25rem);
+    gap: var(--space-section, 2rem);
     width: 100%;
     max-width: 72rem;
     margin-inline: auto;
+    padding-inline: 0.85rem;
+    padding-top: 1.1rem;
   }
 
   .menu-items {
     display: flex;
     flex-direction: column;
-    gap: var(--space-item, 1.25rem);
+    gap: var(--space-item, 0.95rem);
   }
 
+  /* —— Grid de platos: 1 → 2 → 3 cols según el ancho del panel —— */
   .menu-panel[data-platos-layout='grid'] .menu-items {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    column-gap: 1.5rem;
-    row-gap: 1.25rem;
+    gap: 0.85rem;
   }
 
-  @media (min-width: 768px) {
+  @container menu (min-width: 34rem) {
     .menu-panel[data-platos-layout='grid'] .menu-items {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+  }
+
+  @container menu (min-width: 54rem) {
+    .menu-panel[data-platos-layout='grid'] .menu-items {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.15rem;
     }
   }
 
   .menu-panel[data-platos-layout='bento'] .menu-items {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
 
   .menu-panel[data-platos-layout='bento'] .menu-plato-item {
@@ -663,7 +806,7 @@ function globalBgTipoColor() {
     grid-column: 1 / -1;
   }
 
-  @media (min-width: 768px) {
+  @container menu (min-width: 40rem) {
     .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media {
       grid-column: span 1;
     }
@@ -692,8 +835,11 @@ function globalBgTipoColor() {
   .menu-plato-item {
     isolation: isolate;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     border-radius: var(--radius-card, 1rem);
-    padding: 1rem 1.05rem;
+    padding: 0.95rem 1rem;
     margin-inline: 0;
     color: var(--menu-texto-color, var(--color-texto));
     transition:
@@ -704,9 +850,91 @@ function globalBgTipoColor() {
       backdrop-filter 400ms ease;
   }
 
+  .menu-plato-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .menu-plato-name {
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .menu-plato-precio {
+    flex: 0 0 auto;
+    font-size: 0.98rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item .menu-btn--detalle {
+    align-self: flex-start;
+    margin-top: auto;
+    padding-top: 1.15rem;
+  }
+
+  @container menu (max-width: 33.99rem) {
+    .menu-panel[data-platos-layout='grid'] .menu-plato-name {
+      font-size: 1.02rem;
+    }
+  }
+
+  @container menu (min-width: 34rem) and (max-width: 53.99rem) {
+    .menu-panel[data-platos-layout='grid'] .menu-plato-head {
+      flex-wrap: wrap;
+      row-gap: 0.2rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-leader {
+      display: none;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-name {
+      flex: 1 1 100%;
+      font-size: 0.92rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-precio {
+      font-size: 0.9rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-desc {
+      font-size: 0.72rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-btn--detalle {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.6rem;
+      padding-inline: 0.7rem;
+    }
+  }
+
   .menu-panel[data-estilo-tarjetas='cristal'] .menu-plato-item {
     -webkit-backdrop-filter: blur(24px);
     backdrop-filter: blur(24px);
+  }
+
+  .menu-panel[data-estilo-tarjetas='outline'] .menu-plato-item {
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--menu-texto-color, #fff) 22%, transparent);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .menu-panel[data-estilo-tarjetas='outline'] .menu-plato-item.is-focus-plato {
+    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 70%, transparent);
   }
 
   .menu-plato-item.is-focus-plato {

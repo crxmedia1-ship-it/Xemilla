@@ -2622,46 +2622,61 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               <option value="solido" selected={marca.menu_estilo_tarjetas === 'solido'}>
                                 Sólido Oscuro
                               </option>
+                              <option value="outline" selected={marca.menu_estilo_tarjetas === 'outline'}>
+                                Contorno fino
+                              </option>
                             </select>
                           </label>
                         </div>
-                        <div class="id-ubicacion__row">
-                          <label class="id-ubicacion__field">
-                            <span>Categorías (botones)</span>
-                            <select
-                              id="marca-menu-chips-layout"
-                              name="menu_chips_layout"
-                              class="id-ubicacion__select"
-                            >
-                              <option value="scroll" selected={marca.menu_chips_layout === 'scroll'}>
-                                Carril horizontal
-                              </option>
-                              <option value="grid" selected={marca.menu_chips_layout === 'grid'}>
-                                Grid 2×3
-                              </option>
-                              <option value="wrap" selected={marca.menu_chips_layout === 'wrap'}>
-                                Wrap fluido
-                              </option>
-                            </select>
-                          </label>
-                          <label class="id-ubicacion__field">
-                            <span>Estilo de botones</span>
-                            <select
-                              id="marca-menu-chips-estilo"
-                              name="menu_chips_estilo"
-                              class="id-ubicacion__select"
-                            >
-                              <option value="pildora" selected={marca.menu_chips_estilo === 'pildora'}>
-                                Píldora
-                              </option>
-                              <option value="cuadrado" selected={marca.menu_chips_estilo === 'cuadrado'}>
-                                Cuadrado
-                              </option>
-                              <option value="linea" selected={marca.menu_chips_estilo === 'linea'}>
-                                Línea
-                              </option>
-                            </select>
-                          </label>
+
+                        <div class="space-y-2 rounded-xl border border-white/8 bg-black/20 p-3">
+                          <p class="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                            Categorías (chips)
+                          </p>
+                          <p class="text-[11px] leading-relaxed text-zinc-500">
+                            Define cómo se muestran los botones de categoría (Todos, Entradas, etc.) encima del menú.
+                          </p>
+                          <div class="id-ubicacion__row">
+                            <label class="id-ubicacion__field">
+                              <span>Disposición</span>
+                              <select
+                                id="marca-menu-chips-layout"
+                                name="menu_chips_layout"
+                                class="id-ubicacion__select"
+                              >
+                                <option value="scroll" selected={marca.menu_chips_layout === 'scroll'}>
+                                  Carril horizontal (scroll)
+                                </option>
+                                <option value="grid" selected={marca.menu_chips_layout === 'grid'}>
+                                  Cuadrícula 2 columnas
+                                </option>
+                                <option value="grid-3" selected={marca.menu_chips_layout === 'grid-3'}>
+                                  Cuadrícula 3 columnas
+                                </option>
+                                <option value="wrap" selected={marca.menu_chips_layout === 'wrap'}>
+                                  Wrap fluido (salta de línea)
+                                </option>
+                              </select>
+                            </label>
+                            <label class="id-ubicacion__field">
+                              <span>Forma del chip</span>
+                              <select
+                                id="marca-menu-chips-estilo"
+                                name="menu_chips_estilo"
+                                class="id-ubicacion__select"
+                              >
+                                <option value="pildora" selected={marca.menu_chips_estilo === 'pildora'}>
+                                  Píldora
+                                </option>
+                                <option value="cuadrado" selected={marca.menu_chips_estilo === 'cuadrado'}>
+                                  Cuadrado / redondeado
+                                </option>
+                                <option value="linea" selected={marca.menu_chips_estilo === 'linea'}>
+                                  Línea / underline
+                                </option>
+                              </select>
+                            </label>
+                          </div>
                         </div>
                       </div>
                     </div>
