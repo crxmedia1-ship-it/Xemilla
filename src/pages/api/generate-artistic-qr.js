@@ -45,12 +45,12 @@ export async function POST({ request }) {
       throw new Error(prediction.error || prediction.detail);
     }
 
-    // Polling síncrono a prueba de fallos
+    // Polling síncrono extendido (120s max para soportar Cold Boots)
     let finalUrl = null;
     const checkUrl = prediction.urls.get;
 
-    for (let i = 0; i < 25; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    for (let i = 0; i < 60; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
       const checkRes = await fetch(checkUrl, {
         headers: { "Authorization": `Token ${token}` }
       });
