@@ -6,39 +6,38 @@ export async function POST({ request }) {
     const token = import.meta.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_TOKEN;
 
     if (!token) {
-      return new Response(JSON.stringify({ error: 'Falta la API Key en .env' }), { status: 401 });
+      return new Response(JSON.stringify({ error: 'Falta la API Key en las variables de entorno' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    const promptValue =
-      body.prompt_personalizado ||
-      body.prompt ||
-      'A hyper-realistic luxury gourmet burger, dark aesthetic, cinematic lighting';
-    const scaleValue = parseFloat(body.controlnet_conditioning_scale) || 1.2;
+    const promptValue = body.prompt_personalizado || body.prompt || "A hyper-realistic luxury gourmet burger, dark aesthetic, cinematic lighting";
+    const scaleValue = parseFloat(body.controlnet_conditioning_scale) || 0.85;
 
     const slug = String(body.slug || '').trim();
-    const qrCodeContent = slug
-      ? `https://xemilla.app/${slug}`
-      : 'https://xemilla.app/crx-prueba';
+    const qrContent =
+      body.qr_code_content ||
+      (slug ? `https://xemilla.app/${slug}` : 'https://xemilla.app/crx-prueba');
 
-    const response = await fetch(
-      'https://api.replicate.com/v1/models/nateraw/qrcode-stable-diffusion/predictions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          input: {
-            qr_code_content: qrCodeContent,
-            prompt: promptValue,
-            controlnet_conditioning_scale: scaleValue,
-            guidance_scale: 7.5,
-            negative_prompt: 'ugly, disfigured, low quality, blurry, nsfw',
-          },
-        }),
+    // Petición estándar a la API de Replicate para crear la predicción
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        version: '9227d8bc4f4032d5e0f523528b1223fa8c9527e0234771217e20302b11516e8c',
+        input: {
+          qr_code_content: qrContent,
+          prompt: promptValue,
+          controlnet_conditioning_scale: scaleValue,
+          guidance_scale: 7.5,
+          negative_prompt: 'ugly, disfigured, low quality, blurry, nsfw',
+        },
+      }),
+    });
 
     const prediction = await response.json();
 
@@ -46,10 +45,15 @@ export async function POST({ request }) {
       throw new Error(prediction.error || prediction.detail);
     }
 
+    // Polling síncrono para esperar la imagen
     let finalUrl = null;
-    let checkUrl = prediction.urls.get;
+    const checkUrl = prediction.urls?.get;
 
-    for (let i = 0; i < 20; i++) {
+    if (!checkUrl) {
+      throw new Error('Replicate no devolvió una URL de seguimiento válida');
+    }
+
+    for (let i = 0; i < 25; i++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       const checkRes = await fetch(checkUrl, {
         headers: { Authorization: `Token ${token}` },
@@ -60,7 +64,7 @@ export async function POST({ request }) {
         finalUrl = Array.isArray(checkData.output) ? checkData.output[0] : checkData.output;
         break;
       } else if (checkData.status === 'failed' || checkData.status === 'canceled') {
-        throw new Error('Fallo en Replicate: ' + checkData.error);
+        throw new Error('Fallo en Replicate: ' + (checkData.error || checkData.status));
       }
     }
 
@@ -73,8 +77,8 @@ export async function POST({ request }) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('API Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('API Error Replicate:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Error al procesar en Replicate' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
