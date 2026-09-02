@@ -64,6 +64,8 @@ interface Props {
     fuente_cuerpo?: string;
   };
   menuFont?: string;
+  /** Título visible en la barra del hub principal */
+  menuTitle?: string;
   estilos: {
     panelColor: string;
     borderColor: string;
@@ -90,6 +92,7 @@ const {
   tasaEur = 0,
   menuUi = {},
   menuFont = '',
+  menuTitle = 'Il Menú',
   estilos,
 } = Astro.props;
 
@@ -261,24 +264,32 @@ function hubCardStyle(
     <div class="menu-sticky-toolbar" data-menu-sticky-toolbar>
       {
         isHubMode ? (
-          <div
-            class="menu-hub-nav min-w-0 flex-1 items-center gap-3"
-            data-menu-hub-nav
-            aria-hidden="true"
-          >
-            <button
-              type="button"
-              class="menu-hub-back inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--menu-texto-color,var(--color-texto))] transition active:scale-[0.98]"
-              data-menu-hub-back
+          <>
+            <div
+              class="menu-hub-nav min-w-0 flex-1 items-center gap-3"
+              data-menu-hub-nav
+              aria-hidden="true"
             >
-              <span aria-hidden="true">←</span>
-              Categorías
-            </button>
-            <span
-              class="menu-hub-nav__title min-w-0 flex-1 truncate text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--menu-titulo-color,var(--menu-texto-color,var(--color-texto)))]"
-              data-menu-hub-title
-            />
-          </div>
+              <button
+                type="button"
+                class="menu-hub-back inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--menu-texto-color,var(--color-texto))] transition active:scale-[0.98]"
+                data-menu-hub-back
+              >
+                <span aria-hidden="true">←</span>
+                Categorías
+              </button>
+              <span
+                class="menu-hub-nav__title min-w-0 flex-1 truncate text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--menu-titulo-color,var(--menu-texto-color,var(--color-texto)))]"
+                data-menu-hub-title
+              />
+            </div>
+            <p
+              class="menu-sticky-toolbar__brand"
+              data-menu-hub-brand
+            >
+              {menuTitle}
+            </p>
+          </>
         ) : (
           <span class="menu-sticky-toolbar__spacer min-w-0 flex-1" aria-hidden="true" />
         )
@@ -299,7 +310,23 @@ function hubCardStyle(
             aria-haspopup="listbox"
             aria-expanded="false"
           >
-            <span data-currency-trigger-label>$</span>
+            <span class="currency-compact__trigger-icon" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="8" cy="8" r="6"></circle>
+                <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+                <path d="M7 6h1v4"></path>
+                <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+              </svg>
+            </span>
+            <span class="currency-compact__trigger-label" data-currency-trigger-label>$</span>
           </button>
           <div class="currency-compact__menu" data-currency-menu hidden role="listbox" aria-label="Divisa de visualización">
             <button type="button" class="currency-compact__option is-active" data-currency-btn="USD" aria-pressed="true">USD</button>
@@ -850,6 +877,30 @@ function hubCardStyle(
     gap: 0.65rem;
   }
 
+  .menu-sticky-toolbar__brand {
+    display: none;
+    min-width: 0;
+    flex: 1;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    font-family: var(--menu-font-heading, var(--fuente-menu, var(--fuente-display)));
+    color: var(--menu-titulo-color, var(--menu-texto-color, var(--color-texto)));
+  }
+
+  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='home'] [data-menu-hub-brand] {
+    display: block;
+  }
+
+  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='home'] .menu-sticky-toolbar {
+    justify-content: space-between;
+  }
+
   .menu-sticky-toolbar__actions {
     display: inline-flex;
     align-items: center;
@@ -926,6 +977,22 @@ function hubCardStyle(
 
   .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] [data-menu-hub] {
     display: none;
+  }
+
+  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-cat-section:not(.is-hidden) > h3 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-cat-section:not(.is-hidden) {
+    padding-top: 0.15rem;
   }
 
   .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] [data-menu-cats] {
@@ -1634,6 +1701,7 @@ function hubCardStyle(
 
   .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--chef-pick {
     position: relative;
+    overflow: visible;
     border-color: color-mix(in srgb, #c8a951 48%, rgba(255, 255, 255, 0.14));
     box-shadow:
       0 0 0 1px color-mix(in srgb, #d4af37 24%, transparent),
@@ -1660,40 +1728,63 @@ function hubCardStyle(
   }
 
   .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-chef-pick-badge {
-    position: absolute;
-    top: 0.55rem;
-    left: 0.55rem;
+    position: relative;
     z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    max-width: calc(100% - 1rem);
+    display: flex;
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
+    margin: -0.55rem auto 0.45rem;
     border-radius: 9999px;
     border: 1px solid color-mix(in srgb, #e8d08a 36%, transparent);
-    background: color-mix(in srgb, #1a1408 72%, transparent);
-    padding: 0.2rem 0.5rem;
-    font-size: 0.46rem;
+    background: color-mix(in srgb, #1a1408 82%, transparent);
+    padding: 0.22rem 0.62rem;
+    font-size: 0.44rem;
     font-weight: 600;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: color-mix(in srgb, #f3e3a4 92%, #fff);
     box-shadow:
       0 0 14px color-mix(in srgb, #d4af37 22%, transparent),
       inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
-  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-chef-pick-badge {
-    top: 0.65rem;
-    left: 0.65rem;
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item--chef-pick .menu-chef-pick-badge {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+    margin-bottom: 0.35rem;
+  }
+
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item--chef-pick .menu-plato-name {
+    grid-row: 2;
+  }
+
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item--chef-pick .menu-plato-desc {
+    grid-row: 3;
+  }
+
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item--chef-pick .menu-btn--detalle {
+    grid-row: 5;
+  }
+
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item--chef-pick .menu-plato-precio {
+    grid-row: 5;
   }
 
   @container menu (max-width: 33.99rem) {
     .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-chef-pick-badge {
-      top: 0.45rem;
-      left: 0.45rem;
-      font-size: 0.42rem;
-      padding: 0.16rem 0.42rem;
+      margin-top: -0.48rem;
+      margin-bottom: 0.35rem;
+      max-width: calc(100% - 0.5rem);
+      font-size: 0.4rem;
+      letter-spacing: 0.1em;
+      padding: 0.18rem 0.5rem;
     }
   }
 
@@ -1967,30 +2058,71 @@ function hubCardStyle(
 
   /* ── Currency compact (popover) ─────────────────────────── */
   .currency-compact {
+    --currency-green: #10b981;
+    --currency-green-dark: #047857;
+    --currency-green-glow: color-mix(in srgb, var(--currency-green) 42%, transparent);
     position: relative;
     z-index: 25;
   }
 
   .currency-compact__trigger {
     display: inline-flex;
-    min-width: 2.25rem;
-    height: 2.25rem;
+    min-width: 3.15rem;
+    height: 2.15rem;
     align-items: center;
     justify-content: center;
+    gap: 0.32rem;
     border-radius: 9999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
-    padding: 0 0.55rem;
-    font-size: 0.58rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--menu-texto-color, var(--color-texto));
+    border: 1px solid color-mix(in srgb, var(--currency-green) 72%, #ecfdf5);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--currency-green) 88%, #fff) 0%,
+        color-mix(in srgb, var(--currency-green-dark) 92%, #000) 100%
+      );
+    padding: 0 0.62rem 0 0.52rem;
+    color: #ecfdf5;
     cursor: pointer;
     user-select: none;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent),
+      0 4px 14px var(--currency-green-glow),
+      0 0 0 1px color-mix(in srgb, var(--currency-green-dark) 35%, transparent);
+    transition:
+      background 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 160ms ease;
+  }
+
+  .currency-compact__trigger-icon {
+    display: inline-flex;
+    width: 0.92rem;
+    height: 0.92rem;
+    flex-shrink: 0;
+    opacity: 0.95;
+  }
+
+  .currency-compact__trigger-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .currency-compact__trigger-label {
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .currency-compact__trigger:hover {
+    border-color: color-mix(in srgb, var(--currency-green) 82%, #fff);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 34%, transparent),
+      0 6px 18px color-mix(in srgb, var(--currency-green) 52%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--currency-green-dark) 42%, transparent);
   }
 
   .currency-compact__trigger:active {
@@ -1998,8 +2130,11 @@ function hubCardStyle(
   }
 
   .currency-compact.is-open .currency-compact__trigger {
-    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 55%, transparent);
-    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 22%, rgba(255, 255, 255, 0.06));
+    border-color: color-mix(in srgb, #6ee7b7 78%, var(--currency-green));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 38%, transparent),
+      0 8px 22px color-mix(in srgb, var(--currency-green) 58%, transparent),
+      0 0 0 1px color-mix(in srgb, #6ee7b7 35%, transparent);
   }
 
   .currency-compact__menu {
@@ -2010,9 +2145,11 @@ function hubCardStyle(
     min-width: 9.25rem;
     overflow: hidden;
     border-radius: 0.85rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid color-mix(in srgb, var(--currency-green) 28%, rgba(255, 255, 255, 0.12));
     background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 92%, transparent);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.38),
+      0 0 0 1px color-mix(in srgb, var(--currency-green) 12%, transparent);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
   }
@@ -2041,8 +2178,12 @@ function hubCardStyle(
   }
 
   .currency-compact__option.is-active {
-    color: #fff;
-    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 88%, #000);
+    color: #ecfdf5;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--currency-green) 86%, #fff) 0%,
+      color-mix(in srgb, var(--currency-green-dark) 90%, #000) 100%
+    );
   }
 
   .currency-compact__rate {
