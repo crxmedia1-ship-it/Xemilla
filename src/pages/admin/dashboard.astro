@@ -2607,6 +2607,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               id="marca-menu-navegacion"
                               name="menu_navegacion"
                               class="id-ubicacion__select"
+                              data-menu-navegacion-select
                             >
                               <option value="scroll" selected={marca.menu_navegacion === 'scroll'}>
                                 Scroll continuo (filtros superiores)
@@ -2616,6 +2617,105 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               </option>
                             </select>
                           </label>
+                        </div>
+
+                        <div
+                          id="categorias-hub-portal-wrap"
+                          class="space-y-2 rounded-xl border border-white/8 bg-black/20 p-3"
+                          hidden={marca.menu_navegacion !== 'hub_categories'}
+                          data-shows-when-hub-nav
+                        >
+                          <p class="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                            Portal Hub — tarjetas por categoría
+                          </p>
+                          <p class="text-[11px] leading-relaxed text-zinc-500">
+                            Define color o imagen de fondo para cada tarjeta del portal inicial. Solo aplica con «Portal por Categorías».
+                          </p>
+                          {
+                            categorias.length === 0 ? (
+                              <p class="text-xs text-zinc-600">Sin categorías</p>
+                            ) : (
+                              <div class="mt-2 space-y-2" id="categorias-hub-portal-list">
+                                {
+                                  categorias.map((cat) => {
+                                    const hubBgType = cat.bg_type === 'image' ? 'image' : 'color';
+                                    const hubBgValor = String(cat.bg_valor || '').trim();
+                                    const hubColorVal =
+                                      hubBgType === 'color' && hubBgValor
+                                        ? hubBgValor
+                                        : '#14101c';
+                                    return (
+                                      <div
+                                        class="id-cat-hub-portal rounded-xl border border-white/8 bg-black/25 p-3"
+                                        data-cat-hub-portal
+                                        data-cat-id={cat.id}
+                                      >
+                                        <p class="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-zinc-300">
+                                          {cat.nombre}
+                                        </p>
+                                        <div class="grid gap-2 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                                          <label class="id-ubicacion__field">
+                                            <span>Tipo</span>
+                                            <select
+                                              data-cat-bg-type
+                                              class="id-ubicacion__select"
+                                            >
+                                              <option value="color" selected={hubBgType === 'color'}>
+                                                Color
+                                              </option>
+                                              <option value="image" selected={hubBgType === 'image'}>
+                                                Imagen
+                                              </option>
+                                            </select>
+                                          </label>
+                                          <div class="min-w-0" data-cat-bg-fields>
+                                            <label
+                                              class="id-swatch id-cat-hub-color-field"
+                                              data-cat-bg-color-row
+                                              hidden={hubBgType === 'image'}
+                                            >
+                                              <span>Color</span>
+                                              <span class="id-swatch__ctrl">
+                                                <input
+                                                  type="color"
+                                                  data-cat-bg-color-picker
+                                                  value={hexPickerValue(hubColorVal, '#14101c')}
+                                                  class="id-swatch__dot"
+                                                />
+                                                <input
+                                                  type="text"
+                                                  data-cat-bg-valor-color
+                                                  value={hubBgType === 'color' ? hubBgValor : ''}
+                                                  placeholder="#14101c"
+                                                  spellcheck="false"
+                                                  class="id-swatch__hex"
+                                                />
+                                              </span>
+                                            </label>
+                                            <label
+                                              class="id-ubicacion__field id-cat-hub-image-field"
+                                              data-cat-bg-image-row
+                                              hidden={hubBgType !== 'image'}
+                                            >
+                                              <span>URL imagen</span>
+                                              <input
+                                                type="text"
+                                                inputmode="url"
+                                                data-cat-bg-valor-url
+                                                value={hubBgType === 'image' ? hubBgValor : ''}
+                                                placeholder="https://…"
+                                                class="id-ubicacion__input"
+                                              />
+                                            </label>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                }
+                              </div>
+                            )
+                          }
                         </div>
                         <div class="id-ubicacion__row">
                           <label class="id-ubicacion__field">
@@ -11613,10 +11713,34 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   requestAnimationFrame(() => initMarcaSaveState());
 
   function collectCategoriasFondos() {
-    return Array.from(document.querySelectorAll('[data-cat-fondo]'))
+    const hubNav = val('marca-menu-navegacion') === 'hub_categories';
+    const selector = hubNav ? '[data-cat-hub-portal]' : '[data-cat-fondo]';
+    return Array.from(document.querySelectorAll(selector))
       .map((el) => {
         if (!(el instanceof HTMLElement)) return null;
         const id = el.dataset.catId;
+        if (hubNav) {
+          const bg_type =
+            /** @type {HTMLSelectElement | null} */ (el.querySelector('[data-cat-bg-type]'))
+              ?.value || 'color';
+          let bg_valor = '';
+          if (bg_type === 'image') {
+            bg_valor =
+              /** @type {HTMLInputElement | null} */ (
+                el.querySelector('[data-cat-bg-valor-url]')
+              )?.value?.trim() || '';
+          } else {
+            bg_valor =
+              /** @type {HTMLInputElement | null} */ (
+                el.querySelector('[data-cat-bg-valor-color]')
+              )?.value?.trim() ||
+              /** @type {HTMLInputElement | null} */ (
+                el.querySelector('[data-cat-bg-color-picker]')
+              )?.value?.trim() ||
+              '';
+          }
+          return { id, bg_type: bg_type === 'image' ? 'image' : 'color', bg_valor };
+        }
         const bg_valor =
           /** @type {HTMLInputElement | null} */ (el.querySelector('[data-cat-bg-valor]'))
             ?.value || '';
@@ -11636,6 +11760,24 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         return { id, bg_type, bg_valor: valor };
       })
       .filter(Boolean);
+  }
+
+  function syncHubPortalCatFields(row) {
+    if (!(row instanceof HTMLElement)) return;
+    const type =
+      /** @type {HTMLSelectElement | null} */ (row.querySelector('[data-cat-bg-type]'))?.value ||
+      'color';
+    const colorRow = row.querySelector('[data-cat-bg-color-row]');
+    const imageRow = row.querySelector('[data-cat-bg-image-row]');
+    if (colorRow instanceof HTMLElement) colorRow.hidden = type === 'image';
+    if (imageRow instanceof HTMLElement) imageRow.hidden = type !== 'image';
+  }
+
+  function syncMenuNavegacionUi() {
+    const nav = document.getElementById('marca-menu-navegacion');
+    const hubWrap = document.getElementById('categorias-hub-portal-wrap');
+    const isHub = nav instanceof HTMLSelectElement && nav.value === 'hub_categories';
+    if (hubWrap instanceof HTMLElement) hubWrap.hidden = !isHub;
   }
 
   function collectBoutiqueProductos() {
@@ -11864,6 +12006,50 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   };
   colorPrimarioInput?.addEventListener('input', syncGadgetAccent, { signal });
   syncGadgetAccent();
+
+  const menuNavSelect = document.getElementById('marca-menu-navegacion');
+  menuNavSelect?.addEventListener('change', syncMenuNavegacionUi, { signal });
+  syncMenuNavegacionUi();
+
+  document.querySelectorAll('[data-cat-hub-portal]').forEach((row) => {
+    if (!(row instanceof HTMLElement)) return;
+    syncHubPortalCatFields(row);
+    const typeSelect = row.querySelector('[data-cat-bg-type]');
+    typeSelect?.addEventListener(
+      'change',
+      () => {
+        syncHubPortalCatFields(row);
+      },
+      { signal },
+    );
+    const picker = row.querySelector('[data-cat-bg-color-picker]');
+    const hex = row.querySelector('[data-cat-bg-valor-color]');
+    if (picker instanceof HTMLInputElement && hex instanceof HTMLInputElement) {
+      picker.addEventListener(
+        'input',
+        () => {
+          picker.dataset.touched = '1';
+          hex.value = picker.value;
+        },
+        { signal },
+      );
+      hex.addEventListener(
+        'input',
+        () => {
+          let v = hex.value.trim();
+          if (v && v[0] !== '#') v = `#${v}`;
+          if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) {
+            picker.value =
+              v.length === 4
+                ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`
+                : v;
+            hex.value = picker.value;
+          }
+        },
+        { signal },
+      );
+    }
+  });
 
   // QR Panel gestionado por bloque standalone astro:page-load (ver más abajo)
 

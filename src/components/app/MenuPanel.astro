@@ -217,7 +217,7 @@ function hubCardStyle(
 ) {
   const bgType = String(cat.bgType || '').toLowerCase();
   const bgValor = String(cat.bgValor || '').trim();
-  if (bgType === 'image' && bgValor && /^https?:\/\//i.test(bgValor)) {
+  if (bgType === 'image' && bgValor && (/^https?:\/\//i.test(bgValor) || bgValor.startsWith('/'))) {
     return `background-image:linear-gradient(180deg,rgba(0,0,0,.2) 0%,rgba(0,0,0,.82) 100%),url("${bgValor}");background-size:cover;background-position:center`;
   }
   if (bgType === 'color' && bgValor && isCssColorValue(bgValor)) {
@@ -448,12 +448,7 @@ function hubCardStyle(
           {
             (categorias || []).map((cat, idx) => {
               const count = (cat.platos || []).length;
-              const previewUrl =
-                (cat.platos || []).find((p) => hasMedia(p.imagenUrl) && !isVideoUrl(String(p.imagenUrl || '')))
-                  ?.imagenUrl?.trim() || '';
-              const cardStyle = previewUrl
-                ? `background-image:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.84) 100%),url("${previewUrl}");background-size:cover;background-position:center`
-                : hubCardStyle(cat, idx);
+              const cardStyle = hubCardStyle(cat, idx);
               return (
                 <button
                   type="button"
@@ -469,7 +464,7 @@ function hubCardStyle(
                   <span class="menu-hub-card__badge rounded-md border border-white/15 bg-black/40 px-2 py-0.5 text-[0.48rem] font-semibold uppercase tracking-[0.14em] text-white/90 backdrop-blur-md">
                     {count} {count === 1 ? 'plato' : 'platos'}
                   </span>
-                  <span class="menu-hub-card__name mt-auto font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[0.92rem] font-semibold leading-snug tracking-[0.04em] text-white sm:text-[1rem]">
+                  <span class="menu-hub-card__name font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] font-semibold leading-snug tracking-[0.04em] text-white">
                     {cat.nombre}
                   </span>
                 </button>
@@ -502,6 +497,7 @@ function hubCardStyle(
           <ul class="menu-items" role="list">
             {(cat.platos || []).map((plato) => {
               const mediaUrl = plato.imagenUrl?.trim() || '';
+              const showDetalleBtn = shouldShowDetalleBtn(plato, mediaUrl);
               return (
                 <li
                   id={`plato-${plato.id}`}
@@ -510,6 +506,7 @@ function hubCardStyle(
                     platoCardSurfaceClass,
                     hasMedia(mediaUrl) && platosLayout === 'bento' && 'menu-plato-item--bento-media',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && 'menu-plato-item--bento-plain',
+                    platosLayout === 'bento' && !hasMedia(mediaUrl) && showDetalleBtn && 'menu-plato-item--bento-compact',
                     isHubMode && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) && 'menu-plato-item--hub-media',
                   ]}
                   data-reveal
@@ -549,7 +546,7 @@ function hubCardStyle(
                     </p>
                   )}
 
-                  {shouldShowDetalleBtn(plato, mediaUrl) ? (
+                  {showDetalleBtn ? (
                     <button
                       type="button"
                       data-open-detalle
@@ -691,37 +688,35 @@ function hubCardStyle(
     }
   }
 
-  /* —— Hub de categorías —— */
+  /* —— Hub de categorías (columna vertical) —— */
   .menu-hub-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
     width: 100%;
+    max-width: min(100%, 22.5rem);
+    margin-inline: auto;
   }
 
   @container menu (min-width: 40rem) {
     .menu-hub-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0.85rem;
-    }
-  }
-
-  @container menu (min-width: 56rem) {
-    .menu-hub-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      max-width: min(100%, 26rem);
+      gap: 0.75rem;
     }
   }
 
   .menu-hub-card {
     position: relative;
     display: flex;
-    min-height: 9.5rem;
-    flex-direction: column;
+    min-height: 4.5rem;
+    flex-direction: row;
+    align-items: flex-end;
     justify-content: space-between;
+    gap: 0.65rem;
     overflow: hidden;
     border-radius: var(--radius-card, 1rem);
     border: 1px solid color-mix(in srgb, var(--menu-texto-color, #fff) 12%, transparent);
-    padding: 0.85rem;
+    padding: 0.85rem 1rem;
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.28),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -729,6 +724,30 @@ function hubCardStyle(
       transform 220ms ease,
       border-color 220ms ease,
       box-shadow 220ms ease;
+  }
+
+  .menu-hub-card__badge {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.75rem;
+  }
+
+  .menu-hub-card__name {
+    margin-top: 0;
+    max-width: calc(100% - 5.5rem);
+    font-size: 0.88rem;
+    line-height: 1.25;
+  }
+
+  @container menu (min-width: 40rem) {
+    .menu-hub-card {
+      min-height: 5rem;
+      padding: 0.95rem 1.1rem;
+    }
+
+    .menu-hub-card__name {
+      font-size: 0.95rem;
+    }
   }
 
   .menu-hub-card:active {
@@ -1223,26 +1242,50 @@ function hubCardStyle(
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
+    align-items: start;
   }
 
   .menu-panel[data-platos-layout='bento'] .menu-plato-item {
     padding: 0.75rem 0.8rem;
+    height: auto;
+    align-self: start;
   }
 
   /* Móvil: platos con imagen a ancho completo; sin imagen en fila lista */
   .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media {
     grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+    padding-top: 0;
+    padding-inline: 0;
+    padding-bottom: 0.75rem;
+    overflow: hidden;
   }
 
-  .menu-panel[data-platos-layout='bento'] .menu-bento-media {
-    aspect-ratio: 16 / 10;
-    max-height: 11rem;
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-bento-media {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 0.65rem;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    aspect-ratio: 16 / 9;
+    max-height: none;
+  }
+
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-plato-head,
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-plato-desc,
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-btn--detalle {
+    padding-inline: 0.8rem;
   }
 
   .menu-panel[data-platos-layout='bento'] .menu-bento-media img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
+    display: block;
   }
 
   .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-plain {
@@ -1273,20 +1316,65 @@ function hubCardStyle(
     margin-top: 0.35rem;
   }
 
+  @media (max-width: 767px) {
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-plain {
+      grid-column: 1 / -1;
+    }
+  }
+
   @media (min-width: 768px) {
     .menu-panel[data-platos-layout='bento'] .menu-items {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.85rem;
+      align-items: start;
     }
 
     .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media,
     .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-plain {
       grid-column: auto;
+      width: auto;
+      max-width: none;
+      padding: 0.75rem 0.8rem;
     }
 
-    .menu-panel[data-platos-layout='bento'] .menu-bento-media {
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-bento-media {
+      width: 100%;
+      margin: 0 0 0.55rem;
+      border-radius: 0.75rem;
+      border: 1px solid color-mix(in srgb, white 10%, transparent);
       aspect-ratio: 4 / 3;
       max-height: 9.5rem;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-plato-head,
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-plato-desc,
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-btn--detalle {
+      padding-inline: 0;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-compact {
+      align-self: start;
+      height: auto;
+      min-height: 0;
+      padding: 0.6rem 0.7rem 0.65rem;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-compact .menu-plato-desc {
+      -webkit-line-clamp: 2;
+      margin-top: 0.25rem;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-compact .menu-btn--detalle {
+      margin-top: 0.45rem;
+      height: 1.75rem;
+      min-height: 1.75rem;
+      padding: 0 0.65rem;
+      font-size: 0.58rem;
     }
 
     .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-plain .menu-plato-head {
@@ -2089,6 +2177,17 @@ function hubCardStyle(
       const hubNav = panel.querySelector('[data-menu-hub-nav]');
       const hubTitle = panel.querySelector('[data-menu-hub-title]');
       const hubSection = panel.querySelector('[data-menu-hub]');
+      const appRoot = panel.closest('[data-restaurant-app]');
+      const restauranteId =
+        appRoot instanceof HTMLElement ? appRoot.dataset.restauranteId || '' : '';
+      const hubSessionKey = restauranteId
+        ? `xemilla:menu-hub-cat:${restauranteId}`
+        : 'xemilla:menu-hub-cat';
+
+      const clearHubSession = () => {
+        if (typeof sessionStorage === 'undefined') return;
+        sessionStorage.removeItem(hubSessionKey);
+      };
 
       const shouldSyncCategoryBg = () => {
         if (typeof window === 'undefined') return true;
@@ -2148,6 +2247,7 @@ function hubCardStyle(
         panel.dataset.menuFilter = 'hub';
         emitCategory('all', false);
         setHubView('home');
+        clearHubSession();
       };
 
       const paintChips = (activeId: string) => {
@@ -2268,6 +2368,17 @@ function hubCardStyle(
         });
 
         panel.querySelector('[data-menu-hub-back]')?.addEventListener('click', () => {
+          closeHubCategory();
+        });
+
+        panel.addEventListener('xemilla:hub-restore', (e) => {
+          const detail = (e as CustomEvent<{ catId?: string; catName?: string }>).detail;
+          if (detail?.catId) {
+            openHubCategory(detail.catId, detail.catName || '');
+          }
+        });
+
+        panel.addEventListener('xemilla:hub-reset', () => {
           closeHubCategory();
         });
 

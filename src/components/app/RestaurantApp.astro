@@ -624,19 +624,19 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
     <div
-      class="detalle-modal pointer-events-none fixed inset-0 z-[90] flex items-end justify-center opacity-0 transition-all duration-300 ease-out md:items-center md:px-6 md:py-8"
+      class="detalle-modal pointer-events-none fixed inset-0 z-[100] flex items-center justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] opacity-0 transition-all duration-300 ease-out md:px-6 md:py-8"
       data-detalle-modal
       aria-hidden="true"
     >
       <button
         type="button"
-        class="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-300"
+        class="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity duration-300"
         data-detalle-backdrop
         aria-label="Cerrar detalle"
       ></button>
 
       <div
-        class="detalle-modal__card relative z-10 flex w-full max-h-[min(92dvh,44rem)] max-w-none flex-col overflow-hidden rounded-t-[1.65rem] border border-white/12 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_80px_rgba(0,0,0,0.6)] transition-all duration-300 ease-out md:max-w-[46rem] md:max-h-[min(86dvh,38rem)] md:flex-row md:rounded-[1.65rem]"
+        class="detalle-modal__card relative z-10 flex w-full max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] max-w-[min(100%,26rem)] flex-col overflow-hidden rounded-[1.35rem] border border-white/12 bg-[var(--color-fondo)] opacity-0 shadow-[0_24px_80px_rgba(0,0,0,0.65)] transition-all duration-300 ease-out md:max-h-[min(86dvh,38rem)] md:max-w-[46rem] md:flex-row md:rounded-[1.65rem]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="detalle-modal-title"
@@ -659,8 +659,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           </svg>
         </button>
 
-        <div class="relative aspect-[4/3] shrink-0 overflow-hidden bg-black/50 md:aspect-auto md:min-h-[22rem] md:w-[46%]" data-detalle-media-std>
-          <div class="detalle-modal__handle md:hidden" aria-hidden="true"></div>
+        <div class="relative aspect-[4/3] max-h-[42vh] shrink-0 overflow-hidden bg-black/50 md:aspect-auto md:max-h-none md:min-h-[22rem] md:w-[46%]" data-detalle-media-std>
+          <div class="detalle-modal__handle hidden" aria-hidden="true"></div>
           <img
             data-detalle-img
             src=""
@@ -770,17 +770,22 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     pointer-events: auto;
     opacity: 1;
   }
+
   .detalle-modal__card {
-    transform: translateY(1.25rem);
+    transform: scale(0.94);
+    opacity: 0;
   }
+
   .detalle-modal.is-open .detalle-modal__card {
-    transform: translateY(0);
+    transform: scale(1);
     opacity: 1;
   }
+
   @media (min-width: 768px) {
     .detalle-modal__card {
-      transform: translateY(0) scale(0.96);
+      transform: scale(0.96);
     }
+
     .detalle-modal.is-open .detalle-modal__card {
       transform: scale(1);
     }
@@ -1160,6 +1165,54 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     });
   }
 
+  function hubSessionKey(app: HTMLElement) {
+    const id = app.dataset.restauranteId || '';
+    return id ? `xemilla:menu-hub-cat:${id}` : 'xemilla:menu-hub-cat';
+  }
+
+  function persistMenuHubOnClose(app: HTMLElement) {
+    const menuPanel = app.querySelector('[data-menu-panel]');
+    if (!(menuPanel instanceof HTMLElement)) return;
+    if (menuPanel.dataset.menuNavegacion !== 'hub_categories') return;
+
+    const key = hubSessionKey(app);
+    if (menuPanel.dataset.hubView === 'detail') {
+      const catId = menuPanel.dataset.menuFilter || '';
+      const titleEl = menuPanel.querySelector('[data-menu-hub-title]');
+      const title = titleEl instanceof HTMLElement ? titleEl.textContent?.trim() || '' : '';
+      if (catId && catId !== 'hub' && catId !== 'all') {
+        sessionStorage.setItem(key, JSON.stringify({ catId, catName: title }));
+        return;
+      }
+    }
+    sessionStorage.removeItem(key);
+  }
+
+  function restoreMenuHubState(app: HTMLElement) {
+    const menuPanel = app.querySelector('[data-menu-panel]');
+    if (!(menuPanel instanceof HTMLElement)) return;
+    if (menuPanel.dataset.menuNavegacion !== 'hub_categories') return;
+
+    let saved: { catId?: string; catName?: string } | null = null;
+    try {
+      const raw = sessionStorage.getItem(hubSessionKey(app));
+      saved = raw ? JSON.parse(raw) : null;
+    } catch {
+      saved = null;
+    }
+
+    if (saved?.catId) {
+      menuPanel.dispatchEvent(
+        new CustomEvent('xemilla:hub-restore', {
+          detail: saved,
+          bubbles: false,
+        }),
+      );
+    } else {
+      menuPanel.dispatchEvent(new CustomEvent('xemilla:hub-reset', { bubbles: false }));
+    }
+  }
+
   function closeAppNavOverlay(app: HTMLElement) {
     const overlay = app.querySelector('[data-app-nav-overlay]');
     const burger = app.querySelector('[data-app-nav-burger]');
@@ -1215,6 +1268,10 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       document.dispatchEvent(new CustomEvent('xemilla:wifi-open'));
     }
 
+    if (id === 'menu') {
+      requestAnimationFrame(() => restoreMenuHubState(app));
+    }
+
     if (false) {
       document.dispatchEvent(
         new CustomEvent('xemilla:mesa-panel-open', {
@@ -1225,6 +1282,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   }
 
   function closeSections(app: HTMLElement) {
+    persistMenuHubOnClose(app);
     const home = app.querySelector('[data-linktree-home]');
     closeUbicacionDrawer(app);
     closeAppNavOverlay(app);
@@ -1336,6 +1394,14 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     modal.classList.remove('is-open');
     modal.setAttribute('aria-hidden', 'true');
     clearDetalleMedia(app);
+    const anySectionOpen = Array.from(app.querySelectorAll('[data-section]')).some(
+      (el) => el instanceof HTMLElement && el.dataset.open === 'true',
+    );
+    const drawerOpen = app.querySelector('[data-ubicacion-drawer].is-open');
+    const boutiqueOpen = app.querySelector('[data-boutique-modal].is-open');
+    if (!anySectionOpen && !drawerOpen && !boutiqueOpen) {
+      document.documentElement.style.overflow = '';
+    }
   }
 
   function openBoutique(app: HTMLElement) {
@@ -1572,6 +1638,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.overflow = 'hidden';
 
     // Analytics en background — no await, no bloquea UX
     const restauranteId = app.dataset.restauranteId || '';
