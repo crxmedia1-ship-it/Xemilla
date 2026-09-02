@@ -126,7 +126,7 @@ const chipsEstilo = normalizeChipsEstilo(menuUi.chips_estilo);
 const platosLayout = normalizePlatosLayout(menuUi.platos_layout);
 const estiloTarjetas = normalizeEstiloTarjetas(menuUi.estilo_tarjetas);
 
-/** Bento muestra la imagen inline: "Ver más" solo si hay nutrición o AR activos. */
+/** Solo bento muestra imagen inline; lista y cuadrícula usan «Ver más». */
 function shouldShowDetalleBtn(plato: Plato, mediaUrl: string) {
   if (platosLayout === 'bento') {
     return showNutricion || (showAr && Boolean(plato.modelo3dUrl?.trim()));
@@ -525,7 +525,6 @@ function hubCardStyle(
                     hasMedia(mediaUrl) && platosLayout === 'bento' && 'menu-plato-item--bento-media',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && 'menu-plato-item--bento-plain',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && showDetalleBtn && 'menu-plato-item--bento-compact',
-                    isHubMode && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) && 'menu-plato-item--hub-media',
                   ]}
                   data-reveal
                   data-plato-id={plato.id}
@@ -536,8 +535,8 @@ function hubCardStyle(
                   data-estilo-tarjeta={estiloTarjetas}
                 >
                   {
-                    (platosLayout === 'bento' || isHubMode) && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) ? (
-                      <div class="menu-bento-media menu-hub-detail-media mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                    platosLayout === 'bento' && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) ? (
+                      <div class="menu-bento-media mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/30">
                         <img
                           src={mediaUrl}
                           alt=""
@@ -710,14 +709,21 @@ function hubCardStyle(
   .menu-hub-grid {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.85rem;
     width: 100%;
     max-width: 100%;
   }
 
   @container menu (min-width: 40rem) {
     .menu-hub-grid {
-      gap: 0.9rem;
+      gap: 1rem;
+      padding-inline: 1.35rem;
+    }
+  }
+
+  @container menu (min-width: 56rem) {
+    .menu-hub-grid {
+      padding-inline: 2rem;
     }
   }
 
@@ -725,7 +731,8 @@ function hubCardStyle(
     position: relative;
     display: flex;
     width: 100%;
-    min-height: 6.75rem;
+    min-height: 8.25rem;
+    aspect-ratio: 2.1 / 1;
     flex-direction: row;
     align-items: flex-end;
     justify-content: space-between;
@@ -778,8 +785,9 @@ function hubCardStyle(
 
   @container menu (min-width: 40rem) {
     .menu-hub-card {
-      min-height: 8.25rem;
-      padding: 1.15rem 1.25rem;
+      min-height: 9.25rem;
+      aspect-ratio: 2.55 / 1;
+      padding: 1.1rem 1.2rem;
     }
 
     .menu-hub-card__badge {
@@ -796,11 +804,12 @@ function hubCardStyle(
 
   @container menu (min-width: 56rem) {
     .menu-hub-card {
-      min-height: 9rem;
+      min-height: 10rem;
+      aspect-ratio: 2.75 / 1;
     }
 
     .menu-hub-card__name {
-      font-size: 1.2rem;
+      font-size: 1.18rem;
     }
   }
 
@@ -860,13 +869,6 @@ function hubCardStyle(
     .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-items {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-  }
-
-  .menu-panel[data-menu-navegacion='hub_categories'] .menu-hub-detail-media img {
-    aspect-ratio: 16 / 10;
-    height: auto;
-    width: 100%;
-    object-fit: cover;
   }
 
   .menu-chips-nav {
@@ -1216,6 +1218,57 @@ function hubCardStyle(
 
     [data-destacados-estilo='scroll'] .menu-featured__media {
       max-height: none;
+    }
+  }
+
+  @container menu (min-width: 48rem) {
+    [data-destacados-estilo='scroll'] [data-destacados-track] {
+      gap: 0.85rem;
+      padding-inline: 1.35rem;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured {
+      width: min(38vw, 16rem);
+      padding: 0.65rem;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured:only-child {
+      width: min(42vw, 18rem);
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__media {
+      aspect-ratio: 4 / 3;
+      max-height: 9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__title {
+      font-size: 0.85rem !important;
+      line-height: 1.25;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__price {
+      font-size: 0.85rem !important;
+      margin-top: 0.25rem !important;
+    }
+  }
+
+  @container menu (min-width: 56rem) {
+    [data-destacados-estilo='scroll'] .menu-featured {
+      width: min(34vw, 18.5rem);
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured:only-child {
+      width: min(38vw, 20.5rem);
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__media {
+      max-height: 10.5rem;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__title,
+    [data-destacados-estilo='scroll'] .menu-featured__price {
+      font-size: 0.94rem !important;
     }
   }
 
