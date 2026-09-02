@@ -258,28 +258,51 @@ function hubCardStyle(
 >
   <div class="relative z-10">
   <div class="sticky top-0 z-20 border-b border-white/10 menu-sticky">
-    {
-      isHubMode ? (
-        <div
-          class="menu-hub-nav items-center gap-3 py-3"
-          data-menu-hub-nav
+    <div class="menu-sticky-toolbar" data-menu-sticky-toolbar>
+      {
+        isHubMode ? (
+          <div
+            class="menu-hub-nav min-w-0 flex-1 items-center gap-3"
+            data-menu-hub-nav
+            aria-hidden="true"
+          >
+            <button
+              type="button"
+              class="menu-hub-back inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--menu-texto-color,var(--color-texto))] transition active:scale-[0.98]"
+              data-menu-hub-back
+            >
+              <span aria-hidden="true">←</span>
+              Categorías
+            </button>
+            <span
+              class="menu-hub-nav__title min-w-0 flex-1 truncate text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--menu-titulo-color,var(--menu-texto-color,var(--color-texto)))]"
+              data-menu-hub-title
+            />
+          </div>
+        ) : (
+          <span class="menu-sticky-toolbar__spacer min-w-0 flex-1" aria-hidden="true" />
+        )
+      }
+      <button
+        type="button"
+        data-close-section
+        class="menu-mobile-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[color:var(--menu-texto-color,var(--color-texto))] shadow-inner backdrop-blur-md transition active:scale-95"
+        aria-label="Cerrar menú"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          class="h-4 w-4"
           aria-hidden="true"
         >
-          <button
-            type="button"
-            class="menu-hub-back inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--menu-texto-color,var(--color-texto))] transition active:scale-[0.98]"
-            data-menu-hub-back
-          >
-            <span aria-hidden="true">←</span>
-            Categorías
-          </button>
-          <span
-            class="menu-hub-nav__title min-w-0 flex-1 truncate text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--menu-titulo-color,var(--menu-texto-color,var(--color-texto)))]"
-            data-menu-hub-title
-          />
-        </div>
-      ) : null
-    }
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </div>
     <nav class={chipsNavClass} aria-label="Categorías del menú" data-menu-cats>
       <div class={chipsRowClass}>
         <button
@@ -670,11 +693,6 @@ function hubCardStyle(
       padding-inline: 0;
     }
 
-    .menu-hub-nav {
-      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
-      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
-    }
-
     .currency-bar {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
@@ -828,6 +846,58 @@ function hubCardStyle(
     display: none;
   }
 
+  .menu-sticky-toolbar {
+    display: none;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .menu-mobile-close {
+    display: none;
+  }
+
+  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] [data-menu-hub-nav] {
+    display: flex;
+  }
+
+  @media (max-width: 767px), (pointer: coarse) {
+    .menu-sticky-toolbar {
+      display: flex;
+      padding:
+        max(0.55rem, env(safe-area-inset-top, 0px))
+        max(var(--menu-gutter-x), env(safe-area-inset-right, 0px))
+        0.45rem
+        max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    }
+
+    .menu-mobile-close {
+      display: inline-flex;
+    }
+
+    .menu-sticky-toolbar .menu-hub-nav {
+      padding: 0;
+    }
+
+    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='home'] [data-menu-hub-nav] {
+      display: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-sticky-toolbar {
+      display: block;
+      padding:
+        0.75rem
+        max(var(--menu-gutter-x), env(safe-area-inset-right, 0px))
+        0.35rem
+        max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    }
+
+    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-sticky-toolbar .menu-hub-nav {
+      padding: 0;
+    }
+  }
+
   .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='home'] [data-menu-cats] {
     display: none;
   }
@@ -846,29 +916,6 @@ function hubCardStyle(
 
   .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] [data-menu-cats] {
     display: none;
-  }
-
-  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] [data-menu-hub-nav] {
-    display: flex;
-  }
-
-  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-items {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.95rem;
-  }
-
-  @container menu (min-width: 34rem) {
-    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-items {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1rem;
-    }
-  }
-
-  @container menu (min-width: 52rem) {
-    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-items {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   }
 
   .menu-chips-nav {
@@ -1184,7 +1231,11 @@ function hubCardStyle(
   @media (max-width: 767px) {
     [data-destacados-estilo='scroll'] [data-destacados-track] {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.45rem;
+      gap: 0.55rem;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured {
+      padding: 0.48rem;
     }
 
     [data-destacados-estilo='scroll'] .menu-featured:only-child {
@@ -1193,7 +1244,16 @@ function hubCardStyle(
     }
 
     [data-destacados-estilo='scroll'] .menu-featured__media {
-      max-height: 4.75rem;
+      max-height: 5.5rem;
+      margin-bottom: 0.4rem;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__title {
+      font-size: 0.72rem !important;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__price {
+      font-size: 0.72rem !important;
     }
   }
 
@@ -1326,8 +1386,14 @@ function hubCardStyle(
     gap: var(--space-item, 0.95rem);
   }
 
-  /* —— Cuadrícula 2 columnas (siempre 2 cols, distinto de lista) —— */
+  /* —— Cuadrícula 2 columnas (siempre 2 cols en móvil y PC) —— */
   .menu-panel[data-platos-layout='grid'] .menu-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'][data-platos-layout='grid'] .menu-items {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.6rem;
@@ -1981,11 +2047,6 @@ function hubCardStyle(
     margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
-  .menu-hub-nav {
-    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
-    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
-  }
-
   /* Móvil: márgenes seguros + sticky estable (viewport, no depende de @container) */
   @media (max-width: 767px), (pointer: coarse) {
     .menu-panel {
@@ -2025,8 +2086,7 @@ function hubCardStyle(
     }
 
     .menu-chips-nav,
-    .alergia-bar,
-    .menu-hub-nav {
+    .alergia-bar {
       padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
       padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     }
