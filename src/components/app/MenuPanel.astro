@@ -283,25 +283,51 @@ function hubCardStyle(
           <span class="menu-sticky-toolbar__spacer min-w-0 flex-1" aria-hidden="true" />
         )
       }
-      <button
-        type="button"
-        data-close-section
-        class="menu-mobile-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[color:var(--menu-texto-color,var(--color-texto))] shadow-inner backdrop-blur-md transition active:scale-95"
-        aria-label="Cerrar menú"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          class="h-4 w-4"
-          aria-hidden="true"
+      <div class="menu-sticky-toolbar__actions">
+        <div
+          class="currency-compact"
+          data-currency-switcher
+          data-tasa-bcv={String(tasaBcv)}
+          data-tasa-eur-usd={String(tasaEurUsd)}
+          data-tasa-eur={String(tasaEur || '')}
         >
-          <path d="M6 6l12 12M18 6L6 18"></path>
-        </svg>
-      </button>
+          <button
+            type="button"
+            class="currency-compact__trigger"
+            data-currency-trigger
+            aria-label="Cambiar divisa de precios"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          >
+            <span data-currency-trigger-label>$</span>
+          </button>
+          <div class="currency-compact__menu" data-currency-menu hidden role="listbox" aria-label="Divisa de visualización">
+            <button type="button" class="currency-compact__option is-active" data-currency-btn="USD" aria-pressed="true">USD</button>
+            <button type="button" class="currency-compact__option" data-currency-btn="BS" aria-pressed="false">BS</button>
+            <button type="button" class="currency-compact__option" data-currency-btn="EUR" aria-pressed="false">EUR</button>
+            <p class="currency-compact__rate" data-currency-rate aria-live="polite">Tasa BCV</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          data-close-section
+          class="menu-mobile-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[color:var(--menu-texto-color,var(--color-texto))] shadow-inner backdrop-blur-md transition active:scale-95"
+          aria-label="Cerrar menú"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            class="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </div>
     </div>
     <nav class={chipsNavClass} aria-label="Categorías del menú" data-menu-cats>
       <div class={chipsRowClass}>
@@ -363,29 +389,6 @@ function hubCardStyle(
         </div>
       )
     }
-
-    {/* —— Selector de Divisas (visual, client-side) —— */}
-    <div
-      class="currency-bar mb-3 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-white/10 bg-black/40 p-2 shadow-lg"
-      data-currency-switcher
-      data-tasa-bcv={String(tasaBcv)}
-      data-tasa-eur-usd={String(tasaEurUsd)}
-      data-tasa-eur={String(tasaEur || '')}
-    >
-      <span class="currency-bar__label" aria-hidden="true">
-        Precios
-      </span>
-
-      <div class="currency-pill-group" role="group" aria-label="Divisa de visualización">
-        <button type="button" class="cpill cpill--active" data-currency-btn="USD" aria-pressed="true">USD</button>
-        <button type="button" class="cpill" data-currency-btn="BS" aria-pressed="false">BS</button>
-        <button type="button" class="cpill" data-currency-btn="EUR" aria-pressed="false">EUR</button>
-      </div>
-
-      <span class="currency-bar__rate" data-currency-rate aria-live="polite">
-        Tasa BCV
-      </span>
-    </div>
   </div>
 
   {
@@ -539,24 +542,30 @@ function hubCardStyle(
             {(cat.platos || []).map((plato) => {
               const mediaUrl = plato.imagenUrl?.trim() || '';
               const showDetalleBtn = shouldShowDetalleBtn(plato, mediaUrl);
+              const isChefPick = Boolean(plato.destacado);
               return (
                 <li
                   id={`plato-${plato.id}`}
                   class:list={[
                     'menu-plato-item group scroll-mt-40',
                     platoCardSurfaceClass,
+                    isChefPick && 'menu-plato-item--chef-pick',
                     hasMedia(mediaUrl) && platosLayout === 'bento' && 'menu-plato-item--bento-media',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && 'menu-plato-item--bento-plain',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && showDetalleBtn && 'menu-plato-item--bento-compact',
                   ]}
                   data-reveal
                   data-plato-id={plato.id}
+                  data-chef-pick={isChefPick ? 'true' : undefined}
                   data-alergias={alergiasCsv(plato)}
                   data-plato-nombre={plato.nombre}
                   data-ingredientes={plato.ingredientesDetalle || ''}
                   data-has-media={hasMedia(mediaUrl) ? 'true' : 'false'}
                   data-estilo-tarjeta={estiloTarjetas}
                 >
+                  {isChefPick ? (
+                    <span class="menu-chef-pick-badge">Sugerencia del Chef</span>
+                  ) : null}
                   {
                     platosLayout === 'bento' && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) ? (
                       <div class="menu-bento-media mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/30">
@@ -693,12 +702,6 @@ function hubCardStyle(
       padding-inline: 0;
     }
 
-    .currency-bar {
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 96%, transparent);
-    }
-
     .alergia-bar {
       padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
       padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
@@ -715,11 +718,6 @@ function hubCardStyle(
       box-shadow: 0 1px 0 color-mix(in srgb, var(--menu-texto-color, #fff) 8%, transparent);
       backdrop-filter: blur(18px) saturate(1.15);
       -webkit-backdrop-filter: blur(18px) saturate(1.15);
-    }
-
-    .currency-bar {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
     }
   }
 
@@ -852,6 +850,14 @@ function hubCardStyle(
     gap: 0.65rem;
   }
 
+  .menu-sticky-toolbar__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
   .menu-mobile-close {
     display: none;
   }
@@ -884,17 +890,25 @@ function hubCardStyle(
   }
 
   @media (min-width: 768px) {
-    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-sticky-toolbar {
-      display: block;
+    .menu-sticky-toolbar {
+      display: flex;
+      justify-content: flex-end;
       padding:
-        0.75rem
+        0.45rem
         max(var(--menu-gutter-x), env(safe-area-inset-right, 0px))
         0.35rem
         max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
     }
 
+    .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-sticky-toolbar {
+      justify-content: space-between;
+      padding-top: 0.75rem;
+    }
+
     .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] .menu-sticky-toolbar .menu-hub-nav {
       padding: 0;
+      flex: 1;
+      min-width: 0;
     }
   }
 
@@ -1613,6 +1627,98 @@ function hubCardStyle(
       backdrop-filter 400ms ease;
   }
 
+  .menu-chef-pick-badge {
+    display: none;
+    pointer-events: none;
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--chef-pick {
+    position: relative;
+    border-color: color-mix(in srgb, #c8a951 48%, rgba(255, 255, 255, 0.14));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, #d4af37 24%, transparent),
+      0 10px 28px color-mix(in srgb, #b8860b 14%, transparent),
+      inset 0 1px 0 color-mix(in srgb, #f3e3a4 16%, transparent);
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--chef-pick::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.55;
+    background:
+      radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, #d4af37 18%, transparent), transparent 62%),
+      radial-gradient(90% 60% at 100% 100%, color-mix(in srgb, #9f7e2a 10%, transparent), transparent 70%);
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--chef-pick > :not(.menu-chef-pick-badge) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-chef-pick-badge {
+    position: absolute;
+    top: 0.55rem;
+    left: 0.55rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    max-width: calc(100% - 1rem);
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, #e8d08a 36%, transparent);
+    background: color-mix(in srgb, #1a1408 72%, transparent);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.46rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, #f3e3a4 92%, #fff);
+    box-shadow:
+      0 0 14px color-mix(in srgb, #d4af37 22%, transparent),
+      inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media .menu-chef-pick-badge {
+    top: 0.65rem;
+    left: 0.65rem;
+  }
+
+  @container menu (max-width: 33.99rem) {
+    .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-chef-pick-badge {
+      top: 0.45rem;
+      left: 0.45rem;
+      font-size: 0.42rem;
+      padding: 0.16rem 0.42rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--chef-pick {
+      animation: menu-chef-pick-glow 4.8s ease-in-out infinite;
+    }
+  }
+
+  @keyframes menu-chef-pick-glow {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, #d4af37 22%, transparent),
+        0 8px 22px color-mix(in srgb, #b8860b 12%, transparent),
+        inset 0 1px 0 color-mix(in srgb, #f3e3a4 14%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, #e8c96a 32%, transparent),
+        0 12px 30px color-mix(in srgb, #c9a227 18%, transparent),
+        inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+    }
+  }
+
   .menu-plato-head {
     display: flex;
     align-items: baseline;
@@ -1837,11 +1943,15 @@ function hubCardStyle(
     .menu-btn,
     .menu-plato-item,
     .precio-dinamico,
-    .cpill,
+    .currency-compact__trigger,
     .alergia-pill {
       transition: none !important;
       opacity: 1 !important;
       transform: none !important;
+    }
+
+    .menu-plato-item--chef-pick {
+      animation: none !important;
     }
 
     [data-destacados-estilo='fade'] .menu-featured {
@@ -1855,74 +1965,96 @@ function hubCardStyle(
     }
   }
 
-  /* ── Currency Bar ────────────────────────────────────────── */
-  .currency-bar {
-    -webkit-backdrop-filter: blur(24px);
+  /* ── Currency compact (popover) ─────────────────────────── */
+  .currency-compact {
+    position: relative;
+    z-index: 25;
   }
 
-  .currency-bar__label {
+  .currency-compact__trigger {
     display: inline-flex;
+    min-width: 2.25rem;
+    height: 2.25rem;
     align-items: center;
-    gap: 0.3rem;
-    font-size: 0.58rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 70%, transparent);
-    user-select: none;
-  }
-
-  .currency-pill-group {
-    display: inline-flex;
+    justify-content: center;
     border-radius: 9999px;
     border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    overflow: hidden;
-  }
-
-  .cpill {
-    padding: 0.28rem 0.72rem;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0 0.55rem;
     font-size: 0.58rem;
     font-weight: 700;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-texto) 48%, transparent);
-    background: transparent;
-    border: none;
+    color: var(--menu-texto-color, var(--color-texto));
     cursor: pointer;
     user-select: none;
-    white-space: nowrap;
-    line-height: 1.7;
-    transition:
-      background-color 160ms ease,
-      color 140ms ease,
-      box-shadow 160ms ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
   }
 
-  .cpill + .cpill {
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  .currency-compact__trigger:active {
+    transform: scale(0.96);
   }
 
-  .cpill:active {
-    opacity: 0.7;
+  .currency-compact.is-open .currency-compact__trigger {
+    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 55%, transparent);
+    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 22%, rgba(255, 255, 255, 0.06));
   }
 
-  .cpill--active {
-    background: var(--menu-accent-color, var(--color-primario));
+  .currency-compact__menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 40;
+    min-width: 9.25rem;
+    overflow: hidden;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 92%, transparent);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .currency-compact__menu[hidden] {
+    display: none;
+  }
+
+  .currency-compact__option {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 72%, transparent);
+    cursor: pointer;
+  }
+
+  .currency-compact__option + .currency-compact__option {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .currency-compact__option.is-active {
     color: #fff;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 88%, #000);
   }
 
-  .currency-bar__rate {
-    font-size: 0.6rem;
-    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 65%, transparent);
-    white-space: nowrap;
-    letter-spacing: 0.02em;
+  .currency-compact__rate {
+    margin: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.45rem 0.75rem 0.55rem;
+    font-size: 0.56rem;
+    line-height: 1.35;
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto)) 62%, transparent);
   }
 
-  .currency-bar__rate strong {
+  .currency-compact__rate strong {
     font-weight: 600;
     color: var(--menu-texto-color, var(--color-texto));
   }
@@ -2042,11 +2174,6 @@ function hubCardStyle(
     padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
-  .currency-bar {
-    margin-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
-    margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
-  }
-
   /* Móvil: márgenes seguros + sticky estable (viewport, no depende de @container) */
   @media (max-width: 767px), (pointer: coarse) {
     .menu-panel {
@@ -2089,20 +2216,6 @@ function hubCardStyle(
     .alergia-bar {
       padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
       padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
-    }
-
-    .currency-bar {
-      margin-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
-      margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 96%, transparent);
-    }
-
-    .currency-pill-group {
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      background: rgba(255, 255, 255, 0.06);
     }
 
     .alergia-pill {
@@ -2648,7 +2761,22 @@ function hubCardStyle(
     if (!Number.isFinite(eurPerUsd) || eurPerUsd <= 0) eurPerUsd = TASA_EUR;
 
     const rateEl = switcher.querySelector<HTMLElement>('[data-currency-rate]');
+    const trigger = switcher.querySelector<HTMLButtonElement>('[data-currency-trigger]');
+    const triggerLabel = switcher.querySelector<HTMLElement>('[data-currency-trigger-label]');
+    const menu = switcher.querySelector<HTMLElement>('[data-currency-menu]');
     let current = 'USD';
+
+    const syncTriggerLabel = (currency: string) => {
+      if (!(triggerLabel instanceof HTMLElement)) return;
+      triggerLabel.textContent =
+        currency === 'BS' ? 'Bs' : currency === 'EUR' ? '€' : '$';
+    };
+
+    const setMenuOpen = (open: boolean) => {
+      switcher.classList.toggle('is-open', open);
+      if (menu instanceof HTMLElement) menu.hidden = !open;
+      if (trigger instanceof HTMLButtonElement) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
 
     const setRateHint = (currency: string) => {
       if (!rateEl) return;
@@ -2687,7 +2815,36 @@ function hubCardStyle(
       });
     };
 
+    const selectCurrency = (currency: string) => {
+      if (!currency || currency === current) {
+        setMenuOpen(false);
+        return;
+      }
+      current = currency;
+      syncTriggerLabel(currency);
+
+      switcher.querySelectorAll<HTMLElement>('[data-currency-btn]').forEach((b) => {
+        const on = b.dataset.currencyBtn === currency;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+
+      convertAll(currency);
+      setMenuOpen(false);
+    };
+
     setRateHint('USD');
+    syncTriggerLabel('USD');
+
+    document.addEventListener('click', (e) => {
+      if (!(e.target instanceof Node) || !switcher.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    });
 
     void fetch('/api/tasas-cambio')
       .then((res) => (res.ok ? res.json() : null))
@@ -2708,19 +2865,19 @@ function hubCardStyle(
       .catch(() => {});
 
     switcher.addEventListener('click', (e) => {
-      const btn = (e.target as Element)?.closest<HTMLElement>('[data-currency-btn]');
+      const target = e.target as Element | null;
+      if (!target) return;
+
+      if (target.closest('[data-currency-trigger]')) {
+        e.stopPropagation();
+        setMenuOpen(!switcher.classList.contains('is-open'));
+        return;
+      }
+
+      const btn = target.closest<HTMLElement>('[data-currency-btn]');
       if (!btn) return;
-      const currency = btn.dataset.currencyBtn ?? '';
-      if (!currency || currency === current) return;
-      current = currency;
-
-      switcher.querySelectorAll<HTMLElement>('[data-currency-btn]').forEach((b) => {
-        const on = b === btn;
-        b.classList.toggle('cpill--active', on);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-
-      convertAll(currency);
+      e.stopPropagation();
+      selectCurrency(btn.dataset.currencyBtn ?? '');
     });
   }
 
