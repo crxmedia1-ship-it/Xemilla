@@ -767,6 +767,26 @@ export function normalizeChipsEstilo(value) {
 }
 
 /** @param {unknown} value */
+export function normalizeMenuNavegacion(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (
+    v === 'hub_categories' ||
+    v === 'hub-categories' ||
+    v === 'hub' ||
+    v === 'portal' ||
+    v === 'portal_categorias' ||
+    v === 'categorias_hub'
+  ) {
+    return 'hub_categories';
+  }
+  return 'scroll';
+}
+
+/** @param {unknown} value */
 export function normalizePlatosLayout(value) {
   const v = String(value || '')
     .trim()
@@ -780,6 +800,28 @@ export function normalizePlatosLayout(value) {
   if (v === 'lista' || v === 'list' || v === '1' || v === '1col') return 'lista';
   if (!v) return 'grid';
   return 'lista';
+}
+
+/** @param {unknown} value */
+export function normalizeDestacadosEstilo(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (
+    v === 'carrusel' ||
+    v === 'carousel' ||
+    v === 'auto' ||
+    v === 'autoplay' ||
+    v === 'slider'
+  ) {
+    return 'carrusel';
+  }
+  if (v === 'fade' || v === 'desvanecimiento' || v === 'dissolve' || v === 'crossfade') {
+    return 'fade';
+  }
+  return 'scroll';
 }
 
 /** @param {unknown} value */
@@ -888,6 +930,10 @@ export function normalizeMenuUi(menu = {}, extras = {}) {
     estilo_tarjetas: normalizeEstiloTarjetas(
       m.estilo_tarjetas || m.estiloTarjetas || x.estilo_tarjetas,
     ),
+    destacados_estilo: normalizeDestacadosEstilo(
+      m.destacados_estilo || m.destacadosEstilo || x.destacados_estilo,
+    ),
+    navegacion: normalizeMenuNavegacion(m.navegacion || m.menu_navegacion || x.navegacion),
     fuente_titulo: pickFuenteTitulo
       ? resolveNosotrosFuenteTitulo(pickFuenteTitulo).id
       : '',
@@ -1193,6 +1239,8 @@ export function buildUiEstiloFromBody(raw) {
         chips_estilo: raw.menu_chips_estilo,
         platos_layout: raw.menu_platos_layout,
         estilo_tarjetas: raw.menu_estilo_tarjetas ?? raw.estilo_tarjetas,
+        destacados_estilo: raw.menu_destacados_estilo,
+        navegacion: raw.menu_navegacion,
         fuente_titulo: raw.menu_fuente_titulo || raw.menu_font,
         fuente_cuerpo: raw.menu_fuente_cuerpo,
       },
@@ -1394,6 +1442,10 @@ export function uiEstiloToCssVars(ui, fallbackPrimario = '#9f1239') {
     ui?.menu?.chips_estilo ? `--menu-chips-estilo: ${ui.menu.chips_estilo}` : '',
     ui?.menu?.platos_layout ? `--menu-platos-layout: ${ui.menu.platos_layout}` : '',
     ui?.menu?.estilo_tarjetas ? `--menu-estilo-tarjetas: ${ui.menu.estilo_tarjetas}` : '',
+    ui?.menu?.destacados_estilo
+      ? `--menu-destacados-estilo: ${ui.menu.destacados_estilo}`
+      : '',
+    ui?.menu?.navegacion ? `--menu-navegacion: ${ui.menu.navegacion}` : '',
     ui?.menu?.fuente_titulo
       ? `--menu-font-heading: ${resolveNosotrosFuenteTitulo(ui.menu.fuente_titulo).stack}`
       : '',

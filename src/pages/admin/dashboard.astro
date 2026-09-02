@@ -46,6 +46,8 @@ import {
   normalizeChipsEstilo,
   normalizePlatosLayout,
   normalizeEstiloTarjetas,
+  normalizeDestacadosEstilo,
+  normalizeMenuNavegacion,
   normalizeGadgetServiciosEstilo,
 } from '../../lib/secciones-ui.js';
 import { hasOperationalGadgets } from '../../lib/gadgets.js';
@@ -135,7 +137,7 @@ if (isSuperAdmin && restId) {
   }
 }
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
-const publicWebAppUrl = publicSlug ? `/${publicSlug}` : '';
+const publicWebAppUrl = publicSlug ? `https://xemilla.app/${publicSlug}` : '';
 const replicateConfigured = Boolean(
   import.meta.env.REPLICATE_API_TOKEN ||
     (typeof process !== 'undefined' && process.env?.REPLICATE_API_TOKEN),
@@ -469,6 +471,8 @@ const marca = {
   menu_chips_estilo: normalizeChipsEstilo(uiEstiloRaw?.menu?.chips_estilo),
   menu_platos_layout: normalizePlatosLayout(uiEstiloRaw?.menu?.platos_layout),
   menu_estilo_tarjetas: normalizeEstiloTarjetas(uiEstiloRaw?.menu?.estilo_tarjetas),
+  menu_destacados_estilo: normalizeDestacadosEstilo(uiEstiloRaw?.menu?.destacados_estilo),
+  menu_navegacion: normalizeMenuNavegacion(uiEstiloRaw?.menu?.navegacion),
   menu_fuente_titulo: resolveNosotrosFuenteTitulo(
     uiEstiloRaw?.menu?.fuente_titulo || restaurante?.menu_font || 'playfair',
   ).id,
@@ -637,16 +641,22 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       </div>
 
       <div class="flex shrink-0 items-center gap-2 sm:order-3 sm:gap-4">
-          <div class="admin-studio-header__utils hidden items-center gap-1 md:flex">
-            <a
-              href="/admin/login"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="admin-studio-header__link"
-            >
-              Login ↗
-            </a>
-          </div>
+          {
+            publicWebAppUrl ? (
+              <div class="admin-studio-header__utils flex items-center gap-1">
+                <a
+                  href={publicWebAppUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="admin-studio-header__link"
+                  aria-label="Abrir WebApp del restaurante"
+                  title="Abrir WebApp"
+                >
+                  WebApp ↗
+                </a>
+              </div>
+            ) : null
+          }
 
           {
             isSuperAdmin && restaurante ? (
@@ -2591,6 +2601,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           <input type="hidden" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} />
                         </div>
                         <div class="id-ubicacion__row">
+                          <label class="id-ubicacion__field id-ubicacion__field--wide">
+                            <span>Navegación del menú</span>
+                            <select
+                              id="marca-menu-navegacion"
+                              name="menu_navegacion"
+                              class="id-ubicacion__select"
+                            >
+                              <option value="scroll" selected={marca.menu_navegacion === 'scroll'}>
+                                Scroll continuo (filtros superiores)
+                              </option>
+                              <option value="hub_categories" selected={marca.menu_navegacion === 'hub_categories'}>
+                                Portal por Categorías (Hub Inicial)
+                              </option>
+                            </select>
+                          </label>
+                        </div>
+                        <div class="id-ubicacion__row">
                           <label class="id-ubicacion__field">
                             <span>Layout de platos</span>
                             <select
@@ -2624,6 +2651,33 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               </option>
                               <option value="outline" selected={marca.menu_estilo_tarjetas === 'outline'}>
                                 Contorno fino
+                              </option>
+                            </select>
+                          </label>
+                        </div>
+
+                        <div class="space-y-2 rounded-xl border border-white/8 bg-black/20 p-3">
+                          <p class="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                            Sugerencias del Chef
+                          </p>
+                          <p class="text-[11px] leading-relaxed text-zinc-500">
+                            Tarjetas destacadas arriba del menú. En móvil usa un formato compacto; el carrusel o el desvanecimiento rotan las sugerencias en el centro.
+                          </p>
+                          <label class="id-ubicacion__field">
+                            <span>Estilo de vitrina</span>
+                            <select
+                              id="marca-menu-destacados-estilo"
+                              name="menu_destacados_estilo"
+                              class="id-ubicacion__select"
+                            >
+                              <option value="scroll" selected={marca.menu_destacados_estilo === 'scroll'}>
+                                Carril compacto (scroll manual)
+                              </option>
+                              <option value="carrusel" selected={marca.menu_destacados_estilo === 'carrusel'}>
+                                Carrusel lento (auto, centrado)
+                              </option>
+                              <option value="fade" selected={marca.menu_destacados_estilo === 'fade'}>
+                                Desvanecimiento (una sugerencia centrada)
                               </option>
                             </select>
                           </label>
@@ -2799,7 +2853,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </label>
                       </div>
                       <p class="text-[0.62rem] leading-snug text-zinc-500">
-                        El acento aplica a categoría activa, botón Ver detalle e íconos. El texto usa 70% de opacidad en descripciones.
+                        El acento aplica a categoría activa, botón Ver más e íconos. El texto usa 70% de opacidad en descripciones.
                       </p>
                     </div>
 
@@ -11962,6 +12016,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           menu_chips_estilo: val('marca-menu-chips-estilo') || 'pildora',
           menu_platos_layout: val('marca-menu-platos-layout') || 'grid',
           menu_estilo_tarjetas: val('marca-menu-estilo-tarjetas') || 'cristal',
+          menu_destacados_estilo: val('marca-menu-destacados-estilo') || 'scroll',
+          menu_navegacion: val('marca-menu-navegacion') || 'scroll',
           menu_fuente_titulo: val('marca-menu-fuente-titulo'),
           menu_fuente_cuerpo: val('marca-menu-fuente-cuerpo'),
           fondo_ubicacion_tipo: val('marca-fondo-ubicacion-tipo'),
