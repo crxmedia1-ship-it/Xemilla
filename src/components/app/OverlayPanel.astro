@@ -175,7 +175,7 @@ const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('
 
   <div
     class:list={[
-      'relative z-10 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
+      'panel-scroll-root relative z-10 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]',
       !hasAtmosphere && !containerBg && estilos.panelColor,
     ]}
     style={[
@@ -193,3 +193,12 @@ const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('
     <slot />
   </div>
 </section>
+
+<style>
+  @media (max-width: 767px), (pointer: coarse) {
+    .panel-scroll-root {
+      overflow-anchor: none;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+</style>

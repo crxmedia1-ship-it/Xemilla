@@ -132,7 +132,7 @@ const destacadosTrackClass =
   destacadosEstilo === 'fade'
     ? 'destacados-fade-stage relative mx-auto w-full max-w-[12.5rem] px-5'
     : destacadosEstilo === 'carrusel'
-      ? 'flex gap-3 overflow-x-auto px-[0.85rem] pb-1 scrollbar-none snap-x snap-mandatory scroll-smooth [-webkit-overflow-scrolling:touch]'
+      ? 'flex gap-3 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory scroll-smooth [-webkit-overflow-scrolling:touch] destacados-carrusel-track'
       : 'destacados-scroll-track pb-1';
 const menuTokens = expandMenuMasterTokens(menuUi);
 const accentColor = menuUi.color_acento || menuTokens.color_chip_activo || '';
@@ -226,7 +226,7 @@ function hubCardStyle(
 <link rel="stylesheet" href={fontsHref} />
 
 <div
-  class="menu-panel relative z-10 min-h-full overflow-x-clip overflow-y-visible bg-transparent pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[color:var(--menu-cuerpo-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-body,var(--fuente-menu,var(--fuente-display)))]"
+  class="menu-panel relative z-10 min-h-full overflow-y-visible bg-transparent pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[color:var(--menu-cuerpo-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-body,var(--fuente-menu,var(--fuente-display)))]"
   data-menu-panel
   data-menu-filter="all"
   data-cinematic-cat-bg={cinematicCategoryBg ? 'true' : 'false'}
@@ -250,7 +250,7 @@ function hubCardStyle(
     {
       isHubMode ? (
         <div
-          class="menu-hub-nav items-center gap-3 px-4 py-3"
+          class="menu-hub-nav items-center gap-3 py-3"
           data-menu-hub-nav
           aria-hidden="true"
         >
@@ -581,6 +581,7 @@ function hubCardStyle(
     container-type: inline-size;
     container-name: menu;
     --menu-gutter-x: 1.15rem;
+    overflow-x: clip;
   }
 
   .menu-gutter-x {
@@ -588,14 +589,10 @@ function hubCardStyle(
     padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
-  @container menu (max-width: 47.99rem) {
+  @media (max-width: 767px) {
     .menu-panel {
       --menu-gutter-x: 1.25rem;
-    }
-
-    .currency-bar {
-      margin-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
-      margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+      overflow-x: visible;
     }
   }
 
@@ -791,14 +788,16 @@ function hubCardStyle(
   }
 
   .menu-chips-nav {
-    padding: 0.85rem 1rem 0.7rem;
+    padding-top: 0.85rem;
+    padding-bottom: 0.7rem;
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
   .menu-chips-nav--scroll {
     position: relative;
-    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
-    mask-image: linear-gradient(90deg, transparent, #000 1.1rem, #000 calc(100% - 1.1rem), transparent);
   }
 
   .menu-chips-nav--static {
@@ -815,7 +814,14 @@ function hubCardStyle(
   .menu-chips-row--scroll {
     width: max-content;
     min-width: min(100%, max-content);
-    padding-inline: 0.15rem;
+    padding-inline: 0;
+  }
+
+  @media (min-width: 768px) {
+    .menu-chips-nav--scroll {
+      -webkit-overflow-scrolling: touch;
+      mask-image: linear-gradient(90deg, transparent, #000 1.1rem, #000 calc(100% - 1.1rem), transparent);
+    }
   }
 
   /* PC: carril de categorías a ancho completo */
@@ -1066,8 +1072,8 @@ function hubCardStyle(
 
   [data-destacados-estilo='scroll'] .menu-featured:only-child {
     grid-column: 1 / -1;
-    max-width: 11rem;
-    justify-self: start;
+    max-width: 100%;
+    justify-self: stretch;
   }
 
   [data-destacados-estilo='scroll'] .menu-featured__media {
@@ -1488,10 +1494,13 @@ function hubCardStyle(
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.35rem 1rem 0.5rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.5rem;
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     overflow-x: auto;
     scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 
   .alergia-bar::-webkit-scrollbar {
@@ -1588,6 +1597,94 @@ function hubCardStyle(
 
   .precio-dinamico.is-converting {
     opacity: 0;
+  }
+
+  .destacados-carrusel-track {
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+  }
+
+  .currency-bar {
+    margin-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+  }
+
+  .menu-hub-nav {
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+  }
+
+  /* Móvil: márgenes seguros + sticky estable (viewport, no depende de @container) */
+  @media (max-width: 767px), (pointer: coarse) {
+    .menu-panel {
+      --menu-gutter-x: 1.35rem;
+      overflow-x: visible;
+    }
+
+    .menu-sticky {
+      isolation: isolate;
+      background: transparent;
+      border-bottom-color: color-mix(in srgb, var(--menu-texto-color, #fff) 10%, transparent);
+      box-shadow: none;
+      transform: none;
+      -webkit-backface-visibility: visible;
+      backface-visibility: visible;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      overflow: visible;
+      will-change: auto;
+    }
+
+    .menu-sticky::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: var(--menu-sticky-bg, var(--color-fondo, #0a0a0a));
+      border-bottom: 1px solid color-mix(in srgb, var(--menu-texto-color, #fff) 10%, transparent);
+    }
+
+    .menu-chips-nav--scroll {
+      -webkit-overflow-scrolling: touch;
+      mask-image: none !important;
+      -webkit-mask-image: none !important;
+      scroll-snap-type: none;
+      touch-action: pan-x;
+    }
+
+    .menu-chips-nav,
+    .alergia-bar,
+    .menu-hub-nav {
+      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+    }
+
+    .currency-bar {
+      margin-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 96%, transparent);
+    }
+
+    .currency-pill-group {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .alergia-pill {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .menu-list,
+    [data-destacados-estilo='scroll'] [data-destacados-track],
+    .destacados-carrusel-track {
+      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+    }
   }
 </style>
 
@@ -1810,7 +1907,7 @@ function hubCardStyle(
       const track = panel.querySelector('[data-destacados-track]');
       const sectionEl = panel.closest('[data-section]');
       const scrollRoot =
-        sectionEl?.querySelector('.overflow-y-auto') ?? null;
+        sectionEl?.querySelector('.panel-scroll-root') ?? null;
       const isHubNav = panel.dataset.menuNavegacion === 'hub_categories';
       const hubNav = panel.querySelector('[data-menu-hub-nav]');
       const hubTitle = panel.querySelector('[data-menu-hub-title]');
