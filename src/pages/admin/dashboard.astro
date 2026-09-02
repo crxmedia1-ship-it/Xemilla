@@ -2629,7 +2629,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             Portal Hub — tarjetas por categoría
                           </p>
                           <p class="text-[11px] leading-relaxed text-zinc-500">
-                            Define color o imagen de fondo para cada tarjeta del portal inicial. Solo aplica con «Portal por Categorías».
+                            Define color, imagen o video de fondo para cada tarjeta del portal inicial. Solo aplica con «Portal por Categorías».
                           </p>
                           {
                             categorias.length === 0 ? (
@@ -2638,7 +2638,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               <div class="mt-2 space-y-2" id="categorias-hub-portal-list">
                                 {
                                   categorias.map((cat) => {
-                                    const hubBgType = cat.bg_type === 'image' ? 'image' : 'color';
+                                    const hubBgType =
+                                      cat.bg_type === 'video'
+                                        ? 'video'
+                                        : cat.bg_type === 'image'
+                                          ? 'image'
+                                          : 'color';
                                     const hubBgValor = String(cat.bg_valor || '').trim();
                                     const hubColorVal =
                                       hubBgType === 'color' && hubBgValor
@@ -2666,13 +2671,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                               <option value="image" selected={hubBgType === 'image'}>
                                                 Imagen
                                               </option>
+                                              <option value="video" selected={hubBgType === 'video'}>
+                                                Video
+                                              </option>
                                             </select>
                                           </label>
                                           <div class="min-w-0" data-cat-bg-fields>
                                             <label
                                               class="id-swatch id-cat-hub-color-field"
                                               data-cat-bg-color-row
-                                              hidden={hubBgType === 'image'}
+                                              hidden={hubBgType !== 'color'}
                                             >
                                               <span>Color</span>
                                               <span class="id-swatch__ctrl">
@@ -2693,16 +2701,22 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                               </span>
                                             </label>
                                             <label
-                                              class="id-ubicacion__field id-cat-hub-image-field"
-                                              data-cat-bg-image-row
-                                              hidden={hubBgType !== 'image'}
+                                              class="id-ubicacion__field id-cat-hub-media-field"
+                                              data-cat-bg-media-row
+                                              hidden={hubBgType === 'color'}
                                             >
-                                              <span>URL imagen</span>
+                                              <span data-cat-bg-media-label>
+                                                {hubBgType === 'video' ? 'URL video' : 'URL imagen'}
+                                              </span>
                                               <input
                                                 type="text"
                                                 inputmode="url"
                                                 data-cat-bg-valor-url
-                                                value={hubBgType === 'image' ? hubBgValor : ''}
+                                                value={
+                                                  hubBgType === 'image' || hubBgType === 'video'
+                                                    ? hubBgValor
+                                                    : ''
+                                                }
                                                 placeholder="https://…"
                                                 class="id-ubicacion__input"
                                               />
@@ -11713,7 +11727,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   requestAnimationFrame(() => initMarcaSaveState());
 
   function collectCategoriasFondos() {
-    const hubNav = val('marca-menu-navegacion') === 'hub_categories';
+    const navEl = document.getElementById('marca-menu-navegacion');
+    const hubNav = navEl instanceof HTMLSelectElement && navEl.value === 'hub_categories';
     const selector = hubNav ? '[data-cat-hub-portal]' : '[data-cat-fondo]';
     return Array.from(document.querySelectorAll(selector))
       .map((el) => {
@@ -11724,7 +11739,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             /** @type {HTMLSelectElement | null} */ (el.querySelector('[data-cat-bg-type]'))
               ?.value || 'color';
           let bg_valor = '';
-          if (bg_type === 'image') {
+          if (bg_type === 'image' || bg_type === 'video') {
             bg_valor =
               /** @type {HTMLInputElement | null} */ (
                 el.querySelector('[data-cat-bg-valor-url]')
@@ -11739,7 +11754,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               )?.value?.trim() ||
               '';
           }
-          return { id, bg_type: bg_type === 'image' ? 'image' : 'color', bg_valor };
+          const normalizedType =
+            bg_type === 'image' ? 'image' : bg_type === 'video' ? 'video' : 'color';
+          return { id, bg_type: normalizedType, bg_valor };
         }
         const bg_valor =
           /** @type {HTMLInputElement | null} */ (el.querySelector('[data-cat-bg-valor]'))
@@ -11768,16 +11785,25 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       /** @type {HTMLSelectElement | null} */ (row.querySelector('[data-cat-bg-type]'))?.value ||
       'color';
     const colorRow = row.querySelector('[data-cat-bg-color-row]');
-    const imageRow = row.querySelector('[data-cat-bg-image-row]');
-    if (colorRow instanceof HTMLElement) colorRow.hidden = type === 'image';
-    if (imageRow instanceof HTMLElement) imageRow.hidden = type !== 'image';
+    const mediaRow = row.querySelector('[data-cat-bg-media-row]');
+    const mediaLabel = row.querySelector('[data-cat-bg-media-label]');
+    if (colorRow instanceof HTMLElement) colorRow.hidden = type !== 'color';
+    if (mediaRow instanceof HTMLElement) mediaRow.hidden = type === 'color';
+    if (mediaLabel instanceof HTMLElement) {
+      mediaLabel.textContent =
+        type === 'video' ? 'URL video' : type === 'image' ? 'URL imagen' : 'URL';
+    }
   }
 
   function syncMenuNavegacionUi() {
     const nav = document.getElementById('marca-menu-navegacion');
     const hubWrap = document.getElementById('categorias-hub-portal-wrap');
     const isHub = nav instanceof HTMLSelectElement && nav.value === 'hub_categories';
-    if (hubWrap instanceof HTMLElement) hubWrap.hidden = !isHub;
+    if (hubWrap instanceof HTMLElement) {
+      hubWrap.hidden = !isHub;
+      hubWrap.classList.toggle('hidden', !isHub);
+      hubWrap.setAttribute('aria-hidden', isHub ? 'false' : 'true');
+    }
   }
 
   function collectBoutiqueProductos() {

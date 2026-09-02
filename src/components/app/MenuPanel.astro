@@ -217,6 +217,9 @@ function hubCardStyle(
 ) {
   const bgType = String(cat.bgType || '').toLowerCase();
   const bgValor = String(cat.bgValor || '').trim();
+  if (bgType === 'video' && bgValor) {
+    return 'background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.78) 100%)';
+  }
   if (bgType === 'image' && bgValor && (/^https?:\/\//i.test(bgValor) || bgValor.startsWith('/'))) {
     return `background-image:linear-gradient(180deg,rgba(0,0,0,.2) 0%,rgba(0,0,0,.82) 100%),url("${bgValor}");background-size:cover;background-position:center`;
   }
@@ -449,6 +452,10 @@ function hubCardStyle(
             (categorias || []).map((cat, idx) => {
               const count = (cat.platos || []).length;
               const cardStyle = hubCardStyle(cat, idx);
+              const hubVideoUrl =
+                String(cat.bgType || '').toLowerCase() === 'video'
+                  ? String(cat.bgValor || '').trim()
+                  : '';
               return (
                 <button
                   type="button"
@@ -461,6 +468,17 @@ function hubCardStyle(
                   style={cardStyle}
                   aria-label={`Abrir ${cat.nombre}, ${count} plato${count === 1 ? '' : 's'}`}
                 >
+                  {hubVideoUrl ? (
+                    <video
+                      class="menu-hub-card__video"
+                      src={hubVideoUrl}
+                      muted
+                      loop
+                      playsinline
+                      autoplay
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   <span class="menu-hub-card__badge rounded-md border border-white/15 bg-black/40 px-2 py-0.5 text-[0.48rem] font-semibold uppercase tracking-[0.14em] text-white/90 backdrop-blur-md">
                     {count} {count === 1 ? 'plato' : 'platos'}
                   </span>
@@ -726,10 +744,27 @@ function hubCardStyle(
       box-shadow 220ms ease;
   }
 
+  .menu-hub-card__video {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .menu-hub-card__badge,
+  .menu-hub-card__name {
+    position: relative;
+    z-index: 1;
+  }
+
   .menu-hub-card__badge {
     position: absolute;
     top: 0.65rem;
     right: 0.75rem;
+    z-index: 1;
   }
 
   .menu-hub-card__name {
@@ -737,6 +772,7 @@ function hubCardStyle(
     max-width: calc(100% - 5.5rem);
     font-size: 0.88rem;
     line-height: 1.25;
+    z-index: 1;
   }
 
   @container menu (min-width: 40rem) {
