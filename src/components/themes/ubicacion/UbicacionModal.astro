@@ -87,8 +87,12 @@ const horariosJson = JSON.stringify(horarioFilas);
     aria-modal="true"
     aria-labelledby="ubicacion-drawer-title"
   >
-    <div class="flex justify-center pt-3.5 pb-1" aria-hidden="true">
-      <span class="h-1 w-11 rounded-full bg-white/30"></span>
+    <div
+      class="ubicacion-drawer-handle flex justify-center pb-1 pt-3.5"
+      data-ubicacion-drawer-handle
+      aria-label="Deslizar hacia abajo para cerrar"
+    >
+      <span class="ubicacion-drawer-handle__pill" aria-hidden="true"></span>
     </div>
 
     <div
@@ -259,6 +263,32 @@ const horariosJson = JSON.stringify(horarioFilas);
     color: var(--color-texto, #fff);
   }
 
+  .ubicacion-drawer-handle {
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .ubicacion-drawer-handle:active {
+    cursor: grabbing;
+  }
+
+  .ubicacion-drawer-handle__pill {
+    display: block;
+    height: 0.25rem;
+    width: 2.75rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.3);
+    transition:
+      width 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .ubicacion-drawer-handle.is-dragging .ubicacion-drawer-handle__pill {
+    width: 3.25rem;
+    background: rgba(255, 255, 255, 0.45);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ubicacion-drawer-root,
     .ubicacion-drawer {
@@ -270,6 +300,110 @@ const horariosJson = JSON.stringify(horarioFilas);
 <script>
   import { initUbicacionLivePanels } from '../../../lib/ubicacion-live-client.js';
 
+  const CLOSE_DRAG_PX = 88;
+  const CLOSE_VELOCITY = 0.45;
+
+  function initUbicacionDrawerSwipe() {
+    document.querySelectorAll('[data-ubicacion-drawer]').forEach((root) => {
+      if (!(root instanceof HTMLElement)) return;
+      if (root.dataset.swipeReady === 'true') return;
+      root.dataset.swipeReady = 'true';
+
+      const sheet = root.querySelector('.ubicacion-drawer');
+      const handle = root.querySelector('[data-ubicacion-drawer-handle]');
+      if (!(sheet instanceof HTMLElement) || !(handle instanceof HTMLElement)) return;
+
+      let startY = 0;
+      let dragY = 0;
+      let dragging = false;
+      let startTime = 0;
+      /** @type {number | null} */
+      let pointerId = null;
+
+      const resetSheet = () => {
+        sheet.style.transition = '';
+        sheet.style.transform = '';
+        handle.classList.remove('is-dragging');
+      };
+
+      const closeDrawer = () => {
+        const closeBtn = root.querySelector('[data-ubicacion-drawer-close]');
+        closeBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      };
+
+      const finishDrag = () => {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('is-dragging');
+
+        const elapsed = Math.max(performance.now() - startTime, 1);
+        const velocity = dragY / elapsed;
+        const shouldClose =
+          dragY > CLOSE_DRAG_PX ||
+          (dragY > 28 && velocity > CLOSE_VELOCITY);
+
+        if (shouldClose) {
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            resetSheet();
+            closeDrawer();
+            return;
+          }
+          let closed = false;
+          const onDone = () => {
+            if (closed) return;
+            closed = true;
+            resetSheet();
+            closeDrawer();
+          };
+          sheet.style.transition = 'transform 0.24s cubic-bezier(0.22, 1, 0.36, 1)';
+          sheet.style.transform = 'translateY(100%)';
+          sheet.addEventListener('transitionend', onDone, { once: true });
+          window.setTimeout(onDone, 280);
+          return;
+        }
+
+        sheet.style.transition = 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)';
+        sheet.style.transform = 'translateY(0)';
+        sheet.addEventListener('transitionend', resetSheet, { once: true });
+      };
+
+      handle.addEventListener('pointerdown', (event) => {
+        if (!root.classList.contains('is-open')) return;
+        dragging = true;
+        pointerId = event.pointerId;
+        startY = event.clientY;
+        dragY = 0;
+        startTime = performance.now();
+        sheet.style.transition = 'none';
+        handle.classList.add('is-dragging');
+        handle.setPointerCapture(event.pointerId);
+      });
+
+      handle.addEventListener('pointermove', (event) => {
+        if (!dragging || event.pointerId !== pointerId) return;
+        dragY = Math.max(0, event.clientY - startY);
+        sheet.style.transform = `translateY(${dragY}px)`;
+      });
+
+      handle.addEventListener('pointerup', (event) => {
+        if (event.pointerId !== pointerId) return;
+        handle.releasePointerCapture(event.pointerId);
+        pointerId = null;
+        finishDrag();
+      });
+
+      handle.addEventListener('pointercancel', (event) => {
+        if (event.pointerId !== pointerId) return;
+        pointerId = null;
+        finishDrag();
+      });
+    });
+  }
+
   initUbicacionLivePanels();
-  document.addEventListener('astro:page-load', () => initUbicacionLivePanels());
+  initUbicacionDrawerSwipe();
+  document.addEventListener('astro:page-load', () => {
+    initUbicacionLivePanels();
+    initUbicacionDrawerSwipe();
+  });
 </script>

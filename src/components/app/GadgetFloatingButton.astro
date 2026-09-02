@@ -23,9 +23,16 @@ if (!items.length) return null;
 
 const style = normalizeGadgetServiciosEstilo(styleProp);
 const isRadial = style === 'radial';
+const isSolo = items.length === 1;
+const soloItem = isSolo ? items[0] : null;
 
-const iconWifi = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674a13.217 13.217 0 0118.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>`;
-const iconBoutique = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>`;
+const iconWifi = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674a13.217 13.217 0 0118.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>`;
+const iconBoutique = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>`;
+const iconServices = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>`;
+
+const fabVisualClass =
+  'gadget-fab flex size-14 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-2xl backdrop-blur-xl transition-all hover:scale-105 active:scale-95';
+const fabFixedClass = `${fabVisualClass} fixed z-[55] bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))]`;
 
 /** @param {string} id */
 function itemIcon(id) {
@@ -36,13 +43,31 @@ function itemIcon(id) {
 ---
 
 <div
-  class:list={['gadget-floating-root', isRadial && 'gadget-floating-root--radial']}
+  class:list={[
+    'gadget-floating-root',
+    isRadial && 'gadget-floating-root--radial',
+    isSolo && 'gadget-floating-root--solo',
+    isSolo && soloItem?.id === 'wifi' && 'gadget-floating-root--wifi',
+  ]}
   data-gadget-floating
   data-gadget-style={style}
+  data-gadget-solo={isSolo ? 'true' : 'false'}
 >
   {
-    isRadial ? (
-      <div class:list={['gadget-radial fixed bottom-5 right-5 z-[55]', fabClass]} data-gadget-radial>
+    isSolo && soloItem ? (
+      <button
+        type="button"
+        class:list={[fabFixedClass, 'gadget-fab--direct', fabClass]}
+        data-gadget-direct
+        {...soloItem.kind === 'boutique'
+          ? { 'data-open-boutique': true }
+          : { 'data-open-section': soloItem.id }}
+        aria-label={soloItem.label}
+      >
+        <Fragment set:html={itemIcon(soloItem.id)} />
+      </button>
+    ) : isRadial ? (
+      <div class:list={['gadget-radial fixed z-[55]', fabClass]} data-gadget-radial style="bottom: max(1.25rem, env(safe-area-inset-bottom)); right: max(1.25rem, env(safe-area-inset-right));">
         <div class="gadget-radial__orbit pointer-events-none" data-gadget-radial-orbit aria-hidden="true">
           {
             items.map((item, index) => (
@@ -64,35 +89,26 @@ function itemIcon(id) {
         </div>
         <button
           type="button"
-          class:list={[
-            'gadget-fab w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:scale-105 transition-all',
-          ]}
+          class:list={[fabVisualClass, 'relative']}
           data-gadget-fab
           aria-label="Servicios de mesa"
           aria-expanded="false"
           aria-haspopup="true"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-          </svg>
+          <Fragment set:html={iconServices} />
         </button>
       </div>
     ) : (
       <>
         <button
           type="button"
-          class:list={[
-            'gadget-fab fixed bottom-5 right-5 z-[55] w-14 h-14 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:scale-105 transition-all',
-            fabClass,
-          ]}
+          class:list={[fabFixedClass, fabClass]}
           data-gadget-fab
           aria-label="Servicios de mesa"
           aria-expanded="false"
           aria-controls="gadget-drawer-panel"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-          </svg>
+          <Fragment set:html={iconServices} />
         </button>
 
         <div
@@ -270,3 +286,35 @@ function itemIcon(id) {
     document.querySelectorAll('.restaurant-app').forEach((app) => initGadgetFloating(app));
   });
 </script>
+
+<style>
+  .gadget-floating-root {
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease,
+      visibility 220ms ease;
+  }
+
+  /* Solo visible en home: ocultar al abrir menú, Wi‑Fi, boutique, etc. */
+  .restaurant-app:has([data-section][data-open='true']) .gadget-floating-root,
+  .restaurant-app:has([data-ubicacion-drawer].is-open) .gadget-floating-root,
+  .restaurant-app:has([data-boutique-modal].is-open) .gadget-floating-root,
+  .restaurant-app:has([data-detalle-modal][aria-hidden='false']) .gadget-floating-root,
+  .restaurant-app:has([data-app-nav-overlay].is-open) .gadget-floating-root {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translateY(0.45rem) scale(0.94);
+  }
+
+  .gadget-floating-root--wifi .gadget-fab--direct {
+    border-color: color-mix(in srgb, var(--color-primario, #e11d48) 45%, white 10%);
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.45),
+      0 0 0 1px color-mix(in srgb, var(--color-primario, #e11d48) 22%, transparent);
+  }
+
+  .gadget-radial.is-open .gadget-fab {
+    transform: rotate(45deg);
+  }
+</style>
