@@ -498,8 +498,16 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
           const sections = panel
             ? panel.querySelectorAll('[data-menu-cat]')
             : [];
+          const shouldSyncCategoryBg =
+            typeof window !== 'undefined' &&
+            !window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
 
-          if (typeof IntersectionObserver !== 'undefined' && scrollRoot && sections.length) {
+          if (
+            typeof IntersectionObserver !== 'undefined' &&
+            scrollRoot &&
+            sections.length &&
+            shouldSyncCategoryBg
+          ) {
             const io = new IntersectionObserver(
               (entries) => {
                 if (panel instanceof HTMLElement && panel.dataset.menuFilter && panel.dataset.menuFilter !== 'all') {

@@ -175,7 +175,7 @@ const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('
 
   <div
     class:list={[
-      'relative z-10 flex-1 overflow-y-auto overscroll-contain',
+      'relative z-10 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
       !hasAtmosphere && !containerBg && estilos.panelColor,
     ]}
     style={[

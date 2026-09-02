@@ -332,7 +332,7 @@ function hubCardStyle(
 
     {/* —— Selector de Divisas (visual, client-side) —— */}
     <div
-      class="currency-bar mx-[0.85rem] mb-3 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-white/10 bg-black/40 p-2 shadow-lg"
+      class="currency-bar mb-3 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-white/10 bg-black/40 p-2 shadow-lg"
       data-currency-switcher
       data-tasa-bcv={String(tasaBcv)}
       data-tasa-eur-usd={String(tasaEurUsd)}
@@ -362,7 +362,7 @@ function hubCardStyle(
         data-destacados-estilo={destacadosEstilo}
         aria-label="Sugerencias del Chef"
       >
-        <h3 class="mb-2 px-[0.85rem] font-[family-name:var(--menu-font-heading,var(--fuente-display))] text-[0.62rem] font-semibold tracking-[0.2em] uppercase text-[color:var(--menu-titulo-color,color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_70%,transparent))] sm:mb-3 sm:px-5 sm:text-[0.72rem]">
+        <h3 class="menu-gutter-x mb-2 font-[family-name:var(--menu-font-heading,var(--fuente-display))] text-[0.62rem] font-semibold tracking-[0.2em] uppercase text-[color:var(--menu-titulo-color,color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_70%,transparent))] sm:mb-3 sm:text-[0.72rem]">
           Sugerencias del Chef
         </h3>
         <div
@@ -432,8 +432,8 @@ function hubCardStyle(
 
   {
     isHubMode && (
-      <section class="menu-hub px-[0.85rem] pb-2 pt-4" data-menu-hub aria-label="Portal de categorías">
-        <p class="menu-hub__lead mb-3 px-1 text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_62%,transparent)]">
+      <section class="menu-hub menu-gutter-x pb-2 pt-4" data-menu-hub aria-label="Portal de categorías">
+        <p class="menu-hub__lead mb-3 text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[color:color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_62%,transparent)]">
           Explora por sección
         </p>
         <div class="menu-hub-grid" role="list">
@@ -580,6 +580,23 @@ function hubCardStyle(
     font-family: var(--menu-font-body, var(--fuente-menu, var(--fuente-display)));
     container-type: inline-size;
     container-name: menu;
+    --menu-gutter-x: 1.15rem;
+  }
+
+  .menu-gutter-x {
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+  }
+
+  @container menu (max-width: 47.99rem) {
+    .menu-panel {
+      --menu-gutter-x: 1.25rem;
+    }
+
+    .currency-bar {
+      margin-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      margin-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+    }
   }
 
   .menu-plato-desc {
@@ -594,18 +611,33 @@ function hubCardStyle(
     position: sticky;
     top: 0;
     z-index: 20;
-    isolation: isolate;
-    transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    background: color-mix(in srgb, var(--menu-sticky-bg, var(--color-fondo, #0a0a0a)) 97%, transparent);
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--menu-texto-color, #fff) 8%, transparent);
   }
 
   @container menu (max-width: 47.99rem) {
     .menu-sticky {
+      isolation: isolate;
+      background: transparent;
+      border-bottom-color: color-mix(in srgb, var(--menu-texto-color, #fff) 10%, transparent);
+      box-shadow: none;
+      transform: none;
+      -webkit-backface-visibility: visible;
+      backface-visibility: visible;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
+    }
+
+    .menu-sticky::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: var(--menu-sticky-bg, var(--color-fondo, #0a0a0a));
+      border-bottom: 1px solid color-mix(in srgb, var(--menu-texto-color, #fff) 10%, transparent);
+    }
+
+    .menu-chips-nav {
+      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     }
 
     .menu-chips-nav--scroll {
@@ -614,16 +646,35 @@ function hubCardStyle(
       scroll-snap-type: none;
     }
 
+    .menu-chips-row--scroll {
+      padding-inline: 0;
+    }
+
+    .menu-hub-nav {
+      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
+    }
+
     .currency-bar {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-      background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 92%, transparent);
+      background: color-mix(in srgb, var(--menu-sticky-bg, #0a0a0a) 96%, transparent);
+    }
+
+    .alergia-bar {
+      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     }
   }
 
   @container menu (min-width: 48rem) {
     .menu-sticky {
+      isolation: isolate;
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
       background: color-mix(in srgb, var(--menu-sticky-bg, var(--color-fondo)) 88%, transparent);
+      box-shadow: 0 1px 0 color-mix(in srgb, var(--menu-texto-color, #fff) 8%, transparent);
       backdrop-filter: blur(18px) saturate(1.15);
       -webkit-backdrop-filter: blur(18px) saturate(1.15);
     }
@@ -639,6 +690,7 @@ function hubCardStyle(
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+    width: 100%;
   }
 
   @container menu (min-width: 40rem) {
@@ -1002,7 +1054,8 @@ function hubCardStyle(
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
     overflow: visible;
-    padding-inline: 0.85rem;
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     scroll-snap-type: none;
   }
 
@@ -1092,7 +1145,8 @@ function hubCardStyle(
     width: 100%;
     max-width: 72rem;
     margin-inline: auto;
-    padding-inline: 0.85rem;
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     padding-top: 1.1rem;
   }
 
@@ -1762,6 +1816,11 @@ function hubCardStyle(
       const hubTitle = panel.querySelector('[data-menu-hub-title]');
       const hubSection = panel.querySelector('[data-menu-hub]');
 
+      const shouldSyncCategoryBg = () => {
+        if (typeof window === 'undefined') return true;
+        return !window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
+      };
+
       /** @param {'home' | 'detail'} view */
       const setHubView = (view: 'home' | 'detail') => {
         panel.dataset.hubView = view;
@@ -1859,8 +1918,13 @@ function hubCardStyle(
         }
       };
 
-      // Al scrollear con "Todos", cambia el fondo según la categoría visible
-      if (typeof IntersectionObserver !== 'undefined' && scrollRoot && !isHubNav) {
+      // Al scrollear con "Todos", cambia el fondo según la categoría visible (solo desktop)
+      if (
+        typeof IntersectionObserver !== 'undefined' &&
+        scrollRoot &&
+        !isHubNav &&
+        shouldSyncCategoryBg()
+      ) {
         /** @type {ReturnType<typeof setTimeout> | null} */
         let catBgTimer = null;
         let lastCatBg = '';
