@@ -184,7 +184,7 @@ export function resolveNosotrosBloques(opts = {}) {
           media,
           media_url: primary,
           imagen: primary,
-          alineacion: b.alineacion === 'inversa' ? 'inversa' : 'alternada',
+          alineacion: normalizeBloqueAlineacion(b.alineacion),
         };
       })
       .filter((b) => b && (b.titulo || b.texto || (b.media && b.media.length > 0)));
@@ -200,7 +200,7 @@ export function resolveNosotrosBloques(opts = {}) {
         media_url: null,
         media: [],
         texto,
-        alineacion: 'alternada',
+        alineacion: 'derecha',
         acentos: [],
       },
     ];
@@ -215,6 +215,25 @@ export function resolveNosotrosBloques(opts = {}) {
  * @param {number} index
  */
 export function mediaPrimero(bloque, index) {
-  if (bloque.alineacion === 'inversa') return true;
+  const a = String(bloque?.alineacion || '')
+    .trim()
+    .toLowerCase();
+  if (a === 'centro' || a === 'center') return false;
+  if (a === 'izquierda' || a === 'left' || a === 'inversa') return true;
+  if (a === 'derecha' || a === 'right' || a === 'alternada') return false;
   return index % 2 === 1;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'izquierda' | 'derecha' | 'centro'}
+ */
+export function normalizeBloqueAlineacion(value) {
+  const a = String(value || '')
+    .trim()
+    .toLowerCase();
+  if (a === 'centro' || a === 'center') return 'centro';
+  if (a === 'izquierda' || a === 'left' || a === 'inversa') return 'izquierda';
+  if (a === 'derecha' || a === 'right' || a === 'alternada') return 'derecha';
+  return 'derecha';
 }

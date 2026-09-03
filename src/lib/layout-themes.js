@@ -5,6 +5,7 @@
 export const HOME_THEME_IDS = /** @type {const} */ ([
   'editorial',
   'bento',
+  'hamburguesa',
   'hero',
   'minimal',
 ]);
@@ -12,6 +13,9 @@ export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
   'editorial',
   'cinematic',
   'capsule',
+  'split',
+  'bento',
+  'timeline',
 ]);
 export const UBICACION_THEME_IDS = /** @type {const} */ (['modal', 'split', 'minimal']);
 
@@ -22,13 +26,31 @@ export const DEFAULT_UBICACION_THEME = 'modal';
 
 /**
  * Slugify / match flexible de home_theme (Admin labels + slugs DB).
- * Exact same logic for sanitizeTheme / normalizeTheme / normalizeHomeTheme / getNormalizedTheme.
  * @param {unknown} theme
- * @returns {'editorial' | 'hero' | 'bento' | 'minimal'}
+ * @returns {'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal'}
  */
 export function normalizeTheme(theme) {
   const clean = String(theme || '').toLowerCase();
-  if (clean.includes('editorial') || clean.includes('boutique')) return 'editorial';
+  if (
+    clean.includes('full-cinematic') ||
+    clean.includes('cinematic') ||
+    clean.includes('hamburguesa') ||
+    clean.includes('burger') ||
+    clean.includes('hambur')
+  ) {
+    return 'hamburguesa';
+  }
+  if (
+    clean.includes('hero-editorial') ||
+    clean.includes('editorial') ||
+    clean.includes('boutique')
+  ) {
+    return 'editorial';
+  }
+  if (clean.includes('split-stage') || clean.includes('split')) return 'hero';
+  if (clean.includes('bento-spatial') || clean.includes('bento') || clean.includes('spatial')) {
+    return 'bento';
+  }
   if (clean.includes('hero') || clean.includes('cards')) return 'hero';
   if (clean.includes('minimal')) return 'minimal';
   return 'bento';
@@ -51,13 +73,141 @@ export function normalizeHomeTheme(value) {
 export const HOME_THEME_MAP = Object.freeze({
   editorial: 'editorial',
   bento: 'bento',
+  hamburguesa: 'hamburguesa',
   hero: 'hero',
   minimal: 'minimal',
 });
 
+/** Layouts del Studio Home/Core (UI) → theme canónico. */
+export const HOME_LAYOUT_OPTIONS = Object.freeze([
+  {
+    id: 'bento-spatial',
+    theme: 'bento',
+    label: 'Bento Spatial',
+    hint: 'Cuadrícula modular con nav frontal',
+  },
+  {
+    id: 'hero-editorial',
+    theme: 'editorial',
+    label: 'Hero Editorial',
+    hint: 'Tipografía protagonista y lista central',
+  },
+  {
+    id: 'split-stage',
+    theme: 'hero',
+    label: 'Split Stage',
+    hint: 'Escenario dividido con tarjetas hero',
+  },
+  {
+    id: 'full-cinematic',
+    theme: 'hamburguesa',
+    label: 'Full Cinematic',
+    hint: 'Inmersivo: logo + menú hamburguesa',
+  },
+]);
+
 /**
  * @param {unknown} value
- * @returns {'editorial' | 'cinematic' | 'capsule'}
+ * @returns {'bento-spatial' | 'hero-editorial' | 'split-stage' | 'full-cinematic'}
+ */
+export function normalizeHomeLayout(value) {
+  const clean = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_]+/g, '-');
+  if (clean === 'bento-spatial' || clean === 'bento' || clean.includes('spatial')) {
+    return 'bento-spatial';
+  }
+  if (
+    clean === 'hero-editorial' ||
+    clean === 'editorial' ||
+    clean.includes('editorial')
+  ) {
+    return 'hero-editorial';
+  }
+  if (
+    clean === 'split-stage' ||
+    clean === 'hero' ||
+    clean.includes('split') ||
+    clean.includes('stage')
+  ) {
+    return 'split-stage';
+  }
+  if (
+    clean === 'full-cinematic' ||
+    clean === 'hamburguesa' ||
+    clean === 'minimal' ||
+    clean.includes('cinematic') ||
+    clean.includes('hamburguesa')
+  ) {
+    return 'full-cinematic';
+  }
+  return 'bento-spatial';
+}
+
+/**
+ * @param {unknown} layoutOrTheme
+ * @returns {'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal'}
+ */
+export function homeLayoutToTheme(layoutOrTheme) {
+  const layout = normalizeHomeLayout(layoutOrTheme);
+  const hit = HOME_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
+  return /** @type {'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal'} */ (
+    hit?.theme || normalizeTheme(layoutOrTheme)
+  );
+}
+
+/**
+ * @param {unknown} theme
+ * @returns {'bento-spatial' | 'hero-editorial' | 'split-stage' | 'full-cinematic'}
+ */
+export function homeThemeToLayout(theme) {
+  const t = normalizeTheme(theme);
+  if (t === 'editorial') return 'hero-editorial';
+  if (t === 'hero') return 'split-stage';
+  if (t === 'hamburguesa' || t === 'minimal') return 'full-cinematic';
+  return 'bento-spatial';
+}
+
+/**
+ * Plantilla Home + navegación (estilo nav unificado en plantilla/layout).
+ * @param {unknown} homeThemeRaw
+ * @param {unknown} estiloNavRaw
+ * @returns {{
+ *   homeTheme: 'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal',
+ *   layout: 'bento-spatial' | 'hero-editorial' | 'split-stage' | 'full-cinematic',
+ *   estiloNavegacion: 'frontal' | 'hamburguesa' | 'app_tabs',
+ * }}
+ */
+export function resolveHomeThemeAndNav(homeThemeRaw, estiloNavRaw) {
+  let homeTheme = homeLayoutToTheme(homeThemeRaw);
+  const navLegacy = String(estiloNavRaw || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (homeTheme !== 'hamburguesa' && (navLegacy === 'hamburguesa' || navLegacy === 'oculto')) {
+    homeTheme = 'hamburguesa';
+  }
+
+  const estiloNavegacion =
+    homeTheme === 'hamburguesa'
+      ? 'hamburguesa'
+      : navLegacy === 'app_tabs' || navLegacy === 'tabs'
+        ? 'app_tabs'
+        : 'frontal';
+
+  return {
+    homeTheme,
+    layout: homeThemeToLayout(homeTheme),
+    estiloNavegacion,
+  };
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'editorial' | 'cinematic' | 'capsule' | 'split' | 'bento' | 'timeline'}
  */
 export function normalizeNosotrosTheme(value) {
   const key = String(value ?? '')
@@ -69,12 +219,37 @@ export function normalizeNosotrosTheme(value) {
   if (!key) return DEFAULT_NOSOTROS_THEME;
 
   if (
+    key === 'timeline' ||
+    key.includes('linea de tiempo') ||
+    key.includes('línea de tiempo') ||
+    key.includes('cronolog') ||
+    key.includes('hitos')
+  ) {
+    return 'timeline';
+  }
+  if (
+    key === 'split' ||
+    key === 'split story' ||
+    key.includes('split_story') ||
+    key.includes('split-story') ||
+    key.includes('split screen')
+  ) {
+    return 'split';
+  }
+  if (
+    key === 'bento' ||
+    key === 'bento story' ||
+    key.includes('bento_story') ||
+    key.includes('bento-story') ||
+    key.includes('bento narrativo')
+  ) {
+    return 'bento';
+  }
+  if (
     key.includes('cinematic') ||
     key.includes('cinemat') ||
     key.includes('hero') ||
-    key.includes('palmer') ||
-    key.includes('split') ||
-    key.includes('divid')
+    key.includes('palmer')
   ) {
     return 'cinematic';
   }
@@ -83,11 +258,15 @@ export function normalizeNosotrosTheme(value) {
     key.includes('capsul') ||
     key.includes('album') ||
     key.includes('scrapbook') ||
-    key.includes('polaroid') ||
-    key.includes('bento') ||
-    key.includes('grid')
+    key.includes('polaroid')
   ) {
     return 'capsule';
+  }
+  if (key.includes('divid') || key.includes('split')) {
+    return 'split';
+  }
+  if (key.includes('grid') || key.includes('bento')) {
+    return 'bento';
   }
   if (
     key.includes('editorial') ||
@@ -102,9 +281,197 @@ export function normalizeNosotrosTheme(value) {
   return DEFAULT_NOSOTROS_THEME;
 }
 
+/** Layouts del Studio Nosotros (UI) → theme canónico. */
+export const NOSOTROS_LAYOUT_OPTIONS = Object.freeze([
+  {
+    id: 'editorial',
+    theme: 'editorial',
+    label: 'Editorial Clásico',
+    hint: 'Texto amplio, narrativa sobria',
+  },
+  {
+    id: 'split_story',
+    theme: 'split',
+    label: 'Split Screen',
+    hint: 'Foto grande a un lado + historia al otro',
+  },
+  {
+    id: 'timeline',
+    theme: 'timeline',
+    label: 'Línea de Tiempo',
+    hint: 'Hitos cronológicos del restaurante',
+  },
+  {
+    id: 'bento_story',
+    theme: 'bento',
+    label: 'Bento Narrativo',
+    hint: 'Mosaico con fotos del chef/espacio y citas',
+  },
+]);
+
 /**
  * @param {unknown} value
- * @returns {'modal' | 'split' | 'minimal'}
+ * @returns {'editorial' | 'split_story' | 'timeline' | 'bento_story'}
+ */
+export function normalizeNosotrosLayout(value) {
+  const clean = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s]+/g, '_')
+    .replace(/-/g, '_');
+
+  if (clean === 'editorial' || clean.includes('editorial') || clean.includes('clasico') || clean.includes('clásico')) {
+    return 'editorial';
+  }
+  if (
+    clean === 'split_story' ||
+    clean === 'split' ||
+    clean === 'cinematic' ||
+    clean.includes('split') ||
+    clean.includes('cinematic')
+  ) {
+    return 'split_story';
+  }
+  if (clean === 'timeline' || clean.includes('timeline') || clean.includes('tiempo') || clean.includes('hitos')) {
+    return 'timeline';
+  }
+  if (
+    clean === 'bento_story' ||
+    clean === 'bento' ||
+    clean === 'capsule' ||
+    clean.includes('bento') ||
+    clean.includes('capsule') ||
+    clean.includes('mosaico')
+  ) {
+    return 'bento_story';
+  }
+  return 'editorial';
+}
+
+/**
+ * @param {unknown} layoutOrTheme
+ * @returns {'editorial' | 'cinematic' | 'capsule' | 'split' | 'bento' | 'timeline'}
+ */
+export function nosotrosLayoutToTheme(layoutOrTheme) {
+  const layout = normalizeNosotrosLayout(layoutOrTheme);
+  const hit = NOSOTROS_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
+  return /** @type {'editorial' | 'cinematic' | 'capsule' | 'split' | 'bento' | 'timeline'} */ (
+    hit?.theme || normalizeNosotrosTheme(layoutOrTheme)
+  );
+}
+
+/**
+ * @param {unknown} theme
+ * @returns {'editorial' | 'split_story' | 'timeline' | 'bento_story'}
+ */
+export function nosotrosThemeToLayout(theme) {
+  const t = normalizeNosotrosTheme(theme);
+  if (t === 'split' || t === 'cinematic') return 'split_story';
+  if (t === 'bento' || t === 'capsule') return 'bento_story';
+  if (t === 'timeline') return 'timeline';
+  return 'editorial';
+}
+
+/** Layouts del Studio Horarios & Ubicación (UI) → theme canónico. */
+export const UBICACION_LAYOUT_OPTIONS = Object.freeze([
+  {
+    id: 'modal_drawer',
+    theme: 'modal',
+    label: 'Modal / Drawer Subterráneo',
+    hint: 'Cajón inferior deslizable',
+  },
+  {
+    id: 'split_map',
+    theme: 'split',
+    label: 'Split Screen (Mapa + Info)',
+    hint: 'Mitad mapa interactivo, mitad datos',
+  },
+  {
+    id: 'bento_info',
+    theme: 'bento',
+    label: 'Bento Grid Ubicación',
+    hint: 'Tarjetas modulares de mapa, horario y contacto',
+  },
+  {
+    id: 'minimal_clean',
+    theme: 'minimal',
+    label: 'Lista Minimalista',
+    hint: 'Vista editorial limpia y tipográfica',
+  },
+]);
+
+/**
+ * @param {unknown} value
+ * @returns {'modal_drawer' | 'split_map' | 'bento_info' | 'minimal_clean'}
+ */
+export function normalizeUbicacionLayout(value) {
+  const clean = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s]+/g, '_')
+    .replace(/-/g, '_');
+
+  if (
+    clean === 'modal_drawer' ||
+    clean === 'modal' ||
+    clean.includes('drawer') ||
+    clean.includes('modal')
+  ) {
+    return 'modal_drawer';
+  }
+  if (
+    clean === 'split_map' ||
+    clean === 'split' ||
+    clean.includes('split')
+  ) {
+    return 'split_map';
+  }
+  if (
+    clean === 'bento_info' ||
+    clean === 'bento' ||
+    clean.includes('bento')
+  ) {
+    return 'bento_info';
+  }
+  if (
+    clean === 'minimal_clean' ||
+    clean === 'minimal' ||
+    clean.includes('minimal') ||
+    clean.includes('editorial') ||
+    clean.includes('lista')
+  ) {
+    return 'minimal_clean';
+  }
+  return 'modal_drawer';
+}
+
+/**
+ * @param {unknown} layoutOrTheme
+ * @returns {'modal' | 'split' | 'minimal' | 'bento'}
+ */
+export function ubicacionLayoutToTheme(layoutOrTheme) {
+  const layout = normalizeUbicacionLayout(layoutOrTheme);
+  const hit = UBICACION_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
+  return /** @type {'modal' | 'split' | 'minimal' | 'bento'} */ (
+    hit?.theme || normalizeUbicacionTheme(layoutOrTheme)
+  );
+}
+
+/**
+ * @param {unknown} theme
+ * @returns {'modal_drawer' | 'split_map' | 'bento_info' | 'minimal_clean'}
+ */
+export function ubicacionThemeToLayout(theme) {
+  const t = normalizeUbicacionTheme(theme);
+  if (t === 'split') return 'split_map';
+  if (t === 'bento') return 'bento_info';
+  if (t === 'minimal') return 'minimal_clean';
+  return 'modal_drawer';
+}
+
+/**
+ * @param {unknown} value
+ * @returns {'modal' | 'split' | 'minimal' | 'bento'}
  */
 export function normalizeUbicacionTheme(value) {
   const key = String(value ?? '')
@@ -122,11 +489,22 @@ export function normalizeUbicacionTheme(value) {
     .replace(/^-|-$/g, '');
 
   if (
+    key === 'bento' ||
+    key.includes('bento') ||
+    slug === 'bento' ||
+    slug === 'bento-info' ||
+    slug === 'bentoinfo'
+  ) {
+    return 'bento';
+  }
+
+  if (
     key === 'minimal' ||
     key.includes('minimal') ||
     key.includes('editorial') ||
     slug === 'minimal' ||
-    slug === 'minimal-editorial'
+    slug === 'minimal-editorial' ||
+    slug === 'minimal-clean'
   ) {
     return 'minimal';
   }
@@ -147,7 +525,8 @@ export function normalizeUbicacionTheme(value) {
     key.includes('drawer') ||
     key === 'sheet' ||
     slug === 'modal' ||
-    slug === 'drawer'
+    slug === 'drawer' ||
+    slug === 'modal-drawer'
   ) {
     return 'modal';
   }

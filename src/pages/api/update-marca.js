@@ -12,9 +12,12 @@ import {
 import { buildBoutiqueConfig } from '../../lib/boutique.js';
 import { normalizeMapsStorage } from '../../lib/maps-preview.js';
 import {
+  homeLayoutToTheme,
   normalizeHomeTheme,
   normalizeNosotrosTheme,
   normalizeUbicacionTheme,
+  nosotrosLayoutToTheme,
+  normalizeNosotrosLayout,
 } from '../../lib/layout-themes.js';
 import {
   normalizeTypographyComboId,
@@ -145,7 +148,10 @@ async function handleUpdateMarca({ request, cookies }) {
 
   // Tokens tipográficos Home + colores por sección (merge: no borrar hub ni claves previas)
   const uiEstiloBuilt = buildUiEstiloFromBody(raw);
-  const nosotrosTheme = normalizeNosotrosTheme(raw.nosotros_theme);
+  const nosotrosLayout = normalizeNosotrosLayout(
+    raw.nosotros_layout || raw.nosotros_theme,
+  );
+  const nosotrosTheme = nosotrosLayoutToTheme(nosotrosLayout);
 
   const { data: existingRow } = await writeClient
     .from('restaurantes')
@@ -169,14 +175,17 @@ async function handleUpdateMarca({ request, cookies }) {
     nosotros: {
       ...(prevUi.nosotros || {}),
       ...(uiEstiloBuilt.nosotros || {}),
+      layout: nosotrosLayout,
       theme: nosotrosTheme,
     },
     ubicacion: { ...(prevUi.ubicacion || {}), ...(uiEstiloBuilt.ubicacion || {}) },
   };
   patch.ui_estilo = uiEstilo;
 
-  // Plantillas de estructura (Layout Themes)
-  patch.home_theme = normalizeHomeTheme(raw.home_theme);
+  // Plantillas de estructura (Layout Themes) — home_layout del Studio tiene prioridad
+  patch.home_theme = normalizeHomeTheme(
+    raw.home_layout ? homeLayoutToTheme(raw.home_layout) : raw.home_theme,
+  );
   patch.nosotros_theme = nosotrosTheme;
   patch.ubicacion_theme = normalizeUbicacionTheme(raw.ubicacion_theme);
 

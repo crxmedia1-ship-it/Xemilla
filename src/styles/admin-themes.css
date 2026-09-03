@@ -291,10 +291,17 @@ html.admin-panel .studio-resto-title {
   font-weight: 700;
   font-size: clamp(2.15rem, 4.6vw, 3.45rem);
   letter-spacing: -0.045em;
-  line-height: 0.95;
+  line-height: 1.08;
+  padding-bottom: 0.12em;
   color: var(--text-primary);
   font-variation-settings: 'SOFT' 70, 'WONK' 1;
   text-wrap: balance;
+}
+
+html.admin-panel .studio-resto-meta {
+  margin: 0;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
 }
 
 /* Remap hardcoded zinc/white utilities inside admin */
@@ -398,6 +405,17 @@ html.admin-panel[data-theme='alabastro'] .glass-panel:hover,
 html.admin-panel[data-theme='organico'] .studio-card:hover,
 html.admin-panel[data-theme='organico'] .glass-panel:hover {
   border-color: rgba(24, 24, 27, 0.2);
+}
+
+/* Layout cards — selección verde fija (no se pierde al hover) */
+html.admin-panel label.studio-layout-card--active,
+html.admin-panel label.studio-layout-card--active:hover,
+html.admin-panel label.studio-layout-card--active:focus-within {
+  border-color: #10b981 !important;
+  background-color: rgba(236, 253, 245, 0.6) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(16, 185, 129, 0.2) !important;
 }
 
 /* SuperAdmin visual cards — bento shell + media viewport */

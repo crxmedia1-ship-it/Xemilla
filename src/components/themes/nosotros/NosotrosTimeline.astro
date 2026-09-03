@@ -1,0 +1,182 @@
+---
+/**
+ * Nosotros Timeline — hitos verticales (año / bloque).
+ */
+import {
+  resolveNosotrosBloques,
+  renderTitleHtml,
+  renderBodyHtml,
+  normalizeContenedorEstilo,
+  contenedorCardStyle,
+  normalizeBloqueAlineacion,
+} from '../../../lib/nosotros-layout.js';
+import NosotrosMediaStack from './NosotrosMediaStack.astro';
+
+interface BloqueEditorial {
+  subtitulo?: string;
+  titulo?: string;
+  tituloAcento?: string;
+  caption?: string;
+  imagen?: string | null;
+  media_url?: string | null;
+  media?: string[];
+  texto?: string;
+  contenido?: string;
+  alineacion?: string;
+  acentos?: string[];
+}
+
+interface Props {
+  bloques?: BloqueEditorial[];
+  texto?: string;
+  highlights?: string[];
+  designDnaId?: string;
+  sectionColors?: {
+    color_fondo?: string;
+    color_titulo?: string;
+    color_cuerpo?: string;
+    contenedor_estilo?: string;
+  };
+  estilos: {
+    mutedColor: string;
+    softColor: string;
+    textColor: string;
+    borderColor: string;
+    displayClass: string;
+  };
+}
+
+const {
+  bloques = [],
+  texto = '',
+  highlights = [],
+  sectionColors = {},
+  estilos,
+} = Astro.props;
+
+const titleColor = (sectionColors.color_titulo || '').trim();
+const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const titleStyle = titleColor ? `color:${titleColor}` : undefined;
+const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
+const cardStyle = contenedorCardStyle(
+  normalizeContenedorEstilo(sectionColors.contenedor_estilo),
+  sectionColors.color_fondo,
+);
+
+const items = resolveNosotrosBloques({ bloques, texto, highlights });
+---
+
+<div class="nosotros-timeline mx-auto w-full max-w-3xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 md:max-w-4xl md:px-8 md:pt-10">
+  {
+    items.length === 0 ? (
+      <p class={`mx-auto max-w-prose text-center text-sm leading-relaxed ${estilos.mutedColor}`}>
+        Pronto contaremos nuestra historia.
+      </p>
+    ) : (
+      <ol class="nosotros-timeline__list">
+        {items.map((bloque, index) => {
+          const align = normalizeBloqueAlineacion(bloque.alineacion);
+          const media = Array.isArray(bloque.media) ? bloque.media : [];
+          return (
+            <li
+              class:list={[
+                'nosotros-timeline__item',
+                align === 'centro' && 'nosotros-timeline__item--center',
+              ]}
+            >
+              <span class="nosotros-timeline__dot" aria-hidden="true" />
+              <article class="nosotros-timeline__card" style={cardStyle || undefined}>
+                <p class={`nosotros-timeline__index ${estilos.softColor}`}>
+                  {String(index + 1).padStart(2, '0')}
+                </p>
+                {bloque.titulo ? (
+                  <h3
+                    class={`nosotros-timeline__title font-[family-name:var(--font-heading,var(--fuente-titulos))] ${estilos.displayClass}`}
+                    style={titleStyle}
+                    set:html={renderTitleHtml(bloque.titulo, bloque.tituloAcento)}
+                  />
+                ) : null}
+                {bloque.texto ? (
+                  <p
+                    class={`nosotros-timeline__body font-[family-name:var(--font-body,var(--fuente-principal))] ${estilos.textColor}`}
+                    style={bodyStyle}
+                    set:html={renderBodyHtml(bloque.texto, bloque.acentos)}
+                  />
+                ) : null}
+                {media.length > 0 ? (
+                  <div class="nosotros-timeline__media">
+                    <NosotrosMediaStack media={media} />
+                  </div>
+                ) : null}
+              </article>
+            </li>
+          );
+        })}
+      </ol>
+    )
+  }
+</div>
+
+<style>
+  .nosotros-timeline__list {
+    position: relative;
+    margin: 0;
+    padding: 0 0 0 1.25rem;
+    list-style: none;
+  }
+  .nosotros-timeline__list::before {
+    content: '';
+    position: absolute;
+    left: 0.35rem;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    width: 1px;
+    background: color-mix(in srgb, currentColor 22%, transparent);
+  }
+  .nosotros-timeline__item {
+    position: relative;
+    margin: 0 0 1.5rem;
+  }
+  .nosotros-timeline__item:last-child {
+    margin-bottom: 0;
+  }
+  .nosotros-timeline__dot {
+    position: absolute;
+    left: -1.05rem;
+    top: 1.15rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: var(--color-primario, currentColor);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primario, currentColor) 18%, transparent);
+  }
+  .nosotros-timeline__card {
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+    padding: 1.1rem 1.15rem 1.2rem;
+  }
+  .nosotros-timeline__item--center .nosotros-timeline__card {
+    text-align: center;
+  }
+  .nosotros-timeline__index {
+    margin: 0 0 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .nosotros-timeline__title {
+    margin: 0 0 0.55rem;
+    font-size: clamp(1.15rem, 2.4vw, 1.55rem);
+    line-height: 1.2;
+  }
+  .nosotros-timeline__body {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    opacity: 0.92;
+  }
+  .nosotros-timeline__media {
+    margin-top: 0.9rem;
+  }
+</style>

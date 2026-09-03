@@ -1,10 +1,14 @@
 ---
 /**
- * Switcher de plantilla Nosotros (editorial | cinematic | capsule).
+ * Switcher de plantilla Nosotros
+ * (editorial | cinematic | capsule | split | bento | timeline).
  */
 import NosotrosEditorial from '../themes/nosotros/NosotrosEditorial.astro';
 import NosotrosCinematic from '../themes/nosotros/NosotrosCinematic.astro';
 import NosotrosCapsule from '../themes/nosotros/NosotrosCapsule.astro';
+import NosotrosSplit from '../themes/nosotros/NosotrosSplit.astro';
+import NosotrosBento from '../themes/nosotros/NosotrosBento.astro';
+import NosotrosTimeline from '../themes/nosotros/NosotrosTimeline.astro';
 import {
   normalizeNosotrosTheme,
   DEFAULT_NOSOTROS_THEME,
@@ -87,7 +91,13 @@ const shared = {
   style={panelStyle || undefined}
 >
   {
-    nosotrosTheme === 'cinematic' ? (
+    nosotrosTheme === 'timeline' ? (
+      <NosotrosTimeline {...shared} />
+    ) : nosotrosTheme === 'split' ? (
+      <NosotrosSplit {...shared} />
+    ) : nosotrosTheme === 'bento' ? (
+      <NosotrosBento {...shared} />
+    ) : nosotrosTheme === 'cinematic' ? (
       <NosotrosCinematic {...shared} />
     ) : nosotrosTheme === 'capsule' ? (
       <NosotrosCapsule {...shared} />

@@ -3,7 +3,15 @@
  * Persistido en restaurantes.secciones_fondo (JSONB).
  */
 
-import { normalizeContenedorEstilo } from './nosotros-layout.js';
+import {
+  homeLayoutToTheme,
+  normalizeHomeLayout,
+  nosotrosLayoutToTheme,
+  normalizeNosotrosLayout,
+  ubicacionLayoutToTheme,
+  normalizeUbicacionLayout,
+} from './layout-themes.js';
+import { normalizeContenedorEstilo, normalizeBloqueAlineacion } from './nosotros-layout.js';
 import { normalizeGadgetServiciosEstilo } from './gadgets.js';
 import { normalizeUbicacionGridEstilo } from './ubicacion-theme-data.js';
 import {
@@ -322,13 +330,9 @@ export function parseNosotrosBloques(value) {
       }
 
       const media_url = media[0] || '';
-      const alineacionRaw = String(item.alineacion || item.alignment || 'alternada')
-        .trim()
-        .toLowerCase();
-      const alineacion =
-        alineacionRaw === 'inversa' || alineacionRaw === 'inverse'
-          ? 'inversa'
-          : 'alternada';
+      const alineacion = normalizeBloqueAlineacion(
+        item.alineacion || item.alignment || 'derecha',
+      );
       if (!titulo && !texto && media.length === 0) return null;
       return { titulo, texto, media_url, media, alineacion };
     })
@@ -772,10 +776,10 @@ export function normalizeMenuNavegacion(value) {
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s-]+/g, '_');
   if (
     v === 'hub_categories' ||
-    v === 'hub-categories' ||
     v === 'hub' ||
     v === 'portal' ||
     v === 'portal_categorias' ||
@@ -783,7 +787,105 @@ export function normalizeMenuNavegacion(value) {
   ) {
     return 'hub_categories';
   }
+  if (
+    v === 'split_sidebar' ||
+    v === 'split' ||
+    v === 'sidebar' ||
+    v === 'barra_lateral' ||
+    v === 'lateral'
+  ) {
+    return 'split_sidebar';
+  }
+  if (
+    v === 'swiper_catalog' ||
+    v === 'swiper' ||
+    v === 'catalogo_deslizable' ||
+    v === 'slider_catalog' ||
+    v === 'sliders'
+  ) {
+    return 'swiper_catalog';
+  }
   return 'scroll';
+}
+
+/** Layouts del Studio Menú (UI) → navegación canónica. */
+export const MENU_LAYOUT_OPTIONS = Object.freeze([
+  {
+    id: 'hub_categories',
+    navegacion: 'hub_categories',
+    label: 'Portal por Categorías (Hub)',
+    hint: 'Entrada visual por secciones',
+  },
+  {
+    id: 'classic_grid',
+    navegacion: 'scroll',
+    label: 'Carta Continua (Filtros)',
+    hint: 'Scroll vertical con tabs arriba',
+  },
+  {
+    id: 'split_sidebar',
+    navegacion: 'split_sidebar',
+    label: 'Barra Lateral Dividida',
+    hint: 'Categorías fijas a la izquierda',
+  },
+  {
+    id: 'swiper_catalog',
+    navegacion: 'swiper_catalog',
+    label: 'Catálogo Deslizable',
+    hint: 'Sliders horizontales por categoría',
+  },
+]);
+
+/**
+ * @param {unknown} value
+ * @returns {'hub_categories' | 'classic_grid' | 'split_sidebar' | 'swiper_catalog'}
+ */
+export function normalizeMenuLayout(value) {
+  const clean = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  if (clean === 'hub_categories' || clean === 'hub' || clean.includes('portal')) {
+    return 'hub_categories';
+  }
+  if (clean === 'split_sidebar' || clean.includes('sidebar') || clean.includes('lateral')) {
+    return 'split_sidebar';
+  }
+  if (clean === 'swiper_catalog' || clean.includes('swiper') || clean.includes('desliz')) {
+    return 'swiper_catalog';
+  }
+  if (clean === 'classic_grid' || clean === 'scroll' || clean.includes('continua') || clean.includes('filtro')) {
+    return 'classic_grid';
+  }
+  const nav = normalizeMenuNavegacion(value);
+  if (nav === 'hub_categories') return 'hub_categories';
+  if (nav === 'split_sidebar') return 'split_sidebar';
+  if (nav === 'swiper_catalog') return 'swiper_catalog';
+  return 'classic_grid';
+}
+
+/**
+ * @param {unknown} layoutOrNav
+ * @returns {'hub_categories' | 'scroll' | 'split_sidebar' | 'swiper_catalog'}
+ */
+export function menuLayoutToNavegacion(layoutOrNav) {
+  const layout = normalizeMenuLayout(layoutOrNav);
+  const hit = MENU_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
+  return /** @type {'hub_categories' | 'scroll' | 'split_sidebar' | 'swiper_catalog'} */ (
+    hit?.navegacion || normalizeMenuNavegacion(layoutOrNav)
+  );
+}
+
+/**
+ * @param {unknown} navegacion
+ * @returns {'hub_categories' | 'classic_grid' | 'split_sidebar' | 'swiper_catalog'}
+ */
+export function menuNavegacionToLayout(navegacion) {
+  const nav = normalizeMenuNavegacion(navegacion);
+  if (nav === 'hub_categories') return 'hub_categories';
+  if (nav === 'split_sidebar') return 'split_sidebar';
+  if (nav === 'swiper_catalog') return 'swiper_catalog';
+  return 'classic_grid';
 }
 
 /** @param {unknown} value */
@@ -951,7 +1053,8 @@ export function normalizeMenuUi(menu = {}, extras = {}) {
     destacados_estilo: normalizeDestacadosEstilo(
       m.destacados_estilo || m.destacadosEstilo || x.destacados_estilo,
     ),
-    navegacion: normalizeMenuNavegacion(m.navegacion || m.menu_navegacion || x.navegacion),
+    navegacion: normalizeMenuNavegacion(m.navegacion || m.menu_navegacion || m.layout || x.navegacion),
+    layout: normalizeMenuLayout(m.layout || m.navegacion || m.menu_navegacion || x.navegacion),
     fuente_titulo: pickFuenteTitulo
       ? resolveNosotrosFuenteTitulo(pickFuenteTitulo).id
       : '',
@@ -1079,6 +1182,13 @@ export function parseUiEstilo(value) {
       efecto_entrada: normalizeEfectoEntrada(
         home.efecto_entrada ?? home.efectoEntrada ?? home.entrada_animacion,
       ),
+      layout: normalizeHomeLayout(
+        home.layout ?? home.home_layout ?? home.theme ?? '',
+      ),
+      home_core:
+        home.home_core && typeof home.home_core === 'object'
+          ? home.home_core
+          : null,
       gadget_servicios_estilo: normalizeGadgetServiciosEstilo(
         home.gadget_servicios_estilo ??
           home.gadgetServiciosEstilo ??
@@ -1102,7 +1212,10 @@ export function parseUiEstilo(value) {
       fuente_cuerpo: resolveNosotrosFuenteCuerpo(
         nosotros.fuente_cuerpo || nosotros.fuenteCuerpo,
       ).id,
-      theme: String(nosotros.theme || '').trim().toLowerCase() || '',
+      layout: normalizeNosotrosLayout(
+        nosotros.layout || nosotros.theme || '',
+      ),
+      theme: nosotrosLayoutToTheme(nosotros.layout || nosotros.theme || ''),
     },
     ubicacion: {
       color_fondo: normalizeHexColor(ubicacion.color_fondo || ubicacion.colorFondo, ''),
@@ -1119,6 +1232,16 @@ export function parseUiEstilo(value) {
       grid_estilo: normalizeUbicacionGridEstilo(
         ubicacion.grid_estilo || ubicacion.gridEstilo || ubicacion.contenedor_estilo,
       ),
+      fuente_titulo: resolveNosotrosFuenteTitulo(
+        ubicacion.fuente_titulo || ubicacion.fuenteTitulo,
+      ).id,
+      fuente_cuerpo: resolveNosotrosFuenteCuerpo(
+        ubicacion.fuente_cuerpo || ubicacion.fuenteCuerpo,
+      ).id,
+      layout: normalizeUbicacionLayout(
+        ubicacion.layout || ubicacion.theme || '',
+      ),
+      theme: ubicacionLayoutToTheme(ubicacion.layout || ubicacion.theme || ''),
     },
     /** Canónico; alias histórico: columna restaurantes.custom_css */
     css_avanzado: sanitizeCssAvanzado(
@@ -1132,6 +1255,71 @@ export function parseUiEstilo(value) {
  */
 export function buildUiEstiloFromBody(raw) {
   const tracking = String(raw.home_tracking ?? '').trim();
+  const layout = normalizeHomeLayout(
+    raw.home_layout ?? raw.layout ?? raw.home_theme ?? '',
+  );
+  const themeFromLayout = homeLayoutToTheme(layout);
+  const overlayOpacity = normalizeOverlayOpacity(
+    raw.home_overlay_opacity ?? raw.overlay_opacity,
+    HOME_PX_DEFAULTS.overlay_opacity,
+  );
+  const fondoTipo = String(raw.fondo_home_tipo ?? raw.fondo_tipo ?? 'color').trim() || 'color';
+  const fondoValor = String(raw.fondo_home_valor ?? raw.fondo_valor ?? '').trim();
+  const titleSizeNum = Number(raw.titulo_size ?? raw.home_titulo_size);
+  const headingScale =
+    Number.isFinite(titleSizeNum) && titleSizeNum > 0
+      ? titleSizeNum / HOME_PX_DEFAULTS.titulo
+      : 1;
+  const homeCore = {
+    layout,
+    typography: {
+      headingFont: String(raw.tipografia_combo || raw.tipo_letra || '').trim(),
+      bodyFont: String(raw.tipografia_combo || raw.tipo_letra || '').trim(),
+      headingScale: Number(headingScale.toFixed(3)),
+      logoSize: Number(raw.logo_size ?? raw.home_logo_size) || HOME_PX_DEFAULTS.logo,
+      titleSize: Number(raw.titulo_size ?? raw.home_titulo_size) || HOME_PX_DEFAULTS.titulo,
+      sloganSize: Number(raw.eslogan_size ?? raw.home_eslogan_size) || HOME_PX_DEFAULTS.eslogan,
+      menuSize: Number(raw.menu_size ?? raw.home_menu_size) || HOME_PX_DEFAULTS.menu,
+      tracking: HOME_TRACKINGS.has(tracking) ? tracking : 'tracking-[0.3em]',
+      taglineSuperior: String(raw.tagline_superior ?? raw.home_tagline_superior ?? '').trim(),
+      title: String(raw.nombre_comercial ?? '').trim(),
+      slogan: String(raw.eslogan ?? '').trim(),
+    },
+    colors: {
+      background: normalizeHexColor(
+        fondoTipo === 'color' ? fondoValor : raw.color_fondo,
+        '#0a0a0a',
+      ),
+      primaryText: normalizeHexColor(
+        raw.titulo_color ?? raw.home_titulo_color ?? raw.color_texto,
+        '#ffffff',
+      ),
+      accent: normalizeHexColor(raw.color_primario, '#9f1239'),
+      slogan: normalizeHexColor(raw.eslogan_color ?? raw.home_eslogan_color, ''),
+      menu: normalizeHexColor(raw.menu_color ?? raw.home_menu_color, ''),
+      border: normalizeHexColor(
+        raw.borde_destacado_color ?? raw.home_borde_destacado_color,
+        '',
+      ),
+    },
+    background: {
+      type: fondoTipo,
+      url: fondoTipo === 'color' ? '' : fondoValor,
+      value: fondoValor,
+      overlayOpacity: Math.round(overlayOpacity) / 100,
+      overlayStyle: normalizeOverlayEstilo(
+        raw.home_overlay_estilo ?? raw.overlay_estilo,
+      ),
+    },
+    motion: {
+      entrance: normalizeEfectoEntrada(
+        raw.home_efecto_entrada ?? raw.efecto_entrada,
+      ),
+      bgEffect: normalizeFondoAnimacion(
+        raw.home_fondo_animacion ?? raw.fondo_animacion,
+      ),
+    },
+  };
 
   return {
     home: {
@@ -1212,10 +1400,7 @@ export function buildUiEstiloFromBody(raw) {
         raw.borde_destacado_color ?? raw.home_borde_destacado_color,
         HOME_PX_DEFAULTS.borde_destacado_color,
       ),
-      overlay_opacity: normalizeOverlayOpacity(
-        raw.home_overlay_opacity ?? raw.overlay_opacity,
-        HOME_PX_DEFAULTS.overlay_opacity,
-      ),
+      overlay_opacity: overlayOpacity,
       overlay_estilo: normalizeOverlayEstilo(
         raw.home_overlay_estilo ??
           raw.overlay_estilo ??
@@ -1231,11 +1416,15 @@ export function buildUiEstiloFromBody(raw) {
           raw.bg_animacion,
       ),
       estilo_navegacion: normalizeEstiloNavegacion(
-        raw.home_estilo_navegacion ?? raw.estilo_navegacion,
+        themeFromLayout === 'hamburguesa'
+          ? 'hamburguesa'
+          : raw.home_estilo_navegacion ?? raw.estilo_navegacion,
       ),
       efecto_entrada: normalizeEfectoEntrada(
         raw.home_efecto_entrada ?? raw.efecto_entrada,
       ),
+      layout,
+      home_core: homeCore,
       gadget_servicios_estilo: normalizeGadgetServiciosEstilo(
         raw.home_gadget_servicios_estilo ??
           raw.gadget_servicios_estilo ??
@@ -1258,7 +1447,8 @@ export function buildUiEstiloFromBody(raw) {
         platos_layout: raw.menu_platos_layout,
         estilo_tarjetas: raw.menu_estilo_tarjetas ?? raw.estilo_tarjetas,
         destacados_estilo: raw.menu_destacados_estilo,
-        navegacion: raw.menu_navegacion,
+        navegacion: menuLayoutToNavegacion(raw.menu_layout || raw.menu_navegacion),
+        layout: normalizeMenuLayout(raw.menu_layout || raw.menu_navegacion),
         fuente_titulo: raw.menu_fuente_titulo || raw.menu_font,
         fuente_cuerpo: raw.menu_fuente_cuerpo,
       },
@@ -1276,9 +1466,12 @@ export function buildUiEstiloFromBody(raw) {
       fuente_cuerpo: resolveNosotrosFuenteCuerpo(
         raw.nosotros_fuente_cuerpo ?? raw.nosotros?.fuente_cuerpo,
       ).id,
-      theme: String(raw.nosotros_theme ?? raw.nosotros?.theme ?? '')
-        .trim()
-        .toLowerCase() || 'editorial',
+      layout: normalizeNosotrosLayout(
+        raw.nosotros_layout ?? raw.nosotros?.layout ?? raw.nosotros_theme ?? raw.nosotros?.theme,
+      ),
+      theme: nosotrosLayoutToTheme(
+        raw.nosotros_layout ?? raw.nosotros_theme ?? raw.nosotros?.theme,
+      ),
     },
     ubicacion: {
       color_fondo: normalizeHexColor(raw.ubicacion_color_fondo, ''),
@@ -1294,6 +1487,18 @@ export function buildUiEstiloFromBody(raw) {
       ),
       grid_estilo: normalizeUbicacionGridEstilo(
         raw.ubicacion_grid_estilo ?? raw.ubicacion?.grid_estilo,
+      ),
+      fuente_titulo: resolveNosotrosFuenteTitulo(
+        raw.ubicacion_fuente_titulo ?? raw.ubicacion?.fuente_titulo,
+      ).id,
+      fuente_cuerpo: resolveNosotrosFuenteCuerpo(
+        raw.ubicacion_fuente_cuerpo ?? raw.ubicacion?.fuente_cuerpo,
+      ).id,
+      layout: normalizeUbicacionLayout(
+        raw.ubicacion_layout ?? raw.ubicacion?.layout ?? raw.ubicacion_theme ?? raw.ubicacion?.theme,
+      ),
+      theme: ubicacionLayoutToTheme(
+        raw.ubicacion_layout ?? raw.ubicacion_theme ?? raw.ubicacion?.theme,
       ),
     },
     css_avanzado: sanitizeCssAvanzado(raw.css_avanzado ?? raw.custom_css ?? ''),
@@ -1438,6 +1643,12 @@ export function uiEstiloToCssVars(ui, fallbackPrimario = '#9f1239') {
       ? `--sec-ubicacion-acento: ${ubicacion.color_acento || ubicacion.color_boton}`
       : '',
     ubicacion.grid_estilo ? `--sec-ubicacion-grid: ${ubicacion.grid_estilo}` : '',
+    ubicacion.fuente_titulo
+      ? `--ubicacion-font-heading: ${resolveNosotrosFuenteTitulo(ubicacion.fuente_titulo).stack}`
+      : '',
+    ubicacion.fuente_cuerpo
+      ? `--ubicacion-font-body: ${resolveNosotrosFuenteCuerpo(ubicacion.fuente_cuerpo).stack}`
+      : '',
     ui?.menu?.color_texto ? `--menu-texto-color: ${ui.menu.color_texto}` : '',
     ui?.menu?.color_fondo ? `--menu-surface-color: ${ui.menu.color_fondo}` : '',
     ui?.menu?.color_acento ? `--menu-accent-color: ${ui.menu.color_acento}` : '',

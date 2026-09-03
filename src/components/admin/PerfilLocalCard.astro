@@ -22,6 +22,11 @@ interface Props {
   whatsapp: RedState;
   telefono?: RedState;
   socialIdPrefix: string;
+  nestInParent?: boolean;
+  showMap?: boolean;
+  showHours?: boolean;
+  showSocial?: boolean;
+  variant?: 'default' | 'studio';
 }
 
 const {
@@ -41,17 +46,14 @@ const {
   whatsapp,
   telefono = { url: '', on: false },
   socialIdPrefix,
+  nestInParent = false,
+  showMap = true,
+  showHours = true,
+  showSocial = true,
+  variant = 'default',
 } = Astro.props;
 
 const redes = [
-  {
-    id: 'telefono',
-    label: 'Teléfono',
-    placeholder: '+58…',
-    state: telefono,
-    icon: 'ph',
-    inputType: 'tel',
-  },
   {
     id: 'whatsapp',
     label: 'WhatsApp',
@@ -59,6 +61,14 @@ const redes = [
     state: whatsapp,
     icon: 'wa',
     inputType: 'text',
+  },
+  {
+    id: 'telefono',
+    label: 'Teléfono',
+    placeholder: '+58…',
+    state: telefono,
+    icon: 'ph',
+    inputType: 'tel',
   },
   {
     id: 'instagram',
@@ -95,169 +105,199 @@ const redes = [
 ];
 ---
 
-<div class="perfil-local-ops" data-local-ops={scope}>
-  <div class="perfil-group">
-    <div class="perfil-group__head">
-      <div>
-        <h3>Horario de atención</h3>
-        <p class="perfil-group__sub">El switch abre o cierra el día. Los atajos copian el primer horario abierto.</p>
+<div
+  class:list={['perfil-local-ops', variant === 'studio' && 'perfil-local-ops--studio']}
+  {...(nestInParent ? {} : { 'data-local-ops': scope })}
+  data-variant={variant}
+>
+  {
+    showHours ? (
+      <div class="perfil-group">
+        <div class="perfil-group__head">
+          <div>
+            <h3>Horario de atención</h3>
+            <p class="perfil-group__sub">El switch abre o cierra el día. Los atajos copian el primer horario abierto.</p>
+          </div>
+          <div class="perfil-seg" role="group" aria-label="Atajos de horario">
+            <button type="button" class="perfil-seg__btn" data-hours-preset="lv">Lun–Vie</button>
+            <button type="button" class="perfil-seg__btn" data-hours-preset="finde">Fin de semana</button>
+            <button type="button" class="perfil-seg__btn" data-hours-preset="todos">Todos</button>
+            <button type="button" class="perfil-seg__btn perfil-seg__btn--mute" data-hours-preset="cerrados">Cerrar</button>
+          </div>
+        </div>
+        <ul class="perfil-list perfil-list--hours" data-hours-week={scope}>
+          {
+            DIAS_SEMANA.map((dia) => {
+              const row = horarioSemana[dia.id];
+              const closed = Boolean(row?.closed);
+              const isToday = dia.id === horarioHoy.id;
+              return (
+                <li
+                  class:list={['perfil-day', isToday && 'is-today']}
+                  data-day={dia.id}
+                  data-closed={closed ? 'true' : 'false'}
+                >
+                  <span class="perfil-day__name">
+                    {dia.label}
+                    {isToday ? <em>Hoy</em> : null}
+                  </span>
+                  <div class="perfil-day__mid">
+                    <span class="perfil-day__closed-label">Cerrado</span>
+                    <span class="perfil-day__times">
+                      <input
+                        type="time"
+                        data-hours-open
+                        value={row?.open || '12:00'}
+                        disabled={closed}
+                        aria-label={`Apertura ${dia.label}`}
+                      />
+                      <span class="perfil-day__to">–</span>
+                      <input
+                        type="time"
+                        data-hours-close
+                        value={row?.close || '22:00'}
+                        disabled={closed}
+                        aria-label={`Cierre ${dia.label}`}
+                      />
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!closed}
+                    aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
+                    data-hours-toggle
+                    title={closed ? 'Cerrado' : 'Abierto'}
+                    class:list={['ios-toggle', 'ios-toggle--live', 'perfil-toggle', !closed && 'is-on']}
+                  >
+                    <span class="ios-toggle__knob" aria-hidden="true"></span>
+                  </button>
+                </li>
+              );
+            })
+          }
+        </ul>
+        <p class="perfil-footnote">Se publica en la WebApp de este restaurante.</p>
+        <input type="hidden" id={horarioHiddenId} value={horarioText} data-horario-hidden />
       </div>
-      <div class="perfil-seg" role="group" aria-label="Atajos de horario">
-        <button type="button" class="perfil-seg__btn" data-hours-preset="lv">Lun–Vie</button>
-        <button type="button" class="perfil-seg__btn" data-hours-preset="finde">Fin de semana</button>
-        <button type="button" class="perfil-seg__btn" data-hours-preset="todos">Todos</button>
-        <button type="button" class="perfil-seg__btn perfil-seg__btn--mute" data-hours-preset="cerrados">Cerrar</button>
-      </div>
-    </div>
-    <ul class="perfil-list perfil-list--hours" data-hours-week={scope}>
-      {
-        DIAS_SEMANA.map((dia) => {
-          const row = horarioSemana[dia.id];
-          const closed = Boolean(row?.closed);
-          const isToday = dia.id === horarioHoy.id;
-          return (
-            <li
-              class:list={['perfil-day', isToday && 'is-today']}
-              data-day={dia.id}
-              data-closed={closed ? 'true' : 'false'}
-            >
-              <span class="perfil-day__name">
-                {dia.label}
-                {isToday ? <em>Hoy</em> : null}
-              </span>
-              <div class="perfil-day__mid">
-                <span class="perfil-day__closed-label">Cerrado</span>
-                <span class="perfil-day__times">
-                  <input
-                    type="time"
-                    data-hours-open
-                    value={row?.open || '12:00'}
-                    disabled={closed}
-                    aria-label={`Apertura ${dia.label}`}
-                  />
-                  <span class="perfil-day__to">–</span>
-                  <input
-                    type="time"
-                    data-hours-close
-                    value={row?.close || '22:00'}
-                    disabled={closed}
-                    aria-label={`Cierre ${dia.label}`}
-                  />
+    ) : null
+  }
+
+  {
+    showMap ? (
+      <div class="perfil-group">
+        <div class="perfil-group__head">
+          <div>
+            <h3>Mapa</h3>
+            <p class="perfil-group__sub">Vista previa del mapa. El enlace se edita solo al pedirlo.</p>
+          </div>
+        </div>
+        <div class="perfil-map" data-maps-preview>
+          <div class="perfil-map__frame">
+            {
+              mapsEmbed ? (
+                <iframe
+                  title="Mapa del restaurante"
+                  src={mapsEmbed}
+                  loading="lazy"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  data-map-embed
+                />
+              ) : (
+                <span class="perfil-map__empty" data-map-empty>
+                  Pegá el enlace de Google Maps
                 </span>
+              )
+            }
+            <a
+              class="perfil-map__hit"
+              href={mapsOpen || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir en Google Maps"
+              data-map-open
+              hidden={!mapsOpen}
+            />
+          </div>
+          <div class="perfil-map__actions">
+            <button type="button" class="perfil-map__change-btn" data-maps-url-toggle>
+              Cambiar enlace de Google Maps
+            </button>
+            <div class="perfil-map__url-panel" data-maps-url-panel hidden>
+              <label class="perfil-field perfil-field--map">
+                <span class="sr-only">Enlace o iframe de Google Maps</span>
+                <textarea
+                  id={mapsInputId}
+                  rows={3}
+                  placeholder="https://maps.google.com/… o iframe embed"
+                  autocomplete="off"
+                  data-maps-url
+                  class="perfil-map__textarea"
+                >{mapsUrl}</textarea>
+              </label>
+              <div class="perfil-map__url-actions">
+                <button type="button" class="perfil-map__url-done" data-maps-url-done>
+                  Listo
+                </button>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!closed}
-                aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
-                data-hours-toggle
-                title={closed ? 'Cerrado' : 'Abierto'}
-                class:list={['ios-toggle', 'ios-toggle--live', 'perfil-toggle', !closed && 'is-on']}
-              >
-                <span class="ios-toggle__knob" aria-hidden="true"></span>
-              </button>
-            </li>
-          );
-        })
-      }
-    </ul>
-    <p class="perfil-footnote">Se publica en la WebApp de este restaurante.</p>
-    <input type="hidden" id={horarioHiddenId} value={horarioText} data-horario-hidden />
-  </div>
-
-  <div class="perfil-group">
-    <div class="perfil-group__head">
-      <div>
-        <h3>Mapa</h3>
-        <p class="perfil-group__sub">Enlace de Google Maps o código iframe de «Incorporar mapa»</p>
-      </div>
-    </div>
-    <div class="perfil-map" data-maps-preview>
-      <div class="perfil-map__frame">
-        {
-          mapsEmbed ? (
-            <iframe
-              title="Mapa del restaurante"
-              src={mapsEmbed}
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              data-map-embed
-            />
-          ) : (
-            <span class="perfil-map__empty" data-map-empty>
-              Pegá el enlace o el iframe de Google Maps
-            </span>
-          )
-        }
-        <a
-          class="perfil-map__hit"
-          href={mapsOpen || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Abrir en Google Maps"
-          data-map-open
-          hidden={!mapsOpen}
-        />
-      </div>
-      <label class="perfil-field perfil-field--map">
-        <span>Google Maps — enlace o iframe</span>
-        <textarea
-          id={mapsInputId}
-          rows={3}
-          placeholder="https://maps.google.com/…&#10;o&#10;&lt;iframe src=&quot;https://www.google.com/maps/embed?pb=…&quot; …&gt;&lt;/iframe&gt;"
-          autocomplete="off"
-          data-maps-url
-          class="perfil-map__textarea"
-        >{mapsUrl}</textarea>
-      </label>
-    </div>
-  </div>
-
-  <div class="perfil-group">
-    <div class="perfil-group__head">
-      <div>
-        <h3>Redes y contacto</h3>
-        <p class="perfil-group__sub">El switch muestra u oculta cada icono en la WebApp</p>
-      </div>
-    </div>
-    <ul class="perfil-list">
-      {
-        redes.map((net) => (
-          <li
-            class="perfil-social"
-            data-social={net.id}
-            data-on={net.state.on ? 'true' : 'false'}
-          >
-            <div class="perfil-social__bar">
-              <span class="perfil-social__brand">
-                <span class={`perfil-social__glyph perfil-social__glyph--${net.icon}`} aria-hidden="true"></span>
-                {net.label}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={net.state.on}
-                aria-label={`${net.label} ${net.state.on ? 'visible' : 'oculta'}`}
-                data-social-toggle
-                title={net.state.on ? 'Visible en la WebApp' : 'Oculta en la WebApp'}
-                class:list={['ios-toggle', 'ios-toggle--live', 'perfil-toggle', net.state.on && 'is-on']}
-              >
-                <span class="ios-toggle__knob" aria-hidden="true"></span>
-              </button>
             </div>
-            <input
-              type={net.inputType || 'url'}
-              id={`${socialIdPrefix}${net.id}`}
-              value={net.state.url}
-              placeholder={net.placeholder}
-              autocomplete="off"
-              disabled={!net.state.on}
-            />
-          </li>
-        ))
-      }
-    </ul>
-  </div>
+          </div>
+        </div>
+      </div>
+    ) : null
+  }
+
+  {
+    showSocial ? (
+      <div class="perfil-group">
+        <div class="perfil-group__head">
+          <div>
+            <h3>Redes y contacto</h3>
+            <p class="perfil-group__sub">Activa un canal para editar su enlace. Solo los activos aparecen en la WebApp.</p>
+          </div>
+        </div>
+        <ul class="perfil-list">
+          {
+            redes.map((net) => (
+              <li
+                class="perfil-social"
+                data-social={net.id}
+                data-on={net.state.on ? 'true' : 'false'}
+              >
+                <div class="perfil-social__bar">
+                  <span class="perfil-social__brand">
+                    <span class={`perfil-social__glyph perfil-social__glyph--${net.icon}`} aria-hidden="true"></span>
+                    {net.label}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={net.state.on}
+                    aria-label={`${net.label} ${net.state.on ? 'visible' : 'oculta'}`}
+                    data-social-toggle
+                    title={net.state.on ? 'Visible en la WebApp' : 'Oculta en la WebApp'}
+                    class:list={['ios-toggle', 'ios-toggle--live', 'perfil-toggle', net.state.on && 'is-on']}
+                  >
+                    <span class="ios-toggle__knob" aria-hidden="true"></span>
+                  </button>
+                </div>
+                <input
+                  type={net.inputType || 'url'}
+                  id={`${socialIdPrefix}${net.id}`}
+                  value={net.state.url}
+                  placeholder={net.placeholder}
+                  autocomplete="off"
+                  disabled={!net.state.on}
+                  hidden={!net.state.on}
+                  data-social-input
+                />
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    ) : null
+  }
 </div>
 
 <style>
@@ -271,6 +311,79 @@ const redes = [
     border-radius: 1.1rem;
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
     background: var(--bg-card, rgba(24, 24, 27, 0.55));
+  }
+
+  .perfil-local-ops--studio .perfil-group {
+    margin-bottom: 0;
+    border-radius: 0.75rem;
+    border-color: rgba(255, 255, 255, 0.12);
+    background: transparent;
+  }
+
+  .perfil-local-ops--studio .perfil-group + .perfil-group {
+    margin-top: 0.75rem;
+  }
+
+  .perfil-map__actions {
+    margin: 0 0.9rem 0.85rem;
+  }
+
+  .perfil-map__change-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fff) 16%, transparent);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+  }
+
+  .perfil-map__change-btn:hover {
+    border-color: color-mix(in srgb, var(--text-primary, #fff) 28%, transparent);
+    background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent);
+  }
+
+  .perfil-map__url-panel {
+    margin-top: 0.55rem;
+  }
+
+  .perfil-map__url-panel[hidden] {
+    display: none !important;
+  }
+
+  .perfil-map__url-panel .perfil-field {
+    padding: 0;
+  }
+
+  .perfil-map__url-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.4rem;
+  }
+
+  .perfil-map__url-done {
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fff) 16%, transparent);
+    background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+    color: inherit;
+    font: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+  }
+
+  .perfil-social input[data-social-input][hidden] {
+    display: none !important;
   }
 
   .perfil-group__head {

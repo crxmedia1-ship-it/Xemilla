@@ -15,7 +15,7 @@ import UbicacionSplitMap from '../themes/ubicacion/UbicacionSplitMap.astro';
 import UbicacionMinimal from '../themes/ubicacion/UbicacionMinimal.astro';
 import { themeToCssVars, homeBackgroundCssVars, DEFAULT_THEME } from '../../lib/theme.js';
 import {
-  sanitizeTheme,
+  resolveHomeThemeAndNav,
   normalizeUbicacionTheme,
   normalizeNosotrosTheme,
   DEFAULT_NOSOTROS_THEME,
@@ -25,7 +25,6 @@ import { resolveSafeHomeProps } from '../../lib/home-safe-props.js';
 import { fetchTasasCambio } from '../../lib/tasas-cambio.js';
 import {
   scopeCssAvanzado,
-  normalizeEstiloNavegacion,
   normalizeFondoAnimacion,
   normalizeOverlayEstilo,
 } from '../../lib/secciones-ui.js';
@@ -69,10 +68,19 @@ const boutiqueProductos = Array.isArray(restaurante?.boutique?.productos)
   ? restaurante.boutique.productos
   : [];
 
-/** sanitizeTheme(restaurante.home_theme) — sin fallback agresivo a Bento */
-let homeTheme = sanitizeTheme(
-  homeThemeProp ?? restaurante?.home_theme ?? restaurante?.homeTheme ?? '',
+/** Plantilla Home + navegación (hamburguesa vive en plantilla) */
+const resolvedHome = resolveHomeThemeAndNav(
+  uiEstilo?.home?.layout ||
+    homeThemeProp ||
+    restaurante?.home_theme ||
+    restaurante?.homeTheme ||
+    '',
+  uiEstilo?.home?.estilo_navegacion ??
+    uiEstilo?.home?.estiloNavegacion ??
+    uiEstilo?.home?.nav_style,
 );
+let homeTheme = resolvedHome.homeTheme;
+const estiloNavegacion = resolvedHome.estiloNavegacion;
 const ubicacionTheme = normalizeUbicacionTheme(
   ubicacionThemeProp ?? restaurante?.ubicacionTheme ?? restaurante?.ubicacion_theme,
 );
@@ -86,7 +94,7 @@ const nosotrosTheme = normalizeNosotrosTheme(
 
 console.log('🔥 [SUPABASE READ]', {
   raw_db: restaurante?.home_theme,
-  sanitized: sanitizeTheme(restaurante?.home_theme),
+  resolved: resolvedHome,
 });
 
 /** Fondos desde Identidad de Marca (independientes de home_theme) */
@@ -114,12 +122,7 @@ const homeFondoAnimacion = normalizeFondoAnimacion(
   uiEstilo?.home?.fondo_animacion ?? uiEstilo?.home?.fondoAnimacion,
 );
 
-/** Navegación Home: frontal | hamburguesa | app_tabs (legacy fijo/oculto normalizados) */
-const estiloNavegacion = normalizeEstiloNavegacion(
-  uiEstilo?.home?.estilo_navegacion ??
-    uiEstilo?.home?.estiloNavegacion ??
-    uiEstilo?.home?.nav_style,
-);
+/** Navegación Home derivada de plantilla */
 const isNavHamburguesa = estiloNavegacion === 'hamburguesa';
 const isNavAppTabs = estiloNavegacion === 'app_tabs';
 const hideCentralNav = isNavHamburguesa || isNavAppTabs;
@@ -362,6 +365,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           try {
             if (homeTheme === 'editorial') {
               return <HomeEditorial {...homeProps} />;
+            }
+            if (homeTheme === 'hamburguesa') {
+              return <HomeMinimal {...homeProps} />;
             }
             if (homeTheme === 'hero') {
               return <HomeHeroCards {...homeProps} />;
