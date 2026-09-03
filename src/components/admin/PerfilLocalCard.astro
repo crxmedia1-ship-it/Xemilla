@@ -15,6 +15,8 @@ interface Props {
   mapsEmbed: string;
   mapsOpen: string;
   horarioText: string;
+  direccion?: string;
+  direccionInputId?: string;
   instagram: RedState;
   facebook: RedState;
   tiktok: RedState;
@@ -39,6 +41,8 @@ const {
   mapsEmbed,
   mapsOpen,
   horarioText,
+  direccion = '',
+  direccionInputId = '',
   instagram,
   facebook,
   tiktok,
@@ -103,16 +107,23 @@ const redes = [
     inputType: 'url',
   },
 ];
+
+const studioCardClass =
+  'w-full h-full bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col shadow-sm';
 ---
 
 <div
-  class:list={['perfil-local-ops', variant === 'studio' && 'perfil-local-ops--studio']}
+  class:list={[
+    nestInParent && variant === 'studio'
+      ? 'contents'
+      : ['perfil-local-ops', variant === 'studio' && 'perfil-local-ops--studio space-y-6'],
+  ]}
   {...(nestInParent ? {} : { 'data-local-ops': scope })}
   data-variant={variant}
 >
   {
     showHours ? (
-      <div class="perfil-group">
+      <div class:list={['perfil-group', variant === 'studio' ? studioCardClass : null]}>
         <div class="perfil-group__head">
           <div>
             <h3>Horario de atención</h3>
@@ -120,8 +131,8 @@ const redes = [
           </div>
           <div class="perfil-seg" role="group" aria-label="Atajos de horario">
             <button type="button" class="perfil-seg__btn" data-hours-preset="lv">Lun–Vie</button>
-            <button type="button" class="perfil-seg__btn" data-hours-preset="finde">Fin de semana</button>
-            <button type="button" class="perfil-seg__btn" data-hours-preset="todos">Todos</button>
+            <button type="button" class="perfil-seg__btn" data-hours-preset="finde">Fines de semana</button>
+            <button type="button" class="perfil-seg__btn" data-hours-preset="todos">Lunes a Domingo</button>
             <button type="button" class="perfil-seg__btn perfil-seg__btn--mute" data-hours-preset="cerrados">Cerrar</button>
           </div>
         </div>
@@ -185,20 +196,27 @@ const redes = [
 
   {
     showMap ? (
-      <div class="perfil-group">
+      <div class:list={['perfil-group', variant === 'studio' ? studioCardClass : null]}>
         <div class="perfil-group__head">
           <div>
-            <h3>Mapa</h3>
-            <p class="perfil-group__sub">Vista previa del mapa. El enlace se edita solo al pedirlo.</p>
+            <h3>Ubicación &amp; Mapa</h3>
+            <p class="perfil-group__sub">Dirección en texto y enlace o embed de Google Maps.</p>
           </div>
         </div>
-        <div class="perfil-map" data-maps-preview>
-          <div class="perfil-map__frame">
+        <div class="perfil-map w-full flex-1" data-maps-preview>
+          <div
+            class:list={[
+              'perfil-map__frame relative mb-4 w-full flex-shrink-0 overflow-hidden rounded-xl bg-zinc-100',
+              variant === 'studio' ? 'aspect-[4/3] sm:aspect-video' : null,
+            ]}
+          >
             {
               mapsEmbed ? (
                 <iframe
                   title="Mapa del restaurante"
                   src={mapsEmbed}
+                  class={variant === 'studio' ? 'absolute inset-0 h-full w-full border-0' : undefined}
+                  allowfullscreen
                   loading="lazy"
                   referrerpolicy="no-referrer-when-downgrade"
                   data-map-embed
@@ -219,29 +237,58 @@ const redes = [
               hidden={!mapsOpen}
             />
           </div>
-          <div class="perfil-map__actions">
-            <button type="button" class="perfil-map__change-btn" data-maps-url-toggle>
-              Cambiar enlace de Google Maps
-            </button>
-            <div class="perfil-map__url-panel" data-maps-url-panel hidden>
-              <label class="perfil-field perfil-field--map">
-                <span class="sr-only">Enlace o iframe de Google Maps</span>
-                <textarea
-                  id={mapsInputId}
-                  rows={3}
-                  placeholder="https://maps.google.com/… o iframe embed"
-                  autocomplete="off"
-                  data-maps-url
-                  class="perfil-map__textarea"
-                >{mapsUrl}</textarea>
-              </label>
-              <div class="perfil-map__url-actions">
-                <button type="button" class="perfil-map__url-done" data-maps-url-done>
-                  Listo
-                </button>
+          {
+            variant === 'studio' ? (
+              <div class="perfil-map__studio-fields">
+                <label class="perfil-field perfil-field--map">
+                  <span>Dirección</span>
+                  <input
+                    type="text"
+                    id={direccionInputId || undefined}
+                    value={direccion}
+                    placeholder="Ej. Av. Principal, Valencia"
+                    autocomplete="street-address"
+                    data-direccion-input
+                  />
+                </label>
+                <label class="perfil-field perfil-field--map">
+                  <span>Enlace de Google Maps</span>
+                  <textarea
+                    id={mapsInputId}
+                    rows={2}
+                    placeholder="https://maps.google.com/… o iframe embed"
+                    autocomplete="off"
+                    data-maps-url
+                    class="perfil-map__textarea"
+                  >{mapsUrl}</textarea>
+                </label>
               </div>
-            </div>
-          </div>
+            ) : (
+              <div class="perfil-map__actions">
+                <button type="button" class="perfil-map__change-btn" data-maps-url-toggle>
+                  Cambiar enlace de Google Maps
+                </button>
+                <div class="perfil-map__url-panel" data-maps-url-panel hidden>
+                  <label class="perfil-field perfil-field--map">
+                    <span class="sr-only">Enlace o iframe de Google Maps</span>
+                    <textarea
+                      id={mapsInputId}
+                      rows={3}
+                      placeholder="https://maps.google.com/… o iframe embed"
+                      autocomplete="off"
+                      data-maps-url
+                      class="perfil-map__textarea"
+                    >{mapsUrl}</textarea>
+                  </label>
+                  <div class="perfil-map__url-actions">
+                    <button type="button" class="perfil-map__url-done" data-maps-url-done>
+                      Listo
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          }
         </div>
       </div>
     ) : null
@@ -249,10 +296,10 @@ const redes = [
 
   {
     showSocial ? (
-      <div class="perfil-group">
+      <div class:list={['perfil-group', variant === 'studio' ? studioCardClass : null]}>
         <div class="perfil-group__head">
           <div>
-            <h3>Redes y contacto</h3>
+            <h3>Canales de contacto</h3>
             <p class="perfil-group__sub">Activa un canal para editar su enlace. Solo los activos aparecen en la WebApp.</p>
           </div>
         </div>
@@ -313,19 +360,159 @@ const redes = [
     background: var(--bg-card, rgba(24, 24, 27, 0.55));
   }
 
-  .perfil-local-ops--studio .perfil-group {
+  .perfil-local-ops--studio .perfil-group.ops-card,
+  .perfil-local-ops--studio .perfil-group.ops-studio-card,
+  .perfil-group.bg-white.border-zinc-200 {
     margin-bottom: 0;
-    border-radius: 0.75rem;
-    border-color: rgba(255, 255, 255, 0.12);
-    background: transparent;
+    overflow: visible;
+    border-radius: 1rem;
+    border: 1px solid #e4e4e7;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    padding: 1.5rem;
   }
 
-  .perfil-local-ops--studio .perfil-group + .perfil-group {
-    margin-top: 0.75rem;
+  .perfil-local-ops--studio .perfil-group__head,
+  .perfil-group.bg-white .perfil-group__head {
+    padding: 0 0 0.75rem;
+  }
+
+  .perfil-local-ops--studio .perfil-group__head h3,
+  .perfil-group.bg-white .perfil-group__head h3 {
+    color: #18181b;
+  }
+
+  .perfil-local-ops--studio .perfil-group__sub,
+  .perfil-group.bg-white .perfil-group__sub {
+    color: #71717a;
+  }
+
+  .perfil-local-ops--studio .perfil-seg,
+  .perfil-group.bg-white .perfil-seg {
+    background: #f4f4f5;
+  }
+
+  .perfil-local-ops--studio .perfil-seg__btn,
+  .perfil-group.bg-white .perfil-seg__btn {
+    color: #71717a;
+  }
+
+  .perfil-local-ops--studio .perfil-seg__btn:hover,
+  .perfil-group.bg-white .perfil-seg__btn:hover {
+    color: #18181b;
+  }
+
+  .perfil-local-ops--studio .perfil-seg__btn:active,
+  .perfil-group.bg-white .perfil-seg__btn:active {
+    background: #18181b;
+    color: #fff;
+  }
+
+  .perfil-local-ops--studio .perfil-day,
+  .perfil-local-ops--studio .perfil-social,
+  .perfil-group.bg-white .perfil-day,
+  .perfil-group.bg-white .perfil-social {
+    border-top-color: #f4f4f5;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .perfil-local-ops--studio .perfil-day:first-child,
+  .perfil-local-ops--studio .perfil-social:first-child,
+  .perfil-group.bg-white .perfil-day:first-child,
+  .perfil-group.bg-white .perfil-social:first-child {
+    border-top: 0;
+  }
+
+  .perfil-local-ops--studio .perfil-day__name,
+  .perfil-local-ops--studio .perfil-social__brand,
+  .perfil-group.bg-white .perfil-day__name,
+  .perfil-group.bg-white .perfil-social__brand {
+    color: #18181b;
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time'],
+  .perfil-local-ops--studio .perfil-field input,
+  .perfil-local-ops--studio .perfil-field textarea,
+  .perfil-local-ops--studio .perfil-social input,
+  .perfil-group.bg-white .perfil-day input[type='time'],
+  .perfil-group.bg-white .perfil-field input,
+  .perfil-group.bg-white .perfil-field textarea,
+  .perfil-group.bg-white .perfil-social input {
+    border-color: #e4e4e7;
+    background: #fafafa;
+    color: #18181b;
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time']:focus,
+  .perfil-local-ops--studio .perfil-field input:focus,
+  .perfil-local-ops--studio .perfil-field textarea:focus,
+  .perfil-local-ops--studio .perfil-social input:focus,
+  .perfil-group.bg-white .perfil-day input[type='time']:focus,
+  .perfil-group.bg-white .perfil-field input:focus,
+  .perfil-group.bg-white .perfil-field textarea:focus,
+  .perfil-group.bg-white .perfil-social input:focus {
+    background: #ffffff;
+    border-color: #a1a1aa;
+  }
+
+  .perfil-local-ops--studio .perfil-map__frame,
+  .perfil-group.bg-white .perfil-map__frame.aspect-\[4\/3\] {
+    margin: 0 0 1rem;
+    border-radius: 0.75rem;
+    background: #f4f4f5;
+    border: 0;
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+  }
+
+  @media (min-width: 640px) {
+    .perfil-group.bg-white .perfil-map__frame.aspect-\[4\/3\] {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+  .perfil-local-ops--studio .perfil-map__studio-fields,
+  .perfil-group.bg-white .perfil-map__studio-fields {
+    margin: 0;
+    gap: 0.45rem;
+  }
+
+  .perfil-local-ops--studio .perfil-map__studio-fields .perfil-field span,
+  .perfil-group.bg-white .perfil-map__studio-fields .perfil-field span {
+    color: #71717a;
+    font-size: 0.72rem;
+  }
+
+  .perfil-local-ops--studio .perfil-footnote,
+  .perfil-group.bg-white .perfil-footnote {
+    padding: 0.5rem 0 0;
+    color: #a1a1aa;
+  }
+
+  .perfil-local-ops--studio .perfil-social__glyph,
+  .perfil-group.bg-white .perfil-social__glyph {
+    background-color: #f4f4f5;
+  }
+
+  .perfil-local-ops--studio .perfil-toggle,
+  .perfil-group.bg-white .perfil-toggle {
+    --toggle-off: #d4d4d8;
+    --toggle-on: #10b981;
   }
 
   .perfil-map__actions {
     margin: 0 0.9rem 0.85rem;
+  }
+
+  .perfil-map__studio-fields {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0 0.9rem 0.85rem;
+  }
+
+  .perfil-map__studio-fields .perfil-field {
+    padding: 0;
   }
 
   .perfil-map__change-btn {

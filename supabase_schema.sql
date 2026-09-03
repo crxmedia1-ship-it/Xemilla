@@ -254,6 +254,12 @@ COMMENT ON COLUMN public.restaurantes.nosotros_imagen IS
 COMMENT ON COLUMN public.restaurantes.nosotros_texto IS
   'Párrafo / copy de la sección Nosotros.';
 
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS popup_banner JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+COMMENT ON COLUMN public.restaurantes.popup_banner IS
+  'Anuncio / pop-up de bienvenida: { enabled, image_url, title, description, button_text, action_type, action_url }.';
+
 CREATE INDEX IF NOT EXISTS idx_restaurantes_user_id
   ON public.restaurantes (user_id);
 

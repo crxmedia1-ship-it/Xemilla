@@ -6,6 +6,11 @@ import { parseRedesSociales } from '../../lib/secciones-ui.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
 import { normalizeMapsStorage } from '../../lib/maps-preview.js';
+import {
+  buildPopupBannerFromBody,
+  parsePopupBanner,
+  serializePopupBanner,
+} from '../../lib/popup-banner.js';
 
 export const prerender = false;
 
@@ -92,6 +97,11 @@ export async function POST({ request, cookies }) {
   if (raw.coordenadas_maps !== undefined) {
     patch.coordenadas_maps =
       normalizeMapsStorage(String(raw.coordenadas_maps ?? '').trim()) || null;
+  }
+
+  const popupBannerPatch = buildPopupBannerFromBody(raw);
+  if (popupBannerPatch) {
+    patch.popup_banner = serializePopupBanner(popupBannerPatch);
   }
 
   const instagramRaw =
@@ -258,7 +268,7 @@ export async function POST({ request, cookies }) {
     .update(patch)
     .eq('id', restauranteId)
     .select(
-      'id, whatsapp_url, horarios, instagram_url, redes_sociales, eslogan, direccion, coordenadas_maps',
+      'id, whatsapp_url, horarios, instagram_url, redes_sociales, eslogan, direccion, coordenadas_maps, popup_banner',
     )
     .maybeSingle();
 
@@ -287,6 +297,7 @@ export async function POST({ request, cookies }) {
   const igRow = redesOut.find((r) => r.red === 'instagram');
   const waRow = redesOut.find((r) => r.red === 'whatsapp');
   const phoneRow = redesOut.find((r) => r.red === 'telefono');
+  const popupBanner = parsePopupBanner(data.popup_banner);
 
   return json({
     ok: true,
@@ -312,6 +323,8 @@ export async function POST({ request, cookies }) {
         : Boolean(data.whatsapp_url),
       telefono_activo: phoneRow ? phoneRow.activo !== false : false,
       coordenadas_maps: data.coordenadas_maps || '',
+      direccion: data.direccion || '',
+      popup_banner: popupBanner,
     },
   });
 }

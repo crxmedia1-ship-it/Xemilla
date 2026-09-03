@@ -6,6 +6,7 @@ import AdminXemillaMark from '../../components/admin/AdminXemillaMark.astro';
 import AdminMetricsPanel from '../../components/admin/AdminMetricsPanel.astro';
 import AdminThemeSwitcher from '../../components/admin/AdminThemeSwitcher.astro';
 import PerfilLocalCard from '../../components/admin/PerfilLocalCard.astro';
+import WelcomePopupCard from '../../components/admin/WelcomePopupCard.astro';
 import { getAdminDashboardData } from '../../lib/admin.js';
 import { fetchMetricsSnapshot, emptyMetricsSnapshot } from '../../lib/metrics.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
@@ -91,6 +92,7 @@ import {
   googleMapsEmbedSrc,
   mapsOpenHref,
 } from '../../lib/maps-preview.js';
+import { parsePopupBanner } from '../../lib/popup-banner.js';
 
 const restauranteId =
   Astro.url.searchParams.get('restaurante') ||
@@ -359,6 +361,8 @@ const opsTelefonoContacto = redField('telefono');
 const opsMaps = String(restaurante?.coordenadas_maps || '').trim();
 const opsMapsEmbed = googleMapsEmbedSrc(opsMaps);
 const opsMapsOpen = mapsOpenHref(opsMaps);
+const opsDireccion = String(restaurante?.direccion || '').trim();
+const opsPopupBanner = parsePopupBanner(restaurante?.popup_banner);
 const opsWifiSsid = String(
   restaurante?.gadget_wifi_ssid || configWifi?.ssid || '',
 ).trim();
@@ -686,7 +690,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   adminPanel={true}
 >
   <header
-    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex w-full flex-col gap-2 border-b px-4 py-2.5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-3"
+    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex w-full flex-col gap-2 border-b px-6 py-2.5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-3 lg:px-12"
   >
     {/* Top row: brand + actions */}
     <div class="flex min-w-0 items-center justify-between gap-2 sm:contents">
@@ -799,7 +803,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
       {
         (managingAsSuperAdmin || isSuperAdmin) && restaurante ? (
-          <div class="flex w-full justify-end sm:absolute sm:bottom-1.5 sm:right-6 sm:top-auto sm:z-10 sm:w-auto">
+          <div class="flex w-full justify-end sm:absolute sm:bottom-1.5 sm:right-6 sm:top-auto sm:z-10 sm:w-auto lg:right-12">
             <a
               href="/admin/super/dashboard"
               class="admin-superadmin-chip inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.12em] shadow-sm transition"
@@ -853,7 +857,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               aria-controls="panel-perfil"
               class={`${tabPillInactive}`}
             >
-              Horarios y Ubicación
+              Operación &amp; Anuncios
             </button>
               )
             }
@@ -879,7 +883,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   </header>
 
   <main class="relative z-10 min-h-[calc(100dvh-4rem)] w-full bg-transparent">
-    <div class="relative z-10 mx-auto w-full max-w-[96rem] px-4 pb-[max(9.5rem,calc(env(safe-area-inset-bottom)+8rem))] pt-4 sm:px-6 sm:pb-16 sm:pt-5 lg:px-8">
+    <div class="relative z-10 mx-auto w-full max-w-full px-6 pb-[max(9.5rem,calc(env(safe-area-inset-bottom)+8rem))] pt-4 sm:pb-16 sm:pt-5 lg:px-12">
     {
       !restaurante ? (
         <div class={`glass-panel ${bounceWallClass} max-w-xl p-8 text-center`}>
@@ -1528,97 +1532,170 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             class="hidden"
             hidden
           >
-            <section id="ops-contacto-card" class="perfil-studio" data-ops-contacto>
-              <header class="perfil-studio__hero">
+            <section
+              id="ops-contacto-card"
+              class="perfil-studio ops-studio w-full py-4"
+              data-ops-contacto
+            >
+              <header class="perfil-studio__hero mb-6 flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
-                  <p class="perfil-studio__kicker">Horarios y Ubicación</p>
-                  <h2 class="perfil-studio__title">{hubNombre || 'Restaurante'}</h2>
-                  <p class="perfil-studio__lead">
-                    Horario, mapa y redes que ve el comensal en la WebApp. Plantilla y colores los define SuperAdmin.
+                  <p class="perfil-studio__kicker m-0 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                    Operación &amp; Anuncios
+                  </p>
+                  <h2 class="perfil-studio__title mt-1.5 mb-0 font-[family-name:var(--font-admin-display,inherit)] text-[1.65rem] font-semibold tracking-tight text-zinc-900">
+                    {hubNombre || 'Restaurante'}
+                  </h2>
+                  <p class="perfil-studio__lead mt-2 mb-0 max-w-xl text-sm leading-relaxed text-zinc-500">
+                    Horario, ubicación, redes y flyer de bienvenida que ve el comensal en la WebApp.
                   </p>
                 </div>
-                <div class="perfil-studio__status-wrap">
-                  <span
-                    id="ops-open-badge"
-                    class:list={['perfil-status', horarioHoy.open ? 'is-open' : 'is-closed']}
-                  >
-                    {horarioHoy.text}
-                  </span>
-                  <p id="ops-contacto-status" class="perfil-studio__hint" role="status"></p>
+                <div class="perfil-studio__status-wrap flex flex-col items-end gap-2.5 text-right">
+                  <div class="flex flex-wrap items-center justify-end gap-2">
+                    <span
+                      id="ops-open-badge"
+                      class:list={['perfil-status', horarioHoy.open ? 'is-open' : 'is-closed']}
+                    >
+                      {horarioHoy.text}
+                    </span>
+                    <button
+                      type="button"
+                      id="ops-contacto-save"
+                      data-restaurante-id={restId}
+                      class="perfil-save ops-save inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black"
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                  <p id="ops-contacto-status" class="perfil-studio__hint m-0 min-h-4 text-xs text-zinc-500" role="status"></p>
                 </div>
               </header>
 
-              <PerfilLocalCard
-                scope="perfil"
-                mapsInputId="ops-maps"
-                horarioHiddenId="ops-horario"
-                horarioText={opsHorario}
-                horarioSemana={horarioSemana}
-                horarioHoy={horarioHoy}
-                mapsUrl={opsMaps}
-                mapsEmbed={opsMapsEmbed}
-                mapsOpen={opsMapsOpen}
-                instagram={opsInstagram}
-                facebook={opsFacebook}
-                tiktok={opsTiktok}
-                tripadvisor={opsTripadvisor}
-                whatsapp={opsWhatsapp}
-                telefono={opsTelefonoContacto}
-                socialIdPrefix="ops-"
-              />
+              <div class="mx-auto mt-0 w-full max-w-7xl">
+              <div
+                class="perfil-studio__grid mt-6 grid w-full grid-cols-[repeat(auto-fit,minmax(350px,1fr))] items-start gap-6"
+                data-local-ops="perfil"
+              >
+                  <PerfilLocalCard
+                    scope="perfil"
+                    variant="studio"
+                    nestInParent
+                    showHours
+                    showMap={false}
+                    showSocial={false}
+                    mapsInputId="ops-maps-hours-unused"
+                    horarioHiddenId="ops-horario"
+                    horarioText={opsHorario}
+                    horarioSemana={horarioSemana}
+                    horarioHoy={horarioHoy}
+                    mapsUrl={opsMaps}
+                    mapsEmbed={opsMapsEmbed}
+                    mapsOpen={opsMapsOpen}
+                    direccion={opsDireccion}
+                    direccionInputId="ops-direccion-hours-unused"
+                    instagram={opsInstagram}
+                    facebook={opsFacebook}
+                    tiktok={opsTiktok}
+                    tripadvisor={opsTripadvisor}
+                    whatsapp={opsWhatsapp}
+                    telefono={opsTelefonoContacto}
+                    socialIdPrefix="ops-hours-"
+                  />
 
-              <div class="perfil-group">
-                <div class="perfil-group__head">
-                  <div>
-                    <h3>Accesos</h3>
-                    <p class="perfil-group__sub">Datos del local · no se editan aquí</p>
-                  </div>
-                </div>
-                <ul class="perfil-list">
-                  <li class="perfil-meta">
-                    <span>Teléfono</span>
-                    <div class="perfil-meta__value">
-                      <strong>{opsTelefono || '—'}</strong>
-                      {
-                        opsTelefono ? (
-                          <button type="button" class="perfil-mini" data-copy={opsTelefono}>Copiar</button>
-                        ) : null
-                      }
+                  <PerfilLocalCard
+                    scope="perfil"
+                    variant="studio"
+                    nestInParent
+                    showHours={false}
+                    showMap={false}
+                    showSocial
+                    mapsInputId="ops-maps-social-unused"
+                    horarioHiddenId="ops-horario-social-unused"
+                    horarioText={opsHorario}
+                    horarioSemana={horarioSemana}
+                    horarioHoy={horarioHoy}
+                    mapsUrl={opsMaps}
+                    mapsEmbed={opsMapsEmbed}
+                    mapsOpen={opsMapsOpen}
+                    instagram={opsInstagram}
+                    facebook={opsFacebook}
+                    tiktok={opsTiktok}
+                    tripadvisor={opsTripadvisor}
+                    whatsapp={opsWhatsapp}
+                    telefono={opsTelefonoContacto}
+                    socialIdPrefix="ops-"
+                  />
+
+                  <div class="perfil-group perfil-studio__accesos w-full h-full bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col shadow-sm">
+                    <div class="perfil-group__head !px-0 !pt-0 !pb-2">
+                      <div>
+                        <h3 class="!text-sm !text-zinc-900">Accesos rápidos</h3>
+                        <p class="perfil-group__sub !mt-0.5 !text-zinc-500">Solo lectura</p>
+                      </div>
                     </div>
-                  </li>
-                  {
-                    opsWifiSsid ? (
-                      <li class="perfil-meta">
-                        <span>Wi‑Fi</span>
-                        <strong>{opsWifiSsid}</strong>
-                      </li>
-                    ) : null
-                  }
-                  {
-                    publicWebAppUrl ? (
-                      <li class="perfil-meta">
-                        <span>WebApp</span>
+                    <ul class="perfil-list">
+                      <li class="perfil-meta !border-zinc-100 !px-0 !py-2">
+                        <span class="!text-zinc-500">WhatsApp</span>
                         <div class="perfil-meta__value">
-                          <a href={publicWebAppUrl} target="_blank" rel="noopener noreferrer">{publicWebAppUrl}</a>
-                          <button type="button" class="perfil-mini" data-copy={publicWebAppUrl} data-copy-abs>
-                            Copiar enlace
-                          </button>
+                          <strong class="!text-zinc-900">{opsTelefono || '—'}</strong>
+                          {
+                            opsTelefono ? (
+                              <button type="button" class="perfil-mini" data-copy={opsTelefono}>Copiar</button>
+                            ) : null
+                          }
                         </div>
                       </li>
-                    ) : null
-                  }
-                </ul>
-              </div>
+                      {
+                        opsWifiSsid ? (
+                          <li class="perfil-meta !border-zinc-100 !px-0 !py-2">
+                            <span class="!text-zinc-500">Wi‑Fi</span>
+                            <strong class="!text-zinc-900">{opsWifiSsid}</strong>
+                          </li>
+                        ) : null
+                      }
+                      {
+                        publicWebAppUrl ? (
+                          <li class="perfil-meta !border-zinc-100 !px-0 !py-2">
+                            <span class="!text-zinc-500">WebApp</span>
+                            <div class="perfil-meta__value">
+                              <a class="!max-w-[12rem] truncate !text-zinc-900 sm:!max-w-[16rem]" href={publicWebAppUrl} target="_blank" rel="noopener noreferrer">{publicWebAppUrl}</a>
+                              <button type="button" class="perfil-mini" data-copy={publicWebAppUrl} data-copy-abs>
+                                Copiar
+                              </button>
+                            </div>
+                          </li>
+                        ) : null
+                      }
+                    </ul>
+                  </div>
 
-              <div class="perfil-studio__footer">
-                <button
-                  type="button"
-                  id="ops-contacto-save"
-                  data-restaurante-id={restId}
-                  class="perfil-save"
-                >
-                  Guardar perfil
-                </button>
+                  <WelcomePopupCard scope="perfil" banner={opsPopupBanner} />
+
+                  <PerfilLocalCard
+                    scope="perfil"
+                    variant="studio"
+                    nestInParent
+                    showHours={false}
+                    showMap
+                    showSocial={false}
+                    mapsInputId="ops-maps"
+                    horarioHiddenId="ops-horario-map-unused"
+                    horarioText={opsHorario}
+                    horarioSemana={horarioSemana}
+                    horarioHoy={horarioHoy}
+                    mapsUrl={opsMaps}
+                    mapsEmbed={opsMapsEmbed}
+                    mapsOpen={opsMapsOpen}
+                    direccion={opsDireccion}
+                    direccionInputId="ops-direccion"
+                    instagram={opsInstagram}
+                    facebook={opsFacebook}
+                    tiktok={opsTiktok}
+                    tripadvisor={opsTripadvisor}
+                    whatsapp={opsWhatsapp}
+                    telefono={opsTelefonoContacto}
+                    socialIdPrefix="ops-map-"
+                  />
+              </div>
               </div>
             </section>
           </div>
@@ -6656,7 +6733,78 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.35rem;
+    margin-bottom: 1.5rem;
+  }
+
+  #ops-contacto-card.ops-studio .ops-studio-card,
+  #ops-contacto-card.ops-studio .ops-card,
+  #ops-contacto-card.ops-studio .perfil-group.bg-white {
+    background: #ffffff !important;
+    border-color: rgba(228, 228, 231, 0.8) !important;
+    color: #18181b !important;
+  }
+
+  #ops-contacto-card.ops-studio .perfil-studio__title {
+    color: #18181b;
+  }
+
+  #ops-contacto-card.ops-studio .perfil-studio__kicker,
+  #ops-contacto-card.ops-studio .perfil-studio__lead,
+  #ops-contacto-card.ops-studio .perfil-studio__hint {
+    color: #71717a;
+  }
+
+  #ops-contacto-card.ops-studio .ops-card .perfil-group__head,
+  #ops-contacto-card.ops-studio .perfil-group.bg-white .perfil-group__head {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+  }
+
+  #ops-contacto-card.ops-studio .ops-card .perfil-meta,
+  #ops-contacto-card.ops-studio .perfil-group.bg-white .perfil-meta {
+    border-top-color: #f4f4f5;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  #ops-contacto-card.ops-studio .ops-card .perfil-meta span,
+  #ops-contacto-card.ops-studio .perfil-group.bg-white .perfil-meta span {
+    color: #71717a;
+  }
+
+  #ops-contacto-card.ops-studio .ops-card .perfil-meta strong,
+  #ops-contacto-card.ops-studio .ops-card .perfil-meta a,
+  #ops-contacto-card.ops-studio .perfil-group.bg-white .perfil-meta strong,
+  #ops-contacto-card.ops-studio .perfil-group.bg-white .perfil-meta a {
+    color: #18181b;
+  }
+
+  #ops-contacto-card.ops-studio .ops-toggle {
+    --toggle-off: #d4d4d8;
+    --toggle-on: #10b981;
+  }
+
+  #ops-contacto-card.ops-studio .perfil-save.ops-save {
+    background: #18181b;
+    color: #fff;
+    border: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  #ops-contacto-card.ops-studio .perfil-save.ops-save:hover {
+    background: #000000;
+  }
+
+  .perfil-studio__col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+  }
+
+  .perfil-studio__accesos {
+    margin-bottom: 0;
   }
 
   .perfil-studio__kicker {
@@ -6792,7 +6940,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.08);
   }
 
-  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-local-ops .perfil-toggle {
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-toggle {
     --toggle-off: #3f3f46;
   }
 
@@ -6956,22 +7104,42 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   .perfil-studio__footer {
-    display: flex;
-    justify-content: flex-end;
-    padding: 0.25rem 0 1rem;
+    display: none;
+  }
+
+  .perfil-mini {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.28rem 0.55rem;
+    background: #f4f4f5;
+    color: #3f3f46;
+    font: inherit;
+    font-size: 0.65rem;
+    font-weight: 650;
+    cursor: pointer;
   }
 
   .perfil-save {
     border: 0;
-    border-radius: 999px;
-    padding: 0.78rem 1.35rem;
-    background: var(--text-primary);
-    color: var(--bg-page, #fff);
-    font-size: 0.78rem;
-    font-weight: 700;
+    border-radius: 0.75rem;
+    padding: 0.5rem 1.25rem;
+    background: #18181b;
+    color: #fff;
+    font-size: 0.84rem;
+    font-weight: 550;
     letter-spacing: -0.01em;
     cursor: pointer;
     font-family: inherit;
+  }
+
+  #ops-contacto-card.ops-studio .perfil-save.ops-save {
+    background: #18181b !important;
+    color: #ffffff !important;
+    border: 0 !important;
+  }
+
+  #ops-contacto-card.ops-studio .perfil-save.ops-save:hover {
+    background: #000000 !important;
   }
 
   .perfil-map {
@@ -6986,6 +7154,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     margin: 0.15rem 0.9rem 0.35rem;
     border-radius: 1rem;
     background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  #ops-contacto-card.ops-studio .perfil-map__frame {
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+    margin: 0 0 1rem;
+  }
+
+  @media (min-width: 640px) {
+    #ops-contacto-card.ops-studio .perfil-map__frame {
+      aspect-ratio: 16 / 9;
+    }
   }
 
   .perfil-map__frame iframe {
@@ -7153,8 +7333,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   @media (min-width: 769px) {
-    .perfil-studio {
+    .perfil-studio:not(.ops-studio) {
       max-width: 40rem;
+    }
+
+    .perfil-studio.ops-studio {
+      max-width: none;
+      width: 100%;
     }
 
     .perfil-day input[type='time'] {
@@ -7162,8 +7347,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   }
 
-  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-save {
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-save:not(.ops-save) {
     color: #09090b;
+  }
+
+  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) #ops-contacto-card.ops-studio .perfil-save.ops-save {
+    color: #fff;
   }
 </style>
 
@@ -7338,6 +7527,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const hubCoverPreview = document.getElementById('hub-cover-preview');
   const opsContactoSave = document.getElementById('ops-contacto-save');
   const opsContactoStatus = document.getElementById('ops-contacto-status');
+  const opsDireccionInput = document.getElementById('ops-direccion');
+  const welcomePopupRoot = document.querySelector('[data-welcome-popup="perfil"]');
 
   const DISH_ORDER_INPUT_CLASS =
     'w-12 bg-transparent text-white/80 font-mono text-center border-b border-white/10 hover:border-white/30 focus:border-white focus:outline-none transition-colors appearance-none p-1 text-sm';
@@ -8670,6 +8861,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         iframe.title = 'Mapa del restaurante';
         iframe.loading = 'lazy';
         iframe.referrerPolicy = 'no-referrer-when-downgrade';
+        iframe.allowFullscreen = true;
+        iframe.className = 'absolute inset-0 h-full w-full border-0';
         frame.prepend(iframe);
       }
       iframe.src = embed;
@@ -8734,6 +8927,392 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     );
   });
 
+  /**
+   * @param {HTMLElement | null | undefined} root
+   */
+  function readPopupPayload(root) {
+    if (!(root instanceof HTMLElement)) {
+      return { popup_enabled: false, popup_image_url: '' };
+    }
+    const enabledHidden = root.querySelector('[data-popup-enabled]');
+    const enabledToggle = root.querySelector('[data-popup-enabled-toggle]');
+    const enabled =
+      enabledHidden instanceof HTMLInputElement
+        ? enabledHidden.value === 'true'
+        : enabledToggle instanceof HTMLElement && enabledToggle.classList.contains('is-on');
+    const imageEl = root.querySelector('[data-popup-image-url]');
+    return {
+      popup_enabled: enabled,
+      popup_image_url:
+        imageEl instanceof HTMLInputElement ? imageEl.value.trim() : '',
+    };
+  }
+
+  /**
+   * @param {HTMLElement} root
+   */
+  function syncWelcomePopupUi(root) {
+    const body = root.querySelector('[data-popup-body]');
+    const empty = root.querySelector('[data-popup-empty]');
+    const enabledHidden = root.querySelector('[data-popup-enabled]');
+    const enabled =
+      enabledHidden instanceof HTMLInputElement && enabledHidden.value === 'true';
+    if (body instanceof HTMLElement) body.hidden = !enabled;
+    if (empty instanceof HTMLElement) empty.hidden = enabled;
+    root.dataset.popupEnabledState = enabled ? 'true' : 'false';
+  }
+
+  /**
+   * @param {{ silent?: boolean }} [opts]
+   */
+  async function saveOpsContacto(opts = {}) {
+    const silent = Boolean(opts.silent);
+    if (!(opsContactoSave instanceof HTMLButtonElement)) return false;
+    if (!requireRestauranteId()) return false;
+    syncHorarioHidden('perfil');
+    const horario = fieldValue(opsHorarioInput);
+    const instagramUrl = socialField('perfil', 'instagram');
+    const facebookUrl = socialField('perfil', 'facebook');
+    const tiktokUrl = socialField('perfil', 'tiktok');
+    const tripadvisorUrl = socialField('perfil', 'tripadvisor');
+    const whatsappUrl = socialField('perfil', 'whatsapp');
+    const coordenadasMaps = normalizeMapsStorage(fieldValue(opsMapsInput));
+    const direccion = fieldValue(opsDireccionInput);
+    const popupPayload = readPopupPayload(
+      welcomePopupRoot instanceof HTMLElement ? welcomePopupRoot : null,
+    );
+    const popupBanner = {
+      enabled: Boolean(popupPayload.popup_enabled),
+      image_url: popupPayload.popup_image_url || '',
+      title: '',
+      description: '',
+      button_text: '',
+      action_type: 'close',
+      action_url: '',
+    };
+
+    if (!silent) {
+      opsContactoSave.disabled = true;
+      opsContactoSave.dataset.prevLabel = opsContactoSave.textContent || 'Guardar cambios';
+      opsContactoSave.textContent = 'Guardando…';
+    }
+    if (opsContactoStatus) {
+      opsContactoStatus.textContent = silent ? 'Guardando…' : '';
+      opsContactoStatus.className = 'perfil-studio__hint';
+    }
+
+    try {
+      const res = await fetch('/api/update-operativo-contacto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id: restauranteId,
+          horario,
+          coordenadas_maps: coordenadasMaps,
+          instagram_url: instagramUrl,
+          facebook_url: facebookUrl,
+          tiktok_url: tiktokUrl,
+          tripadvisor_url: tripadvisorUrl,
+          whatsapp_url: whatsappUrl,
+          telefono_url: socialField('perfil', 'telefono'),
+          instagram_activo: socialOn('instagram', 'perfil'),
+          facebook_activo: socialOn('facebook', 'perfil'),
+          tiktok_activo: socialOn('tiktok', 'perfil'),
+          tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
+          whatsapp_activo: socialOn('whatsapp', 'perfil'),
+          telefono_activo: socialOn('telefono', 'perfil'),
+          direccion,
+          popup_banner: popupBanner,
+          ...popupPayload,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo guardar el perfil');
+
+      const saved = json.restaurante || {};
+      if (opsHorarioInput instanceof HTMLInputElement) {
+        opsHorarioInput.value = saved.horarios || horario;
+      }
+      if (opsInstagramInput instanceof HTMLInputElement) {
+        opsInstagramInput.value = saved.instagram_url || instagramUrl;
+      }
+      if (opsFacebookInput instanceof HTMLInputElement) {
+        opsFacebookInput.value = saved.facebook_url || facebookUrl;
+      }
+      if (opsTiktokInput instanceof HTMLInputElement) {
+        opsTiktokInput.value = saved.tiktok_url || tiktokUrl;
+      }
+      if (opsTripadvisorInput instanceof HTMLInputElement) {
+        opsTripadvisorInput.value = saved.tripadvisor_url || tripadvisorUrl;
+      }
+      if (opsWhatsappInput instanceof HTMLInputElement) {
+        opsWhatsappInput.value = saved.whatsapp_url || whatsappUrl;
+      }
+      if (opsMapsInput instanceof HTMLInputElement || opsMapsInput instanceof HTMLTextAreaElement) {
+        opsMapsInput.value = saved.coordenadas_maps || coordenadasMaps;
+      }
+      if (opsDireccionInput instanceof HTMLInputElement && saved.direccion != null) {
+        opsDireccionInput.value = saved.direccion || direccion;
+      }
+      const applyActivo = (id, flag) => {
+        const row = localOps('perfil')?.querySelector(`[data-social="${id}"]`);
+        if (row instanceof HTMLElement && typeof flag === 'boolean') {
+          setSocialOn(row, flag);
+        }
+      };
+      applyActivo('instagram', saved.instagram_activo);
+      applyActivo('facebook', saved.facebook_activo);
+      applyActivo('tiktok', saved.tiktok_activo);
+      applyActivo('tripadvisor', saved.tripadvisor_activo);
+      applyActivo('whatsapp', saved.whatsapp_activo);
+      refreshMapsPreview(localOps('perfil')?.querySelector('[data-maps-preview]'));
+      syncLocalOps('perfil');
+      if (opsContactoStatus) {
+        opsContactoStatus.textContent = 'Guardado';
+      }
+      if (typeof showToast === 'function') {
+        showToast(silent ? 'Cambios guardados' : 'Perfil del restaurante guardado', 'ok');
+      }
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar';
+      if (opsContactoStatus) {
+        opsContactoStatus.textContent = msg;
+      }
+      if (typeof showToast === 'function') showToast(msg, 'error');
+      else if (!silent) alert(msg);
+      return false;
+    } finally {
+      if (!silent && opsContactoSave instanceof HTMLButtonElement) {
+        opsContactoSave.disabled = false;
+        opsContactoSave.textContent = opsContactoSave.dataset.prevLabel || 'Guardar cambios';
+      }
+    }
+  }
+
+  let opsAutosaveTimer = 0;
+  function scheduleOpsAutosave() {
+    window.clearTimeout(opsAutosaveTimer);
+    opsAutosaveTimer = window.setTimeout(() => {
+      void saveOpsContacto({ silent: true });
+    }, 600);
+  }
+
+  /**
+   * @param {HTMLElement} root
+   */
+  function initWelcomePopupAdmin(root) {
+    const toggle = root.querySelector('[data-popup-enabled-toggle]');
+    const enabledHidden = root.querySelector('[data-popup-enabled]');
+    const body = root.querySelector('[data-popup-body]');
+    const drop = root.querySelector('[data-popup-drop]');
+    const fileInput = root.querySelector('[data-popup-file]');
+    const changeBtn = root.querySelector('[data-popup-change]');
+    const removeBtn = root.querySelector('[data-popup-remove]');
+    const imageHidden = root.querySelector('[data-popup-image-url]');
+
+    const setEnabled = (on) => {
+      if (toggle instanceof HTMLElement) {
+        toggle.classList.toggle('is-on', on);
+        toggle.classList.toggle('bg-emerald-500', on);
+        toggle.classList.toggle('bg-zinc-200', !on);
+        toggle.setAttribute('aria-checked', on ? 'true' : 'false');
+        toggle.style.backgroundColor = on ? '#10b981' : '#e4e4e7';
+        const knob = toggle.querySelector('[data-popup-switch-knob]');
+        if (knob instanceof HTMLElement) {
+          knob.classList.toggle('translate-x-5', on);
+          knob.classList.toggle('translate-x-0', !on);
+          knob.style.transform = on ? 'translateX(1.25rem)' : 'translateX(0)';
+        }
+      }
+      if (enabledHidden instanceof HTMLInputElement) {
+        enabledHidden.value = on ? 'true' : 'false';
+      }
+      if (body instanceof HTMLElement) body.hidden = !on;
+      syncWelcomePopupUi(root);
+      scheduleOpsAutosave();
+    };
+
+    toggle?.addEventListener(
+      'click',
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const on = !(toggle instanceof HTMLElement && toggle.classList.contains('is-on'));
+        setEnabled(on);
+      },
+      { signal },
+    );
+
+    async function uploadPopupImage(file) {
+      const bodyFd = new FormData();
+      bodyFd.append('file', file);
+      bodyFd.append('folder', `xemilla/popup/${restauranteId || 'general'}`);
+      const res = await fetch('/api/upload', { method: 'POST', body: bodyFd });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.url) {
+        throw new Error(json.error || 'No se pudo subir la imagen');
+      }
+      return String(json.url);
+    }
+
+    function applyPopupImage(url) {
+      if (imageHidden instanceof HTMLInputElement) imageHidden.value = url;
+      if (!(drop instanceof HTMLElement)) return;
+      const has = Boolean(url);
+      drop.dataset.popupHasImage = has ? 'true' : 'false';
+      drop.classList.toggle('has-image', has);
+      drop.classList.toggle('border-solid', has);
+      drop.classList.toggle('border-dashed', !has);
+      drop.classList.toggle('border', has);
+      drop.classList.toggle('border-2', !has);
+      drop.classList.toggle('border-zinc-200', has);
+      drop.classList.toggle('border-zinc-300', !has);
+      drop.classList.toggle('bg-zinc-100', has);
+      drop.classList.toggle('bg-zinc-50', !has);
+      drop.classList.toggle('shadow-sm', has);
+      drop.classList.toggle('p-6', !has);
+
+      let img = drop.querySelector('[data-popup-preview-img]');
+      drop.querySelector('[data-popup-drop-empty]')?.remove();
+      if (url) {
+        if (!(img instanceof HTMLImageElement)) {
+          img = document.createElement('img');
+          img.className = 'absolute inset-0 h-full w-full object-cover';
+          img.setAttribute('data-popup-preview-img', '');
+          img.alt = 'Flyer promocional';
+          drop.prepend(img);
+        }
+        img.src = url;
+      } else {
+        img?.remove();
+        const empty = document.createElement('div');
+        empty.className = 'flex flex-col items-center justify-center';
+        empty.setAttribute('data-popup-drop-empty', '');
+        empty.innerHTML = `
+          <div class="mb-3 rounded-full bg-white p-3 text-zinc-600 shadow-sm transition-transform group-hover:scale-105">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V6"></path>
+              <path d="m8 10 4-4 4 4"></path>
+              <path d="M4 18h16"></path>
+            </svg>
+          </div>
+          <span class="text-xs font-semibold text-zinc-800">Haz clic o arrastra tu flyer</span>
+          <span class="mt-1 text-[11px] text-zinc-400">Formato vertical (PNG, JPG o WebP)</span>
+        `;
+        const actions = drop.querySelector('.welcome-popup-admin__drop-actions');
+        if (actions) drop.insertBefore(empty, actions);
+        else drop.appendChild(empty);
+      }
+
+      const actions = drop.querySelector('.welcome-popup-admin__drop-actions');
+      if (actions instanceof HTMLElement) {
+        actions.className = has
+          ? 'welcome-popup-admin__drop-actions absolute inset-x-0 bottom-0 z-[2] flex flex-wrap items-center justify-center gap-2 p-3 bg-gradient-to-t from-black/55 via-black/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
+          : 'welcome-popup-admin__drop-actions relative mt-0 bg-transparent opacity-0 pointer-events-none flex flex-wrap items-center justify-center gap-2';
+      }
+      if (changeBtn instanceof HTMLElement) {
+        changeBtn.textContent = has ? 'Cambiar imagen' : 'Subir flyer';
+      }
+      if (removeBtn instanceof HTMLElement) {
+        removeBtn.hidden = !has;
+      }
+      scheduleOpsAutosave();
+    }
+
+    async function handlePopupFiles(files) {
+      const file = files?.[0];
+      if (!file || !/^image\//i.test(file.type)) return;
+      try {
+        if (changeBtn instanceof HTMLElement) changeBtn.textContent = 'Subiendo…';
+        const url = await uploadPopupImage(file);
+        applyPopupImage(url);
+        if (typeof showToast === 'function') showToast('Flyer subido', 'ok');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'No se pudo subir';
+        if (typeof showToast === 'function') showToast(msg, 'error');
+      } finally {
+        if (changeBtn instanceof HTMLElement) {
+          changeBtn.textContent =
+            imageHidden instanceof HTMLInputElement && imageHidden.value
+              ? 'Cambiar imagen'
+              : 'Subir flyer';
+        }
+      }
+    }
+
+    changeBtn?.addEventListener(
+      'click',
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (fileInput instanceof HTMLInputElement) fileInput.click();
+      },
+      { signal },
+    );
+    removeBtn?.addEventListener(
+      'click',
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        applyPopupImage('');
+      },
+      { signal },
+    );
+    drop?.addEventListener(
+      'click',
+      (e) => {
+        if (e.target instanceof HTMLElement && e.target.closest('[data-popup-change], [data-popup-remove]')) {
+          return;
+        }
+        if (fileInput instanceof HTMLInputElement) fileInput.click();
+      },
+      { signal },
+    );
+    fileInput?.addEventListener(
+      'change',
+      () => {
+        if (fileInput instanceof HTMLInputElement) {
+          void handlePopupFiles(fileInput.files);
+          fileInput.value = '';
+        }
+      },
+      { signal },
+    );
+
+    if (drop instanceof HTMLElement) {
+      ['dragenter', 'dragover'].forEach((type) => {
+        drop.addEventListener(
+          type,
+          (e) => {
+            e.preventDefault();
+            drop.classList.add('is-dragover');
+          },
+          { signal },
+        );
+      });
+      ['dragleave', 'drop'].forEach((type) => {
+        drop.addEventListener(
+          type,
+          (e) => {
+            e.preventDefault();
+            drop.classList.remove('is-dragover');
+            if (type === 'drop' && e instanceof DragEvent) {
+              void handlePopupFiles(e.dataTransfer?.files);
+            }
+          },
+          { signal },
+        );
+      });
+    }
+
+    syncWelcomePopupUi(root);
+  }
+
+  if (welcomePopupRoot instanceof HTMLElement) {
+    initWelcomePopupAdmin(welcomePopupRoot);
+  }
+
   document.querySelector('#panel-perfil')?.addEventListener(
     'click',
     async (event) => {
@@ -8759,106 +9338,41 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   opsContactoSave?.addEventListener(
     'click',
-    async () => {
-      if (!(opsContactoSave instanceof HTMLButtonElement)) return;
-      if (!requireRestauranteId()) return;
-      syncHorarioHidden('perfil');
-      const horario = fieldValue(opsHorarioInput);
-      const instagramUrl = socialField('perfil', 'instagram');
-      const facebookUrl = socialField('perfil', 'facebook');
-      const tiktokUrl = socialField('perfil', 'tiktok');
-      const tripadvisorUrl = socialField('perfil', 'tripadvisor');
-      const whatsappUrl = socialField('perfil', 'whatsapp');
-      const coordenadasMaps = normalizeMapsStorage(fieldValue(opsMapsInput));
-
-      opsContactoSave.disabled = true;
-      const prevLabel = opsContactoSave.textContent;
-      opsContactoSave.textContent = 'Guardando…';
-      if (opsContactoStatus) {
-        opsContactoStatus.textContent = '';
-        opsContactoStatus.className = 'perfil-studio__hint';
-      }
-
-      try {
-        const res = await fetch('/api/update-operativo-contacto', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurante_id: restauranteId,
-            horario,
-            coordenadas_maps: coordenadasMaps,
-            instagram_url: instagramUrl,
-            facebook_url: facebookUrl,
-            tiktok_url: tiktokUrl,
-            tripadvisor_url: tripadvisorUrl,
-            whatsapp_url: whatsappUrl,
-            telefono_url: socialField('perfil', 'telefono'),
-            instagram_activo: socialOn('instagram', 'perfil'),
-            facebook_activo: socialOn('facebook', 'perfil'),
-            tiktok_activo: socialOn('tiktok', 'perfil'),
-            tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
-            whatsapp_activo: socialOn('whatsapp', 'perfil'),
-            telefono_activo: socialOn('telefono', 'perfil'),
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.error || 'No se pudo guardar el perfil');
-
-        const saved = json.restaurante || {};
-        if (opsHorarioInput instanceof HTMLInputElement) {
-          opsHorarioInput.value = saved.horarios || horario;
-        }
-        if (opsInstagramInput instanceof HTMLInputElement) {
-          opsInstagramInput.value = saved.instagram_url || instagramUrl;
-        }
-        if (opsFacebookInput instanceof HTMLInputElement) {
-          opsFacebookInput.value = saved.facebook_url || facebookUrl;
-        }
-        if (opsTiktokInput instanceof HTMLInputElement) {
-          opsTiktokInput.value = saved.tiktok_url || tiktokUrl;
-        }
-        if (opsTripadvisorInput instanceof HTMLInputElement) {
-          opsTripadvisorInput.value = saved.tripadvisor_url || tripadvisorUrl;
-        }
-        if (opsWhatsappInput instanceof HTMLInputElement) {
-          opsWhatsappInput.value = saved.whatsapp_url || whatsappUrl;
-        }
-        if (opsMapsInput instanceof HTMLInputElement || opsMapsInput instanceof HTMLTextAreaElement) {
-          opsMapsInput.value = saved.coordenadas_maps || coordenadasMaps;
-        }
-        const applyActivo = (id, flag) => {
-          const row = localOps('perfil')?.querySelector(`[data-social="${id}"]`);
-          if (row instanceof HTMLElement && typeof flag === 'boolean') {
-            setSocialOn(row, flag);
-          }
-        };
-        applyActivo('instagram', saved.instagram_activo);
-        applyActivo('facebook', saved.facebook_activo);
-        applyActivo('tiktok', saved.tiktok_activo);
-        applyActivo('tripadvisor', saved.tripadvisor_activo);
-        applyActivo('whatsapp', saved.whatsapp_activo);
-        refreshMapsPreview(localOps('perfil')?.querySelector('[data-maps-preview]'));
-        syncLocalOps('perfil');
-        if (opsContactoStatus) {
-          opsContactoStatus.textContent = 'Guardado';
-        }
-        if (typeof showToast === 'function') {
-          showToast('Perfil del restaurante guardado', 'ok');
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Error al guardar';
-        if (opsContactoStatus) {
-          opsContactoStatus.textContent = msg;
-        }
-        if (typeof showToast === 'function') showToast(msg, 'error');
-        else alert(msg);
-      } finally {
-        opsContactoSave.disabled = false;
-        opsContactoSave.textContent = prevLabel || 'Guardar perfil';
-      }
+    () => {
+      void saveOpsContacto({ silent: false });
     },
     { signal },
   );
+
+  const opsLocalRoot = localOps('perfil');
+  if (opsLocalRoot instanceof HTMLElement) {
+    opsLocalRoot.addEventListener(
+      'click',
+      (event) => {
+        const t = event.target;
+        if (!(t instanceof Element)) return;
+        if (t.closest('[data-hours-toggle], [data-social-toggle], [data-hours-preset]')) {
+          scheduleOpsAutosave();
+        }
+      },
+      { signal },
+    );
+    opsLocalRoot.addEventListener(
+      'change',
+      (event) => {
+        const t = event.target;
+        if (!(t instanceof Element)) return;
+        if (
+          t.matches(
+            '[data-hours-open], [data-hours-close], [data-social-input], [data-maps-url], [data-direccion-input]',
+          )
+        ) {
+          scheduleOpsAutosave();
+        }
+      },
+      { signal },
+    );
+  }
 
   /**
    * @param {File} file

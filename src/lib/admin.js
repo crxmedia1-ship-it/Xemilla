@@ -50,6 +50,7 @@ const RESTAURANTE_ADMIN_SELECT = [
   'app_icon_url',
   // hub_cover_url / hub_logo_bg: no están en todos los proyectos;
   // resolveHubCoverUrl / resolveHubLogoBg leen ui_estilo.hub.
+  'popup_banner',
   'ui_estilo',
   'home_theme',
   'nosotros_theme',

@@ -6,6 +6,7 @@ import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
 import GadgetFloatingButton from './GadgetFloatingButton.astro';
+import WelcomePopup from './WelcomePopup.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
 import HomeHeroCards from '../themes/home/HomeHeroCards.astro';
 import HomeBentoGrid from '../themes/home/HomeBentoGrid.astro';
@@ -33,6 +34,7 @@ import {
   normalizeGadgetServiciosEstilo,
 } from '../../lib/gadgets.js';
 import { resolveUbicacionSectionColors } from '../../lib/ubicacion-theme-data.js';
+import { parsePopupBanner } from '../../lib/popup-banner.js';
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -288,6 +290,7 @@ const hasCatCinematicMedia = (menu?.categorias || []).some((cat) => {
 const menuFondosCinematicos =
   uiEstilo?.menu?.fondos_cinematicos === true ||
   (uiEstilo?.menu?.fondos_cinematicos == null && hasCatCinematicMedia);
+const popupBanner = parsePopupBanner(restaurante?.popup_banner ?? restaurante?.popupBanner);
 
 /** CSS avanzado: ui_estilo.css_avanzado (canónico) ↔ columna custom_css */
 const cssAvanzadoScoped = scopeCssAvanzado(
@@ -628,6 +631,12 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         />
       ) : null
     }
+
+    <WelcomePopup
+      restauranteId={restaurante?.id || ''}
+      slug={restaurante?.slug || ''}
+      popupBanner={popupBanner}
+    />
 
     {/* Modal de detalle multimedia — fuera de paneles transformados/scroll */}
     <div
@@ -1825,6 +1834,24 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           }
         });
       }
+
+      root.addEventListener('xemilla:open-menu-category', (event) => {
+        const detail = (event as CustomEvent<{ catId?: string; catName?: string }>).detail;
+        if (!detail?.catId) return;
+        openSection(root, 'menu');
+        window.setTimeout(() => {
+          const menuPanel = root.querySelector('[data-menu-panel]');
+          if (!(menuPanel instanceof HTMLElement)) return;
+          menuPanel.dispatchEvent(
+            new CustomEvent('xemilla:hub-restore', {
+              detail: { catId: detail.catId, catName: detail.catName || '' },
+            }),
+          );
+          menuPanel.dispatchEvent(
+            new CustomEvent('xemilla:menu-category', { detail: { id: detail.catId } }),
+          );
+        }, 120);
+      });
 
       // Delegación: cubre HomeBentoGrid / Hero / Editorial (incl. UBICACIÓN)
       root.addEventListener('click', (event) => {

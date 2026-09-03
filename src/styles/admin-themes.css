@@ -1326,6 +1326,238 @@ html.admin-panel [data-marca-panel='gadgets'] .text-neutral-800 {
   color: #262626 !important;
 }
 
+/* Operación & Anuncios — Clean White (override tema oscuro / remap de .bg-white) */
+html.admin-panel #panel-perfil,
+html.admin-panel #ops-contacto-card.ops-studio {
+  color: #18181b !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .ops-studio-card,
+html.admin-panel #ops-contacto-card.ops-studio .ops-card,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-group.ops-card,
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin,
+html.admin-panel #ops-contacto-card.ops-studio .bg-white {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: rgba(228, 228, 231, 0.8) !important;
+  color: #18181b !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-studio__title,
+html.admin-panel #ops-contacto-card.ops-studio .text-zinc-900,
+html.admin-panel #ops-contacto-card.ops-studio h3,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-day__name,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-social__brand,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-meta strong,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-meta a {
+  color: #18181b !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-studio__kicker,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-studio__lead,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-studio__hint,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-group__sub,
+html.admin-panel #ops-contacto-card.ops-studio .text-zinc-500,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-meta span,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-footnote {
+  color: #71717a !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio input[type='text'],
+html.admin-panel #ops-contacto-card.ops-studio input[type='url'],
+html.admin-panel #ops-contacto-card.ops-studio input[type='tel'],
+html.admin-panel #ops-contacto-card.ops-studio input[type='time'],
+html.admin-panel #ops-contacto-card.ops-studio textarea,
+html.admin-panel #ops-contacto-card.ops-studio select,
+html.admin-panel #ops-contacto-card.ops-studio .ops-input {
+  background: #fafafa !important;
+  background-color: #fafafa !important;
+  border: 1px solid #e4e4e7 !important;
+  color: #18181b !important;
+  box-shadow: none !important;
+  color-scheme: light !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio input::placeholder,
+html.admin-panel #ops-contacto-card.ops-studio textarea::placeholder {
+  color: #a1a1aa !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio input:focus,
+html.admin-panel #ops-contacto-card.ops-studio textarea:focus,
+html.admin-panel #ops-contacto-card.ops-studio select:focus,
+html.admin-panel #ops-contacto-card.ops-studio .ops-input:focus {
+  background: #ffffff !important;
+  border-color: #a1a1aa !important;
+  box-shadow: 0 0 0 2px rgba(161, 161, 170, 0.22) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-seg {
+  background: #f4f4f5 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-seg__btn {
+  color: #71717a !important;
+  background: transparent !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-seg__btn:hover {
+  color: #18181b !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-seg__btn:active,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-seg__btn:focus-visible {
+  background: #18181b !important;
+  color: #ffffff !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-day,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-social,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-meta {
+  border-top-color: #f4f4f5 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-map__frame,
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin__drop {
+  background: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-map__frame {
+  aspect-ratio: 4 / 3 !important;
+  min-height: 0 !important;
+}
+
+@media (min-width: 640px) {
+  html.admin-panel #ops-contacto-card.ops-studio .perfil-map__frame {
+    aspect-ratio: 16 / 9 !important;
+  }
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-social__glyph {
+  background-color: #f4f4f5 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .ios-toggle,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-toggle {
+  --toggle-off: #d4d4d8;
+  --toggle-on: #10b981;
+  background: #d4d4d8 !important;
+  box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .ios-toggle.is-on,
+html.admin-panel #ops-contacto-card.ops-studio .perfil-toggle.is-on {
+  background: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle] {
+  display: inline-flex !important;
+  width: 2.75rem !important;
+  height: 1.5rem !important;
+  min-width: 2.75rem !important;
+  min-height: 1.5rem !important;
+  flex-shrink: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  align-items: center !important;
+  position: relative !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle]:not(.is-on) {
+  background-color: #e4e4e7 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle].is-on,
+html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-checked='true'] {
+  background-color: #10b981 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio [data-popup-switch-knob] {
+  display: block !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  border-radius: 9999px !important;
+  background: #fff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin {
+  height: 100% !important;
+  align-self: stretch !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-studio__grid {
+  align-items: start !important;
+  justify-items: stretch !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin__empty,
+html.admin-panel #ops-contacto-card.ops-studio [data-popup-empty] {
+  background: rgba(250, 250, 250, 0.7) !important;
+  border: 1px solid rgba(228, 228, 231, 0.6) !important;
+  color: #71717a !important;
+  max-height: none !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin__preview-phone {
+  background: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin__preview-screen {
+  background: linear-gradient(160deg, #f4f4f5, #e4e4e7) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .welcome-popup-admin__preview-backdrop {
+  background: rgba(24, 24, 27, 0.28) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-studio__footer {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(228, 228, 231, 0.8) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-save.ops-save,
+html.admin-panel #ops-contacto-card.ops-studio .ops-save {
+  background: #18181b !important;
+  color: #ffffff !important;
+  border: 0 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-save.ops-save:hover,
+html.admin-panel #ops-contacto-card.ops-studio .ops-save:hover {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-mini {
+  background: #f4f4f5 !important;
+  color: #3f3f46 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-status.is-open {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #047857 !important;
+}
+
+html.admin-panel #ops-contacto-card.ops-studio .perfil-status.is-closed {
+  background: #f4f4f5 !important;
+  color: #71717a !important;
+}
+
 /* Switches: track + knob motion; color comes from --toggle-on variants */
 html.admin-panel .ios-toggle {
   transition: background-color 200ms ease-out, box-shadow 200ms ease-out, opacity 200ms ease-out !important;
@@ -3408,9 +3640,12 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
     min-height: 2.1rem;
   }
 
+  html.admin-panel main > .relative.z-10,
+  html.admin-panel main .max-w-full,
+  html.admin-panel main .max-w-\[1600px\],
   html.admin-panel main .max-w-6xl {
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
     padding-bottom: max(9.75rem, calc(env(safe-area-inset-bottom) + 8.25rem));
   }
 

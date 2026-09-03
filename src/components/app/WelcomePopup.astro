@@ -1,0 +1,146 @@
+---
+import { resolveMediaUrl } from '../../lib/cloudinary.js';
+import { popupBannerIsRenderable } from '../../lib/popup-banner.js';
+
+interface PopupBanner {
+  enabled?: boolean;
+  image_url?: string;
+  title?: string;
+  description?: string;
+  button_text?: string;
+  action_type?: string;
+  action_url?: string;
+}
+
+interface Props {
+  restauranteId?: string;
+  slug?: string;
+  popupBanner?: PopupBanner;
+}
+
+const { restauranteId = '', slug = '', popupBanner = {} } = Astro.props;
+
+const enabled = popupBannerIsRenderable(popupBanner);
+const imageUrl = resolveMediaUrl(String(popupBanner.image_url || '').trim()) || '';
+---
+
+{
+  enabled && imageUrl ? (
+    <div
+      class="welcome-popup pointer-events-none fixed inset-0 z-[110] flex items-center justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] opacity-0 transition-opacity duration-300 ease-out"
+      data-welcome-popup
+      data-restaurante-id={restauranteId}
+      data-slug={slug}
+      aria-hidden="true"
+    >
+      <button
+        type="button"
+        class="welcome-popup__backdrop pointer-events-auto absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-300 ease-out"
+        data-welcome-popup-backdrop
+        aria-label="Cerrar flyer"
+      />
+      <article
+        class="welcome-popup__card pointer-events-auto relative z-10 w-full max-w-[min(100%,20rem)] scale-[0.94] overflow-hidden rounded-[1.15rem] bg-transparent opacity-0 shadow-[0_24px_80px_rgba(0,0,0,0.45)] transition-all duration-300 ease-out"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Flyer de bienvenida"
+        data-welcome-popup-card
+      >
+        <button
+          type="button"
+          class="welcome-popup__close absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/50 text-lg leading-none text-white"
+          data-welcome-popup-close
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+        <img
+          src={imageUrl}
+          alt="Promoción"
+          class="welcome-popup__img block h-auto w-full rounded-[1.15rem] object-cover"
+          loading="eager"
+        />
+        <button
+          type="button"
+          class="welcome-popup__dismiss mt-3 inline-flex w-full min-h-10 items-center justify-center rounded-full border border-white/25 bg-black/40 px-4 text-xs font-semibold uppercase tracking-[0.06em] text-white backdrop-blur-sm"
+          data-welcome-popup-dismiss
+        >
+          Cerrar
+        </button>
+      </article>
+    </div>
+  ) : null
+}
+
+<style>
+  .welcome-popup.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .welcome-popup.is-open .welcome-popup__backdrop {
+    opacity: 1;
+  }
+
+  .welcome-popup.is-open .welcome-popup__card {
+    opacity: 1;
+    transform: scale(1);
+  }
+</style>
+
+<script>
+  function welcomePopupSessionKey(app: HTMLElement) {
+    const id = app.dataset.restauranteId || app.dataset.slug || 'default';
+    return `xemilla:welcome-popup:${id}`;
+  }
+
+  function closeWelcomePopup(root: HTMLElement) {
+    root.classList.remove('is-open');
+    root.setAttribute('aria-hidden', 'true');
+    document.documentElement.style.overflow = '';
+  }
+
+  function openWelcomePopup(root: HTMLElement) {
+    root.classList.add('is-open');
+    root.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  function initWelcomePopups() {
+    document.querySelectorAll('[data-welcome-popup]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (node.dataset.welcomeReady === 'true') return;
+      node.dataset.welcomeReady = 'true';
+
+      const app = node.closest('[data-restaurant-app]');
+      if (!(app instanceof HTMLElement)) return;
+
+      const key = welcomePopupSessionKey(app);
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(key) === '1') {
+        return;
+      }
+
+      const dismiss = () => {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(key, '1');
+        }
+        closeWelcomePopup(node);
+      };
+
+      node.querySelector('[data-welcome-popup-backdrop]')?.addEventListener('click', dismiss);
+      node.querySelector('[data-welcome-popup-close]')?.addEventListener('click', dismiss);
+      node.querySelector('[data-welcome-popup-dismiss]')?.addEventListener('click', dismiss);
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && node.classList.contains('is-open')) dismiss();
+      });
+
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => openWelcomePopup(node), 280);
+      });
+    });
+  }
+
+  initWelcomePopups();
+  document.addEventListener('astro:page-load', initWelcomePopups);
+</script>

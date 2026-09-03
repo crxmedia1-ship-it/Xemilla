@@ -16,6 +16,7 @@ import {
   uiEstiloToCssVars,
 } from './secciones-ui.js';
 import { parseBoutiqueConfig } from './boutique.js';
+import { parsePopupBanner, popupBannerIsRenderable } from './popup-banner.js';
 import {
   normalizeHomeTheme,
   normalizeNosotrosTheme,
@@ -173,6 +174,7 @@ const RESTAURANTE_SELECT_FULL = [
   'redes_sociales',
   'share_image_url',
   'app_icon_url',
+  'popup_banner',
   'ui_estilo',
   'home_theme',
   'nosotros_theme',
@@ -794,6 +796,7 @@ async function loadRestauranteBySlug(slug) {
   const homeTheme = normalizeHomeTheme(homeThemeRaw);
   const nosotrosTheme = normalizeNosotrosTheme(nosotrosThemeRaw);
   const ubicacionTheme = normalizeUbicacionTheme(ubicacionThemeRaw);
+  const popupBanner = parsePopupBanner(row.popup_banner);
 
   return {
     ...identity,
@@ -852,5 +855,8 @@ async function loadRestauranteBySlug(slug) {
       categorias: menuCategorias,
       destacados,
     },
+    popupBanner,
+    popup_banner: popupBanner,
+    popupBannerActive: popupBannerIsRenderable(popupBanner),
   };
 }
