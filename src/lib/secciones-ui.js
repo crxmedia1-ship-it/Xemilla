@@ -835,6 +835,24 @@ export function normalizeEstiloTarjetas(value) {
   if (v === 'outline' || v === 'contorno' || v === 'borde' || v === 'linea' || v === 'minimal') {
     return 'outline';
   }
+  if (
+    v === 'neon' ||
+    v === 'brillo' ||
+    v === 'resplandor' ||
+    v === 'acento' ||
+    v === 'brillo de acento'
+  ) {
+    return 'neon';
+  }
+  if (
+    v === 'elevada' ||
+    v === 'elevacion' ||
+    v === 'flotante' ||
+    v === 'sombra' ||
+    v === 'elevacion suave'
+  ) {
+    return 'elevada';
+  }
   return 'cristal';
 }
 

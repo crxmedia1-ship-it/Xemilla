@@ -1282,8 +1282,21 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
   }
 
-  function closeSections(app: HTMLElement) {
-    persistMenuHubOnClose(app);
+  function resetMenuState(app: HTMLElement) {
+    const menuPanel = app.querySelector('[data-menu-panel]');
+    if (!(menuPanel instanceof HTMLElement)) return;
+    try {
+      sessionStorage.removeItem(hubSessionKey(app));
+    } catch {
+      /* ignore */
+    }
+    menuPanel.dispatchEvent(new CustomEvent('xemilla:menu-reset', { bubbles: false }));
+  }
+
+  function closeSections(app: HTMLElement, opts: { skipPersistHub?: boolean } = {}) {
+    if (!opts.skipPersistHub) {
+      persistMenuHubOnClose(app);
+    }
     const home = app.querySelector('[data-linktree-home]');
     closeUbicacionDrawer(app);
     closeAppNavOverlay(app);
@@ -1829,9 +1842,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         }
 
         if (target.closest('[data-close-section]')) {
+          const resetOnClose = target.closest('[data-menu-reset-on-close]');
+          if (resetOnClose) {
+            resetMenuState(root);
+          }
           closeDetalle(root);
           closeBoutique(root);
-          closeSections(root);
+          closeSections(root, { skipPersistHub: Boolean(resetOnClose) });
           return;
         }
 

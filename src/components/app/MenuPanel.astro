@@ -155,7 +155,11 @@ const platoCardSurfaceClass =
     ? 'bg-zinc-900 border border-white/5 shadow-xl'
     : estiloTarjetas === 'outline'
       ? 'bg-transparent border border-white/25 shadow-none'
-      : 'bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl';
+      : estiloTarjetas === 'neon'
+        ? 'border border-white/10 bg-black/50 shadow-none'
+        : estiloTarjetas === 'elevada'
+          ? 'border border-white/8 bg-zinc-900 shadow-lg'
+          : 'bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl';
 const chipsNavClass =
   chipsLayout === 'scroll'
     ? 'menu-chips-nav menu-chips-nav--scroll overflow-x-auto whitespace-nowrap scrollbar-none'
@@ -334,7 +338,8 @@ function hubCardStyle(
         <button
           type="button"
           data-close-section
-          class="menu-mobile-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[color:var(--menu-texto-color,var(--color-texto))] shadow-inner backdrop-blur-md transition active:scale-95"
+          data-menu-reset-on-close
+          class="menu-toolbar-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[color:var(--menu-texto-color,var(--color-texto))] shadow-inner backdrop-blur-md transition active:scale-95"
           aria-label="Cerrar menú"
         >
           <svg
@@ -915,8 +920,8 @@ function hubCardStyle(
     flex-shrink: 0;
   }
 
-  .menu-mobile-close {
-    display: none;
+  .menu-toolbar-close {
+    display: inline-flex;
   }
 
   .menu-panel[data-menu-navegacion='hub_categories'][data-hub-view='detail'] [data-menu-hub-nav] {
@@ -931,10 +936,6 @@ function hubCardStyle(
         max(var(--menu-gutter-x), env(safe-area-inset-right, 0px))
         0.45rem
         max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
-    }
-
-    .menu-mobile-close {
-      display: inline-flex;
     }
 
     .menu-sticky-toolbar .menu-hub-nav {
@@ -1990,6 +1991,105 @@ function hubCardStyle(
     }
   }
 
+  /* —— PC: tipografía más legible en todo el menú —— */
+  @media (min-width: 768px) {
+    .menu-sticky-toolbar__brand {
+      font-size: 0.82rem;
+      letter-spacing: 0.26em;
+    }
+
+    .menu-panel .menu-chip {
+      font-size: 0.72rem;
+      padding: 0.62rem 1.05rem;
+    }
+
+    .menu-panel [data-destacados] > h3 {
+      font-size: 0.82rem !important;
+    }
+
+    .menu-panel [data-destacados-estilo='scroll'] .menu-featured__title,
+    .menu-panel [data-destacados-estilo='carrusel'] .menu-featured__title,
+    .menu-panel [data-destacados-estilo='fade'] .menu-featured__title,
+    .menu-panel .menu-featured__title {
+      font-size: 1.02rem !important;
+    }
+
+    .menu-panel [data-destacados-estilo='scroll'] .menu-featured__price,
+    .menu-panel [data-destacados-estilo='carrusel'] .menu-featured__price,
+    .menu-panel [data-destacados-estilo='fade'] .menu-featured__price,
+    .menu-panel .menu-featured__price {
+      font-size: 1.02rem !important;
+    }
+
+    .menu-panel .menu-cat-section > h3 {
+      font-size: 0.78rem;
+      margin-bottom: 1.35rem;
+    }
+
+    .menu-panel .menu-plato-name {
+      font-size: 1.1rem;
+      line-height: 1.32;
+    }
+
+    .menu-panel .menu-plato-precio {
+      font-size: 1.08rem;
+    }
+
+    .menu-panel .menu-plato-desc {
+      font-size: 0.88rem;
+      line-height: 1.48;
+    }
+
+    .menu-panel .menu-btn--detalle {
+      font-size: 0.78rem;
+      height: 2.15rem;
+      min-height: 2.15rem;
+    }
+
+    .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-chef-pick-badge {
+      font-size: 0.58rem;
+      padding: 0.42rem 0.65rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-item {
+      padding: 0.95rem 1rem 1rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-name {
+      font-size: 1.02rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-precio {
+      font-size: 1.06rem;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-desc {
+      font-size: 0.84rem;
+      line-height: 1.44;
+    }
+
+    .menu-panel[data-platos-layout='grid'] .menu-plato-item .menu-btn--detalle {
+      font-size: 0.68rem;
+      height: 2.15rem;
+      min-height: 2.15rem;
+      padding: 0 0.95rem;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-plain .menu-plato-name {
+      font-size: 0.98rem;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-plain .menu-plato-desc {
+      font-size: 0.82rem;
+    }
+
+    .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-compact .menu-btn--detalle {
+      font-size: 0.66rem;
+      height: 1.9rem;
+      min-height: 1.9rem;
+    }
+  }
+
   .menu-panel[data-estilo-tarjetas='cristal'] .menu-plato-item {
     -webkit-backdrop-filter: blur(24px);
     backdrop-filter: blur(24px);
@@ -2007,7 +2107,74 @@ function hubCardStyle(
     border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 70%, transparent);
   }
 
-  .menu-plato-item.is-focus-plato {
+  .menu-panel[data-estilo-tarjetas='neon'] .menu-plato-item {
+    background: color-mix(
+      in srgb,
+      var(--menu-accent-color, var(--color-primario)) 9%,
+      rgba(0, 0, 0, 0.58)
+    );
+    border: 1px solid color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 46%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 14%, transparent),
+      0 10px 28px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 20%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 18%, transparent);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+  }
+
+  .menu-panel[data-estilo-tarjetas='neon'] .menu-plato-item.is-focus-plato {
+    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 68%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 32%, transparent),
+      0 14px 36px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 30%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 22%, transparent);
+  }
+
+  .menu-panel[data-estilo-tarjetas='neon'] .menu-featured {
+    background: color-mix(
+      in srgb,
+      var(--menu-accent-color, var(--color-primario)) 10%,
+      rgba(0, 0, 0, 0.5)
+    );
+    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 40%, transparent);
+    box-shadow:
+      0 8px 24px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 18%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 16%, transparent);
+  }
+
+  .menu-panel[data-estilo-tarjetas='elevada'] .menu-plato-item {
+    background: color-mix(in srgb, var(--menu-surface-color, #18181b) 92%, #fff);
+    border: 1px solid color-mix(in srgb, var(--menu-texto-color, #fff) 10%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent),
+      0 16px 36px rgba(0, 0, 0, 0.4),
+      0 4px 14px rgba(0, 0, 0, 0.26);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition:
+      transform 220ms ease,
+      box-shadow 220ms ease,
+      border-color 220ms ease;
+  }
+
+  .menu-panel[data-estilo-tarjetas='elevada'] .menu-plato-item.is-focus-plato {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 35%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
+      0 22px 46px rgba(0, 0, 0, 0.46),
+      0 8px 18px rgba(0, 0, 0, 0.3);
+  }
+
+  .menu-panel[data-estilo-tarjetas='elevada'] .menu-featured {
+    background: color-mix(in srgb, var(--menu-surface-color, #18181b) 90%, #fff);
+    border-color: color-mix(in srgb, var(--menu-texto-color, #fff) 12%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent),
+      0 14px 32px rgba(0, 0, 0, 0.38);
+  }
+
+  .menu-panel:not([data-estilo-tarjetas='neon']):not([data-estilo-tarjetas='elevada']) .menu-plato-item.is-focus-plato {
     box-shadow:
       0 0 0 1px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 55%, transparent),
       0 0 24px color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 22%, transparent);
@@ -2816,9 +2983,15 @@ function hubCardStyle(
           }
         });
 
-        panel.addEventListener('xemilla:hub-reset', () => {
+        const resetMenuPanel = () => {
           closeHubCategory();
-        });
+          if (scrollRoot instanceof HTMLElement) {
+            scrollRoot.scrollTo({ top: 0, behavior: 'auto' });
+          }
+        };
+
+        panel.addEventListener('xemilla:hub-reset', () => resetMenuPanel());
+        panel.addEventListener('xemilla:menu-reset', () => resetMenuPanel());
 
         sections.forEach((section) => {
           if (!(section instanceof HTMLElement)) return;
@@ -2827,6 +3000,15 @@ function hubCardStyle(
         });
         setHubView('home');
       } else {
+        const resetMenuPanel = () => {
+          filterByCategory('all');
+          if (scrollRoot instanceof HTMLElement) {
+            scrollRoot.scrollTo({ top: 0, behavior: 'auto' });
+          }
+        };
+
+        panel.addEventListener('xemilla:menu-reset', () => resetMenuPanel());
+
         filterByCategory('all');
       }
 
