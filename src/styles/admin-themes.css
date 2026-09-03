@@ -1224,6 +1224,108 @@ html.admin-panel .glass-field:focus {
   outline: none !important;
 }
 
+/* Gadgets Studio — forzar estética blanca limpia (override tema oscuro) */
+html.admin-panel [data-marca-panel='gadgets'] {
+  background: #ffffff !important;
+  border: 1px solid #e5e5e5 !important;
+  color: #262626 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .gadget-card {
+  background: #ffffff !important;
+  border-color: #e5e5e5 !important;
+  color: #262626 !important;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .gadget-card.gadget-card--on {
+  border-color: #10b981 !important;
+  background-color: rgba(236, 253, 245, 0.7) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(16, 185, 129, 0.22) !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .gadget-card__icon {
+  background: #f5f5f5 !important;
+  color: #404040 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .ios-toggle.is-on {
+  background: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .gadget-note-on {
+  border-color: #6ee7b7 !important;
+  background: #ecfdf5 !important;
+  color: #065f46 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] input[type='text'],
+html.admin-panel [data-marca-panel='gadgets'] input[type='url'],
+html.admin-panel [data-marca-panel='gadgets'] input[type='number'],
+html.admin-panel [data-marca-panel='gadgets'] input[type='password'],
+html.admin-panel [data-marca-panel='gadgets'] input[type='email'],
+html.admin-panel [data-marca-panel='gadgets'] select,
+html.admin-panel [data-marca-panel='gadgets'] textarea {
+  background-color: #fafafa !important;
+  border-color: #e5e5e5 !important;
+  color: #262626 !important;
+  box-shadow: none !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] input[type='text']::placeholder,
+html.admin-panel [data-marca-panel='gadgets'] input[type='url']::placeholder,
+html.admin-panel [data-marca-panel='gadgets'] input[type='number']::placeholder,
+html.admin-panel [data-marca-panel='gadgets'] input[type='password']::placeholder,
+html.admin-panel [data-marca-panel='gadgets'] input[type='email']::placeholder {
+  color: #a3a3a3 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] input[type='text']:focus,
+html.admin-panel [data-marca-panel='gadgets'] input[type='url']:focus,
+html.admin-panel [data-marca-panel='gadgets'] input[type='number']:focus,
+html.admin-panel [data-marca-panel='gadgets'] input[type='password']:focus,
+html.admin-panel [data-marca-panel='gadgets'] input[type='email']:focus,
+html.admin-panel [data-marca-panel='gadgets'] select:focus,
+html.admin-panel [data-marca-panel='gadgets'] textarea:focus {
+  border-color: #a3a3a3 !important;
+  box-shadow: 0 0 0 2px rgba(163, 163, 163, 0.25) !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] h4,
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-900 {
+  color: #171717 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-500,
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-600,
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-800 {
+  color: inherit;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-500 {
+  color: #737373 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-600 {
+  color: #525252 !important;
+}
+
+html.admin-panel [data-marca-panel='gadgets'] .text-neutral-800 {
+  color: #262626 !important;
+}
+
 /* Switches: track + knob motion; color comes from --toggle-on variants */
 html.admin-panel .ios-toggle {
   transition: background-color 200ms ease-out, box-shadow 200ms ease-out, opacity 200ms ease-out !important;
@@ -1363,89 +1465,62 @@ html.admin-panel .bg-zinc-950 {
   color: var(--text-primary) !important;
 }
 
-/* QR Studio — selección en gris suave (legible en light y dark) */
-html.admin-panel [data-marca-panel='qr'] .qr-mode-btn,
+/* QR Studio — estética blanca limpia + activo esmeralda */
+html.admin-panel [data-marca-panel='qr'] {
+  background: #ffffff !important;
+  border: 1px solid #e5e5e5 !important;
+  color: #262626 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
 html.admin-panel [data-marca-panel='qr'] .qr-style-btn {
-  background: #f4f4f5 !important;
-  border-color: #d4d4d8 !important;
-  color: #3f3f46 !important;
+  background: #ffffff !important;
+  border-color: #e5e5e5 !important;
+  color: #404040 !important;
   box-shadow: none !important;
 }
-html.admin-panel [data-marca-panel='qr'] .qr-mode-btn span,
-html.admin-panel [data-marca-panel='qr'] .qr-style-btn span {
-  color: #71717a !important;
-}
 
-html.admin-panel [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'],
 html.admin-panel [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
-  background: #e4e4e7 !important;
-  border-color: #a1a1aa !important;
-  color: #18181b !important;
-  box-shadow: inset 0 0 0 1px #a1a1aa !important;
-}
-html.admin-panel [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'] span,
-html.admin-panel [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] span {
-  color: #52525b !important;
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+  box-shadow: none !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn,
-html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #d4d4d8 !important;
-}
-html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn span,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn span,
-html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn span,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn span {
-  color: #a1a1aa !important;
-}
-
-html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'],
-html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
-  background: #3f3f46 !important;
-  border-color: #71717a !important;
-  color: #fafafa !important;
-}
-html.admin-panel.dark [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'] span,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-mode-btn[aria-selected='true'] span,
-html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] span,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] span {
-  color: #d4d4d8 !important;
-}
-
-html.admin-panel [data-marca-panel='qr'] .qr-action-btn {
-  background: #f4f4f5 !important;
-  border-color: #d4d4d8 !important;
-  color: #18181b !important;
-}
-html.admin-panel [data-marca-panel='qr'] .qr-action-btn:hover {
-  background: #e4e4e7 !important;
-  border-color: #a1a1aa !important;
-}
-
-html.admin-panel.dark [data-marca-panel='qr'] .qr-action-btn,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-action-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  color: #f4f4f5 !important;
-}
-html.admin-panel.dark [data-marca-panel='qr'] .qr-action-btn:hover,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-action-btn:hover {
-  background: rgba(255, 255, 255, 0.14) !important;
-}
-
-html.admin-panel [data-marca-panel='qr'] #qr-generate-artistic {
-  background-color: #059669 !important;
-  border-color: #34d399 !important;
+html.admin-panel [data-marca-panel='qr'] .qr-btn-primary {
+  background: #171717 !important;
+  border: none !important;
   color: #ffffff !important;
 }
-html.admin-panel [data-marca-panel='qr'] #qr-generate-artistic:hover {
-  background-color: #10b981 !important;
+html.admin-panel [data-marca-panel='qr'] .qr-btn-primary:hover:not(:disabled) {
+  background: #262626 !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] .qr-btn-secondary,
+html.admin-panel [data-marca-panel='qr'] .qr-action-btn {
+  background: #ffffff !important;
+  border: 1px solid #e5e5e5 !important;
+  color: #404040 !important;
+}
+html.admin-panel [data-marca-panel='qr'] .qr-btn-secondary:hover:not(:disabled),
+html.admin-panel [data-marca-panel='qr'] .qr-action-btn:hover:not(:disabled) {
+  background: #fafafa !important;
+  border-color: #d4d4d8 !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] input[type='text'],
+html.admin-panel [data-marca-panel='qr'] input[type='url'],
+html.admin-panel [data-marca-panel='qr'] textarea {
+  background-color: #fafafa !important;
+  border-color: #e5e5e5 !important;
+  color: #262626 !important;
+  box-shadow: none !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] #qr-public-url {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 html.admin-panel [data-marca-panel='qr'] .bg-white {
@@ -1453,15 +1528,48 @@ html.admin-panel [data-marca-panel='qr'] .bg-white {
   color: inherit !important;
 }
 
-/* Placa de logo centrada en el QR (~34% del lado del preview) */
+html.admin-panel [data-marca-panel='qr'] .text-neutral-900 {
+  color: #171717 !important;
+}
+html.admin-panel [data-marca-panel='qr'] .text-neutral-800,
+html.admin-panel [data-marca-panel='qr'] .text-neutral-700 {
+  color: #404040 !important;
+}
+html.admin-panel [data-marca-panel='qr'] .text-neutral-600 {
+  color: #525252 !important;
+}
+html.admin-panel [data-marca-panel='qr'] .text-neutral-500 {
+  color: #737373 !important;
+}
+
+/* Logo central del QR: 23% del marco (rango seguro ECC H: 22–24%) */
 html.admin-panel [data-marca-panel='qr'] .qr-logo-plate {
-  width: 34% !important;
-  height: auto !important;
-  min-width: 4.75rem;
-  max-width: 5.75rem;
-  aspect-ratio: 1 / 1;
-  padding: 0.5rem !important;
+  display: flex !important;
+  width: 23% !important;
+  height: 23% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 23% !important;
+  max-height: 23% !important;
+  padding: 0.375rem !important;
+  box-sizing: border-box !important;
   background-color: #ffffff !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] .qr-logo-plate[hidden],
+html.admin-panel [data-marca-panel='qr'] .qr-logo-plate.hidden {
+  display: none !important;
+}
+
+html.admin-panel [data-marca-panel='qr'] .qr-logo-plate img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  transform: none !important;
 }
 
 html.admin-panel header.sticky,

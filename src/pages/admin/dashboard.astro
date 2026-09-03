@@ -28,6 +28,9 @@ import {
   ubicacionLayoutToTheme,
   ubicacionThemeToLayout,
   normalizeUbicacionLayout,
+  RESERVAS_LAYOUT_OPTIONS,
+  normalizeReservasLayout,
+  reservasLayoutToDestino,
 } from '../../lib/layout-themes.js';
 import { normalizeContenedorEstilo, normalizeBloqueAlineacion } from '../../lib/nosotros-layout.js';
 import {
@@ -46,6 +49,7 @@ import {
 import { ALERGENOS_OPTIONS } from '../../config/nutricion.js';
 import {
   parseUiEstilo,
+  parseReservasConfig,
   HOME_PX_DEFAULTS,
   HOME_PX_RANGES,
   normalizeFondoAnimacion,
@@ -152,10 +156,6 @@ if (isSuperAdmin && restId) {
 }
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
 const publicWebAppUrl = publicSlug ? `https://xemilla.app/${publicSlug}` : '';
-const replicateConfigured = Boolean(
-  import.meta.env.REPLICATE_API_TOKEN ||
-    (typeof process !== 'undefined' && process.env?.REPLICATE_API_TOKEN),
-);
 const categoriasJson = JSON.stringify(categorias);
 const opsTelefono = String(
   restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
@@ -233,7 +233,7 @@ function parseConfig(value) {
 }
 
 const configWifi = parseConfig(restaurante?.config_wifi);
-const configReservas = parseConfig(restaurante?.config_reservas);
+const configReservas = parseReservasConfig(restaurante?.config_reservas);
 const boutiqueConfig = parseBoutiqueConfig(restaurante?.config_boutique);
 const seccionesFondo = parseConfig(restaurante?.secciones_fondo);
 const uiEstiloParsed = parseUiEstilo(restaurante?.ui_estilo);
@@ -542,7 +542,16 @@ const marca = {
   gadget_boutique: Boolean(restaurante?.gadget_boutique),
   gadget_nutricion: Boolean(restaurante?.gadget_nutricion),
   gadget_ar: Boolean(restaurante?.gadget_ar),
-  qr_artistico_url: String(restaurante?.qr_artistico_url || '').trim(),
+  boutique_titulo: boutiqueConfig.titulo || 'Boutique',
+  boutique_catalogo_url: boutiqueConfig.catalogo_url || '',
+  gadget_ar_modo_vista: uiEstiloRaw?.gadgets?.ar?.modo_vista || 'rotacion_360',
+  gadget_ar_intensidad: uiEstiloRaw?.gadgets?.ar?.intensidad_iluminacion ?? 70,
+  gadget_nut_filtro_gluten_free:
+    uiEstiloRaw?.gadgets?.nutricion?.filtro_gluten_free !== false,
+  gadget_nut_filtro_vegano: uiEstiloRaw?.gadgets?.nutricion?.filtro_vegano !== false,
+  gadget_nut_filtro_frutos_secos:
+    uiEstiloRaw?.gadgets?.nutricion?.filtro_frutos_secos !== false,
+  gadget_nut_filtro_calorias: uiEstiloRaw?.gadgets?.nutricion?.filtro_calorias !== false,
   boutique_productos: boutiqueConfig.productos,
   home_theme: adminHomeTheme,
   home_layout: adminHomeLayout,
@@ -572,16 +581,16 @@ const marca = {
       restaurante?.ubicacion_theme ?? uiEstiloRaw?.ubicacion?.theme,
     );
   })(),
-  reservas_label: configReservas.label || configReservas.boton_texto || 'PEDIR / RESERVAR',
-  reservas_destino_tipo:
-    configReservas.destino_tipo === 'whatsapp' || configReservas.tipo === 'whatsapp'
-      ? 'whatsapp'
-      : 'enlace',
-  reservas_destino_valor:
-    configReservas.destino_valor ||
-    configReservas.url ||
-    configReservas.href ||
-    '',
+  reservas_label: configReservas.label || 'Reservar Mesa',
+  reservas_layout: configReservas.layout || 'whatsapp_concierge',
+  reservas_destino_tipo: configReservas.destinoTipo || 'whatsapp',
+  reservas_destino_valor: configReservas.destinoValor || '',
+  reservas_boton_ubicacion: configReservas.botonUbicacion || 'flotante',
+  reservas_efecto_visual: configReservas.efectoVisual || 'estatico',
+  reservas_mensaje_whatsapp: configReservas.mensajeWhatsapp || '',
+  reservas_plataforma_externa: configReservas.plataformaExterna || 'custom',
+  reservas_politica: configReservas.politica || '',
+  reservas_confirmacion_nativa: configReservas.confirmacionNativa || 'ninguna',
 };
 
 const marcaHasOperationalGadgets = hasOperationalGadgets({
@@ -591,7 +600,11 @@ const marcaHasOperationalGadgets = hasOperationalGadgets({
 
 const fieldClass =
   'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50';
+/** Campos claros para paneles blancos del Studio (Gadgets). */
+const gadgetFieldClass =
+  'w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200';
 const labelClass = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
+const gadgetLabelClass = 'block text-xs font-medium text-neutral-600 mb-1.5';
 /** Glass Bento chrome. */
 const bounceWallClass =
   'relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl';
@@ -3146,219 +3159,469 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   </div>
 
                   {/* —— RESERVAS —— */}
-                  <div data-marca-panel="reservas" class={`${studioCardClass} space-y-4`} hidden>
-                    <p class={labelClass}>Reservas</p>
+                  <div data-marca-panel="reservas" class="overflow-visible" hidden>
+                    <div
+                      class="relative z-10 grid grid-cols-1 gap-4 lg:grid-cols-2"
+                      data-marca-reservas-controls
+                      style={`--color-acento: ${marca.color_primario || '#818cf8'};`}
+                    >
+                      <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-reservas-layouts">
+                        <div>
+                          <p id="marca-sec-reservas-layouts" class={labelClass}>Estructura &amp; Layout</p>
+                          <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
+                            Elige cómo el comensal pide o reserva mesa.
+                          </p>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Layout de Reservas">
+                          {
+                            RESERVAS_LAYOUT_OPTIONS.map((opt) => {
+                              const selected = marca.reservas_layout === opt.id;
+                              return (
+                                <label
+                                  class:list={[
+                                    'reservas-layout-card group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 transition duration-200',
+                                    selected ? studioLayoutCardActive : studioLayoutCardIdle,
+                                  ]}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="reservas_layout"
+                                    value={opt.id}
+                                    class="sr-only"
+                                    checked={selected}
+                                    data-reservas-layout-option
+                                    data-reservas-destino={opt.destino}
+                                  />
+                                  <span class="flex items-start justify-between gap-2">
+                                    <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-white">
+                                      {opt.label}
+                                    </span>
+                                    <span
+                                      class:list={[
+                                        'shrink-0',
+                                        selected ? studioLayoutBadgeActive : 'hidden',
+                                      ]}
+                                      data-reservas-layout-activo
+                                    >
+                                      Activo
+                                    </span>
+                                  </span>
+                                  <span class="text-[11px] leading-snug text-neutral-400">{opt.hint}</span>
+                                </label>
+                              );
+                            })
+                          }
+                        </div>
+                        <input
+                          type="hidden"
+                          id="marca-reservas-destino-tipo"
+                          name="reservas_destino_tipo"
+                          value={marca.reservas_destino_tipo}
+                          data-reservas-destino-input
+                        />
+                      </section>
 
-                    <label class="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5">
-                      <span class="text-sm text-zinc-200">Activar botón de Reservas en Home</span>
-                      <input type="checkbox" id="marca-gadget-reservas" name="gadget_reservas" checked={marca.gadget_reservas} class="peer sr-only" data-marca-gadget role="switch" />
-                      <span class:list={['ios-toggle', 'pointer-events-none', marca.gadget_reservas && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-reservas" aria-hidden="true">
-                        <span class="ios-toggle__knob"></span>
-                      </span>
-                    </label>
+                      {/* Columna izquierda */}
+                      <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-reservas-visual">
+                        <p id="marca-sec-reservas-visual" class={labelClass}>Visual &amp; Ubicación del Botón</p>
 
-                    <div class="grid gap-5 lg:grid-cols-2">
-                      <label class="block space-y-2 lg:col-span-2">
-                        <span class={labelClass}>Texto del botón principal</span>
-                        <input type="text" id="marca-reservas-label" name="reservas_label" value={marca.reservas_label} placeholder="PEDIR / RESERVAR" class={fieldClass} />
-                      </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>Tipo de destino</span>
-                        <select id="marca-reservas-destino-tipo" name="reservas_destino_tipo" class={fieldClass}>
-                          <option value="whatsapp" selected={marca.reservas_destino_tipo === 'whatsapp'}>WhatsApp</option>
-                          <option value="enlace" selected={marca.reservas_destino_tipo === 'enlace'}>Enlace externo</option>
-                        </select>
-                      </label>
-                      <label class="block space-y-2">
-                        <span class={labelClass}>URL o número de teléfono</span>
-                        <input type="text" id="marca-reservas-destino-valor" name="reservas_destino_valor" value={marca.reservas_destino_valor} placeholder="+58414… o https://…" class={fieldClass} />
-                      </label>
+                        <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-2.5">
+                          <span class="min-w-0">
+                            <span class="block text-sm font-medium text-zinc-200">Mostrar botón de Reservas</span>
+                            <span class="mt-0.5 block text-[0.68rem] leading-snug text-neutral-400">Visible en Home / Menú</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            id="marca-gadget-reservas"
+                            name="gadget_reservas"
+                            checked={marca.gadget_reservas}
+                            class="peer sr-only"
+                            data-marca-gadget
+                            role="switch"
+                            aria-checked={marca.gadget_reservas ? 'true' : 'false'}
+                          />
+                          <span
+                            class:list={['ios-toggle', 'pointer-events-none', 'shrink-0', marca.gadget_reservas && 'is-on']}
+                            data-marca-toggle-ui
+                            data-for="marca-gadget-reservas"
+                            aria-hidden="true"
+                          >
+                            <span class="ios-toggle__knob"></span>
+                          </span>
+                        </label>
+
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Texto del botón</span>
+                          <input
+                            type="text"
+                            id="marca-reservas-label"
+                            name="reservas_label"
+                            value={marca.reservas_label}
+                            placeholder="Reservar Mesa"
+                            class={fieldClass}
+                          />
+                        </label>
+
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Ubicación del botón</span>
+                          <select
+                            id="marca-reservas-boton-ubicacion"
+                            name="reservas_boton_ubicacion"
+                            class={fieldClass}
+                          >
+                            <option value="flotante" selected={marca.reservas_boton_ubicacion === 'flotante'}>
+                              Botón flotante fijo
+                            </option>
+                            <option value="hero" selected={marca.reservas_boton_ubicacion === 'hero'}>
+                              Botón en Hero
+                            </option>
+                            <option value="header" selected={marca.reservas_boton_ubicacion === 'header'}>
+                              Enlace en Header
+                            </option>
+                          </select>
+                        </label>
+
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Efecto visual</span>
+                          <select
+                            id="marca-reservas-efecto-visual"
+                            name="reservas_efecto_visual"
+                            class={fieldClass}
+                          >
+                            <option value="estatico" selected={marca.reservas_efecto_visual === 'estatico'}>
+                              Estático
+                            </option>
+                            <option value="pulso" selected={marca.reservas_efecto_visual === 'pulso'}>
+                              Pulso suave
+                            </option>
+                            <option value="glow" selected={marca.reservas_efecto_visual === 'glow'}>
+                              Glow de acento
+                            </option>
+                          </select>
+                        </label>
+                      </section>
+
+                      {/* Columna derecha */}
+                      <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-reservas-motor">
+                        <p id="marca-sec-reservas-motor" class={labelClass}>Motor &amp; Datos de Destino</p>
+
+                        <div data-reservas-panel="whatsapp_concierge" hidden={marca.reservas_layout !== 'whatsapp_concierge'} class="space-y-3">
+                          <label class="block space-y-1.5">
+                            <span class={labelClass}>Número de WhatsApp</span>
+                            <input
+                              type="text"
+                              id="marca-reservas-wa-numero"
+                              value={marca.reservas_destino_valor}
+                              placeholder="+58 414…"
+                              class={fieldClass}
+                              data-reservas-destino-field="whatsapp"
+                            />
+                          </label>
+                          <label class="block space-y-1.5">
+                            <span class={labelClass}>Mensaje predeterminado</span>
+                            <textarea
+                              id="marca-reservas-mensaje-whatsapp"
+                              name="reservas_mensaje_whatsapp"
+                              rows="4"
+                              placeholder="Hola, me gustaría reservar mesa para {comensales} el {fecha} a las {hora}."
+                              class={fieldClass}
+                            >{marca.reservas_mensaje_whatsapp}</textarea>
+                            <span class="mt-1 block text-[0.65rem] text-neutral-500">
+                              Variables: {'{comensales}'}, {'{fecha}'}, {'{hora}'}
+                            </span>
+                          </label>
+                        </div>
+
+                        <div data-reservas-panel="external_engine" hidden={marca.reservas_layout !== 'external_engine'} class="space-y-3">
+                          <label class="block space-y-1.5">
+                            <span class={labelClass}>Plataforma</span>
+                            <select
+                              id="marca-reservas-plataforma-externa"
+                              name="reservas_plataforma_externa"
+                              class={fieldClass}
+                            >
+                              <option value="opentable" selected={marca.reservas_plataforma_externa === 'opentable'}>
+                                OpenTable
+                              </option>
+                              <option value="covermanager" selected={marca.reservas_plataforma_externa === 'covermanager'}>
+                                CoverManager
+                              </option>
+                              <option value="thefork" selected={marca.reservas_plataforma_externa === 'thefork'}>
+                                TheFork
+                              </option>
+                              <option value="custom" selected={marca.reservas_plataforma_externa === 'custom' || !marca.reservas_plataforma_externa}>
+                                Personalizado
+                              </option>
+                            </select>
+                          </label>
+                          <label class="block space-y-1.5">
+                            <span class={labelClass}>URL de reserva</span>
+                            <input
+                              type="url"
+                              inputmode="url"
+                              id="marca-reservas-url-externa"
+                              value={marca.reservas_destino_valor}
+                              placeholder="https://…"
+                              class={fieldClass}
+                              data-reservas-destino-field="enlace"
+                            />
+                          </label>
+                        </div>
+
+                        <div data-reservas-panel="direct_call" hidden={marca.reservas_layout !== 'direct_call'} class="space-y-3">
+                          <label class="block space-y-1.5">
+                            <span class={labelClass}>Teléfono principal</span>
+                            <input
+                              type="tel"
+                              id="marca-reservas-telefono"
+                              value={marca.reservas_destino_valor}
+                              placeholder="+58…"
+                              class={fieldClass}
+                              data-reservas-destino-field="telefono"
+                            />
+                          </label>
+                        </div>
+
+                        <div data-reservas-panel="native_modal" hidden={marca.reservas_layout !== 'native_modal'} class="space-y-3">
+                          <label class="block space-y-1.5">
+                            <span class={labelClass}>Confirmación inmediata</span>
+                            <select
+                              id="marca-reservas-confirmacion-nativa"
+                              name="reservas_confirmacion_nativa"
+                              class={fieldClass}
+                            >
+                              <option value="ninguna" selected={marca.reservas_confirmacion_nativa === 'ninguna'}>
+                                Sin confirmación automática
+                              </option>
+                              <option value="whatsapp" selected={marca.reservas_confirmacion_nativa === 'whatsapp'}>
+                                Por WhatsApp
+                              </option>
+                              <option value="email" selected={marca.reservas_confirmacion_nativa === 'email'}>
+                                Por Email
+                              </option>
+                              <option value="ambas" selected={marca.reservas_confirmacion_nativa === 'ambas'}>
+                                WhatsApp y Email
+                              </option>
+                            </select>
+                          </label>
+                          <p class="text-[11px] leading-relaxed text-neutral-400">
+                            El formulario nativo se muestra dentro de la WebApp; la confirmación avisa al local por el canal elegido.
+                          </p>
+                        </div>
+
+                        <input
+                          type="hidden"
+                          id="marca-reservas-destino-valor"
+                          name="reservas_destino_valor"
+                          value={marca.reservas_destino_valor}
+                          data-reservas-destino-valor
+                        />
+
+                        <label class="mt-1 block space-y-1.5">
+                          <span class={labelClass}>Política de reserva</span>
+                          <textarea
+                            id="marca-reservas-politica"
+                            name="reservas_politica"
+                            rows="3"
+                            placeholder="Ej. Reserva sujeta a disponibilidad. Cancelar con 2 h de antelación."
+                            class={fieldClass}
+                          >{marca.reservas_politica}</textarea>
+                        </label>
+                      </section>
                     </div>
                   </div>
 
                   {/* —— GADGETS —— */}
                   <div
                     data-marca-panel="gadgets"
-                    class={`${studioCardClass} space-y-4`}
-                    style={`--gadget-accent: ${marca.color_primario || '#9f1239'}`}
+                    class="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
                     hidden
                   >
-                    <p class={labelClass}>Gadgets</p>
+                    <div>
+                      <p class="text-sm font-semibold text-neutral-900">Gadgets</p>
+                      <p class="mt-0.5 text-xs text-neutral-500">
+                        Módulos opcionales del menú digital. Activá solo lo que uses.
+                      </p>
+                    </div>
 
-                    <div class="gadget-catalog grid gap-3 sm:grid-cols-2">
+                    <div class="gadget-catalog grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
 
-                      {/* ── Wi‑Fi ── */}
+                      {/* 1. Wi‑Fi */}
                       <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300', marca.gadget_wifi && 'gadget-card--on']}
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          marca.gadget_wifi && 'gadget-card--on',
+                        ]}
                         data-gadget-card
                         data-gadget-id="wifi"
                       >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5a8.5 8.5 0 0 1 14 0M8.5 15.5a4.5 4.5 0 0 1 7 0M12 19h.01" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Wi‑Fi invitados</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_wifi ? 'Activo' : 'Inactivo'}</span>
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5a8.5 8.5 0 0 1 14 0M8.5 15.5a4.5 4.5 0 0 1 7 0M12 19h.01" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Red Wi-Fi</h4>
+                              <p class="text-xs text-neutral-500">Facilita la conexión a tus clientes</p>
                             </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Muestra SSID y clave en la mesa del cliente.</p>
                           </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Wi‑Fi">
+                          <label class="relative shrink-0 cursor-pointer" title="Activar Wi‑Fi">
                             <input type="checkbox" id="marca-gadget-wifi" name="gadget_wifi" checked={marca.gadget_wifi} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_wifi ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_wifi && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-wifi" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
                         <div class:list={['gadget-card__config', marca.gadget_wifi && 'is-open']} data-gadget-config aria-hidden={marca.gadget_wifi ? 'false' : 'true'}>
-                          <div class="gadget-card__config-inner grid gap-3 px-4 pb-4" data-gadget-config-inner>
-                            <label class="block space-y-1.5">
-                              <span class={labelClass}>SSID · Nombre de red</span>
-                              <input type="text" id="marca-wifi-ssid" name="gadget_wifi_ssid" value={marca.wifi_ssid} placeholder="Nombre de la red" class={fieldClass} />
+                          <div class="gadget-card__config-inner mt-4 grid gap-3 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Nombre de Red (SSID)</span>
+                              <input type="text" id="marca-wifi-ssid" name="gadget_wifi_ssid" value={marca.wifi_ssid} placeholder="Nombre de la red" class={gadgetFieldClass} />
                             </label>
-                            <label class="block space-y-1.5">
-                              <span class={labelClass}>Clave Wi‑Fi</span>
-                              <input type="text" id="marca-wifi-password" name="gadget_wifi_clave" value={marca.wifi_password} placeholder="Contraseña" class={fieldClass} />
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Contraseña</span>
+                              <input type="text" id="marca-wifi-password" name="gadget_wifi_clave" value={marca.wifi_password} placeholder="Contraseña" class={gadgetFieldClass} />
                             </label>
                           </div>
                         </div>
                       </article>
 
-                      {/* ── Boutique / Tienda ── */}
+                      {/* 2. AR / 3D */}
                       <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300', marca.gadget_boutique && 'gadget-card--on']}
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          marca.gadget_ar && 'gadget-card--on',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="ar"
+                      >
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Platos en AR / 3D</h4>
+                              <p class="text-xs text-neutral-500">Proyección interactiva en mesa</p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer" title="Activar Realidad Aumentada">
+                            <input type="checkbox" id="marca-gadget-ar" name="gadget_ar" checked={marca.gadget_ar} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_ar ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_ar && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-ar" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+                        <div class:list={['gadget-card__config', marca.gadget_ar && 'is-open']} data-gadget-config aria-hidden={marca.gadget_ar ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner mt-4 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            <p class="gadget-note-on rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-xs leading-relaxed text-emerald-900">
+                              Visor 3D y proyección AR activados. Los platos con archivo .glb o .usdz asignado mostrarán el botón interactivo en la carta.
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+
+                      {/* 3. Alérgenos */}
+                      <article
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          marca.gadget_nutricion && 'gadget-card--on',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="nutricion"
+                      >
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5c-2.8 3.2-6 6.4-6 10a6 6 0 0 0 12 0c0-3.6-3.2-6.8-6-10Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14.5v3" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Filtros de Alérgenos</h4>
+                              <p class="text-xs text-neutral-500">Informa sobre alérgenos y dietas</p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer" title="Activar Alérgenos">
+                            <input type="checkbox" id="marca-gadget-nutricion" name="gadget_nutricion" checked={marca.gadget_nutricion} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_nutricion ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_nutricion && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-nutricion" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+                        <div class:list={['gadget-card__config', marca.gadget_nutricion && 'is-open']} data-gadget-config aria-hidden={marca.gadget_nutricion ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner mt-4 space-y-2 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            <div class="flex flex-wrap gap-2">
+                              <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-800 transition hover:border-neutral-300 has-[:checked]:border-emerald-300 has-[:checked]:bg-emerald-50 has-[:checked]:text-emerald-800">
+                                <input type="checkbox" id="marca-gadget-nut-gluten" name="gadget_nut_filtro_gluten_free" checked={marca.gadget_nut_filtro_gluten_free} class="size-3.5 rounded border-neutral-300 text-emerald-500 focus:ring-emerald-500/30" />
+                                Gluten Free
+                              </label>
+                              <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-800 transition hover:border-neutral-300 has-[:checked]:border-emerald-300 has-[:checked]:bg-emerald-50 has-[:checked]:text-emerald-800">
+                                <input type="checkbox" id="marca-gadget-nut-vegano" name="gadget_nut_filtro_vegano" checked={marca.gadget_nut_filtro_vegano} class="size-3.5 rounded border-neutral-300 text-emerald-500 focus:ring-emerald-500/30" />
+                                Vegano
+                              </label>
+                              <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-800 transition hover:border-neutral-300 has-[:checked]:border-emerald-300 has-[:checked]:bg-emerald-50 has-[:checked]:text-emerald-800">
+                                <input type="checkbox" id="marca-gadget-nut-frutos" name="gadget_nut_filtro_frutos_secos" checked={marca.gadget_nut_filtro_frutos_secos} class="size-3.5 rounded border-neutral-300 text-emerald-500 focus:ring-emerald-500/30" />
+                                Frutos Secos
+                              </label>
+                              <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-800 transition hover:border-neutral-300 has-[:checked]:border-emerald-300 has-[:checked]:bg-emerald-50 has-[:checked]:text-emerald-800">
+                                <input type="checkbox" id="marca-gadget-nut-calorias" name="gadget_nut_filtro_calorias" checked={marca.gadget_nut_filtro_calorias} class="size-3.5 rounded border-neutral-300 text-emerald-500 focus:ring-emerald-500/30" />
+                                Calorías
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+
+                      {/* 4. Boutique */}
+                      <article
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          marca.gadget_boutique && 'gadget-card--on',
+                        ]}
                         data-gadget-card
                         data-gadget-id="boutique"
                       >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 8.5 6 5h12l1.5 3.5M4.5 8.5V19a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V8.5M4.5 8.5h15M9.5 12.5h5" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Boutique / Tienda</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_boutique ? 'Activo' : 'Inactivo'}</span>
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 8.5h12l-1 11.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 20L6 8.5Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.5V7a3 3 0 0 1 6 0v1.5" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Boutique &amp; Merch</h4>
+                              <p class="text-xs text-neutral-500">Vende productos oficiales</p>
                             </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Vitrina de productos destacados en el modal de la WebApp.</p>
                           </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Boutique">
+                          <label class="relative shrink-0 cursor-pointer" title="Activar Boutique">
                             <input type="checkbox" id="marca-gadget-boutique" name="gadget_boutique" checked={marca.gadget_boutique} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_boutique ? 'true' : 'false'} />
                             <span class:list={['ios-toggle pointer-events-none', marca.gadget_boutique && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-boutique" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
                           </label>
                         </div>
                         <div class:list={['gadget-card__config', marca.gadget_boutique && 'is-open']} data-gadget-config aria-hidden={marca.gadget_boutique ? 'false' : 'true'}>
-                          <div class="gadget-card__config-inner space-y-3 px-4 pb-4">
-                            <p class={labelClass}>Productos destacados</p>
-                            <p class="text-[11px] leading-relaxed text-zinc-500">
-                              Activa solo lo que quieras mostrar en el modal público. Precio en moneda local.
-                            </p>
-                            {
-                              marca.boutique_productos.map((prod, idx) => (
-                                <div class="rounded-xl border border-white/8 bg-black/30 p-3 space-y-2.5" data-boutique-row>
-                                  <div class="flex items-center justify-between gap-3">
-                                    <label class="flex items-center gap-2 text-xs text-zinc-300">
-                                      <input type="checkbox" data-boutique-activo checked={prod.activo} class="size-3.5 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-emerald-500/40" />
-                                      <span class="font-medium tracking-tight">Visible</span>
-                                    </label>
+                          <div class="gadget-card__config-inner mt-4 grid gap-3 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Nombre del catálogo</span>
+                              <input type="text" id="marca-boutique-titulo" name="boutique_titulo" value={marca.boutique_titulo} placeholder="Boutique" class={gadgetFieldClass} />
+                            </label>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Enlace externo / URL</span>
+                              <input type="url" id="marca-boutique-catalogo-url" name="boutique_catalogo_url" value={marca.boutique_catalogo_url} placeholder="https://…" class={gadgetFieldClass} />
+                            </label>
+                            {/* Persistencia silenciosa de productos existentes */}
+                            <div class="hidden" aria-hidden="true">
+                              {
+                                marca.boutique_productos.map((prod) => (
+                                  <div data-boutique-row>
                                     <input type="hidden" data-boutique-id value={prod.id} />
-                                    <span class="text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-zinc-600">#{idx + 1}</span>
+                                    <input type="hidden" data-boutique-nombre value={prod.nombre} />
+                                    <input type="hidden" data-boutique-precio value={prod.precio} />
+                                    <input type="hidden" data-boutique-imagen value={prod.imagen_url || ''} />
+                                    <input type="checkbox" data-boutique-activo checked={prod.activo} />
                                   </div>
-                                  <div class="grid gap-2 sm:grid-cols-2">
-                                    <input type="text" data-boutique-nombre value={prod.nombre} placeholder="Nombre" class={fieldClass} />
-                                    <input type="number" data-boutique-precio value={prod.precio} min="0" step="0.01" inputmode="decimal" placeholder="Precio" class={fieldClass} />
-                                  </div>
-                                  <input type="url" data-boutique-imagen value={prod.imagen_url || ''} placeholder="URL imagen (opcional)" class={fieldClass} />
-                                </div>
-                              ))
-                            }
-                          </div>
-                        </div>
-                      </article>
-
-                      {/* ── Ficha nutricional ── full-width */}
-                      <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300 sm:col-span-2', marca.gadget_nutricion && 'gadget-card--on']}
-                        data-gadget-card
-                        data-gadget-id="nutricion"
-                      >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h15M6 6.75v10.5a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5V6.75M9 10.5h6M9 14h4" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Ficha nutricional</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_nutricion ? 'Activo' : 'Inactivo'}</span>
-                            </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Kcal, macros y alérgenos por plato. Activa filtros de dieta en la WebApp.</p>
-                          </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Ficha nutricional">
-                            <input type="checkbox" id="marca-gadget-nutricion" name="gadget_nutricion" checked={marca.gadget_nutricion} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_nutricion ? 'true' : 'false'} />
-                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_nutricion && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-nutricion" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
-                          </label>
-                        </div>
-
-                        <div class:list={['gadget-card__config', marca.gadget_nutricion && 'is-open']} data-gadget-config aria-hidden={marca.gadget_nutricion ? 'false' : 'true'}>
-                          <div class="gadget-card__config-inner space-y-4 px-4 pb-5">
-
-                            <div class="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-3">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-[color:var(--gadget-accent,#9f1239)] opacity-80">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
-                              </svg>
-                              <p class="text-[11px] leading-relaxed text-zinc-400">
-                                En <strong class="text-zinc-300">Menú</strong> aparece
-                                <span class="mx-1 inline-flex items-center gap-1 rounded border border-white/12 bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-300">Carga nutricional</span>
-                                junto a Carga masiva, y el botón
-                                <span class="mx-1 inline-flex items-center gap-1 rounded border border-white/12 bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-300">Nutrición / Alérgenos</span>
-                                en cada plato. Marcá
-                                <strong class="text-zinc-300">Carne / No vegano</strong>
-                                en platos con proteína animal.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-
-                      {/* ── Realidad Aumentada (AR 3D) ── full-width */}
-                      <article
-                        class:list={['gadget-card relative flex flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] transition-all duration-300 sm:col-span-2', marca.gadget_ar && 'gadget-card--on']}
-                        data-gadget-card
-                        data-gadget-id="ar"
-                        style="--gadget-accent: #7c3aed;"
-                      >
-                        <div class="flex items-start gap-3 p-4">
-                          <span class="gadget-card__icon flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-400 transition-colors duration-300" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-                            </svg>
-                          </span>
-                          <div class="min-w-0 flex-1 pt-0.5">
-                            <div class="flex items-center gap-2">
-                              <h4 class="text-sm font-semibold tracking-tight text-zinc-100">Realidad Aumentada (AR 3D)</h4>
-                              <span class="gadget-status" data-gadget-status>{marca.gadget_ar ? 'Activo' : 'Inactivo'}</span>
-                            </div>
-                            <p class="mt-0.5 text-[11px] leading-snug text-zinc-500">Permite proyectar platos estrella en 3D sobre la mesa del comensal.</p>
-                          </div>
-                          <label class="relative shrink-0 cursor-pointer pt-0.5" title="Activar Realidad Aumentada AR 3D">
-                            <input type="checkbox" id="marca-gadget-ar" name="gadget_ar" checked={marca.gadget_ar} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_ar ? 'true' : 'false'} />
-                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_ar && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-ar" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
-                          </label>
-                        </div>
-
-                        <div class:list={['gadget-card__config', marca.gadget_ar && 'is-open']} data-gadget-config aria-hidden={marca.gadget_ar ? 'false' : 'true'}>
-                          <div class="gadget-card__config-inner space-y-4 px-4 pb-5">
-                            <div class="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-3">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 size-4 shrink-0 text-violet-400 opacity-80">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
-                              </svg>
-                              <p class="text-[11px] leading-relaxed text-zinc-400">
-                                Activa el botón chico <span class="mx-1 inline-flex items-center rounded-full border border-violet-400/30 bg-violet-500/15 px-1.5 py-0.5 font-semibold uppercase tracking-wider text-[10px] text-violet-200">AR</span> junto al nombre de cada plato. Al tocarlo se abre un modal para pegar la URL <strong class="text-zinc-300">.glb / .usdz</strong>.
-                              </p>
+                                ))
+                              }
                             </div>
                           </div>
                         </div>
@@ -3367,340 +3630,160 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     </div>
                   </div>
 
-                  {/* —— QR & IMPRESIÓN —— */}
+                  {/* —— QR & IMPRESIÓN (Centro de Recursos) —— */}
                   <div
                     data-marca-panel="qr"
-                    class={`${studioCardClass} space-y-5`}
+                    class="space-y-5 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5"
                     hidden
                     data-qr-slug={publicSlug}
                     data-qr-logo={marca.logo_url || ''}
                     data-qr-brand={marca.color_primario || '#9f1239'}
-                    data-qr-artistic={marca.qr_artistico_url || ''}
-                    data-qr-replicate={replicateConfigured ? '1' : '0'}
                   >
                     <header class="space-y-1">
-                      <p id="qr-section-title" class={labelClass}>QR & Impresión</p>
-                      <p class="text-sm text-zinc-500">Apunta siempre a <span class="font-mono text-zinc-400">xemilla.app/{publicSlug || '…'}</span></p>
+                      <p id="qr-section-title" class="text-sm font-semibold text-neutral-900">QR &amp; Impresión</p>
+                      <p class="text-xs text-neutral-500">Centro de recursos y descarga del menú digital</p>
                     </header>
 
-                    {/* Selector de modalidad — Artístico solo SuperAdmin */}
-                    {
-                      isSuperAdmin ? (
-                        <div class="grid gap-2 sm:grid-cols-2" role="tablist" aria-label="Modalidad de QR">
-                          <button
-                            type="button"
-                            id="qr-mode-standard"
-                            data-qr-mode="standard"
-                            role="tab"
-                            aria-selected="true"
-                            class="qr-mode-btn rounded-xl border px-3 py-3.5 text-left text-sm font-semibold leading-snug transition"
-                          >
-                            🎯 QR Estándar Vectorial
-                          </button>
-                          <button
-                            type="button"
-                            id="qr-mode-artistic"
-                            data-qr-mode="artistic"
-                            role="tab"
-                            aria-selected="false"
-                            class="qr-mode-btn rounded-xl border px-3 py-3.5 text-left text-sm font-semibold leading-snug transition"
-                          >
-                            🎨 QR Artístico IA
-                          </button>
-                        </div>
-                      ) : null
-                    }
-
                     <div class="grid gap-5 lg:grid-cols-2 lg:items-start">
-                      {/* Columna izquierda — Controles */}
+                      {/* Columna izquierda — Ajustes y descargas */}
                       <div class="space-y-4">
-                        {/* Vista 1: Estándar */}
-                        <div id="qr-view-standard" data-qr-view="standard" class="space-y-4">
-                          <div class="space-y-2">
-                            <p class={labelClass}>Estilo del QR</p>
-                            <div class="grid grid-cols-2 gap-2" role="group" aria-label="Estilo del QR">
-                              <button
-                                type="button"
-                                data-qr-style="standard"
-                                class="qr-style-btn rounded-xl border px-3 py-3 text-sm font-semibold transition"
-                                aria-pressed="true"
-                              >
-                                Negro / Blanco
-                              </button>
-                              <button
-                                type="button"
-                                data-qr-style="brand"
-                                class="qr-style-btn rounded-xl border px-3 py-3 text-sm font-semibold transition"
-                                aria-pressed="false"
-                              >
-                                Color de marca
-                              </button>
-                            </div>
-                          </div>
-
-                          <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3.5">
-                            <span class="min-w-0">
-                              <span class="block text-sm font-semibold text-zinc-100">Incluir logo en el centro</span>
-                              <span class="mt-0.5 block text-xs text-zinc-500">Usa el logo de Identidad sobre el QR</span>
-                            </span>
+                        <div class="space-y-2">
+                          <p class="text-xs font-medium text-neutral-600">Enlace del Menú</p>
+                          <div class="flex overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-neutral-200">
                             <input
-                              type="checkbox"
-                              id="qr-include-logo"
-                              class="peer sr-only"
-                              role="switch"
-                              aria-checked="false"
+                              type="text"
+                              id="qr-public-url"
+                              readonly
+                              value={publicSlug ? `https://xemilla.app/${publicSlug}` : ''}
+                              class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-xs text-neutral-800 outline-none"
                             />
-                            <span
-                              class="relative h-7 w-12 shrink-0 rounded-full bg-zinc-600/60 transition peer-checked:bg-emerald-500 after:absolute after:left-0.5 after:top-0.5 after:size-6 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"
-                              aria-hidden="true"
-                            ></span>
-                          </label>
-
-                          <div class="space-y-2">
-                            <p class={labelClass}>Enlace del local</p>
-                            <div class="flex gap-2">
-                              <input
-                                type="text"
-                                id="qr-public-url"
-                                readonly
-                                value={publicSlug ? `https://xemilla.app/${publicSlug}` : ''}
-                                class={`${fieldClass} min-w-0 flex-1 !rounded-xl !px-3.5 !py-3`}
-                              />
-                              <button
-                                type="button"
-                                id="qr-copy-link"
-                                class="qr-action-btn shrink-0 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:border-white/20"
-                              >
-                                Copiar
-                              </button>
-                            </div>
-                          </div>
-
-                          <div class="space-y-2.5 pt-1">
                             <button
                               type="button"
-                              id="qr-download-svg"
-                              class="qr-action-btn flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-                              disabled={!publicSlug}
+                              id="qr-copy-link"
+                              class="shrink-0 border-l border-neutral-200 bg-white px-3.5 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50"
                             >
-                              📥 Descargar QR SVG (Alta Calidad)
-                            </button>
-                            <button
-                              type="button"
-                              id="qr-download-png"
-                              class="qr-action-btn flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-                              disabled={!publicSlug}
-                            >
-                              🖼️ Descargar PNG (Para Redes)
+                              Copiar
                             </button>
                           </div>
                         </div>
 
-                        {/* Vista 2: Artístico IA — solo SuperAdmin */}
-                        {
-                          isSuperAdmin ? (
-                        <div id="qr-view-artistic" data-qr-view="artistic" class="hidden space-y-4" hidden>
-                          {!replicateConfigured && (
-                            <div
-                              id="qr-replicate-alert"
-                              class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-xs leading-relaxed text-amber-200"
-                              role="status"
+                        <div class="space-y-2">
+                          <p class="text-xs font-medium text-neutral-600">Estilo del QR Estándar</p>
+                          <div class="grid grid-cols-2 gap-2" role="group" aria-label="Estilo del QR">
+                            <button
+                              type="button"
+                              data-qr-style="standard"
+                              class="qr-style-btn rounded-lg border border-emerald-500 bg-emerald-50 px-3 py-2.5 text-xs font-medium text-emerald-700 transition"
+                              aria-pressed="true"
                             >
-                              Replicate no está configurado (<code class="font-mono">REPLICATE_API_TOKEN</code>).
-                              Puedes generar un QR de respaldo; el modo artístico se activará al añadir la API key.
-                            </div>
-                          )}
-
-                          <div class="space-y-2">
-                            <label for="prompt_personalizado" class={labelClass}>Prompt personalizado</label>
-                            <textarea
-                              id="prompt_personalizado"
-                              name="prompt_personalizado"
-                              rows="5"
-                              maxlength="800"
-                              placeholder="Ej: Estilo neón futurista, madera oscura, iluminación dramática cinemática, minimalista..."
-                              class={`${fieldClass} !min-h-[8rem] resize-y !rounded-xl !px-3.5 !py-3.5 !text-sm !leading-relaxed`}
-                            ></textarea>
-                            <p class="text-[11px] text-zinc-500">Describe el estilo visual; la IA lo aplica sobre el QR del local.</p>
+                              Monocromático Negro
+                            </button>
+                            <button
+                              type="button"
+                              data-qr-style="brand"
+                              class="qr-style-btn rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-xs font-medium text-neutral-700 transition hover:border-neutral-300"
+                              aria-pressed="false"
+                            >
+                              Color de Marca
+                            </button>
                           </div>
+                        </div>
 
-                          <div class="space-y-2">
-                            <div class="flex items-center justify-between gap-2">
-                              <label for="controlnet_conditioning_scale" class={labelClass}>Nivel de intervención IA</label>
-                              <span id="qr-peso-ia-value" class="font-mono text-xs font-semibold text-zinc-200">0.85</span>
-                            </div>
-                            <input
-                              type="range"
-                              id="controlnet_conditioning_scale"
-                              name="controlnet_conditioning_scale"
-                              min="0.6"
-                              max="1.4"
-                              step="0.05"
-                              value="0.85"
-                              class="w-full accent-emerald-500"
-                            />
-                            <p class="text-[11px] text-zinc-500">0.6 legible → 1.4 más artístico</p>
-                          </div>
+                        <label
+                          class:list={[
+                            'flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3',
+                            !marca.logo_url && 'opacity-60',
+                          ]}
+                          title={marca.logo_url ? 'Incluir logo central' : 'Subí un logo en Identidad para activar esta opción'}
+                        >
+                          <span class="min-w-0">
+                            <span class="block text-sm font-medium text-neutral-900">Incluir logo central</span>
+                            <span class="mt-0.5 block text-xs text-neutral-500">
+                              {marca.logo_url
+                                ? 'Usa el logo principal de Identidad sobre el QR'
+                                : 'Subí el logo principal en Identidad para usarlo aquí'}
+                            </span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            id="qr-include-logo"
+                            class="peer sr-only"
+                            role="switch"
+                            aria-checked="false"
+                            disabled={!marca.logo_url}
+                          />
+                          <span
+                            class="relative h-7 w-12 shrink-0 rounded-full bg-neutral-300 transition peer-checked:bg-emerald-500 after:absolute after:left-0.5 after:top-0.5 after:size-6 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5 peer-disabled:opacity-50"
+                            aria-hidden="true"
+                          ></span>
+                        </label>
 
+                        <div class="space-y-2 pt-1">
                           <button
                             type="button"
-                            id="btn-generar-artistico"
-                            data-qr-generate
-                            class="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/35 bg-emerald-600/90 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            id="qr-download-svg"
+                            class="qr-btn-primary flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 py-2.5 text-xs font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={!publicSlug}
                           >
-                            <span id="qr-generate-label">⚡ Generar QR Artístico con IA</span>
-                            <span id="qr-generate-spinner" class="hidden size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true"></span>
+                            Descargar QR Vectorial (SVG para Imprenta)
                           </button>
-
-                          <a
-                            id="btn-descargar-artistico"
-                            href={marca.qr_artistico_url || '#'}
-                            download={`qr-artistico-${publicSlug || 'local'}.png`}
-                            class:list={[
-                              'qr-action-btn flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:border-white/20',
-                              !marca.qr_artistico_url && 'pointer-events-none opacity-40 opacity-50',
-                            ]}
-                            aria-disabled={!marca.qr_artistico_url ? 'true' : 'false'}
-                            tabindex={!marca.qr_artistico_url ? -1 : 0}
+                          <button
+                            type="button"
+                            id="qr-download-png"
+                            class="qr-btn-secondary flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white py-2.5 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={!publicSlug}
                           >
-                            ⬇️ Descargar QR Artístico
-                          </a>
+                            Descargar PNG (Digital / Redes)
+                          </button>
                         </div>
-                          ) : null
-                        }
 
-                        <p id="qr-error-msg" class="hidden rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-300" role="alert"></p>
-                        <p id="qr-status-msg" class="hidden text-xs font-medium text-emerald-400" role="status"></p>
+                        <p id="qr-error-msg" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700" role="alert"></p>
+                        <p id="qr-status-msg" class="hidden text-xs font-medium text-emerald-700" role="status"></p>
                       </div>
 
-                      {/* Columna derecha — Preview */}
-                      <div class="rounded-2xl border border-white/10 bg-black/20 p-5 sm:p-6">
-                        <p class={labelClass}>Vista previa</p>
-                        <div class="mt-4 flex flex-col items-center">
-                          <div class="relative flex size-[220px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white p-3 shadow-inner sm:size-[240px]">
-                            {publicSlug ? (
-                              <img
-                                id="qr-preview-img"
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=12&ecc=H&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`https://xemilla.app/${publicSlug}`)}`}
-                                alt={`QR de ${publicSlug}`}
-                                width="220"
-                                height="220"
-                                class="size-full object-contain"
-                                loading="eager"
-                                data-qr-preview-mode="standard"
-                              />
-                            ) : (
-                              <p id="qr-preview-empty" class="px-4 text-center text-sm font-medium text-zinc-500">Guarda un slug para generar el QR</p>
-                            )}
-                            <div
-                              id="qr-preview-logo-wrap"
-                              class="qr-logo-plate pointer-events-none absolute left-1/2 top-1/2 z-10 flex hidden aspect-square w-[34%] min-w-[4.75rem] max-w-[5.75rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-xl bg-white p-2 shadow-md"
-                              hidden
-                            >
-                              <img
-                                id="qr-preview-logo"
-                                src={marca.logo_url || ''}
-                                alt=""
-                                class="h-full w-full object-contain"
-                                decoding="async"
-                              />
-                            </div>
-                            <div
-                              id="qr-preview-loading"
-                              class="absolute inset-0 z-20 hidden flex-col items-center justify-center gap-2.5 bg-zinc-950/80 px-4 text-center backdrop-blur-[2px]"
-                              hidden
-                              role="status"
-                              aria-live="polite"
-                            >
-                              <span class="size-8 animate-spin rounded-full border-2 border-white/25 border-t-emerald-400" aria-hidden="true"></span>
-                              <span class="text-xs font-semibold tracking-wide text-white">Generando QR con IA (8-12s)…</span>
-                            </div>
+                      {/* Columna derecha — Visor */}
+                      <div class="flex flex-col items-center justify-center rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                        <div class="relative flex size-[240px] items-center justify-center overflow-hidden rounded-xl border border-neutral-100 bg-white p-2 shadow-sm sm:size-[280px]">
+                          {publicSlug ? (
+                            <img
+                              id="qr-preview-img"
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=12&ecc=H&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`https://xemilla.app/${publicSlug}`)}`}
+                              alt={`QR de ${publicSlug}`}
+                              width="240"
+                              height="240"
+                              class="size-full object-contain"
+                              loading="eager"
+                              data-qr-preview-mode="standard"
+                            />
+                          ) : (
+                            <p id="qr-preview-empty" class="px-4 text-center text-sm font-medium text-neutral-500">
+                              Guarda un slug para generar el QR
+                            </p>
+                          )}
+                          <div
+                            id="qr-preview-logo-wrap"
+                            class="qr-logo-plate pointer-events-none absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 shadow-sm"
+                            hidden
+                            aria-hidden="true"
+                          >
+                            <img
+                              id="qr-preview-logo"
+                              src=""
+                              alt=""
+                              class="h-full w-full object-contain"
+                              decoding="async"
+                            />
                           </div>
-                          <p class="mt-4 text-center font-mono text-[11px] text-zinc-500" id="qr-preview-caption">
-                            {publicSlug ? `xemilla.app/${publicSlug}` : 'Sin URL pública'}
-                          </p>
                         </div>
+                        <p class="mt-4 text-center text-xs font-medium text-neutral-500" id="qr-preview-caption">
+                          Apunta la cámara de tu móvil para verificar la experiencia en vivo
+                        </p>
+                        {publicSlug ? (
+                          <p class="mt-1 text-center font-mono text-[11px] text-neutral-400">xemilla.app/{publicSlug}</p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
-
-                  <script is:inline>
-                    (function () {
-                      if (window.__xemillaQrArtisticClickBound) return;
-                      window.__xemillaQrArtisticClickBound = true;
-
-                      document.addEventListener('click', async (e) => {
-                        const btn = e.target.closest('#btn-generar-artistico');
-                        if (!btn) return;
-
-                        e.preventDefault();
-
-                        const promptInput = document.getElementById('prompt_personalizado');
-                        const scaleInput = document.getElementById('controlnet_conditioning_scale');
-                        const previewImg = document.getElementById('qr-preview-img');
-                        const downloadBtn = document.getElementById('btn-descargar-artistico');
-                        const panel = document.querySelector('[data-marca-panel="qr"]');
-                        const root = document.getElementById('dashboard-root');
-
-                        if (!promptInput || !promptInput.value.trim()) {
-                          alert('Escribe un prompt para generar el QR.');
-                          return;
-                        }
-
-                        const slug = String(
-                          (panel && panel.dataset.qrSlug) || (root && root.dataset.slug) || ''
-                        ).trim();
-                        const restauranteId = String(
-                          (root && root.dataset.restauranteId) || ''
-                        ).trim();
-
-                        btn.disabled = true;
-                        btn.style.opacity = '0.5';
-                        btn.innerText = '⏳ Generando QR... (10s)';
-
-                        try {
-                          const res = await fetch('/api/generate-artistic-qr', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              restaurante_id: restauranteId,
-                              slug,
-                              prompt_personalizado: promptInput.value,
-                              controlnet_conditioning_scale: scaleInput
-                                ? Number(scaleInput.value)
-                                : 0.85,
-                            }),
-                          });
-
-                          const data = await res.json().catch(() => ({}));
-
-                          if (!res.ok || !data.imagen_url) {
-                            throw new Error(data.error || 'No se pudo generar la imagen');
-                          }
-
-                          if (previewImg) previewImg.src = data.imagen_url;
-                          if (panel) panel.dataset.qrArtistic = data.imagen_url;
-                          if (downloadBtn) {
-                            downloadBtn.href = data.imagen_url;
-                            downloadBtn.classList.remove(
-                              'opacity-50',
-                              'opacity-40',
-                              'pointer-events-none'
-                            );
-                            downloadBtn.setAttribute('aria-disabled', 'false');
-                            downloadBtn.tabIndex = 0;
-                          }
-                        } catch (err) {
-                          alert('Error al generar QR Artístico: ' + err.message);
-                        } finally {
-                          btn.disabled = false;
-                          btn.style.opacity = '';
-                          btn.innerText = '⚡ Generar QR Artístico con IA';
-                        }
-                      });
-                    })();
-                  </script>
 
                   <p id="marca-feedback" class="hidden text-xs text-zinc-500" role="status"></p>
                 </div>
@@ -4979,55 +5062,89 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     outline-color: rgba(24, 24, 27, 0.28);
   }
 
-  /* ── Gadget cards ── */
-  .gadget-card {
-    opacity: 0.65;
+  /* ── Gadget cards (Studio white / light) ── */
+  :global(html.admin-panel) [data-marca-panel='gadgets'],
+  [data-marca-panel='gadgets'] {
+    background: #ffffff !important;
+    border-color: #e5e5e5 !important;
+    color: #262626 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   }
 
-  .gadget-card.gadget-card--on {
+  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card,
+  [data-marca-panel='gadgets'] .gadget-card {
+    background: #ffffff !important;
+    border-color: #e5e5e5 !important;
+    color: #262626 !important;
     opacity: 1;
-    border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 42%, transparent);
-    background:
-      linear-gradient(
-        145deg,
-        color-mix(in srgb, var(--gadget-accent, #9f1239) 12%, transparent),
-        rgba(0, 0, 0, 0.22) 60%
-      );
+  }
+
+  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card.gadget-card--on,
+  [data-marca-panel='gadgets'] .gadget-card.gadget-card--on {
+    border-color: #10b981 !important;
+    background-color: rgba(236, 253, 245, 0.7) !important;
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--gadget-accent, #9f1239) 20%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--gadget-accent, #9f1239) 14%, transparent);
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 0 0 1px rgba(16, 185, 129, 0.22) !important;
   }
 
-  .gadget-card__icon {
-    transition: background 240ms ease, border-color 240ms ease, color 240ms ease;
+  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card__icon,
+  [data-marca-panel='gadgets'] .gadget-card__icon {
+    background: #f5f5f5 !important;
+    color: #404040 !important;
+    border: none !important;
   }
 
-  .gadget-card.gadget-card--on .gadget-card__icon {
-    border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 38%, transparent);
-    background: color-mix(in srgb, var(--gadget-accent, #9f1239) 14%, transparent);
-    color: color-mix(in srgb, var(--gadget-accent, #9f1239) 80%, white);
+  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon,
+  [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon {
+    background: #d1fae5 !important;
+    color: #047857 !important;
   }
 
-  /* Status badge */
-  .gadget-status {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.5rem;
-    border-radius: 9999px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
-    font-size: 0.6rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #71717a;
-    transition: background 220ms ease, border-color 220ms ease, color 220ms ease;
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='text'],
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='url'],
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='number'],
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='password'],
+  :global(html.admin-panel) [data-marca-panel='gadgets'] select,
+  [data-marca-panel='gadgets'] input[type='text'],
+  [data-marca-panel='gadgets'] input[type='url'],
+  [data-marca-panel='gadgets'] input[type='number'],
+  [data-marca-panel='gadgets'] input[type='password'],
+  [data-marca-panel='gadgets'] select {
+    background-color: #fafafa !important;
+    border-color: #e5e5e5 !important;
+    color: #262626 !important;
+    box-shadow: none !important;
   }
 
-  .gadget-card.gadget-card--on .gadget-status {
-    border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 38%, transparent);
-    background: color-mix(in srgb, var(--gadget-accent, #9f1239) 12%, transparent);
-    color: color-mix(in srgb, var(--gadget-accent, #9f1239) 85%, white);
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='text']::placeholder,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='url']::placeholder,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='number']::placeholder,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='password']::placeholder,
+  [data-marca-panel='gadgets'] input[type='text']::placeholder,
+  [data-marca-panel='gadgets'] input[type='url']::placeholder,
+  [data-marca-panel='gadgets'] input[type='number']::placeholder,
+  [data-marca-panel='gadgets'] input[type='password']::placeholder {
+    color: #a3a3a3 !important;
+  }
+
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='text']:focus,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='url']:focus,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='number']:focus,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='password']:focus,
+  :global(html.admin-panel) [data-marca-panel='gadgets'] select:focus,
+  [data-marca-panel='gadgets'] input[type='text']:focus,
+  [data-marca-panel='gadgets'] input[type='url']:focus,
+  [data-marca-panel='gadgets'] input[type='number']:focus,
+  [data-marca-panel='gadgets'] input[type='password']:focus,
+  [data-marca-panel='gadgets'] select:focus {
+    border-color: #a3a3a3 !important;
+    box-shadow: 0 0 0 2px rgba(163, 163, 163, 0.25) !important;
+  }
+
+  [data-marca-panel='gadgets'] option {
+    background: #ffffff;
+    color: #262626;
   }
 
   /* Config accordion */
@@ -5036,8 +5153,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     grid-template-rows: 0fr;
     opacity: 0;
     transition:
-      grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 240ms ease;
+      grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 200ms ease;
   }
 
   .gadget-card__config.is-open {
@@ -5048,19 +5165,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   .gadget-card__config-inner {
     overflow: hidden;
     min-height: 0;
-    border-top: 1px solid transparent;
-    transition: border-color 240ms ease;
-  }
-
-  .gadget-card__config.is-open .gadget-card__config-inner {
-    border-top-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 20%, transparent);
   }
 
   #nut-alergias label:has(input:checked),
   [data-np-nutricion] label:has(input[name='alergias']:checked),
   .nut-chip:has(input:checked) {
-    border-color: color-mix(in srgb, var(--gadget-accent, #9f1239) 45%, transparent);
-    background: color-mix(in srgb, var(--gadget-accent, #9f1239) 14%, transparent);
+    border-color: color-mix(in srgb, var(--gadget-accent, #10b981) 45%, transparent);
+    background: color-mix(in srgb, var(--gadget-accent, #10b981) 14%, transparent);
     color: #fafafa;
   }
 
@@ -5139,7 +5250,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   @media (prefers-reduced-motion: reduce) {
     .gadget-card,
     .gadget-card__icon,
-    .gadget-status,
     .gadget-card__config,
     .gadget-card__config-inner {
       transition: none !important;
@@ -11382,6 +11492,67 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     syncLayout();
   })();
 
+  // Reservas layout cards + paneles dinámicos
+  (() => {
+    const destinoInput = document.querySelector('[data-reservas-destino-input]');
+    const destinoValor = document.querySelector('[data-reservas-destino-valor]');
+    const options = document.querySelectorAll('[data-reservas-layout-option]');
+    const panels = document.querySelectorAll('[data-reservas-panel]');
+    if (!(destinoInput instanceof HTMLInputElement) || !options.length) return;
+
+    const syncDestinoValorFromActivePanel = (layoutId) => {
+      if (!(destinoValor instanceof HTMLInputElement)) return;
+      const panel = document.querySelector(`[data-reservas-panel="${layoutId}"]`);
+      if (!(panel instanceof HTMLElement)) return;
+      const field = panel.querySelector('[data-reservas-destino-field]');
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        destinoValor.value = field.value.trim();
+      } else if (layoutId === 'native_modal') {
+        destinoValor.value = '';
+      }
+    };
+
+    const syncLayout = () => {
+      const checked = document.querySelector('[data-reservas-layout-option]:checked');
+      if (!(checked instanceof HTMLInputElement)) return;
+      const layoutId = checked.value || 'whatsapp_concierge';
+      destinoInput.value = checked.dataset.reservasDestino || 'whatsapp';
+      options.forEach((el) => {
+        const label = el.closest('label');
+        if (!(label instanceof HTMLElement)) return;
+        const on = el instanceof HTMLInputElement && el.checked;
+        syncStudioLayoutCard(label, on);
+        syncStudioLayoutBadge(label.querySelector('[data-reservas-layout-activo]'), on);
+      });
+      panels.forEach((panel) => {
+        if (!(panel instanceof HTMLElement)) return;
+        const show = panel.getAttribute('data-reservas-panel') === layoutId;
+        panel.hidden = !show;
+      });
+      syncDestinoValorFromActivePanel(layoutId);
+    };
+
+    options.forEach((el) => el.addEventListener('change', syncLayout));
+    document.querySelectorAll('[data-reservas-destino-field]').forEach((field) => {
+      field.addEventListener(
+        'input',
+        () => {
+          const checked = document.querySelector('[data-reservas-layout-option]:checked');
+          const layoutId =
+            checked instanceof HTMLInputElement
+              ? checked.value
+              : 'whatsapp_concierge';
+          syncDestinoValorFromActivePanel(layoutId);
+        },
+        { signal },
+      );
+    });
+    syncLayout();
+  })();
+
   (() => {
     const accent = document.getElementById('marca-menu-color-acento');
     const root = document.querySelector('[data-marca-menu-controls]');
@@ -12525,10 +12696,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       }
 
       if (isGadgetSwitch) {
-        const badge = card?.querySelector('[data-gadget-status]');
-        if (badge instanceof HTMLElement) {
-          badge.textContent = on ? 'Activo' : 'Inactivo';
-        }
         if (
           input.id === 'marca-gadget-wifi' ||
           input.id === 'marca-gadget-boutique'
@@ -12592,18 +12759,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       { signal },
     );
   });
-
-  // Mantener --gadget-accent alineado con el color primario del form
-  const colorPrimarioInput = document.getElementById('marca-color-primario');
-  const gadgetsPanel = document.querySelector('[data-marca-panel="gadgets"]');
-  const syncGadgetAccent = () => {
-    if (!(gadgetsPanel instanceof HTMLElement)) return;
-    if (!(colorPrimarioInput instanceof HTMLInputElement)) return;
-    const v = colorPrimarioInput.value.trim();
-    if (v) gadgetsPanel.style.setProperty('--gadget-accent', v);
-  };
-  colorPrimarioInput?.addEventListener('input', syncGadgetAccent, { signal });
-  syncGadgetAccent();
 
   const menuNavSelect = document.getElementById('marca-menu-navegacion');
   menuNavSelect?.addEventListener('change', syncMenuNavegacionUi, { signal });
@@ -12821,8 +12976,35 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           categorias_fondos: collectCategoriasFondos(),
           gadget_reservas: checked('marca-gadget-reservas'),
           reservas_label: val('marca-reservas-label'),
+          reservas_layout:
+            document.querySelector('[data-reservas-layout-option]:checked') instanceof HTMLInputElement
+              ? /** @type {HTMLInputElement} */ (
+                  document.querySelector('[data-reservas-layout-option]:checked')
+                ).value
+              : 'whatsapp_concierge',
           reservas_destino_tipo: val('marca-reservas-destino-tipo'),
-          reservas_destino_valor: val('marca-reservas-destino-valor'),
+          reservas_destino_valor: (() => {
+            const checked = document.querySelector('[data-reservas-layout-option]:checked');
+            const layoutId =
+              checked instanceof HTMLInputElement
+                ? checked.value
+                : 'whatsapp_concierge';
+            const panel = document.querySelector(`[data-reservas-panel="${layoutId}"]`);
+            const field = panel?.querySelector('[data-reservas-destino-field]');
+            if (
+              field instanceof HTMLInputElement ||
+              field instanceof HTMLTextAreaElement
+            ) {
+              return field.value.trim();
+            }
+            return val('marca-reservas-destino-valor');
+          })(),
+          reservas_boton_ubicacion: val('marca-reservas-boton-ubicacion') || 'flotante',
+          reservas_efecto_visual: val('marca-reservas-efecto-visual') || 'estatico',
+          reservas_mensaje_whatsapp: val('marca-reservas-mensaje-whatsapp'),
+          reservas_plataforma_externa: val('marca-reservas-plataforma-externa') || 'custom',
+          reservas_politica: val('marca-reservas-politica'),
+          reservas_confirmacion_nativa: val('marca-reservas-confirmacion-nativa') || 'ninguna',
           gadget_wifi: checked('marca-gadget-wifi'),
           gadget_wifi_ssid: val('marca-wifi-ssid'),
           gadget_wifi_clave: val('marca-wifi-password'),
@@ -12831,6 +13013,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           gadget_boutique: checked('marca-gadget-boutique'),
           gadget_nutricion: checked('marca-gadget-nutricion'),
           gadget_ar: checked('marca-gadget-ar'),
+          gadget_ar_modo_vista: 'rotacion_360',
+          gadget_ar_intensidad: '70',
+          gadget_nut_filtro_gluten_free: checked('marca-gadget-nut-gluten'),
+          gadget_nut_filtro_vegano: checked('marca-gadget-nut-vegano'),
+          gadget_nut_filtro_frutos_secos: checked('marca-gadget-nut-frutos'),
+          gadget_nut_filtro_calorias: checked('marca-gadget-nut-calorias'),
+          boutique_titulo: val('marca-boutique-titulo') || 'Boutique',
+          boutique_catalogo_url: val('marca-boutique-catalogo-url'),
           boutique_productos: collectBoutiqueProductos(),
           home_theme: val('marca-home-theme') || 'bento',
         }),
@@ -12930,7 +13120,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   // ── QR Panel standalone — supervivencia ViewTransitions ──────────
   // Bloque completamente independiente con su propio AbortController
-  // para que el botón "Generar QR Artístico" sobreviva a navegaciones.
 
   /** @type {AbortController | null} */
   let __qrPanelAc = null;
@@ -12950,44 +13139,30 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     __qrPanelAc = ac;
     const { signal } = ac;
 
-    // ── Refs ────────────────────────────────────────────────────────
     const root = document.getElementById('dashboard-root');
-    const isSuper = root?.dataset?.isSuperAdmin === 'true';
-
-    const styleBtns   = panel.querySelectorAll('[data-qr-style]');
-    const modeBtns    = panel.querySelectorAll('[data-qr-mode]');
-    const viewStd     = document.getElementById('qr-view-standard');
-    const viewArt     = document.getElementById('qr-view-artistic');
-    const logoToggle  = document.getElementById('qr-include-logo');
-    const logoWrap    = document.getElementById('qr-preview-logo-wrap');
+    const styleBtns = panel.querySelectorAll('[data-qr-style]');
+    const logoToggle = document.getElementById('qr-include-logo');
+    const logoWrap = document.getElementById('qr-preview-logo-wrap');
     const logoPreview = document.getElementById('qr-preview-logo');
-    const previewImg  = document.getElementById('qr-preview-img');
-    const copyBtn     = document.getElementById('qr-copy-link');
-    const urlInput    = document.getElementById('qr-public-url');
-    const dlSvg       = document.getElementById('qr-download-svg');
-    const dlPng       = document.getElementById('qr-download-png');
-    // Botón artístico — puede ser null si no es SuperAdmin
-    const generateBtn     = document.getElementById('btn-generar-artistico');
-    const generateLabel   = document.getElementById('qr-generate-label');
-    const generateSpinner = document.getElementById('qr-generate-spinner');
-    const dlArtistic      = document.getElementById('btn-descargar-artistico');
-    const previewLoading  = document.getElementById('qr-preview-loading');
-    const pesoRange       = document.getElementById('controlnet_conditioning_scale');
-    const pesoValue       = document.getElementById('qr-peso-ia-value');
-    const errorMsg        = document.getElementById('qr-error-msg');
-    const statusMsg       = document.getElementById('qr-status-msg');
-    const brandInput      = document.getElementById('marca-color-primario');
+    const previewImg = document.getElementById('qr-preview-img');
+    const copyBtn = document.getElementById('qr-copy-link');
+    const urlInput = document.getElementById('qr-public-url');
+    const dlSvg = document.getElementById('qr-download-svg');
+    const dlPng = document.getElementById('qr-download-png');
+    const errorMsg = document.getElementById('qr-error-msg');
+    const statusMsg = document.getElementById('qr-status-msg');
+    const brandInput = document.getElementById('marca-color-primario');
+    const logoUrlInput = document.getElementById('marca-logo-url');
 
-    let qrStyle    = 'standard';
-    let qrMode     = 'standard';
-    let artisticUrl = isSuper ? String(panel.dataset.qrArtistic || '').trim() : '';
+    /** Ratio seguro para ECC H (22–24%). */
+    const QR_LOGO_RATIO = 0.23;
+    /** Padding interno relativo al cuadrado del logo (~p-1.5). */
+    const QR_LOGO_PAD_RATIO = 0.14;
 
-    // ── Helpers ─────────────────────────────────────────────────────
+    let qrStyle = 'standard';
+
     function getSlug() {
       return String(panel.dataset.qrSlug || root?.dataset?.slug || '').trim();
-    }
-    function getRestauranteId() {
-      return String(root?.dataset?.restauranteId || '').trim();
     }
     function getPublicUrl() {
       const s = getSlug();
@@ -12998,7 +13173,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         return brandInput.value.trim();
       return String(panel.dataset.qrBrand || '#9f1239').trim() || '#9f1239';
     }
+    /** Logo principal de Identidad (`logo_url`), nunca app_icon / favicon. */
     function getLogoUrl() {
+      if (logoUrlInput instanceof HTMLInputElement && logoUrlInput.value.trim()) {
+        return logoUrlInput.value.trim();
+      }
       return String(panel.dataset.qrLogo || '').trim();
     }
     function hexForApi(hex) {
@@ -13008,7 +13187,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const data = getPublicUrl();
       if (!data) return '';
       const color = qrStyle === 'brand' ? hexForApi(getBrandColor()) : '000000';
-      const p = new URLSearchParams({ size: `${size}x${size}`, margin: '12', ecc: 'H', color, bgcolor: 'ffffff', format, data });
+      const p = new URLSearchParams({
+        size: `${size}x${size}`,
+        margin: '12',
+        ecc: 'H',
+        color,
+        bgcolor: 'ffffff',
+        format,
+        data,
+      });
       return `https://api.qrserver.com/v1/create-qr-code/?${p}`;
     }
     function showError(msg) {
@@ -13022,69 +13209,60 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       statusMsg.classList.toggle('hidden', !msg);
       if (msg) setTimeout(() => showStatus(''), 2600);
     }
-    function setPreviewLoading(on) {
-      if (!(previewLoading instanceof HTMLElement)) return;
-      previewLoading.hidden = !on;
-      previewLoading.classList.toggle('hidden', !on);
-      previewLoading.classList.toggle('flex', on);
-    }
-    function updateArtisticDownload(url) {
-      if (!(dlArtistic instanceof HTMLAnchorElement)) return;
-      const has = Boolean(url);
-      dlArtistic.href = has ? url : '#';
-      dlArtistic.classList.toggle('pointer-events-none', !has);
-      dlArtistic.classList.toggle('opacity-40', !has);
-      dlArtistic.classList.toggle('opacity-100', has);
-      dlArtistic.classList.toggle('bg-zinc-800', has);
-      dlArtistic.setAttribute('aria-disabled', has ? 'false' : 'true');
-      dlArtistic.tabIndex = has ? 0 : -1;
-      if (has) dlArtistic.setAttribute('download', `qr-artistico-${getSlug() || 'local'}.png`);
-    }
     function setLogoOverlayVisible(show) {
-      if (logoWrap instanceof HTMLElement) {
-        logoWrap.hidden = !show;
-        logoWrap.classList.toggle('hidden', !show);
+      if (!(logoWrap instanceof HTMLElement)) return;
+      logoWrap.hidden = !show;
+      logoWrap.classList.toggle('hidden', !show);
+      logoWrap.setAttribute('aria-hidden', show ? 'false' : 'true');
+      if (!show && logoPreview instanceof HTMLImageElement) {
+        logoPreview.removeAttribute('src');
+      }
+    }
+    function syncLogoToggleEnabled() {
+      const hasLogo = Boolean(getLogoUrl());
+      if (logoToggle instanceof HTMLInputElement) {
+        logoToggle.disabled = !hasLogo;
+        if (!hasLogo && logoToggle.checked) {
+          logoToggle.checked = false;
+          logoToggle.setAttribute('aria-checked', 'false');
+        }
+      }
+      const label = logoToggle?.closest('label');
+      if (label instanceof HTMLElement) {
+        label.classList.toggle('opacity-60', !hasLogo);
+        label.title = hasLogo
+          ? 'Incluir logo central'
+          : 'Subí un logo en Identidad para activar esta opción';
       }
     }
     function refreshPreview() {
       if (!(previewImg instanceof HTMLImageElement)) return;
-      if (qrMode === 'artistic' && artisticUrl) {
-        previewImg.src = artisticUrl;
-        previewImg.dataset.qrPreviewMode = 'artistic';
-        setLogoOverlayVisible(false);
-        return;
-      }
       const url = buildQrUrl({ format: 'png', size: 480 });
       if (url) {
         previewImg.src = url;
         previewImg.dataset.qrPreviewMode = 'standard';
         previewImg.classList.remove('hidden');
       }
+      syncLogoToggleEnabled();
       const includeLogo = logoToggle instanceof HTMLInputElement && logoToggle.checked;
       const logo = getLogoUrl();
-      const showLogo = Boolean(includeLogo && logo && qrMode === 'standard');
-      if (logoPreview instanceof HTMLImageElement && showLogo) logoPreview.src = logo;
-      setLogoOverlayVisible(showLogo);
+      const showLogo = Boolean(includeLogo && logo);
+      if (!(logoPreview instanceof HTMLImageElement)) {
+        setLogoOverlayVisible(false);
+        return;
+      }
+      if (!showLogo) {
+        setLogoOverlayVisible(false);
+        if (logoToggle instanceof HTMLInputElement)
+          logoToggle.setAttribute('aria-checked', 'false');
+        return;
+      }
+      logoPreview.onload = () => setLogoOverlayVisible(true);
+      logoPreview.onerror = () => setLogoOverlayVisible(false);
+      if (logoPreview.src !== logo) logoPreview.src = logo;
+      else setLogoOverlayVisible(true);
       if (logoToggle instanceof HTMLInputElement)
-        logoToggle.setAttribute('aria-checked', includeLogo ? 'true' : 'false');
-    }
-    function setMode(next) {
-      if (!isSuper && next === 'artistic') next = 'standard';
-      qrMode = next === 'artistic' ? 'artistic' : 'standard';
-      modeBtns.forEach((btn) => {
-        if (btn instanceof HTMLElement)
-          btn.setAttribute('aria-selected', btn.dataset.qrMode === qrMode ? 'true' : 'false');
-      });
-      if (viewStd instanceof HTMLElement) {
-        viewStd.hidden = qrMode !== 'standard';
-        viewStd.classList.toggle('hidden', qrMode !== 'standard');
-      }
-      if (viewArt instanceof HTMLElement) {
-        const show = isSuper && qrMode === 'artistic';
-        viewArt.hidden = !show;
-        viewArt.classList.toggle('hidden', !show);
-      }
-      refreshPreview();
+        logoToggle.setAttribute('aria-checked', 'true');
     }
     function setStyle(next) {
       qrStyle = next === 'brand' ? 'brand' : 'standard';
@@ -13092,85 +13270,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (btn instanceof HTMLElement)
           btn.setAttribute('aria-pressed', btn.dataset.qrStyle === qrStyle ? 'true' : 'false');
       });
-      if (qrMode === 'standard') refreshPreview();
+      refreshPreview();
     }
 
-    // ── Generar QR Artístico (lógica principal) ──────────────────────
-    async function generateArtisticQr(ev) {
-      ev?.preventDefault?.();
-      ev?.stopPropagation?.();
-
-      // PRIMERO: deshabilitar botón e indicar carga inmediatamente
-      if (generateBtn instanceof HTMLButtonElement) generateBtn.disabled = true;
-      if (generateLabel) generateLabel.textContent = '⏳ Generando QR... (puede tardar ~30s)';
-      generateSpinner?.classList.remove('hidden');
-      setPreviewLoading(true);
-      showError('');
-
-      try {
-        if (!isSuper) throw new Error('Solo SuperAdmin puede generar QR artísticos');
-
-        const promptEl = document.getElementById('prompt_personalizado');
-        const scaleEl  = document.getElementById('controlnet_conditioning_scale');
-        const prompt   = promptEl instanceof HTMLTextAreaElement ? promptEl.value.trim() : '';
-        const scale    = scaleEl instanceof HTMLInputElement ? scaleEl.value : '0.85';
-        const slug     = getSlug();
-        const rid      = getRestauranteId();
-
-        if (!slug || !rid) throw new Error('Guarda el restaurante y un slug antes de generar');
-        if (!prompt) {
-          if (promptEl instanceof HTMLElement) promptEl.focus();
-          throw new Error('Escribe un prompt personalizado para generar el QR artístico');
-        }
-
-        updateArtisticDownload(''); // deshabilitar descarga mientras genera
-
-        const res  = await fetch('/api/generate-artistic-qr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurante_id: rid,
-            slug,
-            prompt_personalizado: prompt,
-            controlnet_conditioning_scale: Number(scale),
-            peso_ia: Number(scale),
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || `Error ${res.status} del servidor`);
-
-        const imagenUrl = String(data.imagen_url || data.url || '').trim();
-        if (!imagenUrl) throw new Error('La API no devolvió una URL de imagen válida');
-
-        artisticUrl = imagenUrl;
-        panel.dataset.qrArtistic = artisticUrl;
-
-        if (previewImg instanceof HTMLImageElement) {
-          previewImg.src = artisticUrl;
-          previewImg.classList.remove('hidden');
-          previewImg.dataset.qrPreviewMode = 'artistic';
-        }
-        setLogoOverlayVisible(false);
-        updateArtisticDownload(artisticUrl);
-        showStatus('QR artístico generado ✓');
-
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Error desconocido al generar QR artístico';
-        console.error('[qr-artistic]', err);
-        showError(msg);
-        alert('Error al generar QR: ' + msg);
-        updateArtisticDownload(artisticUrl); // restaurar descarga previa si la hay
-
-      } finally {
-        setPreviewLoading(false);
-        generateSpinner?.classList.add('hidden');
-        if (generateLabel) generateLabel.textContent = '⚡ Generar QR Artístico con IA';
-        // Siempre rehabilitar para que el usuario pueda reintentar
-        if (generateBtn instanceof HTMLButtonElement) generateBtn.disabled = false;
-      }
-    }
-
-    // ── Descarga helpers ─────────────────────────────────────────────
     async function loadImage(src) {
       return new Promise((resolve, reject) => {
         const img = new Image();
@@ -13183,104 +13285,170 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     function triggerDownload(blob, filename) {
       const href = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = href; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       setTimeout(() => URL.revokeObjectURL(href), 1500);
     }
+    /** Dibuja placa blanca + logo al 23% centrado (mismo criterio preview / export). */
+    function drawCenteredLogo(ctx, size, logoImg) {
+      const box = Math.round(size * QR_LOGO_RATIO);
+      const pad = Math.max(4, Math.round(box * QR_LOGO_PAD_RATIO));
+      const boxX = (size - box) / 2;
+      const boxY = (size - box) / 2;
+      const inner = Math.max(1, box - pad * 2);
+      const sc = Math.min(inner / logoImg.naturalWidth, inner / logoImg.naturalHeight);
+      const drawW = Math.max(1, Math.min(inner, Math.round(logoImg.naturalWidth * sc)));
+      const drawH = Math.max(1, Math.min(inner, Math.round(logoImg.naturalHeight * sc)));
+      const r = Math.max(8, Math.round(box * 0.16));
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(boxX + r, boxY);
+      ctx.arcTo(boxX + box, boxY, boxX + box, boxY + box, r);
+      ctx.arcTo(boxX + box, boxY + box, boxX, boxY + box, r);
+      ctx.arcTo(boxX, boxY + box, boxX, boxY, r);
+      ctx.arcTo(boxX, boxY, boxX + box, boxY, r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.drawImage(logoImg, boxX + (box - drawW) / 2, boxY + (box - drawH) / 2, drawW, drawH);
+      return { box, boxX, boxY, pad, drawW, drawH };
+    }
+    async function composeQrCanvas(size = 1024) {
+      const pngUrl = buildQrUrl({ format: 'png', size });
+      if (!pngUrl) throw new Error('Guarda un slug para generar el QR');
+      const qrImg = await loadImage(pngUrl);
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas no disponible');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(qrImg, 0, 0, size, size);
+      const includeLogo = logoToggle instanceof HTMLInputElement && logoToggle.checked;
+      const logoUrl = getLogoUrl();
+      if (includeLogo && logoUrl) {
+        const logo = await loadImage(logoUrl);
+        drawCenteredLogo(ctx, size, logo);
+      }
+      return canvas;
+    }
+    function canvasToDataUrl(canvas) {
+      return canvas.toDataURL('image/png');
+    }
 
-    // ── Event listeners ──────────────────────────────────────────────
-    modeBtns.forEach((btn) =>
-      btn.addEventListener('click', () => setMode(btn.getAttribute('data-qr-mode') || 'standard'), { signal })
-    );
     styleBtns.forEach((btn) =>
-      btn.addEventListener('click', () => setStyle(btn.getAttribute('data-qr-style') || 'standard'), { signal })
+      btn.addEventListener('click', () => setStyle(btn.getAttribute('data-qr-style') || 'standard'), { signal }),
     );
     logoToggle?.addEventListener('change', refreshPreview, { signal });
-    brandInput?.addEventListener('input', () => {
-      if (qrStyle === 'brand' && qrMode === 'standard') refreshPreview();
-    }, { signal });
-    pesoRange?.addEventListener('input', () => {
-      if (pesoValue instanceof HTMLElement && pesoRange instanceof HTMLInputElement)
-        pesoValue.textContent = Number(pesoRange.value).toFixed(2);
-    }, { signal });
-    copyBtn?.addEventListener('click', async () => {
-      const url = getPublicUrl();
-      if (!url) { showError('No hay slug público para copiar'); return; }
-      try {
-        await navigator.clipboard.writeText(url);
-        showError(''); showStatus('Enlace copiado');
-        if (copyBtn instanceof HTMLButtonElement) {
-          const prev = copyBtn.textContent;
-          copyBtn.textContent = '¡Copiado!';
-          setTimeout(() => { copyBtn.textContent = prev || 'Copiar'; }, 1600);
+    brandInput?.addEventListener(
+      'input',
+      () => {
+        if (qrStyle === 'brand') refreshPreview();
+      },
+      { signal },
+    );
+    logoUrlInput?.addEventListener(
+      'input',
+      () => {
+        if (logoUrlInput instanceof HTMLInputElement) {
+          panel.dataset.qrLogo = logoUrlInput.value.trim();
         }
-      } catch {
-        if (urlInput instanceof HTMLInputElement) { urlInput.select(); document.execCommand('copy'); showStatus('Enlace copiado'); }
-      }
-    }, { signal });
-
-    dlSvg?.addEventListener('click', async () => {
-      const slug = getSlug(); const svgUrl = buildQrUrl({ format: 'svg', size: 1024 });
-      if (!slug || !svgUrl) { showError('Guarda un slug para descargar el QR'); return; }
-      showError('');
-      try {
-        const res = await fetch(svgUrl);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        triggerDownload(await res.blob(), `qr-${slug}.svg`);
-        showStatus('SVG descargado');
-      } catch (err) { showError(err instanceof Error ? err.message : 'Error al descargar SVG'); }
-    }, { signal });
-
-    dlPng?.addEventListener('click', async () => {
-      const slug = getSlug(); const pngUrl = buildQrUrl({ format: 'png', size: 1024 });
-      if (!slug || !pngUrl) { showError('Guarda un slug para descargar el QR'); return; }
-      showError('');
-      try {
-        const qrImg = await loadImage(pngUrl);
-        const size = 1024;
-        const canvas = document.createElement('canvas');
-        canvas.width = size; canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Canvas no disponible');
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, size, size);
-        ctx.drawImage(qrImg, 0, 0, size, size);
-        const includeLogo = logoToggle instanceof HTMLInputElement && logoToggle.checked;
-        const logoUrl = getLogoUrl();
-        if (includeLogo && logoUrl) {
-          try {
-            const logo = await loadImage(logoUrl);
-            const box = Math.round(size * 0.34); const pad = Math.round(box * 0.1);
-            const boxX = (size - box) / 2; const boxY = (size - box) / 2;
-            const inner = box - pad * 2;
-            const sc = Math.min(inner / logo.naturalWidth, inner / logo.naturalHeight);
-            const drawW = Math.max(1, Math.round(logo.naturalWidth * sc));
-            const drawH = Math.max(1, Math.round(logo.naturalHeight * sc));
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            const r = Math.max(12, Math.round(box * 0.12));
-            ctx.moveTo(boxX + r, boxY);
-            ctx.arcTo(boxX + box, boxY, boxX + box, boxY + box, r);
-            ctx.arcTo(boxX + box, boxY + box, boxX, boxY + box, r);
-            ctx.arcTo(boxX, boxY + box, boxX, boxY, r);
-            ctx.arcTo(boxX, boxY, boxX + box, boxY, r);
-            ctx.closePath(); ctx.fill();
-            ctx.drawImage(logo, boxX + (box - drawW) / 2, boxY + (box - drawH) / 2, drawW, drawH);
-          } catch { /* logo opcional */ }
+        refreshPreview();
+      },
+      { signal },
+    );
+    copyBtn?.addEventListener(
+      'click',
+      async () => {
+        const url = getPublicUrl();
+        if (!url) {
+          showError('No hay slug público para copiar');
+          return;
         }
-        const blob = await new Promise((res, rej) =>
-          canvas.toBlob((b) => (b ? res(b) : rej(new Error('No se pudo exportar PNG'))), 'image/png')
-        );
-        triggerDownload(blob, `qr-${slug}.png`);
-        showStatus('PNG descargado');
-      } catch (err) { showError(err instanceof Error ? err.message : 'Error al descargar PNG'); }
-    }, { signal });
+        try {
+          await navigator.clipboard.writeText(url);
+          showError('');
+          showStatus('Enlace copiado');
+          if (copyBtn instanceof HTMLButtonElement) {
+            const prev = copyBtn.textContent;
+            copyBtn.textContent = '¡Copiado!';
+            setTimeout(() => {
+              copyBtn.textContent = prev || 'Copiar';
+            }, 1600);
+          }
+        } catch {
+          if (urlInput instanceof HTMLInputElement) {
+            urlInput.select();
+            document.execCommand('copy');
+            showStatus('Enlace copiado');
+          }
+        }
+      },
+      { signal },
+    );
 
-    // Generación artística: delegación en <script is:inline> (#btn-generar-artistico)
-    // — no registrar click aquí para evitar doble fetch.
+    dlSvg?.addEventListener(
+      'click',
+      async () => {
+        const slug = getSlug();
+        if (!slug) {
+          showError('Guarda un slug para descargar el QR');
+          return;
+        }
+        showError('');
+        try {
+          const includeLogo = logoToggle instanceof HTMLInputElement && logoToggle.checked && getLogoUrl();
+          if (!includeLogo) {
+            const svgUrl = buildQrUrl({ format: 'svg', size: 1024 });
+            if (!svgUrl) throw new Error('No se pudo generar el SVG');
+            const res = await fetch(svgUrl);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            triggerDownload(await res.blob(), `qr-${slug}.svg`);
+            showStatus('SVG descargado');
+            return;
+          }
+          // Con logo: SVG compuesto (QR + placa 23%) para mantener el mismo criterio visual.
+          const canvas = await composeQrCanvas(1024);
+          const dataUrl = canvasToDataUrl(canvas);
+          const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <image width="1024" height="1024" href="${dataUrl}" xlink:href="${dataUrl}"/>
+</svg>`;
+          triggerDownload(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), `qr-${slug}.svg`);
+          showStatus('SVG descargado');
+        } catch (err) {
+          showError(err instanceof Error ? err.message : 'Error al descargar SVG');
+        }
+      },
+      { signal },
+    );
 
-    // ── Estado inicial ───────────────────────────────────────────────
-    updateArtisticDownload(artisticUrl);
-    setMode('standard');
+    dlPng?.addEventListener(
+      'click',
+      async () => {
+        const slug = getSlug();
+        if (!slug) {
+          showError('Guarda un slug para descargar el QR');
+          return;
+        }
+        showError('');
+        try {
+          const canvas = await composeQrCanvas(1024);
+          const blob = await new Promise((res, rej) =>
+            canvas.toBlob((b) => (b ? res(b) : rej(new Error('No se pudo exportar PNG'))), 'image/png'),
+          );
+          triggerDownload(blob, `qr-${slug}.png`);
+          showStatus('PNG descargado');
+        } catch (err) {
+          showError(err instanceof Error ? err.message : 'Error al descargar PNG');
+        }
+      },
+      { signal },
+    );
+
     refreshPreview();
   }
 

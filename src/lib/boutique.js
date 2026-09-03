@@ -88,7 +88,7 @@ function normalizeProducto(raw, index = 0) {
 
 /**
  * @param {unknown} configRaw
- * @returns {{ productos: BoutiqueProducto[] }}
+ * @returns {{ productos: BoutiqueProducto[], titulo: string, catalogo_url: string }}
  */
 export function parseBoutiqueConfig(configRaw) {
   const cfg = asObject(configRaw);
@@ -98,14 +98,25 @@ export function parseBoutiqueConfig(configRaw) {
       ? cfg.products
       : null;
 
+  const titulo = String(cfg.titulo || cfg.title || cfg.nombre || 'Boutique').trim().slice(0, 80);
+  const catalogo_url = String(
+    cfg.catalogo_url || cfg.catalogo || cfg.url || cfg.href || '',
+  )
+    .trim()
+    .slice(0, 500);
+
   if (!list || list.length === 0) {
     return {
       productos: DEFAULT_BOUTIQUE_PRODUCTOS.map((p) => ({ ...p })),
+      titulo: titulo || 'Boutique',
+      catalogo_url,
     };
   }
 
   return {
     productos: list.slice(0, 12).map((item, i) => normalizeProducto(item, i)),
+    titulo: titulo || 'Boutique',
+    catalogo_url,
   };
 }
 
@@ -121,16 +132,25 @@ export function getBoutiqueProductosActivos(configRaw) {
 /**
  * Normaliza payload de API / form a JSON persistible.
  * @param {unknown} rawProductos
- * @returns {{ productos: BoutiqueProducto[] }}
+ * @param {{ titulo?: string, catalogo_url?: string }} [meta]
+ * @returns {{ productos: BoutiqueProducto[], titulo: string, catalogo_url: string }}
  */
-export function buildBoutiqueConfig(rawProductos) {
+export function buildBoutiqueConfig(rawProductos, meta = {}) {
   const list = Array.isArray(rawProductos) ? rawProductos : [];
+  const titulo = String(meta.titulo || 'Boutique').trim().slice(0, 80) || 'Boutique';
+  const catalogo_url = String(meta.catalogo_url || '')
+    .trim()
+    .slice(0, 500);
   if (list.length === 0) {
     return {
       productos: DEFAULT_BOUTIQUE_PRODUCTOS.map((p) => ({ ...p })),
+      titulo,
+      catalogo_url,
     };
   }
   return {
     productos: list.slice(0, 12).map((item, i) => normalizeProducto(item, i)),
+    titulo,
+    catalogo_url,
   };
 }

@@ -42,7 +42,6 @@ const RESTAURANTE_ADMIN_SELECT = [
   'config_reservas',
   'config_boutique',
   'logo_url',
-  'qr_artistico_url',
   'eslogan',
   'secciones_fondo',
   'nosotros_bloques',

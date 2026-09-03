@@ -534,6 +534,98 @@ export function normalizeUbicacionTheme(value) {
   return DEFAULT_UBICACION_THEME;
 }
 
+/** Layouts del Studio Pedir / Reservas. */
+export const RESERVAS_LAYOUT_OPTIONS = Object.freeze([
+  {
+    id: 'whatsapp_concierge',
+    destino: 'whatsapp',
+    label: 'WhatsApp Asistido',
+    hint: 'Mensaje estructurado con fecha y personas',
+  },
+  {
+    id: 'native_modal',
+    destino: 'nativo',
+    label: 'Formulario Nativo',
+    hint: 'Modal de solicitud de mesa dentro de la webapp',
+  },
+  {
+    id: 'external_engine',
+    destino: 'enlace',
+    label: 'Plataforma Externa',
+    hint: 'CoverManager, OpenTable, TheFork o URL',
+  },
+  {
+    id: 'direct_call',
+    destino: 'telefono',
+    label: 'Llamada Directa',
+    hint: 'Click-to-call telefónico',
+  },
+]);
+
+/**
+ * @param {unknown} value
+ * @returns {'whatsapp_concierge' | 'native_modal' | 'external_engine' | 'direct_call'}
+ */
+export function normalizeReservasLayout(value) {
+  const clean = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  if (
+    clean === 'whatsapp_concierge' ||
+    clean === 'whatsapp' ||
+    clean === 'wa' ||
+    clean.includes('whatsapp') ||
+    clean.includes('concierge')
+  ) {
+    return 'whatsapp_concierge';
+  }
+  if (
+    clean === 'native_modal' ||
+    clean === 'nativo' ||
+    clean === 'native' ||
+    clean.includes('modal') ||
+    clean.includes('formulario')
+  ) {
+    return 'native_modal';
+  }
+  if (
+    clean === 'direct_call' ||
+    clean === 'telefono' ||
+    clean === 'tel' ||
+    clean === 'call' ||
+    clean.includes('llamada') ||
+    clean.includes('call')
+  ) {
+    return 'direct_call';
+  }
+  if (
+    clean === 'external_engine' ||
+    clean === 'enlace' ||
+    clean === 'external' ||
+    clean.includes('opentable') ||
+    clean.includes('cover') ||
+    clean.includes('thefork') ||
+    clean.includes('extern')
+  ) {
+    return 'external_engine';
+  }
+  return 'whatsapp_concierge';
+}
+
+/**
+ * @param {unknown} layoutOrDestino
+ * @returns {'whatsapp' | 'enlace' | 'telefono' | 'nativo'}
+ */
+export function reservasLayoutToDestino(layoutOrDestino) {
+  const layout = normalizeReservasLayout(layoutOrDestino);
+  const hit = RESERVAS_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
+  return /** @type {'whatsapp' | 'enlace' | 'telefono' | 'nativo'} */ (
+    hit?.destino || 'whatsapp'
+  );
+}
+
 /**
  * @param {string} id
  * @param {string} fallbackTagline

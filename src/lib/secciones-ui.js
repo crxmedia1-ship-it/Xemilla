@@ -10,6 +10,8 @@ import {
   normalizeNosotrosLayout,
   ubicacionLayoutToTheme,
   normalizeUbicacionLayout,
+  normalizeReservasLayout,
+  reservasLayoutToDestino,
 } from './layout-themes.js';
 import { normalizeContenedorEstilo, normalizeBloqueAlineacion } from './nosotros-layout.js';
 import { normalizeGadgetServiciosEstilo } from './gadgets.js';
@@ -141,28 +143,83 @@ export function parseReservasConfig(config) {
   if (!raw || typeof raw !== 'object') raw = {};
   const c = /** @type {Record<string, unknown>} */ (raw);
 
-  const destinoTipo = String(c.destino_tipo || c.tipo || '')
-    .trim()
-    .toLowerCase();
-  const tipo =
-    destinoTipo === 'whatsapp' || destinoTipo === 'wa'
-      ? 'whatsapp'
-      : 'enlace';
+  const layout = normalizeReservasLayout(
+    c.layout || c.destino_tipo || c.tipo || '',
+  );
+  const destinoTipo = reservasLayoutToDestino(layout);
 
   const destinoValor = String(
     c.destino_valor || c.url || c.href || c.telefono || c.whatsapp || '',
   ).trim();
-  const label = String(c.label || c.boton_texto || c.titulo || 'PEDIR / RESERVAR').trim();
+  const label = String(
+    c.label || c.boton_texto || c.titulo || 'Reservar Mesa',
+  ).trim();
+
+  const botonUbicacionRaw = String(c.boton_ubicacion || c.ubicacion_boton || '')
+    .trim()
+    .toLowerCase();
+  const botonUbicacion =
+    botonUbicacionRaw === 'hero' || botonUbicacionRaw === 'header'
+      ? botonUbicacionRaw
+      : botonUbicacionRaw === 'flotante' || botonUbicacionRaw === 'floating'
+        ? 'flotante'
+        : 'flotante';
+
+  const efectoRaw = String(c.efecto_visual || c.efecto || '')
+    .trim()
+    .toLowerCase();
+  const efectoVisual =
+    efectoRaw === 'pulso' || efectoRaw === 'pulse'
+      ? 'pulso'
+      : efectoRaw === 'glow' || efectoRaw === 'brillo'
+        ? 'glow'
+        : 'estatico';
+
+  const plataformaRaw = String(c.plataforma_externa || c.plataforma || '')
+    .trim()
+    .toLowerCase();
+  const plataformaExterna =
+    plataformaRaw === 'opentable' ||
+    plataformaRaw === 'covermanager' ||
+    plataformaRaw === 'thefork'
+      ? plataformaRaw
+      : 'custom';
+
+  const confirmacionRaw = String(c.confirmacion_nativa || c.confirmacion || '')
+    .trim()
+    .toLowerCase();
+  const confirmacionNativa =
+    confirmacionRaw === 'email' ||
+    confirmacionRaw === 'ambas' ||
+    confirmacionRaw === 'whatsapp'
+      ? confirmacionRaw
+      : c.confirmacion_whatsapp === true
+        ? 'whatsapp'
+        : c.confirmacion_email === true
+          ? 'email'
+          : 'ninguna';
+
+  const mensajeWhatsapp = String(
+    c.mensaje_whatsapp ||
+      c.mensaje ||
+      'Hola, me gustaría reservar mesa para {comensales} el {fecha} a las {hora}.',
+  ).trim();
+  const politica = String(c.politica || c.politica_reserva || '').trim();
 
   let href = '';
   if (destinoValor) {
-    if (tipo === 'whatsapp') {
+    if (destinoTipo === 'whatsapp') {
       if (/^https?:\/\//i.test(destinoValor)) {
         href = destinoValor;
       } else {
         const digits = destinoValor.replace(/\D/g, '');
         href = digits ? `https://wa.me/${digits}` : '';
       }
+    } else if (destinoTipo === 'telefono') {
+      const digits = destinoValor.replace(/[^\d+]/g, '');
+      href = digits ? `tel:${digits}` : '';
+    } else if (destinoTipo === 'nativo') {
+      href = '#reservas-modal';
     } else {
       href = /^https?:\/\//i.test(destinoValor)
         ? destinoValor
@@ -171,9 +228,23 @@ export function parseReservasConfig(config) {
   }
 
   return {
-    label: label || 'PEDIR / RESERVAR',
-    destinoTipo: tipo,
+    label: label || 'Reservar Mesa',
+    layout,
+    destinoTipo,
+    destino_tipo: destinoTipo,
     destinoValor,
+    destino_valor: destinoValor,
+    botonUbicacion,
+    boton_ubicacion: botonUbicacion,
+    efectoVisual,
+    efecto_visual: efectoVisual,
+    mensajeWhatsapp,
+    mensaje_whatsapp: mensajeWhatsapp,
+    plataformaExterna,
+    plataforma_externa: plataformaExterna,
+    politica,
+    confirmacionNativa,
+    confirmacion_nativa: confirmacionNativa,
     url: href,
     href,
   };
@@ -1001,6 +1072,56 @@ function isLightHex(hex) {
 }
 
 /**
+ * Preferencias Studio de Gadgets (AR / nutrición).
+ * @param {unknown} value
+ */
+export function normalizeGadgetsUi(value) {
+  const g =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? /** @type {Record<string, unknown>} */ (value)
+      : {};
+  const ar =
+    g.ar && typeof g.ar === 'object' && !Array.isArray(g.ar)
+      ? /** @type {Record<string, unknown>} */ (g.ar)
+      : {};
+  const nut =
+    g.nutricion && typeof g.nutricion === 'object' && !Array.isArray(g.nutricion)
+      ? /** @type {Record<string, unknown>} */ (g.nutricion)
+      : {};
+
+  const modoRaw = String(ar.modo_vista || ar.modo || '')
+    .trim()
+    .toLowerCase();
+  const modo_vista =
+    modoRaw === 'proyeccion_mesa' ||
+    modoRaw === 'proyeccion' ||
+    modoRaw === 'mesa'
+      ? 'proyeccion_mesa'
+      : 'rotacion_360';
+
+  const intensidadRaw = Number(ar.intensidad_iluminacion ?? ar.intensidad ?? 70);
+  const intensidad_iluminacion = Number.isFinite(intensidadRaw)
+    ? Math.max(0, Math.min(100, Math.round(intensidadRaw)))
+    : 70;
+
+  const asBool = (v, fallback = false) => {
+    if (v === true || v === 'true' || v === 1 || v === '1') return true;
+    if (v === false || v === 'false' || v === 0 || v === '0') return false;
+    return fallback;
+  };
+
+  return {
+    ar: { modo_vista, intensidad_iluminacion },
+    nutricion: {
+      filtro_gluten_free: asBool(nut.filtro_gluten_free ?? nut.gluten_free, true),
+      filtro_vegano: asBool(nut.filtro_vegano ?? nut.vegano, true),
+      filtro_frutos_secos: asBool(nut.filtro_frutos_secos ?? nut.frutos_secos, true),
+      filtro_calorias: asBool(nut.filtro_calorias ?? nut.calorias, true),
+    },
+  };
+}
+
+/**
  * UI independiente de la sección Menú (no hereda Home).
  * @param {Record<string, unknown>} menu
  * @param {Record<string, unknown>} [extras]
@@ -1243,6 +1364,7 @@ export function parseUiEstilo(value) {
       ),
       theme: ubicacionLayoutToTheme(ubicacion.layout || ubicacion.theme || ''),
     },
+    gadgets: normalizeGadgetsUi(raw.gadgets || {}),
     /** Canónico; alias histórico: columna restaurantes.custom_css */
     css_avanzado: sanitizeCssAvanzado(
       raw.css_avanzado ?? raw.custom_css ?? home.css_avanzado ?? home.custom_css ?? '',
@@ -1501,6 +1623,19 @@ export function buildUiEstiloFromBody(raw) {
         raw.ubicacion_layout ?? raw.ubicacion_theme ?? raw.ubicacion?.theme,
       ),
     },
+    gadgets: normalizeGadgetsUi({
+      ar: {
+        modo_vista: raw.gadget_ar_modo_vista ?? raw.gadgets?.ar?.modo_vista,
+        intensidad_iluminacion:
+          raw.gadget_ar_intensidad ?? raw.gadgets?.ar?.intensidad_iluminacion,
+      },
+      nutricion: {
+        filtro_gluten_free: raw.gadget_nut_filtro_gluten_free,
+        filtro_vegano: raw.gadget_nut_filtro_vegano,
+        filtro_frutos_secos: raw.gadget_nut_filtro_frutos_secos,
+        filtro_calorias: raw.gadget_nut_filtro_calorias,
+      },
+    }),
     css_avanzado: sanitizeCssAvanzado(raw.css_avanzado ?? raw.custom_css ?? ''),
   };
 }

@@ -9,7 +9,7 @@ import {
   sanitizeCssAvanzado,
   normalizeMenuUi,
 } from '../../lib/secciones-ui.js';
-import { buildBoutiqueConfig } from '../../lib/boutique.js';
+import { buildBoutiqueConfig, parseBoutiqueConfig } from '../../lib/boutique.js';
 import { normalizeMapsStorage } from '../../lib/maps-preview.js';
 import {
   homeLayoutToTheme,
@@ -18,6 +18,8 @@ import {
   normalizeUbicacionTheme,
   nosotrosLayoutToTheme,
   normalizeNosotrosLayout,
+  normalizeReservasLayout,
+  reservasLayoutToDestino,
 } from '../../lib/layout-themes.js';
 import {
   normalizeTypographyComboId,
@@ -155,7 +157,7 @@ async function handleUpdateMarca({ request, cookies }) {
 
   const { data: existingRow } = await writeClient
     .from('restaurantes')
-    .select('ui_estilo')
+    .select('ui_estilo, config_boutique')
     .eq('id', restauranteId)
     .maybeSingle();
 
@@ -179,6 +181,18 @@ async function handleUpdateMarca({ request, cookies }) {
       theme: nosotrosTheme,
     },
     ubicacion: { ...(prevUi.ubicacion || {}), ...(uiEstiloBuilt.ubicacion || {}) },
+    gadgets: {
+      ...(prevUi.gadgets || {}),
+      ...(uiEstiloBuilt.gadgets || {}),
+      ar: {
+        ...((prevUi.gadgets && prevUi.gadgets.ar) || {}),
+        ...((uiEstiloBuilt.gadgets && uiEstiloBuilt.gadgets.ar) || {}),
+      },
+      nutricion: {
+        ...((prevUi.gadgets && prevUi.gadgets.nutricion) || {}),
+        ...((uiEstiloBuilt.gadgets && uiEstiloBuilt.gadgets.nutricion) || {}),
+      },
+    },
   };
   patch.ui_estilo = uiEstilo;
 
@@ -257,19 +271,60 @@ async function handleUpdateMarca({ request, cookies }) {
   const reservasLabel =
     normalizeText(raw.reservas_label) ||
     normalizeText(raw.reservas_boton) ||
-    'PEDIR / RESERVAR';
-  const destinoTipo = String(raw.reservas_destino_tipo || 'enlace')
-    .trim()
-    .toLowerCase();
+    'Reservar Mesa';
+  const reservasLayout = normalizeReservasLayout(
+    raw.reservas_layout || raw.reservas_destino_tipo,
+  );
+  const destinoTipo = reservasLayoutToDestino(reservasLayout);
   const destinoValor =
     normalizeText(raw.reservas_destino_valor) ||
     normalizeUrlOrText(raw.reservas_url) ||
     '';
+  const botonUbicacionRaw = String(raw.reservas_boton_ubicacion || '')
+    .trim()
+    .toLowerCase();
+  const botonUbicacion =
+    botonUbicacionRaw === 'hero' || botonUbicacionRaw === 'header'
+      ? botonUbicacionRaw
+      : 'flotante';
+  const efectoRaw = String(raw.reservas_efecto_visual || '')
+    .trim()
+    .toLowerCase();
+  const efectoVisual =
+    efectoRaw === 'pulso' || efectoRaw === 'glow' ? efectoRaw : 'estatico';
+  const plataformaRaw = String(raw.reservas_plataforma_externa || '')
+    .trim()
+    .toLowerCase();
+  const plataformaExterna =
+    plataformaRaw === 'opentable' ||
+    plataformaRaw === 'covermanager' ||
+    plataformaRaw === 'thefork'
+      ? plataformaRaw
+      : 'custom';
+  const confirmacionRaw = String(raw.reservas_confirmacion_nativa || '')
+    .trim()
+    .toLowerCase();
+  const confirmacionNativa =
+    confirmacionRaw === 'whatsapp' ||
+    confirmacionRaw === 'email' ||
+    confirmacionRaw === 'ambas'
+      ? confirmacionRaw
+      : 'ninguna';
+
   patch.config_reservas = {
     label: reservasLabel,
-    destino_tipo: destinoTipo === 'whatsapp' ? 'whatsapp' : 'enlace',
+    layout: reservasLayout,
+    destino_tipo: destinoTipo,
     destino_valor: destinoValor,
     url: destinoValor,
+    boton_ubicacion: botonUbicacion,
+    efecto_visual: efectoVisual,
+    mensaje_whatsapp: normalizeText(raw.reservas_mensaje_whatsapp, {
+      keepNewlines: true,
+    }),
+    plataforma_externa: plataformaExterna,
+    politica: normalizeText(raw.reservas_politica, { keepNewlines: true }),
+    confirmacion_nativa: confirmacionNativa,
   };
 
   // Gadgets Studio (pasivos / valor agregado) — legacy live/mesero/cuenta se ignoran
@@ -321,8 +376,25 @@ async function handleUpdateMarca({ request, cookies }) {
     Array.isArray(/** @type {any} */ (raw.config_boutique).productos)
   ) {
     boutiqueProductos = /** @type {any} */ (raw.config_boutique).productos;
+  } else if (
+    existingRow?.config_boutique &&
+    typeof existingRow.config_boutique === 'object'
+  ) {
+    boutiqueProductos = parseBoutiqueConfig(existingRow.config_boutique).productos;
   }
-  patch.config_boutique = buildBoutiqueConfig(boutiqueProductos);
+  const prevBoutique = parseBoutiqueConfig(existingRow?.config_boutique);
+  const tituloIn = Object.prototype.hasOwnProperty.call(raw, 'boutique_titulo');
+  const urlIn = Object.prototype.hasOwnProperty.call(raw, 'boutique_catalogo_url');
+  patch.config_boutique = buildBoutiqueConfig(boutiqueProductos, {
+    titulo: tituloIn
+      ? normalizeText(raw.boutique_titulo) || 'Boutique'
+      : prevBoutique.titulo || 'Boutique',
+    catalogo_url: urlIn
+      ? normalizeUrlOrText(raw.boutique_catalogo_url) ||
+        normalizeText(raw.boutique_catalogo_url) ||
+        ''
+      : prevBoutique.catalogo_url || '',
+  });
 
   const { data, error } = await updateRestauranteMarca(writeClient, restauranteId, patch);
 
