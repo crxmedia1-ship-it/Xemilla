@@ -195,14 +195,13 @@ const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('
 </section>
 
 <style>
-  @media (max-width: 767px), (pointer: coarse) {
-    .panel-scroll-root {
-      overflow-anchor: none;
-      -webkit-overflow-scrolling: touch;
-    }
+  .panel-scroll-root {
+    overflow-anchor: none;
+    -webkit-overflow-scrolling: touch;
+  }
 
-    .panel-sheet[data-section='menu'] > header {
-      display: none;
-    }
+  /* El menú usa su propia barra sticky (título, divisas, cerrar). */
+  .panel-sheet[data-section='menu'] > header {
+    display: none;
   }
 </style>
