@@ -1,26 +1,44 @@
 /**
  * Datos compartidos para plantillas Ubicación (modal / split / minimal).
  */
+import { isEstadoHorarioRow, parseCerradoTemporal } from './horarios-semana.js';
+
+function filasSinEstado(filas) {
+  if (!Array.isArray(filas)) return [];
+  return filas.filter((row) => row && !isEstadoHorarioRow(row));
+}
 
 /**
  * @param {string | Array<{ dia: string, horas: string }>} horarios
  * @param {Array<{ dia: string, horas: string }> | undefined} horariosRows
  */
 export function resolveHorarioFilas(horarios, horariosRows) {
-  if (Array.isArray(horariosRows) && horariosRows.length > 0) return horariosRows;
-  if (Array.isArray(horarios) && horarios.length > 0) return horarios;
+  if (Array.isArray(horariosRows) && horariosRows.length > 0) return filasSinEstado(horariosRows);
+  if (Array.isArray(horarios) && horarios.length > 0) return filasSinEstado(horarios);
   if (typeof horarios === 'string' && horarios.trim()) {
-    return horarios
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const idx = line.indexOf(':');
-        if (idx === -1) return { dia: '', horas: line };
-        return { dia: line.slice(0, idx).trim(), horas: line.slice(idx + 1).trim() };
-      });
+    return filasSinEstado(
+      horarios
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const idx = line.indexOf(':');
+          if (idx === -1) return { dia: '', horas: line };
+          return { dia: line.slice(0, idx).trim(), horas: line.slice(idx + 1).trim() };
+        }),
+    );
   }
   return [];
+}
+
+/**
+ * @param {string | Array<{ dia: string, horas: string }>} horarios
+ * @param {Array<{ dia: string, horas: string }> | undefined} horariosRows
+ */
+export function isHorarioCerradoTemporal(horarios, horariosRows) {
+  if (typeof horarios === 'string' && parseCerradoTemporal(horarios)) return true;
+  const lists = [horariosRows, Array.isArray(horarios) ? horarios : null];
+  return lists.some((list) => Array.isArray(list) && list.some((row) => isEstadoHorarioRow(row)));
 }
 
 /**

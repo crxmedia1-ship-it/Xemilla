@@ -161,6 +161,20 @@ export function refreshUbicacionLiveStatus(panel) {
 
   highlightTodayRows(panel, now);
 
+  if (panel.dataset.cerradoTemporal === 'true') {
+    if (labelEl) labelEl.textContent = 'CERRADO';
+    if (badgeEl instanceof HTMLElement) {
+      badgeEl.dataset.open = 'false';
+      badgeEl.classList.remove('is-open');
+      badgeEl.classList.add('is-closed');
+    }
+    if (dotEl instanceof HTMLElement) {
+      dotEl.classList.remove('is-open');
+      dotEl.classList.add('is-closed');
+    }
+    return;
+  }
+
   if (!Array.isArray(horarios) || horarios.length === 0) {
     if (labelEl) labelEl.textContent = 'Horario no disponible';
     if (badgeEl instanceof HTMLElement) {

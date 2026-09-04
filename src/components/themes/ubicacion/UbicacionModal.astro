@@ -6,6 +6,7 @@ import {
   resolveHorarioFilas,
   resolveRedesActivas,
   resolveMapsHref,
+  isHorarioCerradoTemporal,
 } from '../../../lib/ubicacion-theme-data.js';
 import UbicacionActionPills from './UbicacionActionPills.astro';
 
@@ -65,6 +66,7 @@ const redesActivas =   resolveRedesActivas(instagram, redes, whatsapp);
 
 const horarioFilas = resolveHorarioFilas(horarios, horariosRows);
 const horariosJson = JSON.stringify(horarioFilas);
+const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
 ---
 
 <div
@@ -100,6 +102,7 @@ const horariosJson = JSON.stringify(horarioFilas);
       data-ubicacion-panel
       data-ubicacion-theme="modal"
       data-horarios={horariosJson}
+      data-cerrado-temporal={cerradoTemporal ? 'true' : 'false'}
     >
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">

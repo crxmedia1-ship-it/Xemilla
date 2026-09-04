@@ -245,7 +245,8 @@ export function normalizeHorarios(horarios) {
         dia: line.slice(0, idx).trim(),
         horas: line.slice(idx + 1).trim(),
       };
-    });
+    })
+    .filter((row) => !/^estado$/i.test(row.dia));
 }
 
 /**

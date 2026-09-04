@@ -9,10 +9,54 @@
  *   button_text: string,
  *   action_type: 'whatsapp' | 'category' | 'close',
  *   action_url: string,
+ *   duration_preset: 'indefinite' | 'today' | 'weekend' | 'custom' | 'schedule',
+ *   expires_at: string | null,
  * }} PopupBanner
  */
 
 const ACTION_TYPES = new Set(['whatsapp', 'category', 'close']);
+const DURATION_PRESETS = new Set(['indefinite', 'today', 'weekend', 'custom', 'schedule']);
+
+/**
+ * @param {Date} d
+ * @returns {string}
+ */
+function toIso(d) {
+  return d.toISOString();
+}
+
+/**
+ * @param {'indefinite' | 'today' | 'weekend' | 'custom' | 'schedule'} preset
+ * @param {string} [customDate] YYYY-MM-DD
+ * @param {string} [customTime] HH:mm
+ * @returns {string | null}
+ */
+export function computePopupExpiresAt(preset, customDate = '', customTime = '23:59') {
+  const now = new Date();
+  if (preset === 'indefinite') return null;
+  if (preset === 'today') {
+    return toIso(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+  }
+  if (preset === 'weekend') {
+    const end = new Date(now);
+    const day = end.getDay();
+    const daysUntilSunday = day === 0 ? 0 : 7 - day;
+    end.setDate(end.getDate() + daysUntilSunday);
+    end.setHours(23, 59, 59, 999);
+    return toIso(end);
+  }
+  if (preset === 'custom' || preset === 'schedule') {
+    const raw = String(customDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+    const [y, m, d] = raw.split('-').map(Number);
+    const time = String(customTime || '23:59').trim();
+    const [hh, mm] = time.split(':').map((n) => Number(n) || 0);
+    const end = new Date(y, m - 1, d, hh, mm, 0, 0);
+    if (Number.isNaN(end.getTime())) return null;
+    return toIso(end);
+  }
+  return null;
+}
 
 /**
  * @param {unknown} raw
@@ -27,6 +71,8 @@ export function parsePopupBanner(raw) {
     button_text: '',
     action_type: /** @type {'close'} */ ('close'),
     action_url: '',
+    duration_preset: /** @type {'indefinite'} */ ('indefinite'),
+    expires_at: /** @type {string | null} */ (null),
   };
 
   if (!raw || typeof raw !== 'object') return base;
@@ -35,6 +81,14 @@ export function parsePopupBanner(raw) {
   const actionType = String(obj.action_type || obj.actionType || 'close')
     .trim()
     .toLowerCase();
+  const durationPreset = String(obj.duration_preset || obj.durationPreset || 'indefinite')
+    .trim()
+    .toLowerCase();
+  const expiresRaw = obj.expires_at ?? obj.expiresAt;
+  const expiresAt =
+    expiresRaw == null || expiresRaw === ''
+      ? null
+      : String(expiresRaw).trim() || null;
 
   return {
     enabled: obj.enabled === true || obj.enabled === 'true',
@@ -46,6 +100,12 @@ export function parsePopupBanner(raw) {
       ? /** @type {PopupBanner['action_type']} */ (actionType)
       : 'close',
     action_url: String(obj.action_url || obj.actionUrl || '').trim(),
+    duration_preset: DURATION_PRESETS.has(durationPreset)
+      ? /** @type {PopupBanner['duration_preset']} */ (
+          durationPreset === 'custom' ? 'schedule' : durationPreset
+        )
+      : 'indefinite',
+    expires_at: expiresAt,
   };
 }
 
@@ -63,7 +123,9 @@ export function buildPopupBannerFromBody(body) {
     body.popup_description !== undefined ||
     body.popup_button_text !== undefined ||
     body.popup_action_type !== undefined ||
-    body.popup_action_url !== undefined;
+    body.popup_action_url !== undefined ||
+    body.popup_expires_at !== undefined ||
+    body.popup_duration_preset !== undefined;
 
   const nested = body.popup_banner;
   const hasNested = nested !== undefined;
@@ -77,6 +139,14 @@ export function buildPopupBannerFromBody(body) {
   const actionType = String(body.popup_action_type ?? 'close')
     .trim()
     .toLowerCase();
+  const durationPreset = String(body.popup_duration_preset ?? 'indefinite')
+    .trim()
+    .toLowerCase();
+  const expiresRaw = body.popup_expires_at;
+  const expiresAt =
+    expiresRaw == null || expiresRaw === ''
+      ? null
+      : String(expiresRaw).trim() || null;
 
   return {
     enabled:
@@ -92,6 +162,12 @@ export function buildPopupBannerFromBody(body) {
       ? /** @type {PopupBanner['action_type']} */ (actionType)
       : 'close',
     action_url: String(body.popup_action_url ?? '').trim(),
+    duration_preset: DURATION_PRESETS.has(durationPreset)
+      ? /** @type {PopupBanner['duration_preset']} */ (
+          durationPreset === 'custom' ? 'schedule' : durationPreset
+        )
+      : 'indefinite',
+    expires_at: expiresAt,
   };
 }
 
@@ -101,7 +177,12 @@ export function buildPopupBannerFromBody(body) {
  */
 export function popupBannerIsRenderable(banner) {
   if (!banner?.enabled) return false;
-  return Boolean(String(banner.image_url || '').trim());
+  if (!String(banner.image_url || '').trim()) return false;
+  if (banner.expires_at) {
+    const t = Date.parse(banner.expires_at);
+    if (Number.isFinite(t) && t <= Date.now()) return false;
+  }
+  return true;
 }
 
 /**
@@ -110,6 +191,8 @@ export function popupBannerIsRenderable(banner) {
  */
 export function serializePopupBanner(banner) {
   const parsed = parsePopupBanner(banner);
+  const expiresAt =
+    parsed.duration_preset === 'indefinite' ? null : parsed.expires_at;
   return {
     enabled: parsed.enabled,
     image_url: parsed.image_url || null,
@@ -118,5 +201,7 @@ export function serializePopupBanner(banner) {
     button_text: parsed.button_text || null,
     action_type: parsed.action_type,
     action_url: parsed.action_url || null,
+    duration_preset: parsed.duration_preset,
+    expires_at: expiresAt,
   };
 }

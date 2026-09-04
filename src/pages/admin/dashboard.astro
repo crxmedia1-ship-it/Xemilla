@@ -42,7 +42,7 @@ import {
   buildNosotrosFontsHref,
 } from '../../config/nosotros-typography.js';
 import { macrosPresentIn, resolveMacroId } from '../../config/menu-macros.js';
-import { platoFillUrl } from '../../lib/plato-media-url.js';
+import { platoFillUrl, cloudinaryTrimUrl } from '../../lib/plato-media-url.js';
 import {
   parseHorarioSemana,
   previewHorarioHoy,
@@ -167,6 +167,9 @@ const horarioSemana = parseHorarioSemana(opsHorario);
 const horarioHoy = previewHorarioHoy(horarioSemana);
 const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
+const hubLogoTrimUrl = cloudinaryTrimUrl(hubLogoUrl);
+const xemillaWordmark =
+  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 const hubLogoBg = resolveHubLogoBg(restaurante || {});
 const hubNombre = String(restaurante?.nombre_comercial || nombre || '').trim();
 const brandInitials = hubNombre
@@ -176,8 +179,6 @@ const brandInitials = hubNombre
   .map((w) => w.charAt(0))
   .join('')
   .toUpperCase() || 'R';
-const xemillaWordmark =
-  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 const menuCategoryNames = [
   ...new Set(
     [
@@ -690,129 +691,147 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   adminPanel={true}
 >
   <header
-    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex w-full flex-col gap-2 border-b px-6 py-2.5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-3 lg:px-12"
+    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-zinc-200/80 bg-white/80 px-4 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/80 sm:px-8"
   >
-    {/* Top row: brand + actions */}
-    <div class="flex min-w-0 items-center justify-between gap-2 sm:contents">
-      <div class="flex min-w-0 items-center gap-2.5">
-        <a
-          href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
-          class="admin-studio-brand shrink-0"
-          aria-label="Xemilla Studio"
-        >
-          {
-            hubLogoUrl ? (
-              <span
-                class="admin-studio-brand__plate admin-studio-brand__plate--logo"
-                style={hubLogoBg ? `--studio-brand-plate:${hubLogoBg}` : undefined}
-              >
-                <img
-                  src={hubLogoUrl}
-                  alt=""
-                  class="admin-studio-brand__logo admin-studio-brand__logo--mark mx-auto max-h-16 w-auto object-contain"
-                />
-              </span>
-            ) : restaurante ? (
-              <span class="admin-studio-brand__plate admin-studio-brand__plate--mono" aria-hidden="true">
-                <span class="admin-studio-brand__initials">{brandInitials}</span>
-              </span>
-            ) : (
-              <span class="admin-studio-brand__plate admin-studio-brand__plate--xemilla">
-                <img src={xemillaWordmark} alt="" class="admin-studio-brand__logo admin-studio-brand__logo--word" width="88" height="28" />
-              </span>
-            )
-          }
-          <span class="admin-studio-brand__copy">
-            <span class="admin-studio-brand__eyebrow">Xemilla</span>
-            <span class="admin-studio-brand__title">Studio</span>
-          </span>
-        </a>
-      </div>
-
-      <div class="flex shrink-0 items-center gap-2 sm:order-3 sm:gap-4">
-          {
-            publicWebAppUrl ? (
-              <div class="admin-studio-header__utils flex items-center gap-1">
-                <a
-                  href={publicWebAppUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="admin-studio-header__link"
-                  aria-label="Abrir WebApp del restaurante"
-                  title="Abrir WebApp"
-                >
-                  WebApp ↗
-                </a>
-              </div>
-            ) : null
-          }
-
-          {
-            isSuperAdmin && restaurante ? (
-              <button
-                type="button"
-                id="marca-save"
-                hidden
-                data-save-state="idle"
-                class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
-              >
-                Guardar
-              </button>
-            ) : null
-          }
-
-          <AdminThemeSwitcher />
-          <div class="relative" data-admin-profile>
-            <button
-              type="button"
-              id="admin-profile-trigger"
-              class="admin-profile-trigger"
-              aria-expanded="false"
-              aria-haspopup="menu"
-              aria-controls="admin-profile-menu"
-              title={userEmail || 'Perfil'}
-              data-admin-profile-trigger
-            >
-              <span class="admin-profile-trigger__initials">{userInitials}</span>
-            </button>
-            <div
-              id="admin-profile-menu"
-              class="admin-profile-dropdown"
-              role="menu"
-              aria-labelledby="admin-profile-trigger"
-              hidden
-              data-admin-profile-menu
-            >
-              <div class="admin-profile-dropdown__meta">
-                <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
-                {
-                  userEmail ? (
-                    <p class="admin-profile-dropdown__email">{userEmail}</p>
-                  ) : null
-                }
-              </div>
-              <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
-                <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
-                  Cerrar Sesión
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="z-10 flex h-16 max-h-16 min-w-0 shrink-0 items-center gap-2">
+      <a
+        href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
+        class="group flex h-16 items-center transition-opacity hover:opacity-80"
+        aria-label="Xemilla Studio"
+      >
+        <img
+          src={xemillaWordmark}
+          alt="Xemilla"
+          width="160"
+          height="48"
+          class="admin-studio-header__xemilla block h-9 w-auto max-h-10 object-contain sm:h-10"
+          loading="eager"
+          decoding="async"
+        />
+      </a>
 
       {
+        restaurante ? (
+          <>
+            <span class="select-none text-lg font-light leading-none text-zinc-300 dark:text-zinc-600" aria-hidden="true">
+              /
+            </span>
+            {
+              hubLogoTrimUrl ? (
+                <img
+                  src={hubLogoTrimUrl}
+                  alt={restaurante.nombre_comercial || 'Restaurante'}
+                  class="admin-studio-header__venue-logo ml-2.5 block h-10 w-auto max-h-10 object-contain"
+                  loading="eager"
+                  decoding="async"
+                />
+              ) : (
+                <span class="ml-2.5 max-w-[10rem] truncate text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-200">
+                  {restaurante.nombre_comercial || 'Restaurante'}
+                </span>
+              )
+            }
+          </>
+        ) : null
+      }
+    </div>
+
+    <div class="z-10 flex shrink-0 items-center gap-2 sm:gap-4">
+      {
         (managingAsSuperAdmin || isSuperAdmin) && restaurante ? (
-          <div class="flex w-full justify-end sm:absolute sm:bottom-1.5 sm:right-6 sm:top-auto sm:z-10 sm:w-auto lg:right-12">
+          <a
+            href="/admin/super/dashboard"
+            class="admin-superadmin-chip hidden items-center gap-1.5 rounded-md border px-2 py-1 text-[0.6rem] font-bold uppercase tracking-[0.12em] shadow-sm transition sm:inline-flex"
+          >
+            ← SuperAdmin
+          </a>
+        ) : null
+      }
+      {
+        publicWebAppUrl ? (
+          <div class="admin-studio-header__utils flex items-center gap-1">
             <a
-              href="/admin/super/dashboard"
-              class="admin-superadmin-chip inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.12em] shadow-sm transition"
+              href={publicWebAppUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="admin-studio-header__link"
+              aria-label="Abrir WebApp del restaurante"
+              title="Abrir WebApp"
             >
-              ← SuperAdmin
+              WebApp ↗
             </a>
           </div>
         ) : null
       }
+
+      {
+        !isSuperAdmin && restaurante ? (
+          <button
+            type="button"
+            id="guardar-cambios"
+            hidden
+            data-ops-contacto-save
+            data-restaurante-id={restId}
+            data-save-state="idle"
+            class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
+          >
+            Guardar
+          </button>
+        ) : null
+      }
+
+      {
+        isSuperAdmin && restaurante ? (
+          <button
+            type="button"
+            id="marca-save"
+            hidden
+            data-save-state="idle"
+            class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
+          >
+            Guardar
+          </button>
+        ) : null
+      }
+
+      <AdminThemeSwitcher />
+      <div class="relative" data-admin-profile>
+        <button
+          type="button"
+          id="admin-profile-trigger"
+          class="admin-profile-trigger"
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-controls="admin-profile-menu"
+          title={userEmail || 'Perfil'}
+          data-admin-profile-trigger
+        >
+          <span class="admin-profile-trigger__initials">{userInitials}</span>
+        </button>
+        <div
+          id="admin-profile-menu"
+          class="admin-profile-dropdown"
+          role="menu"
+          aria-labelledby="admin-profile-trigger"
+          hidden
+          data-admin-profile-menu
+        >
+          <div class="admin-profile-dropdown__meta">
+            <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
+            {
+              userEmail ? (
+                <p class="admin-profile-dropdown__email">{userEmail}</p>
+              ) : null
+            }
+          </div>
+          <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
+            <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
+              Cerrar Sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
 
     {/* Nav pills — desktop centered; mobile uses bottom dock */}
     {
@@ -882,8 +901,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   </header>
 
-  <main class="relative z-10 min-h-[calc(100dvh-4rem)] w-full bg-transparent">
-    <div class="relative z-10 mx-auto w-full max-w-full px-6 pb-[max(9.5rem,calc(env(safe-area-inset-bottom)+8rem))] pt-4 sm:pb-16 sm:pt-5 lg:px-12">
+  <main class="relative z-10 min-h-[calc(100dvh-4rem)] w-full min-w-full max-w-none bg-transparent">
+    <div class="relative z-10 w-full max-w-none overflow-x-clip px-4 py-6 sm:px-8 lg:px-12 pb-[max(9.5rem,calc(env(safe-area-inset-bottom)+8rem))] sm:pb-16">
     {
       !restaurante ? (
         <div class={`glass-panel ${bounceWallClass} max-w-xl p-8 text-center`}>
@@ -911,29 +930,19 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         <div
           data-restaurante-id={restId}
           id="dashboard-root"
+          class="w-full min-w-0 max-w-none"
           data-slug={publicSlug}
           data-categorias={categoriasJson}
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
           data-gadget-nutricion={marca.gadget_nutricion ? 'true' : 'false'}
           data-gadget-ar={marca.gadget_ar ? 'true' : 'false'}
         >
-          <div class="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
-            <div class="min-w-0 space-y-3">
-              <h1 class="studio-resto-title">
-                {nombre}
-              </h1>
-              <p class="studio-resto-meta text-sm text-neutral-400">
-                <span id="platos-count">{platos.length}</span> platos · edición en vivo
-              </p>
-            </div>
-          </div>
-
           <div
             id="panel-menu"
             role="tabpanel"
             aria-labelledby="tab-menu"
             data-tab-panel="menu"
-            class="admin-fade-in-up"
+            class="admin-fade-in-up w-full min-w-0 max-w-none"
           >
           {
             isSuperAdmin && (
@@ -1132,28 +1141,28 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             )
           }
 
-          <section class="min-w-0">
+          <section class="w-full min-w-0">
             <div
               id="platos-toolbar"
-              class:list={['platos-toolbar mb-4 space-y-2 sm:mb-5', platos.length === 0 && 'hidden']}
+              class:list={['platos-toolbar mb-4 w-full space-y-2 sm:mb-5', platos.length === 0 && 'hidden']}
             >
-              {/* Status chips — full-width glass bento */}
+              {/* Status chips — tab-bar */}
               <div
                 id="status-scroll"
-                class="studio-status-bento w-full"
+                class="studio-status-bento inline-flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-100/80 p-1 dark:border-zinc-800 dark:bg-zinc-900/80"
                 role="toolbar"
                 aria-label="Filtrar por estado"
               >
-                <button type="button" data-status-filter="todas" aria-pressed="true" class="status-filter-pill is-on">
+                <button type="button" data-status-filter="todas" aria-pressed="true" class="status-filter-pill is-on rounded-xl border border-zinc-200/70 bg-white px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm transition-all dark:border-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-sm">
                   Todos
                 </button>
-                <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill status-filter-pill--live">
+                <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill status-filter-pill--live rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm">
                   En carta
                 </button>
-                <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill status-filter-pill--off">
+                <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill status-filter-pill--off rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm">
                   Agotados
                 </button>
-                <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill status-filter-pill--star">
+                <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill status-filter-pill--star rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm">
                   Destacados
                 </button>
               </div>
@@ -1161,7 +1170,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               {/* Nivel 1: Macrocategorías */}
               <div
                 id="macro-scroll"
-                class="studio-macro-row scrollbar-hide w-full"
+                class="studio-macro-row scrollbar-hide inline-flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-100/80 p-1 dark:border-zinc-800 dark:bg-zinc-900/80"
                 role="toolbar"
                 aria-label="Filtrar por macrocategoría"
               >
@@ -1169,7 +1178,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   type="button"
                   data-macro-filter="todas"
                   aria-pressed="true"
-                  class="macro-filter-pill is-on"
+                  class="macro-filter-pill is-on rounded-xl border border-zinc-200/70 bg-white px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm transition-all dark:border-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-sm"
                 >
                   Menú completo
                 </button>
@@ -1179,7 +1188,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       type="button"
                       data-macro-filter={macro.id}
                       aria-pressed="false"
-                      class="macro-filter-pill"
+                      class="macro-filter-pill rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm"
                     >
                       {macro.label}
                     </button>
@@ -1190,7 +1199,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               {/* Nivel 2: Subcategorías (condicional) */}
               <div
                 id="subcat-scroll"
-                class="studio-subcat-row scrollbar-hide w-full is-empty"
+                class="studio-subcat-row scrollbar-hide inline-flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-100/80 p-1 is-empty dark:border-zinc-800 dark:bg-zinc-900/80"
                 role="toolbar"
                 aria-label="Filtrar por subcategoría"
                 hidden
@@ -1240,7 +1249,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
             <div
               id="platos-table-wrap"
-              class:list={['glass-panel', bounceWallClass, 'platos-table-wrap overflow-hidden', platos.length === 0 && 'hidden']}
+              class:list={['glass-panel', bounceWallClass, 'platos-table-wrap w-full overflow-hidden', platos.length === 0 && 'hidden']}
             >
               <div class="platos-table-scroll overflow-x-auto">
                 <table class="platos-table w-full border-collapse text-sm">
@@ -1507,7 +1516,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             role="tabpanel"
             aria-labelledby="tab-metricas"
             data-tab-panel="metricas"
-            class="hidden"
+            class="hidden w-full min-w-0 max-w-none"
             hidden
           >
             <AdminMetricsPanel
@@ -1529,174 +1538,98 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             role="tabpanel"
             aria-labelledby="tab-perfil"
             data-tab-panel="perfil"
-            class="hidden"
+            class="hidden w-full min-w-0 max-w-none overflow-x-clip"
             hidden
           >
             <section
               id="ops-contacto-card"
-              class="perfil-studio ops-studio w-full py-4"
+              class="perfil-studio ops-studio flex w-full min-w-0 max-w-none flex-col gap-6 overflow-x-clip pt-2"
               data-ops-contacto
+              data-local-ops="perfil"
             >
-              <header class="perfil-studio__hero mb-6 flex flex-wrap items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <p class="perfil-studio__kicker m-0 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                    Operación &amp; Anuncios
-                  </p>
-                  <h2 class="perfil-studio__title mt-1.5 mb-0 font-[family-name:var(--font-admin-display,inherit)] text-[1.65rem] font-semibold tracking-tight text-zinc-900">
-                    {hubNombre || 'Restaurante'}
-                  </h2>
-                  <p class="perfil-studio__lead mt-2 mb-0 max-w-xl text-sm leading-relaxed text-zinc-500">
-                    Horario, ubicación, redes y flyer de bienvenida que ve el comensal en la WebApp.
-                  </p>
+              <div class="perfil-studio__grid grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8 w-full items-stretch">
+                  <PerfilLocalCard
+                      scope="perfil"
+                      variant="studio"
+                      nestInParent
+                      showHours
+                      showMap={false}
+                      showSocial={false}
+                      mapsInputId="ops-maps-hours-unused"
+                      horarioHiddenId="ops-horario"
+                      horarioText={opsHorario}
+                      horarioSemana={horarioSemana}
+                      horarioHoy={horarioHoy}
+                      mapsUrl={opsMaps}
+                      mapsEmbed={opsMapsEmbed}
+                      mapsOpen={opsMapsOpen}
+                      direccion={opsDireccion}
+                      direccionInputId="ops-direccion-hours-unused"
+                      instagram={opsInstagram}
+                      facebook={opsFacebook}
+                      tiktok={opsTiktok}
+                      tripadvisor={opsTripadvisor}
+                      whatsapp={opsWhatsapp}
+                      telefono={opsTelefonoContacto}
+                      socialIdPrefix="ops-hours-"
+                    />
+
+                    <WelcomePopupCard scope="perfil" banner={opsPopupBanner} />
+
+                    <PerfilLocalCard
+                      scope="perfil"
+                      variant="studio"
+                      nestInParent
+                      showHours={false}
+                      showMap
+                      showSocial={false}
+                      mapsInputId="ops-maps"
+                      horarioHiddenId="ops-horario-map-unused"
+                      horarioText={opsHorario}
+                      horarioSemana={horarioSemana}
+                      horarioHoy={horarioHoy}
+                      mapsUrl={opsMaps}
+                      mapsEmbed={opsMapsEmbed}
+                      mapsOpen={opsMapsOpen}
+                      direccion={opsDireccion}
+                      direccionInputId="ops-direccion"
+                      instagram={opsInstagram}
+                      facebook={opsFacebook}
+                      tiktok={opsTiktok}
+                      tripadvisor={opsTripadvisor}
+                      whatsapp={opsWhatsapp}
+                      telefono={opsTelefonoContacto}
+                      socialIdPrefix="ops-map-"
+                    />
                 </div>
-                <div class="perfil-studio__status-wrap flex flex-col items-end gap-2.5 text-right">
-                  <div class="flex flex-wrap items-center justify-end gap-2">
-                    <span
-                      id="ops-open-badge"
-                      class:list={['perfil-status', horarioHoy.open ? 'is-open' : 'is-closed']}
-                    >
-                      {horarioHoy.text}
-                    </span>
-                    <button
-                      type="button"
-                      id="ops-contacto-save"
-                      data-restaurante-id={restId}
-                      class="perfil-save ops-save inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black"
-                    >
-                      Guardar cambios
-                    </button>
-                  </div>
-                  <p id="ops-contacto-status" class="perfil-studio__hint m-0 min-h-4 text-xs text-zinc-500" role="status"></p>
+
+                <div class="w-full">
+                    <PerfilLocalCard
+                      scope="perfil"
+                      variant="studio"
+                      nestInParent
+                      showHours={false}
+                      showMap={false}
+                      showSocial
+                      socialWide
+                      mapsInputId="ops-maps-social-unused"
+                      horarioHiddenId="ops-horario-social-unused"
+                      horarioText={opsHorario}
+                      horarioSemana={horarioSemana}
+                      horarioHoy={horarioHoy}
+                      mapsUrl={opsMaps}
+                      mapsEmbed={opsMapsEmbed}
+                      mapsOpen={opsMapsOpen}
+                      instagram={opsInstagram}
+                      facebook={opsFacebook}
+                      tiktok={opsTiktok}
+                      tripadvisor={opsTripadvisor}
+                      whatsapp={opsWhatsapp}
+                      telefono={opsTelefonoContacto}
+                      socialIdPrefix="ops-"
+                    />
                 </div>
-              </header>
-
-              <div class="mx-auto mt-0 w-full max-w-7xl">
-              <div
-                class="perfil-studio__grid mt-6 grid w-full grid-cols-[repeat(auto-fit,minmax(350px,1fr))] items-start gap-6"
-                data-local-ops="perfil"
-              >
-                  <PerfilLocalCard
-                    scope="perfil"
-                    variant="studio"
-                    nestInParent
-                    showHours
-                    showMap={false}
-                    showSocial={false}
-                    mapsInputId="ops-maps-hours-unused"
-                    horarioHiddenId="ops-horario"
-                    horarioText={opsHorario}
-                    horarioSemana={horarioSemana}
-                    horarioHoy={horarioHoy}
-                    mapsUrl={opsMaps}
-                    mapsEmbed={opsMapsEmbed}
-                    mapsOpen={opsMapsOpen}
-                    direccion={opsDireccion}
-                    direccionInputId="ops-direccion-hours-unused"
-                    instagram={opsInstagram}
-                    facebook={opsFacebook}
-                    tiktok={opsTiktok}
-                    tripadvisor={opsTripadvisor}
-                    whatsapp={opsWhatsapp}
-                    telefono={opsTelefonoContacto}
-                    socialIdPrefix="ops-hours-"
-                  />
-
-                  <PerfilLocalCard
-                    scope="perfil"
-                    variant="studio"
-                    nestInParent
-                    showHours={false}
-                    showMap={false}
-                    showSocial
-                    mapsInputId="ops-maps-social-unused"
-                    horarioHiddenId="ops-horario-social-unused"
-                    horarioText={opsHorario}
-                    horarioSemana={horarioSemana}
-                    horarioHoy={horarioHoy}
-                    mapsUrl={opsMaps}
-                    mapsEmbed={opsMapsEmbed}
-                    mapsOpen={opsMapsOpen}
-                    instagram={opsInstagram}
-                    facebook={opsFacebook}
-                    tiktok={opsTiktok}
-                    tripadvisor={opsTripadvisor}
-                    whatsapp={opsWhatsapp}
-                    telefono={opsTelefonoContacto}
-                    socialIdPrefix="ops-"
-                  />
-
-                  <div class="perfil-group perfil-studio__accesos w-full h-full bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col shadow-sm">
-                    <div class="perfil-group__head !px-0 !pt-0 !pb-2">
-                      <div>
-                        <h3 class="!text-sm !text-zinc-900">Accesos rápidos</h3>
-                        <p class="perfil-group__sub !mt-0.5 !text-zinc-500">Solo lectura</p>
-                      </div>
-                    </div>
-                    <ul class="perfil-list">
-                      <li class="perfil-meta !border-zinc-100 !px-0 !py-2">
-                        <span class="!text-zinc-500">WhatsApp</span>
-                        <div class="perfil-meta__value">
-                          <strong class="!text-zinc-900">{opsTelefono || '—'}</strong>
-                          {
-                            opsTelefono ? (
-                              <button type="button" class="perfil-mini" data-copy={opsTelefono}>Copiar</button>
-                            ) : null
-                          }
-                        </div>
-                      </li>
-                      {
-                        opsWifiSsid ? (
-                          <li class="perfil-meta !border-zinc-100 !px-0 !py-2">
-                            <span class="!text-zinc-500">Wi‑Fi</span>
-                            <strong class="!text-zinc-900">{opsWifiSsid}</strong>
-                          </li>
-                        ) : null
-                      }
-                      {
-                        publicWebAppUrl ? (
-                          <li class="perfil-meta !border-zinc-100 !px-0 !py-2">
-                            <span class="!text-zinc-500">WebApp</span>
-                            <div class="perfil-meta__value">
-                              <a class="!max-w-[12rem] truncate !text-zinc-900 sm:!max-w-[16rem]" href={publicWebAppUrl} target="_blank" rel="noopener noreferrer">{publicWebAppUrl}</a>
-                              <button type="button" class="perfil-mini" data-copy={publicWebAppUrl} data-copy-abs>
-                                Copiar
-                              </button>
-                            </div>
-                          </li>
-                        ) : null
-                      }
-                    </ul>
-                  </div>
-
-                  <WelcomePopupCard scope="perfil" banner={opsPopupBanner} />
-
-                  <PerfilLocalCard
-                    scope="perfil"
-                    variant="studio"
-                    nestInParent
-                    showHours={false}
-                    showMap
-                    showSocial={false}
-                    mapsInputId="ops-maps"
-                    horarioHiddenId="ops-horario-map-unused"
-                    horarioText={opsHorario}
-                    horarioSemana={horarioSemana}
-                    horarioHoy={horarioHoy}
-                    mapsUrl={opsMaps}
-                    mapsEmbed={opsMapsEmbed}
-                    mapsOpen={opsMapsOpen}
-                    direccion={opsDireccion}
-                    direccionInputId="ops-direccion"
-                    instagram={opsInstagram}
-                    facebook={opsFacebook}
-                    tiktok={opsTiktok}
-                    tripadvisor={opsTripadvisor}
-                    whatsapp={opsWhatsapp}
-                    telefono={opsTelefonoContacto}
-                    socialIdPrefix="ops-map-"
-                  />
-              </div>
-              </div>
+              <p id="ops-contacto-status" class="perfil-studio__hint sr-only m-0 text-xs text-zinc-500" role="status"></p>
             </section>
           </div>
             )
@@ -1709,7 +1642,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             role="tabpanel"
             aria-labelledby="tab-identidad"
             data-tab-panel="identidad"
-            class="hidden"
+            class="hidden w-full min-w-0 max-w-none"
             hidden
           >
             <form id="marca-form" class="relative z-10 space-y-4" novalidate>
@@ -5865,11 +5798,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       transform: scale(0.94);
     }
 
-    /* Compact app chrome */
-    .admin-studio-header {
-      border-bottom-color: transparent;
-      background: color-mix(in srgb, var(--bg-card, rgba(9, 9, 11, 0.86)) 90%, transparent);
-    }
+    /* Compact app chrome — height/background live in admin-themes.css */
 
     .platos-toolbar {
       position: relative;
@@ -6375,14 +6304,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   @media (min-width: 769px) {
     .status-filter-pill {
-      min-height: 2.05rem;
-      font-size: 0.75rem;
+      min-height: 0;
+      font-size: 0.875rem;
     }
 
     .cat-filter-pill {
-      min-height: 1.95rem;
-      padding: 0.38rem 0.8rem;
-      font-size: 0.72rem;
+      min-height: 0;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
     }
 
     .platos-row:hover {
@@ -6626,6 +6555,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     background: color-mix(in srgb, #fb7185 12%, transparent);
   }
 
+  @keyframes marca-save-pulse {
+    50% {
+      opacity: 0.72;
+    }
+  }
+
   :global(.marca-save-btn[data-save-state='idle']) {
     background: #09090b;
     color: #fafafa;
@@ -6636,12 +6571,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   :global(.marca-save-btn[data-save-state='dirty']) {
-    background: #dc2626;
+    background: #e11d48;
     color: #fff;
+    font-weight: 600;
+    box-shadow: 0 10px 15px -3px rgba(136, 19, 55, 0.2);
+    animation: marca-save-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   :global(.marca-save-btn[data-save-state='dirty']:hover:not(:disabled)) {
-    background: #b91c1c;
+    background: #be123c;
   }
 
   :global(.marca-save-btn[data-save-state='saved']) {
@@ -6725,6 +6663,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     min-height: 4.4rem;
     resize: vertical;
     line-height: 1.45;
+  }
+
+  #panel-perfil {
+    width: 100%;
+    max-width: none;
+    overflow-x: clip;
   }
 
   .perfil-studio__hero {
@@ -6932,26 +6876,29 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     color: var(--text-muted, #71717a);
   }
 
-  .perfil-local-ops .perfil-toggle {
+  .perfil-local-ops .perfil-toggle,
+  #ops-contacto-card .perfil-toggle,
+  #ops-contacto-card [data-social-toggle],
+  #ops-contacto-card [data-hours-toggle] {
     width: 2.75rem;
     height: 1.62rem;
     --toggle-off: #d4d4d8;
-    --toggle-on: #16a34a;
+    --toggle-on: #10b981;
     box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.08);
+    pointer-events: auto;
+    cursor: pointer;
   }
 
-  html.admin-panel:not(.light):not([data-theme='light']):not([data-theme='alabastro']):not([data-theme='organico']) .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-toggle {
-    --toggle-off: #3f3f46;
-  }
-
-  .perfil-local-ops .perfil-toggle .ios-toggle__knob {
+  .perfil-local-ops .perfil-toggle .ios-toggle__knob,
+  #ops-contacto-card .perfil-toggle .ios-toggle__knob {
     width: 1.28rem;
     height: 1.28rem;
     top: 0.17rem;
     left: 0.17rem;
   }
 
-  .perfil-local-ops .perfil-toggle.is-on .ios-toggle__knob {
+  .perfil-local-ops .perfil-toggle.is-on .ios-toggle__knob,
+  #ops-contacto-card .perfil-toggle.is-on .ios-toggle__knob {
     transform: translateX(1.12rem);
   }
 
@@ -7146,6 +7093,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     padding: 0 0 0.35rem;
   }
 
+  #ops-contacto-card.ops-studio .perfil-map {
+    padding: 0;
+  }
+
   .perfil-map__frame {
     position: relative;
     display: block;
@@ -7157,14 +7108,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   #ops-contacto-card.ops-studio .perfil-map__frame {
-    aspect-ratio: 4 / 3;
-    min-height: 0;
-    margin: 0 0 1rem;
+    aspect-ratio: auto;
+    width: 100%;
+    height: 15rem;
+    min-height: 15rem;
+    flex: none;
+    margin: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(24, 24, 27, 0.06);
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 1024px) {
     #ops-contacto-card.ops-studio .perfil-map__frame {
-      aspect-ratio: 16 / 9;
+      height: 18rem;
+      min-height: 18rem;
     }
   }
 
@@ -7266,9 +7224,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   @media (max-width: 768px) {
-    .perfil-studio {
+    .perfil-studio:not(.ops-studio) {
       max-width: none;
       padding: 0.1rem 0 5.5rem;
+    }
+
+    .perfil-studio.ops-studio {
+      max-width: none;
+      padding: 0 0 5.5rem;
     }
 
     .perfil-studio__title {
@@ -7480,10 +7443,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const categoryFilters = document.getElementById('category-scroll');
   const macroFilters = document.getElementById('macro-scroll');
   const subcatFilters = document.getElementById('subcat-scroll');
-  const CAT_PILL_ACTIVE = 'cat-filter-pill is-on';
-  const CAT_PILL_INACTIVE = 'cat-filter-pill';
-  const MACRO_PILL_ACTIVE = 'macro-filter-pill is-on';
-  const MACRO_PILL_INACTIVE = 'macro-filter-pill';
+  const PILL_ON =
+    'is-on rounded-xl border border-zinc-200/70 bg-white px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm transition-all sm:text-sm dark:bg-zinc-800 dark:text-white dark:border-zinc-700';
+  const PILL_OFF =
+    'rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 sm:text-sm dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100';
+  const CAT_PILL_ACTIVE = `cat-filter-pill ${PILL_ON}`;
+  const CAT_PILL_INACTIVE = `cat-filter-pill ${PILL_OFF}`;
+  const MACRO_PILL_ACTIVE = `macro-filter-pill ${PILL_ON}`;
+  const MACRO_PILL_INACTIVE = `macro-filter-pill ${PILL_OFF}`;
 
   /** Astro scopes page CSS via data-astro-cid; stamp it on JS-created nodes. */
   const ASTRO_SCOPE_ATTR = [
@@ -7525,10 +7492,29 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const hubCoverFileInput = document.getElementById('hub-cover-file');
   const hubLogoPreview = document.getElementById('hub-logo-preview');
   const hubCoverPreview = document.getElementById('hub-cover-preview');
-  const opsContactoSave = document.getElementById('ops-contacto-save');
+  const opsContactoSave =
+    document.getElementById('guardar-cambios') ||
+    document.getElementById('ops-contacto-save') ||
+    document.querySelector('[data-ops-contacto-save]');
   const opsContactoStatus = document.getElementById('ops-contacto-status');
   const opsDireccionInput = document.getElementById('ops-direccion');
   const welcomePopupRoot = document.querySelector('[data-welcome-popup="perfil"]');
+  const opsContactoCard = document.querySelector('#ops-contacto-card');
+  let opsSaveBusy = false;
+
+  /** @param {'idle' | 'dirty' | 'saved'} state */
+  function setOpsSaveState(state) {
+    if (!(opsContactoSave instanceof HTMLButtonElement)) return;
+    opsContactoSave.dataset.saveState = state;
+    if (opsContactoSave.disabled) return;
+    opsContactoSave.textContent = state === 'saved' ? 'Guardado' : 'Guardar';
+  }
+
+  function markOpsDirty() {
+    if (opsSaveBusy) return;
+    if (!(opsContactoSave instanceof HTMLButtonElement) || opsContactoSave.disabled) return;
+    setOpsSaveState('dirty');
+  }
 
   const DISH_ORDER_INPUT_CLASS =
     'w-12 bg-transparent text-white/80 font-mono text-center border-b border-white/10 hover:border-white/30 focus:border-white focus:outline-none transition-colors appearance-none p-1 text-sm';
@@ -7889,12 +7875,22 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(btn instanceof HTMLElement)) return;
     btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     btn.className = active ? CAT_PILL_ACTIVE : CAT_PILL_INACTIVE;
+    stampAstroScope(btn);
   }
 
   function setMacroPillActive(btn, active) {
     if (!(btn instanceof HTMLElement)) return;
     btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     btn.className = active ? MACRO_PILL_ACTIVE : MACRO_PILL_INACTIVE;
+    stampAstroScope(btn);
+  }
+
+  function setStatusPillActive(btn, active) {
+    if (!(btn instanceof HTMLElement)) return;
+    const mods = [...btn.classList].filter((c) => c.startsWith('status-filter-pill--')).join(' ');
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    btn.className = `status-filter-pill ${mods} ${active ? PILL_ON : PILL_OFF}`.replace(/\s+/g, ' ').trim();
+    stampAstroScope(btn);
   }
 
   /** @returns {Set<string>} */
@@ -8350,8 +8346,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       for (const pill of statusFilters.querySelectorAll('[data-status-filter]')) {
         if (!(pill instanceof HTMLElement)) continue;
         const on = String(pill.dataset.statusFilter || '').trim().toLowerCase() === next;
-        pill.setAttribute('aria-pressed', on ? 'true' : 'false');
-        pill.classList.toggle('is-on', on);
+        setStatusPillActive(pill, on);
       }
       applySearchFilter();
     },
@@ -8610,7 +8605,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   function localOps(scope) {
-    return document.querySelector(`[data-local-ops="${scope}"]`);
+    const scoped = document.querySelector(`[data-local-ops="${scope}"]`);
+    if (scoped) return scoped;
+    if (scope === 'perfil') {
+      return document.querySelector('#ops-contacto-card[data-ops-contacto], #ops-contacto-card');
+    }
+    return null;
   }
 
   function syncHorarioHidden(scope) {
@@ -8618,8 +8618,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(week instanceof HTMLElement)) return;
     const days = collectHorarioSemana(week);
     const serialized = serializeHorarioSemana(days);
-    const box = week.closest('[data-local-ops]');
-    const hidden = box?.querySelector('[data-horario-hidden]');
+    const box =
+      week.closest('[data-local-ops]') ||
+      week.closest('.perfil-group') ||
+      week.closest('#ops-contacto-card');
+    const hidden =
+      box?.querySelector('[data-horario-hidden]') ||
+      document.getElementById('ops-horario');
     if (hidden instanceof HTMLInputElement) hidden.value = serialized;
     if (box?.getAttribute('data-local-ops') === 'perfil' || !scope || scope === 'perfil') {
       const badge = document.getElementById('ops-open-badge');
@@ -8644,50 +8649,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     row.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((el) => {
       if (el instanceof HTMLInputElement) el.disabled = closed;
     });
-  }
-
-  function applyHoursPreset(kind, week) {
-    const root = week instanceof HTMLElement ? week : weekRoot('perfil');
-    if (!(root instanceof HTMLElement)) return;
-    const rows = [...root.querySelectorAll('[data-day]')];
-    const firstOpen = rows.find((row) => row instanceof HTMLElement && row.dataset.closed !== 'true');
-    const sampleOpen =
-      firstOpen instanceof HTMLElement
-        ? firstOpen.querySelector('[data-hours-open]')
-        : null;
-    const sampleClose =
-      firstOpen instanceof HTMLElement
-        ? firstOpen.querySelector('[data-hours-close]')
-        : null;
-    const openVal = sampleOpen instanceof HTMLInputElement ? sampleOpen.value : '12:00';
-    const closeVal = sampleClose instanceof HTMLInputElement ? sampleClose.value : '22:00';
-    const weekday = new Set(['lun', 'mar', 'mie', 'jue', 'vie']);
-    const weekend = new Set(['sab', 'dom']);
-
-    for (const row of rows) {
-      if (!(row instanceof HTMLElement)) continue;
-      const id = row.dataset.day || '';
-      const open = row.querySelector('[data-hours-open]');
-      const close = row.querySelector('[data-hours-close]');
-      if (kind === 'cerrados') {
-        setDayClosed(row, true);
-        continue;
-      }
-      if (kind === 'todos') {
-        setDayClosed(row, false);
-        if (open instanceof HTMLInputElement) open.value = openVal;
-        if (close instanceof HTMLInputElement) close.value = closeVal;
-        continue;
-      }
-      const inSet = kind === 'finde' ? weekend.has(id) : weekday.has(id);
-      if (inSet) {
-        setDayClosed(row, false);
-        if (open instanceof HTMLInputElement) open.value = openVal;
-        if (close instanceof HTMLInputElement) close.value = closeVal;
-      }
-    }
-    const scope = root.getAttribute('data-hours-week') || '';
-    syncHorarioHidden(scope);
   }
 
   function copyHoursWeek(fromScope, toScope) {
@@ -8758,6 +8719,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       (event) => {
         const btn = event.target instanceof Element ? event.target.closest('[data-hours-toggle]') : null;
         if (!btn) return;
+        if (btn instanceof HTMLElement && btn.dataset.toggleBound === '1') return;
         const row = btn.closest('[data-day]');
         if (!(row instanceof HTMLElement)) return;
         setDayClosed(row, row.dataset.closed !== 'true');
@@ -8768,18 +8730,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     week.addEventListener(
       'change',
       () => syncHorarioHidden(week.getAttribute('data-hours-week') || ''),
-      { signal },
-    );
-  });
-
-  document.querySelectorAll('[data-hours-preset]').forEach((btn) => {
-    btn.addEventListener(
-      'click',
-      () => {
-        if (!(btn instanceof HTMLElement)) return;
-        const week = btn.closest('[data-local-ops]')?.querySelector('[data-hours-week]');
-        applyHoursPreset(btn.dataset.hoursPreset || '', week instanceof HTMLElement ? week : null);
-      },
       { signal },
     );
   });
@@ -8822,19 +8772,45 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   }
 
-  document.querySelectorAll('[data-local-ops]').forEach((root) => {
-    root.addEventListener(
-      'click',
-      (event) => {
-        const btn = event.target instanceof Element ? event.target.closest('[data-social-toggle]') : null;
-        if (!btn) return;
-        const row = btn.closest('[data-social]');
-        if (!(row instanceof HTMLElement)) return;
-        setSocialOn(row, row.dataset.on !== 'true');
-      },
-      { signal },
-    );
-  });
+  document.addEventListener(
+    'click',
+    (event) => {
+      const t = event.target;
+      if (!(t instanceof Element)) return;
+      const btn = t.closest('[data-social-toggle]');
+      if (!btn) return;
+      // Prefer card-local binders (data-toggle-bound); skip to avoid double toggle.
+      if (btn instanceof HTMLElement && btn.dataset.toggleBound === '1') return;
+      if (!t.closest('[data-local-ops], #ops-contacto-card')) return;
+      const row = btn.closest('[data-social]');
+      if (!(row instanceof HTMLElement)) return;
+      event.preventDefault();
+      setSocialOn(row, row.dataset.on !== 'true');
+    },
+    { signal },
+  );
+
+  document.addEventListener(
+    'ops-social-change',
+    () => {
+      markOpsDirty();
+    },
+    { signal },
+  );
+
+  document.addEventListener(
+    'ops-hours-change',
+    (event) => {
+      markOpsDirty();
+      const t = event.target;
+      if (!(t instanceof Element)) return;
+      const week = t.closest('[data-hours-week]') || t.querySelector?.('[data-hours-week]');
+      const scope =
+        week instanceof HTMLElement ? week.getAttribute('data-hours-week') || '' : '';
+      syncHorarioHidden(scope);
+    },
+    { signal },
+  );
 
   function refreshMapsPreview(preview) {
     const box = preview instanceof HTMLElement
@@ -8862,7 +8838,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         iframe.loading = 'lazy';
         iframe.referrerPolicy = 'no-referrer-when-downgrade';
         iframe.allowFullscreen = true;
-        iframe.className = 'absolute inset-0 h-full w-full border-0';
+        iframe.className = 'h-full w-full border-0';
         frame.prepend(iframe);
       }
       iframe.src = embed;
@@ -8932,7 +8908,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
    */
   function readPopupPayload(root) {
     if (!(root instanceof HTMLElement)) {
-      return { popup_enabled: false, popup_image_url: '' };
+      return {
+        popup_enabled: false,
+        popup_image_url: '',
+        popup_duration_preset: 'indefinite',
+        popup_expires_at: '',
+      };
     }
     const enabledHidden = root.querySelector('[data-popup-enabled]');
     const enabledToggle = root.querySelector('[data-popup-enabled-toggle]');
@@ -8941,10 +8922,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         ? enabledHidden.value === 'true'
         : enabledToggle instanceof HTMLElement && enabledToggle.classList.contains('is-on');
     const imageEl = root.querySelector('[data-popup-image-url]');
+    const presetEl = root.querySelector('[data-popup-duration-preset]');
+    const expiresEl = root.querySelector('[data-popup-expires-at]');
     return {
       popup_enabled: enabled,
       popup_image_url:
         imageEl instanceof HTMLInputElement ? imageEl.value.trim() : '',
+      popup_duration_preset:
+        presetEl instanceof HTMLInputElement
+          ? presetEl.value.trim() || 'indefinite'
+          : 'indefinite',
+      popup_expires_at:
+        expiresEl instanceof HTMLInputElement ? expiresEl.value.trim() : '',
     };
   }
 
@@ -8969,6 +8958,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const silent = Boolean(opts.silent);
     if (!(opsContactoSave instanceof HTMLButtonElement)) return false;
     if (!requireRestauranteId()) return false;
+    opsSaveBusy = true;
     syncHorarioHidden('perfil');
     const horario = fieldValue(opsHorarioInput);
     const instagramUrl = socialField('perfil', 'instagram');
@@ -8989,16 +8979,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       button_text: '',
       action_type: 'close',
       action_url: '',
+      duration_preset: popupPayload.popup_duration_preset || 'indefinite',
+      expires_at: popupPayload.popup_expires_at || null,
     };
 
     if (!silent) {
       opsContactoSave.disabled = true;
-      opsContactoSave.dataset.prevLabel = opsContactoSave.textContent || 'Guardar cambios';
+      opsContactoSave.dataset.prevLabel = opsContactoSave.textContent || 'Guardar';
       opsContactoSave.textContent = 'Guardando…';
     }
     if (opsContactoStatus) {
       opsContactoStatus.textContent = silent ? 'Guardando…' : '';
-      opsContactoStatus.className = 'perfil-studio__hint';
+      opsContactoStatus.className = 'perfil-studio__hint sr-only';
     }
 
     try {
@@ -9073,6 +9065,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (typeof showToast === 'function') {
         showToast(silent ? 'Cambios guardados' : 'Perfil del restaurante guardado', 'ok');
       }
+      setOpsSaveState('idle');
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al guardar';
@@ -9081,21 +9074,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       }
       if (typeof showToast === 'function') showToast(msg, 'error');
       else if (!silent) alert(msg);
+      setOpsSaveState('dirty');
       return false;
     } finally {
-      if (!silent && opsContactoSave instanceof HTMLButtonElement) {
+      opsSaveBusy = false;
+      if (opsContactoSave instanceof HTMLButtonElement) {
         opsContactoSave.disabled = false;
-        opsContactoSave.textContent = opsContactoSave.dataset.prevLabel || 'Guardar cambios';
+        setOpsSaveState(opsContactoSave.dataset.saveState === 'dirty' ? 'dirty' : 'idle');
       }
     }
-  }
-
-  let opsAutosaveTimer = 0;
-  function scheduleOpsAutosave() {
-    window.clearTimeout(opsAutosaveTimer);
-    opsAutosaveTimer = window.setTimeout(() => {
-      void saveOpsContacto({ silent: true });
-    }, 600);
   }
 
   /**
@@ -9111,35 +9098,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const removeBtn = root.querySelector('[data-popup-remove]');
     const imageHidden = root.querySelector('[data-popup-image-url]');
 
-    const setEnabled = (on) => {
-      if (toggle instanceof HTMLElement) {
-        toggle.classList.toggle('is-on', on);
-        toggle.classList.toggle('bg-emerald-500', on);
-        toggle.classList.toggle('bg-zinc-200', !on);
-        toggle.setAttribute('aria-checked', on ? 'true' : 'false');
-        toggle.style.backgroundColor = on ? '#10b981' : '#e4e4e7';
-        const knob = toggle.querySelector('[data-popup-switch-knob]');
-        if (knob instanceof HTMLElement) {
-          knob.classList.toggle('translate-x-5', on);
-          knob.classList.toggle('translate-x-0', !on);
-          knob.style.transform = on ? 'translateX(1.25rem)' : 'translateX(0)';
-        }
-      }
-      if (enabledHidden instanceof HTMLInputElement) {
-        enabledHidden.value = on ? 'true' : 'false';
-      }
-      if (body instanceof HTMLElement) body.hidden = !on;
-      syncWelcomePopupUi(root);
-      scheduleOpsAutosave();
-    };
-
-    toggle?.addEventListener(
-      'click',
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const on = !(toggle instanceof HTMLElement && toggle.classList.contains('is-on'));
-        setEnabled(on);
+    // Toggle/schedule owned by WelcomePopupCard; only sync UI locally (save via #guardar-cambios).
+    root.addEventListener(
+      'ops-popup-change',
+      () => {
+        syncWelcomePopupUi(root);
       },
       { signal },
     );
@@ -9217,7 +9180,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (removeBtn instanceof HTMLElement) {
         removeBtn.hidden = !has;
       }
-      scheduleOpsAutosave();
     }
 
     async function handlePopupFiles(files) {
@@ -9338,41 +9300,33 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   opsContactoSave?.addEventListener(
     'click',
-    () => {
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       void saveOpsContacto({ silent: false });
     },
     { signal },
   );
 
-  const opsLocalRoot = localOps('perfil');
-  if (opsLocalRoot instanceof HTMLElement) {
-    opsLocalRoot.addEventListener(
-      'click',
-      (event) => {
-        const t = event.target;
-        if (!(t instanceof Element)) return;
-        if (t.closest('[data-hours-toggle], [data-social-toggle], [data-hours-preset]')) {
-          scheduleOpsAutosave();
-        }
-      },
-      { signal },
-    );
-    opsLocalRoot.addEventListener(
-      'change',
-      (event) => {
-        const t = event.target;
-        if (!(t instanceof Element)) return;
-        if (
-          t.matches(
-            '[data-hours-open], [data-hours-close], [data-social-input], [data-maps-url], [data-direccion-input]',
-          )
-        ) {
-          scheduleOpsAutosave();
-        }
-      },
-      { signal },
-    );
-  }
+  opsContactoCard?.addEventListener('input', markOpsDirty, { signal });
+  opsContactoCard?.addEventListener('change', markOpsDirty, { signal });
+  opsContactoCard?.addEventListener(
+    'ops-popup-change',
+    () => {
+      markOpsDirty();
+    },
+    { signal },
+  );
+  setOpsSaveState('idle');
+
+  // Operación & Anuncios: estado solo en cliente hasta #guardar-cambios (sin autosave ni reload).
+  document.querySelector('#ops-contacto-card')?.addEventListener(
+    'submit',
+    (event) => {
+      event.preventDefault();
+    },
+    { signal },
+  );
 
   /**
    * @param {File} file
@@ -11393,6 +11347,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const marcaSaveBtn = document.getElementById('marca-save');
       if (marcaSaveBtn instanceof HTMLButtonElement) {
         marcaSaveBtn.hidden = !(canUseIdentidad && id === 'identidad');
+      }
+
+      const opsSaveBtn = document.getElementById('guardar-cambios');
+      if (opsSaveBtn instanceof HTMLButtonElement) {
+        opsSaveBtn.hidden = id !== 'perfil';
       }
 
       try {

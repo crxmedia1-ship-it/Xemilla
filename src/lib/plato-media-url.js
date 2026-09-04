@@ -18,3 +18,15 @@ export function platoFillUrl(url, size = {}) {
   const rest = after.replace(/^f_auto,q_auto\//, '');
   return `${raw.slice(0, at + marker.length)}e_trim,c_fill,g_auto,w_${w},h_${h},f_auto,q_auto/${rest}`;
 }
+
+/** Recorta padding transparente de un PNG Cloudinary (logos). */
+export function cloudinaryTrimUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  const marker = '/upload/';
+  const at = raw.indexOf(marker);
+  if (at === -1 || !/cloudinary\.com/i.test(raw)) return raw;
+  const after = raw.slice(at + marker.length);
+  if (/e_trim/.test(after)) return raw;
+  return `${raw.slice(0, at + marker.length)}e_trim/${after}`;
+}

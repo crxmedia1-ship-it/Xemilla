@@ -9,6 +9,7 @@ import {
   resolveMapsHref,
   ubicacionCardStyle,
   normalizeUbicacionGridEstilo,
+  isHorarioCerradoTemporal,
 } from '../../../lib/ubicacion-theme-data.js';
 import UbicacionActionPills from './UbicacionActionPills.astro';
 
@@ -77,6 +78,7 @@ const redesActivas = resolveRedesActivas(instagram, redes, whatsapp);
 
 const horarioFilas = resolveHorarioFilas(horarios, horariosRows);
 const horariosJson = JSON.stringify(horarioFilas);
+const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
 
 const glassCard = 'rounded-2xl';
 
@@ -97,6 +99,7 @@ const rootStyle = [
   data-ubicacion-panel
   data-ubicacion-theme="split"
   data-horarios={horariosJson}
+  data-cerrado-temporal={cerradoTemporal ? 'true' : 'false'}
   style={rootStyle || undefined}
 >
   <header class={`overflow-hidden ${glassCard}`} style={panelStyle}>

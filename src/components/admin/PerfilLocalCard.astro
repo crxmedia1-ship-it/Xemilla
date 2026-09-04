@@ -28,6 +28,7 @@ interface Props {
   showMap?: boolean;
   showHours?: boolean;
   showSocial?: boolean;
+  socialWide?: boolean;
   variant?: 'default' | 'studio';
 }
 
@@ -54,6 +55,7 @@ const {
   showMap = true,
   showHours = true,
   showSocial = true,
+  socialWide = false,
   variant = 'default',
 } = Astro.props;
 
@@ -108,14 +110,51 @@ const redes = [
   },
 ];
 
-const studioCardClass =
-  'w-full h-full bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col shadow-sm';
+const studioCardBase =
+  'w-full min-w-0 p-6 lg:p-7 bg-white border border-zinc-200/80 rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col dark:bg-zinc-900/80 dark:border-zinc-800 dark:shadow-none dark:backdrop-blur-xl';
+const studioHoursCardClass = `${studioCardBase} h-full w-full justify-between`;
+const studioMapCardClass = `${studioCardBase} h-full w-full justify-between gap-4`;
+const studioSocialCardClass =
+  'w-full min-w-0 p-6 lg:p-8 bg-white border border-zinc-200/80 rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col dark:bg-zinc-900/80 dark:border-zinc-800 dark:shadow-none dark:backdrop-blur-xl';
+
+const studioInputClass =
+  'w-full min-w-0 bg-zinc-50 border border-zinc-200/70 text-zinc-900 rounded-xl px-3 py-2 text-xs placeholder:text-zinc-400 focus:bg-white focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600 focus:dark:bg-zinc-950';
+
+const studioHeadTitleClass = 'm-0 text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100';
+const studioIconWrapClass =
+  'mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400';
+
+const studioDayRowClass =
+  'grid grid-cols-[75px_1fr_auto] sm:grid-cols-[90px_1fr_auto] items-center gap-2 sm:gap-3 py-2 border-b border-zinc-100/80 last:border-0 w-full dark:border-zinc-800/80';
+
+const studioTimesClass = 'flex items-center justify-center gap-1.5 w-full min-w-0';
+
+const studioTimeInputClass =
+  'w-full max-w-[110px] sm:max-w-[125px] px-1.5 sm:px-2 py-1.5 text-center text-xs sm:text-sm font-mono bg-zinc-50 border border-zinc-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-zinc-950 transition-all text-zinc-900 appearance-none dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 focus:dark:border-zinc-600';
+
+const studioMapInputClass =
+  'w-full px-3 py-2 text-xs sm:text-sm bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
+
+const studioSocialRowClass =
+  'flex w-full min-w-0 flex-wrap items-center gap-3 border-b border-zinc-100 py-2.5 last:border-0 sm:flex-nowrap dark:border-zinc-800/80';
+
+const studioSocialGridClass =
+  'grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 w-full';
+
+const studioSocialWideCellClass =
+  'flex w-full min-w-0 flex-col rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-3 transition-colors hover:bg-white dark:border-zinc-800/80 dark:bg-zinc-950/40 hover:dark:bg-zinc-900/50';
+
+const studioSocialStackedInputClass =
+  'w-full px-3.5 py-2 text-xs sm:text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all placeholder:text-zinc-400 dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
+
+const studioSocialInputClass =
+  'flex-1 w-full min-w-0 order-last sm:order-none px-3.5 py-2 text-xs sm:text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
 ---
 
 <div
   class:list={[
     nestInParent && variant === 'studio'
-      ? 'contents'
+      ? 'contents perfil-local-ops perfil-local-ops--studio'
       : ['perfil-local-ops', variant === 'studio' && 'perfil-local-ops--studio space-y-6'],
   ]}
   {...(nestInParent ? {} : { 'data-local-ops': scope })}
@@ -123,20 +162,40 @@ const studioCardClass =
 >
   {
     showHours ? (
-      <div class:list={['perfil-group', variant === 'studio' ? studioCardClass : null]}>
-        <div class="perfil-group__head">
-          <div>
-            <h3>Horario de atención</h3>
-            <p class="perfil-group__sub">El switch abre o cierra el día. Los atajos copian el primer horario abierto.</p>
-          </div>
-          <div class="perfil-seg" role="group" aria-label="Atajos de horario">
-            <button type="button" class="perfil-seg__btn" data-hours-preset="lv">Lun–Vie</button>
-            <button type="button" class="perfil-seg__btn" data-hours-preset="finde">Fines de semana</button>
-            <button type="button" class="perfil-seg__btn" data-hours-preset="todos">Lunes a Domingo</button>
-            <button type="button" class="perfil-seg__btn perfil-seg__btn--mute" data-hours-preset="cerrados">Cerrar</button>
+      <div class:list={['perfil-group', variant === 'studio' ? studioHoursCardClass : null]}>
+        <div class:list={['perfil-group__head', variant === 'studio' && 'min-w-0']}>
+          <div class="flex min-w-0 items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center">
+            {variant === 'studio' ? (
+              <div class={studioIconWrapClass} aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 7v5l3 2"></path>
+                </svg>
+              </div>
+            ) : null}
+            <div class="min-w-0">
+              <h3 class:list={[variant === 'studio' && studioHeadTitleClass]}>Horario de atención</h3>
+            </div>
+            </div>
+            <span
+              id={variant === 'studio' && scope === 'perfil' ? 'ops-open-badge' : undefined}
+              class:list={[
+                'perfil-status shrink-0',
+                horarioHoy.open ? 'is-open' : 'is-closed',
+              ]}
+            >
+              {horarioHoy.text}
+            </span>
           </div>
         </div>
-        <ul class="perfil-list perfil-list--hours" data-hours-week={scope}>
+        <ul
+          class:list={[
+            'perfil-list perfil-list--hours min-w-0',
+            variant === 'studio' && 'flex flex-col justify-between flex-1 gap-1 mt-2',
+          ]}
+          data-hours-week={scope}
+        >
           {
             DIAS_SEMANA.map((dia) => {
               const row = horarioSemana[dia.id];
@@ -144,31 +203,47 @@ const studioCardClass =
               const isToday = dia.id === horarioHoy.id;
               return (
                 <li
-                  class:list={['perfil-day', isToday && 'is-today']}
+                  class:list={[
+                    'perfil-day',
+                    isToday && 'is-today',
+                    variant === 'studio' && studioDayRowClass,
+                  ]}
                   data-day={dia.id}
                   data-closed={closed ? 'true' : 'false'}
                 >
-                  <span class="perfil-day__name">
+                  <span
+                    class:list={[
+                      'perfil-day__name',
+                      variant === 'studio' && 'text-xs sm:text-sm font-medium text-zinc-800 shrink-0 truncate',
+                    ]}
+                  >
                     {dia.label}
                     {isToday ? <em>Hoy</em> : null}
                   </span>
-                  <div class="perfil-day__mid">
+                  <div
+                    class:list={[
+                      'perfil-day__mid',
+                      variant === 'studio' && studioTimesClass,
+                    ]}
+                  >
                     <span class="perfil-day__closed-label">Cerrado</span>
-                    <span class="perfil-day__times">
+                    <span class:list={['perfil-day__times', variant === 'studio' && studioTimesClass]}>
                       <input
                         type="time"
                         data-hours-open
                         value={row?.open || '12:00'}
                         disabled={closed}
                         aria-label={`Apertura ${dia.label}`}
+                        class:list={[variant === 'studio' && ['perfil-day__time-pill', studioTimeInputClass]]}
                       />
-                      <span class="perfil-day__to">–</span>
+                      <span class:list={['perfil-day__to', variant === 'studio' && 'text-zinc-400 font-mono text-xs shrink-0']}>–</span>
                       <input
                         type="time"
                         data-hours-close
                         value={row?.close || '22:00'}
                         disabled={closed}
                         aria-label={`Cierre ${dia.label}`}
+                        class:list={[variant === 'studio' && ['perfil-day__time-pill', studioTimeInputClass]]}
                       />
                     </span>
                   </div>
@@ -179,7 +254,14 @@ const studioCardClass =
                     aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
                     data-hours-toggle
                     title={closed ? 'Cerrado' : 'Abierto'}
-                    class:list={['ios-toggle', 'ios-toggle--live', 'perfil-toggle', !closed && 'is-on']}
+                    class:list={[
+                      'ios-toggle',
+                      'ios-toggle--live',
+                      'perfil-toggle',
+                      'shrink-0',
+                      variant === 'studio' && 'justify-self-end',
+                      !closed && 'is-on bg-emerald-500',
+                    ]}
                   >
                     <span class="ios-toggle__knob" aria-hidden="true"></span>
                   </button>
@@ -188,7 +270,6 @@ const studioCardClass =
             })
           }
         </ul>
-        <p class="perfil-footnote">Se publica en la WebApp de este restaurante.</p>
         <input type="hidden" id={horarioHiddenId} value={horarioText} data-horario-hidden />
       </div>
     ) : null
@@ -196,18 +277,29 @@ const studioCardClass =
 
   {
     showMap ? (
-      <div class:list={['perfil-group', variant === 'studio' ? studioCardClass : null]}>
+      <div class:list={['perfil-group', variant === 'studio' ? studioMapCardClass : null]}>
         <div class="perfil-group__head">
-          <div>
-            <h3>Ubicación &amp; Mapa</h3>
-            <p class="perfil-group__sub">Dirección en texto y enlace o embed de Google Maps.</p>
+          <div class="flex min-w-0 items-center">
+            {variant === 'studio' ? (
+              <div class={studioIconWrapClass} aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z"></path>
+                  <circle cx="12" cy="10" r="2.5"></circle>
+                </svg>
+              </div>
+            ) : null}
+            <div class="min-w-0">
+              <h3 class:list={[variant === 'studio' && studioHeadTitleClass]}>Ubicación &amp; Mapa</h3>
+            </div>
           </div>
         </div>
-        <div class="perfil-map w-full flex-1" data-maps-preview>
+        <div class:list={['perfil-map w-full', variant === 'studio' && 'flex flex-col gap-4']} data-maps-preview>
           <div
             class:list={[
-              'perfil-map__frame relative mb-4 w-full flex-shrink-0 overflow-hidden rounded-xl bg-zinc-100',
-              variant === 'studio' ? 'aspect-[4/3] sm:aspect-video' : null,
+              'perfil-map__frame relative w-full overflow-hidden border border-zinc-200',
+              variant === 'studio'
+                ? 'h-60 lg:h-72 rounded-2xl shadow-inner'
+                : 'rounded-xl border-zinc-200',
             ]}
           >
             {
@@ -215,7 +307,7 @@ const studioCardClass =
                 <iframe
                   title="Mapa del restaurante"
                   src={mapsEmbed}
-                  class={variant === 'studio' ? 'absolute inset-0 h-full w-full border-0' : undefined}
+                  class={variant === 'studio' ? 'h-full w-full border-0' : undefined}
                   allowfullscreen
                   loading="lazy"
                   referrerpolicy="no-referrer-when-downgrade"
@@ -239,9 +331,9 @@ const studioCardClass =
           </div>
           {
             variant === 'studio' ? (
-              <div class="perfil-map__studio-fields">
-                <label class="perfil-field perfil-field--map">
-                  <span>Dirección</span>
+              <div class="perfil-map__studio-fields mt-1 flex w-full flex-col gap-3">
+                <label class="perfil-field perfil-field--map flex w-full min-w-0 flex-col gap-1.5">
+                  <span class="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-zinc-500">Dirección en texto</span>
                   <input
                     type="text"
                     id={direccionInputId || undefined}
@@ -249,17 +341,18 @@ const studioCardClass =
                     placeholder="Ej. Av. Principal, Valencia"
                     autocomplete="street-address"
                     data-direccion-input
+                    class={studioMapInputClass}
                   />
                 </label>
-                <label class="perfil-field perfil-field--map">
-                  <span>Enlace de Google Maps</span>
+                <label class="perfil-field perfil-field--map flex w-full min-w-0 flex-col gap-1.5">
+                  <span class="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-zinc-500">Iframe de Google Maps</span>
                   <textarea
                     id={mapsInputId}
                     rows={2}
                     placeholder="https://maps.google.com/… o iframe embed"
                     autocomplete="off"
                     data-maps-url
-                    class="perfil-map__textarea"
+                    class:list={['perfil-map__textarea', studioMapInputClass]}
                   >{mapsUrl}</textarea>
                 </label>
               </div>
@@ -296,48 +389,112 @@ const studioCardClass =
 
   {
     showSocial ? (
-      <div class:list={['perfil-group', variant === 'studio' ? studioCardClass : null]}>
+      <div class:list={['perfil-group', variant === 'studio' ? studioSocialCardClass : null]}>
         <div class="perfil-group__head">
-          <div>
-            <h3>Canales de contacto</h3>
-            <p class="perfil-group__sub">Activa un canal para editar su enlace. Solo los activos aparecen en la WebApp.</p>
+          <div class="flex min-w-0 items-center">
+            {variant === 'studio' ? (
+              <div class={studioIconWrapClass} aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+                </svg>
+              </div>
+            ) : null}
+            <div class="min-w-0">
+              <h3 class:list={[variant === 'studio' && studioHeadTitleClass]}>Canales de contacto</h3>
+            </div>
           </div>
         </div>
-        <ul class="perfil-list">
+        <ul
+          class:list={[
+            'perfil-list min-w-0',
+            variant === 'studio' && socialWide && ['perfil-list--social-grid', studioSocialGridClass],
+          ]}
+        >
           {
             redes.map((net) => (
               <li
-                class="perfil-social"
+                class:list={[
+                  'perfil-social',
+                  variant === 'studio' && (socialWide ? studioSocialWideCellClass : studioSocialRowClass),
+                ]}
                 data-social={net.id}
                 data-on={net.state.on ? 'true' : 'false'}
               >
-                <div class="perfil-social__bar">
-                  <span class="perfil-social__brand">
-                    <span class={`perfil-social__glyph perfil-social__glyph--${net.icon}`} aria-hidden="true"></span>
-                    {net.label}
-                  </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={net.state.on}
-                    aria-label={`${net.label} ${net.state.on ? 'visible' : 'oculta'}`}
-                    data-social-toggle
-                    title={net.state.on ? 'Visible en la WebApp' : 'Oculta en la WebApp'}
-                    class:list={['ios-toggle', 'ios-toggle--live', 'perfil-toggle', net.state.on && 'is-on']}
-                  >
-                    <span class="ios-toggle__knob" aria-hidden="true"></span>
-                  </button>
-                </div>
-                <input
-                  type={net.inputType || 'url'}
-                  id={`${socialIdPrefix}${net.id}`}
-                  value={net.state.url}
-                  placeholder={net.placeholder}
-                  autocomplete="off"
-                  disabled={!net.state.on}
-                  hidden={!net.state.on}
-                  data-social-input
-                />
+                {
+                  variant === 'studio' ? (
+                    <>
+                      <div class="flex w-full items-center justify-between gap-2 mb-1.5">
+                        <span class="perfil-social__brand min-w-0">
+                          <span class={`perfil-social__glyph perfil-social__glyph--${net.icon}`} aria-hidden="true"></span>
+                          {net.label}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={net.state.on}
+                          aria-label={`${net.label} ${net.state.on ? 'visible' : 'oculta'}`}
+                          data-social-toggle
+                          title={net.state.on ? 'Visible en la WebApp' : 'Oculta en la WebApp'}
+                          class:list={[
+                            'ios-toggle',
+                            'ios-toggle--live',
+                            'perfil-toggle',
+                            'shrink-0',
+                            net.state.on && 'is-on bg-emerald-500',
+                          ]}
+                        >
+                          <span class="ios-toggle__knob" aria-hidden="true"></span>
+                        </button>
+                      </div>
+                      <input
+                        type={net.inputType || 'url'}
+                        id={`${socialIdPrefix}${net.id}`}
+                        value={net.state.url}
+                        placeholder={net.placeholder}
+                        autocomplete="off"
+                        disabled={!net.state.on}
+                        hidden={!net.state.on}
+                        data-social-input
+                        class={socialWide ? studioSocialStackedInputClass : studioSocialInputClass}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div class="perfil-social__bar">
+                        <span class="perfil-social__brand">
+                          <span class={`perfil-social__glyph perfil-social__glyph--${net.icon}`} aria-hidden="true"></span>
+                          {net.label}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={net.state.on}
+                          aria-label={`${net.label} ${net.state.on ? 'visible' : 'oculta'}`}
+                          data-social-toggle
+                          title={net.state.on ? 'Visible en la WebApp' : 'Oculta en la WebApp'}
+                          class:list={[
+                            'ios-toggle',
+                            'ios-toggle--live',
+                            'perfil-toggle',
+                            net.state.on && 'is-on bg-emerald-500',
+                          ]}
+                        >
+                          <span class="ios-toggle__knob" aria-hidden="true"></span>
+                        </button>
+                      </div>
+                      <input
+                        type={net.inputType || 'url'}
+                        id={`${socialIdPrefix}${net.id}`}
+                        value={net.state.url}
+                        placeholder={net.placeholder}
+                        autocomplete="off"
+                        disabled={!net.state.on}
+                        hidden={!net.state.on}
+                        data-social-input
+                      />
+                    </>
+                  )
+                }
               </li>
             ))
           }
@@ -346,6 +503,84 @@ const studioCardClass =
     ) : null
   }
 </div>
+
+<script>
+  function setSocialRow(row, on) {
+    if (!(row instanceof HTMLElement)) return;
+    row.dataset.on = on ? 'true' : 'false';
+    const toggle = row.querySelector('[data-social-toggle]');
+    if (toggle instanceof HTMLElement) {
+      toggle.setAttribute('aria-checked', String(on));
+      toggle.classList.toggle('is-on', on);
+      toggle.classList.toggle('bg-emerald-500', on);
+      toggle.style.backgroundColor = on ? '#10b981' : '';
+      toggle.title = on ? 'Visible en la WebApp' : 'Oculta en la WebApp';
+    }
+    const input = row.querySelector('[data-social-input], input:not([type="hidden"])');
+    if (input instanceof HTMLInputElement) {
+      input.disabled = !on;
+      input.hidden = !on;
+    }
+  }
+
+  function setDayRow(row, closed) {
+    if (!(row instanceof HTMLElement)) return;
+    row.dataset.closed = closed ? 'true' : 'false';
+    const toggle = row.querySelector('[data-hours-toggle]');
+    if (toggle instanceof HTMLElement) {
+      toggle.setAttribute('aria-checked', String(!closed));
+      toggle.classList.toggle('is-on', !closed);
+      toggle.classList.toggle('bg-emerald-500', !closed);
+      toggle.style.backgroundColor = !closed ? '#10b981' : '';
+      toggle.title = closed ? 'Cerrado' : 'Abierto';
+    }
+    row.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((el) => {
+      if (el instanceof HTMLInputElement) el.disabled = closed;
+    });
+  }
+
+  function bindOpsToggles(root) {
+    if (!(root instanceof HTMLElement)) return;
+    root.querySelectorAll('[data-social-toggle]').forEach((btn) => {
+      if (!(btn instanceof HTMLElement) || btn.dataset.toggleBound === '1') return;
+      btn.dataset.toggleBound = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const row = btn.closest('[data-social]');
+        if (!(row instanceof HTMLElement)) return;
+        const next = row.dataset.on !== 'true';
+        setSocialRow(row, next);
+        root.dispatchEvent(new CustomEvent('ops-social-change', { bubbles: true }));
+      });
+    });
+
+    root.querySelectorAll('[data-hours-toggle]').forEach((btn) => {
+      if (!(btn instanceof HTMLElement) || btn.dataset.toggleBound === '1') return;
+      btn.dataset.toggleBound = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const row = btn.closest('[data-day]');
+        if (!(row instanceof HTMLElement)) return;
+        setDayRow(row, row.dataset.closed !== 'true');
+        root.dispatchEvent(new CustomEvent('ops-hours-change', { bubbles: true }));
+      });
+    });
+  }
+
+  function bootOpsToggles() {
+    document.querySelectorAll('.perfil-local-ops, #ops-contacto-card').forEach(bindOpsToggles);
+    // When display:contents, query cards directly
+    document.querySelectorAll('#ops-contacto-card [data-social-toggle], #ops-contacto-card [data-hours-toggle]').forEach((btn) => {
+      const host = btn.closest('.perfil-group') || btn.closest('#ops-contacto-card');
+      if (host) bindOpsToggles(host);
+    });
+  }
+
+  bootOpsToggles();
+  document.addEventListener('astro:page-load', bootOpsToggles);
+</script>
 
 <style>
   .perfil-local-ops {
@@ -362,29 +597,52 @@ const studioCardClass =
 
   .perfil-local-ops--studio .perfil-group.ops-card,
   .perfil-local-ops--studio .perfil-group.ops-studio-card,
-  .perfil-group.bg-white.border-zinc-200 {
+  .perfil-group.bg-white.border-zinc-200,
+  .perfil-local-ops--studio .perfil-group.rounded-3xl {
     margin-bottom: 0;
     overflow: visible;
-    border-radius: 1rem;
-    border: 1px solid #e4e4e7;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(228, 228, 231, 0.8);
     background: #ffffff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     padding: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .perfil-local-ops--studio .perfil-group.ops-card,
+    .perfil-local-ops--studio .perfil-group.ops-studio-card,
+    .perfil-group.bg-white.border-zinc-200,
+    .perfil-local-ops--studio .perfil-group.rounded-3xl {
+      padding: 1.75rem;
+    }
   }
 
   .perfil-local-ops--studio .perfil-group__head,
   .perfil-group.bg-white .perfil-group__head {
-    padding: 0 0 0.75rem;
+    padding: 0 0 1rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(244, 244, 245, 0.9);
+    align-items: flex-start;
+  }
+
+  .perfil-local-ops--studio .perfil-group__head.flex-col {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .perfil-local-ops--studio .perfil-group__head h3,
   .perfil-group.bg-white .perfil-group__head h3 {
     color: #18181b;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
   }
 
   .perfil-local-ops--studio .perfil-group__sub,
   .perfil-group.bg-white .perfil-group__sub {
     color: #71717a;
+    font-size: 0.75rem;
+    margin-top: 0.125rem;
   }
 
   .perfil-local-ops--studio .perfil-seg,
@@ -409,12 +667,24 @@ const studioCardClass =
   }
 
   .perfil-local-ops--studio .perfil-day,
+  .perfil-group.bg-white .perfil-day {
+    border-top: 0;
+    border-bottom: 1px solid #f4f4f5;
+    padding: 0.5rem 0;
+  }
+
   .perfil-local-ops--studio .perfil-social,
-  .perfil-group.bg-white .perfil-day,
   .perfil-group.bg-white .perfil-social {
-    border-top-color: #f4f4f5;
-    padding-left: 0;
-    padding-right: 0;
+    border-top: 0;
+    border-bottom: 1px solid #f4f4f5;
+    padding: 0.625rem 0;
+  }
+
+  .perfil-local-ops--studio .perfil-day:last-child,
+  .perfil-local-ops--studio .perfil-social:last-child,
+  .perfil-group.bg-white .perfil-day:last-child,
+  .perfil-group.bg-white .perfil-social:last-child {
+    border-bottom: 0;
   }
 
   .perfil-local-ops--studio .perfil-day:first-child,
@@ -431,17 +701,171 @@ const studioCardClass =
     color: #18181b;
   }
 
+  .perfil-local-ops--studio .perfil-list--hours {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1 1 auto;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    min-width: 0;
+  }
+
+  .perfil-local-ops--studio .perfil-day {
+    display: grid;
+    grid-template-columns: 75px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.5rem 0;
+  }
+
+  @media (min-width: 640px) {
+    .perfil-local-ops--studio .perfil-day {
+      grid-template-columns: 90px minmax(0, 1fr) auto;
+      gap: 0.75rem;
+    }
+  }
+
+  .perfil-local-ops--studio .perfil-day__name {
+    min-width: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #27272a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 640px) {
+    .perfil-local-ops--studio .perfil-day__name {
+      font-size: 0.875rem;
+    }
+  }
+
+  .perfil-local-ops--studio .perfil-day .perfil-toggle {
+    margin-left: 0;
+    flex-shrink: 0;
+    justify-self: end;
+  }
+
+  .perfil-local-ops--studio .perfil-day__mid,
+  .perfil-local-ops--studio .perfil-day__times {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    width: 100%;
+    min-width: 0;
+  }
+
   .perfil-local-ops--studio .perfil-day input[type='time'],
+  .perfil-local-ops--studio .perfil-day__time-pill,
+  .perfil-group.bg-white .perfil-day input[type='time'],
+  .perfil-group.bg-white .perfil-day__time-pill {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0%;
+    width: 100%;
+    min-width: 0;
+    max-width: 110px;
+    border: 1px solid #e4e4e7;
+    border-radius: 0.5rem;
+    background: #fafafa;
+    color: #18181b;
+    padding: 0.375rem 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    line-height: 1.25;
+    box-shadow: none;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+
+  @media (min-width: 640px) {
+    .perfil-local-ops--studio .perfil-day input[type='time'],
+    .perfil-local-ops--studio .perfil-day__time-pill,
+    .perfil-group.bg-white .perfil-day input[type='time'],
+    .perfil-group.bg-white .perfil-day__time-pill {
+      max-width: 125px;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-focus-inner,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-datetime-edit,
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-datetime-edit-wrapper,
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-datetime-edit-fields-wrapper,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-datetime-edit,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-datetime-edit-wrapper,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-datetime-edit-fields-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-datetime-edit-hour-field,
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-datetime-edit-minute-field,
+  .perfil-local-ops--studio .perfil-day input[type='time']::-moz-datetime-edit-ampm-field,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-datetime-edit-hour-field,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-datetime-edit-minute-field,
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-datetime-edit-ampm-field {
+    padding-block: 0;
+    padding-inline: 0.08em;
+    min-width: 1.85ch;
+    overflow: visible;
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time']::-webkit-datetime-edit,
+  .perfil-local-ops--studio .perfil-day input[type='time']::-webkit-datetime-edit-fields-wrapper,
+  .perfil-group.bg-white .perfil-day input[type='time']::-webkit-datetime-edit,
+  .perfil-group.bg-white .perfil-day input[type='time']::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .perfil-local-ops--studio .perfil-day input[type='time']::-webkit-calendar-picker-indicator,
+  .perfil-group.bg-white .perfil-day input[type='time']::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
   .perfil-local-ops--studio .perfil-field input,
   .perfil-local-ops--studio .perfil-field textarea,
   .perfil-local-ops--studio .perfil-social input,
-  .perfil-group.bg-white .perfil-day input[type='time'],
   .perfil-group.bg-white .perfil-field input,
   .perfil-group.bg-white .perfil-field textarea,
   .perfil-group.bg-white .perfil-social input {
-    border-color: #e4e4e7;
-    background: #fafafa;
+    border: 1px solid rgba(228, 228, 231, 0.8);
+    border-radius: 0.75rem;
+    background: rgba(250, 250, 250, 0.7);
     color: #18181b;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.75rem;
+    outline: none;
+    transition:
+      background 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease;
   }
 
   .perfil-local-ops--studio .perfil-day input[type='time']:focus,
@@ -453,29 +877,42 @@ const studioCardClass =
   .perfil-group.bg-white .perfil-field textarea:focus,
   .perfil-group.bg-white .perfil-social input:focus {
     background: #ffffff;
-    border-color: #a1a1aa;
+    border-color: #18181b;
+    box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.1);
   }
 
   .perfil-local-ops--studio .perfil-map__frame,
-  .perfil-group.bg-white .perfil-map__frame.aspect-\[4\/3\] {
-    margin: 0 0 1rem;
-    border-radius: 0.75rem;
+  .perfil-group.bg-white .perfil-map__frame.h-72,
+  .perfil-group.bg-white .perfil-map__frame.h-64,
+  .perfil-group.bg-white .perfil-map__frame.h-60,
+  .perfil-group.bg-white .perfil-map__frame.h-56 {
+    margin: 0;
+    border-radius: 1rem;
     background: #f4f4f5;
-    border: 0;
-    aspect-ratio: 4 / 3;
-    min-height: 0;
+    border: 1px solid #e4e4e7;
+    aspect-ratio: auto;
+    width: 100%;
+    height: 15rem;
+    min-height: 15rem;
+    flex: none;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(24, 24, 27, 0.06);
   }
 
-  @media (min-width: 640px) {
-    .perfil-group.bg-white .perfil-map__frame.aspect-\[4\/3\] {
-      aspect-ratio: 16 / 9;
+  @media (min-width: 1024px) {
+    .perfil-local-ops--studio .perfil-map__frame,
+    .perfil-group.bg-white .perfil-map__frame.h-72,
+    .perfil-group.bg-white .perfil-map__frame.h-64,
+    .perfil-group.bg-white .perfil-map__frame.h-60 {
+      height: 18rem;
+      min-height: 18rem;
     }
   }
 
   .perfil-local-ops--studio .perfil-map__studio-fields,
   .perfil-group.bg-white .perfil-map__studio-fields {
     margin: 0;
-    gap: 0.45rem;
+    gap: 0.65rem;
   }
 
   .perfil-local-ops--studio .perfil-map__studio-fields .perfil-field span,
@@ -507,8 +944,8 @@ const studioCardClass =
 
   .perfil-map__studio-fields {
     display: grid;
-    gap: 0.55rem;
-    margin: 0 0.9rem 0.85rem;
+    gap: 0.65rem;
+    margin: 0;
   }
 
   .perfil-map__studio-fields .perfil-field {
@@ -567,6 +1004,33 @@ const studioCardClass =
     text-transform: uppercase;
     padding: 0.35rem 0.65rem;
     cursor: pointer;
+  }
+
+  .perfil-local-ops--studio .perfil-social {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .perfil-local-ops--studio .perfil-social input[data-social-input] {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .perfil-local-ops--studio .perfil-social {
+      flex-wrap: nowrap;
+    }
+
+    .perfil-local-ops--studio .perfil-social input[data-social-input] {
+      font-size: 0.875rem;
+    }
   }
 
   .perfil-social input[data-social-input][hidden] {
@@ -776,6 +1240,10 @@ const studioCardClass =
     padding: 0 0 0.35rem;
   }
 
+  .perfil-local-ops--studio .perfil-map {
+    padding: 0;
+  }
+
   .perfil-map__frame {
     position: relative;
     display: block;
@@ -912,39 +1380,44 @@ const studioCardClass =
   }
 
   @media (max-width: 768px) {
-    .perfil-group__head {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-group__head {
       padding: 0.8rem 0.85rem 0.4rem;
     }
 
-    .perfil-day,
-    .perfil-field,
-    .perfil-social {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-day,
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-field,
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-social {
       padding-left: 0.85rem;
       padding-right: 0.85rem;
     }
 
-    .perfil-day {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-day {
       flex-wrap: wrap;
       gap: 0.35rem 0.55rem;
     }
 
-    .perfil-day__name {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-day__name {
       width: auto;
       flex: 1 1 auto;
     }
 
-    .perfil-day .perfil-toggle {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-day .perfil-toggle {
       margin-left: 0;
     }
 
-    .perfil-day__mid {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-day__mid {
       flex: 1 1 100%;
       justify-content: flex-start;
     }
 
-    .perfil-day input[type='time'] {
+    .perfil-local-ops:not(.perfil-local-ops--studio) .perfil-day input[type='time'] {
       min-width: 5.15rem;
       font-size: 0.75rem;
+    }
+
+    .perfil-local-ops--studio .perfil-group__head {
+      padding-left: 0;
+      padding-right: 0;
     }
   }
 </style>

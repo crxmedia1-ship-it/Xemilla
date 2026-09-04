@@ -1,5 +1,6 @@
 ---
 import { googleMapsEmbedSrc, mapsOpenHref } from '../../lib/maps-preview.js';
+import { isEstadoHorarioRow, parseCerradoTemporal } from '../../lib/horarios-semana.js';
 
 interface Props {
   direccion: string;
@@ -100,13 +101,15 @@ function parseHorariosTexto(text: string): Array<{ dia: string; horas: string }>
     });
 }
 
-const liveHorarios =
+const liveHorariosRaw =
   horarioFilas.length > 0
     ? horarioFilas
     : horariosTexto
       ? parseHorariosTexto(horariosTexto)
       : [];
-
+const cerradoTemporal =
+  parseCerradoTemporal(horariosTexto) || liveHorariosRaw.some((row) => isEstadoHorarioRow(row));
+const liveHorarios = liveHorariosRaw.filter((row) => !isEstadoHorarioRow(row));
 const horariosJson = JSON.stringify(liveHorarios);
 
 const socialMeta: Record<string, { label: string; path: string }> = {
@@ -133,6 +136,7 @@ const socialMeta: Record<string, { label: string; path: string }> = {
   class="mx-auto flex w-full max-w-none flex-col items-center px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6"
   data-ubicacion-panel
   data-horarios={horariosJson}
+  data-cerrado-temporal={cerradoTemporal ? 'true' : 'false'}
   style={[titleStyle && `--sec-titulo:${titleColor}`, bodyStyle && `--sec-cuerpo:${bodyColor}`]
     .filter(Boolean)
     .join('; ')}

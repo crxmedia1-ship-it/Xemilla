@@ -25,6 +25,38 @@ function emptyDay() {
 }
 
 /**
+ * @param {string} left
+ * @param {string} right
+ */
+export function isEstadoHorarioLine(left, right) {
+  return (
+    /^estado$/i.test(String(left || '').trim()) &&
+    /cerrado\s*temporal/i.test(String(right || '').trim())
+  );
+}
+
+/**
+ * @param {{ dia?: string, horas?: string }} row
+ */
+export function isEstadoHorarioRow(row) {
+  return isEstadoHorarioLine(row?.dia || '', row?.horas || '');
+}
+
+/**
+ * Kill switch persistido en la primera línea: `ESTADO: Cerrado temporalmente`.
+ * @param {string} text
+ */
+export function parseCerradoTemporal(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return false;
+  return raw.split(/\n|;/).some((line) => {
+    const idx = line.indexOf(':');
+    if (idx === -1) return /cerrado\s*temporal/i.test(line);
+    return isEstadoHorarioLine(line.slice(0, idx), line.slice(idx + 1));
+  });
+}
+
+/**
  * @param {string} token
  */
 function dayIdFromToken(token) {
@@ -125,6 +157,7 @@ export function parseHorarioSemana(text) {
     const idx = line.indexOf(':');
     const left = idx === -1 ? '' : line.slice(0, idx);
     const right = idx === -1 ? line : line.slice(idx + 1);
+    if (isEstadoHorarioLine(left, right)) continue;
     const ids = resolveDayIds(left);
     const parsed = parseHours(right);
     for (const id of ids) {
@@ -136,23 +169,29 @@ export function parseHorarioSemana(text) {
 
 /**
  * @param {Record<string, DiaHorario>} days
+ * @param {{ cerradoTemporal?: boolean }} [opts]
  */
-export function serializeHorarioSemana(days) {
-  return DIAS_SEMANA.map((d) => {
+export function serializeHorarioSemana(days, opts = {}) {
+  const body = DIAS_SEMANA.map((d) => {
     const row = days?.[d.id] || emptyDay();
     if (row.closed) return `${d.label}: Cerrado`;
     return `${d.label}: ${row.open} – ${row.close}`;
   }).join('\n');
+  if (opts.cerradoTemporal) return `ESTADO: Cerrado temporalmente\n${body}`;
+  return body;
 }
 
 /**
  * @param {Record<string, DiaHorario>} days
  * @param {Date} [now]
  */
-export function previewHorarioHoy(days, now = new Date()) {
+export function previewHorarioHoy(days, now = new Date(), opts = {}) {
   const map = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
   const id = map[now.getDay()] || 'lun';
   const meta = DIAS_SEMANA.find((d) => d.id === id);
+  if (opts.cerradoTemporal) {
+    return { id, label: meta?.label || 'Hoy', open: false, text: 'Cerrado temporalmente' };
+  }
   const row = days?.[id] || emptyDay();
   if (row.closed) {
     return { id, label: meta?.label || 'Hoy', open: false, text: 'Cerrado hoy' };

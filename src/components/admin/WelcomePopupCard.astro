@@ -1,6 +1,6 @@
 ---
 /**
- * Flyer / pop-up de bienvenida — diseño premium (switch + imagen).
+ * Flyer de bienvenida — switch tipo Horarios + dropzone póster + programación fecha/hora.
  */
 interface PopupBannerState {
   enabled: boolean;
@@ -10,6 +10,8 @@ interface PopupBannerState {
   button_text?: string;
   action_type?: string;
   action_url?: string;
+  duration_preset?: string;
+  expires_at?: string | null;
 }
 
 interface Props {
@@ -20,19 +22,52 @@ interface Props {
 const { scope = 'perfil', banner } = Astro.props;
 const enabled = Boolean(banner.enabled);
 const hasImage = Boolean(String(banner.image_url || '').trim());
+
+const expiresAt = banner.expires_at ? String(banner.expires_at) : '';
+const scheduleMode =
+  banner.duration_preset === 'custom' ||
+  banner.duration_preset === 'schedule' ||
+  (banner.duration_preset !== 'indefinite' && Boolean(expiresAt));
+
+let scheduleDate = '';
+let scheduleTime = '23:59';
+if (expiresAt) {
+  const d = new Date(expiresAt);
+  if (!Number.isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    scheduleDate = `${y}-${m}-${day}`;
+    scheduleTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+}
+
+const durationPreset = scheduleMode ? 'schedule' : 'indefinite';
+
+const studioInputClass =
+  'w-full bg-zinc-50 border border-zinc-200/70 text-zinc-900 rounded-xl px-3 py-2 text-xs placeholder:text-zinc-400 focus:bg-white focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
 ---
 
 <div
-  class="w-full h-full bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col shadow-sm welcome-popup-admin"
+  class="welcome-popup-admin flex h-full w-full min-w-0 flex-col justify-between rounded-3xl border border-zinc-200/80 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-900/80 dark:shadow-none dark:backdrop-blur-xl lg:p-7"
   data-welcome-popup={scope}
   data-popup-enabled-state={enabled ? 'true' : 'false'}
 >
-  <div class="mb-4 flex items-center justify-between gap-3 border-b border-zinc-100 pb-4">
-    <div class="min-w-0">
-      <h3 class="m-0 text-base font-semibold text-zinc-900">Flyer / Pop-up de Bienvenida</h3>
-      <p class="mt-0.5 m-0 text-xs text-zinc-500">
-        Muestra una promoción o evento en pantalla completa al entrar al menú
-      </p>
+  <div class="mb-5 flex items-center justify-between gap-3 border-b border-zinc-100/80 pb-4 dark:border-zinc-800/80">
+    <div class="flex min-w-0 items-center">
+      <div
+        class="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+        aria-hidden="true"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11v2a1 1 0 0 0 1 1h1.2l7.3 4.4a1 1 0 0 0 1.5-.8V6.4a1 1 0 0 0-1.5-.8L5.2 10H4a1 1 0 0 0-1 1z"></path>
+          <path d="M16.5 8.5a4.5 4.5 0 0 1 0 7"></path>
+          <path d="M18.7 6.3a7.5 7.5 0 0 1 0 11.4"></path>
+        </svg>
+      </div>
+      <div class="min-w-0">
+        <h3 class="m-0 text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Flyer de Bienvenida</h3>
+      </div>
     </div>
     <button
       type="button"
@@ -42,59 +77,47 @@ const hasImage = Boolean(String(banner.image_url || '').trim());
       data-popup-enabled-toggle
       title="Activar o desactivar flyer"
       class:list={[
-        'flyer-switch relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
+        'ios-toggle',
+        'ios-toggle--live',
+        'perfil-toggle',
         enabled ? 'is-on bg-emerald-500' : 'bg-zinc-200',
       ]}
+      style={enabled ? 'background-color:#10b981' : undefined}
     >
-      <span
-        data-popup-switch-knob
-        class:list={[
-          'flyer-switch__knob pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-          enabled ? 'translate-x-5' : 'translate-x-0',
-        ]}
-        aria-hidden="true"
-      ></span>
+      <span class="ios-toggle__knob" data-popup-switch-knob aria-hidden="true"></span>
     </button>
   </div>
 
   <div
-    class="rounded-xl border border-zinc-200/60 bg-zinc-50/70 p-6 text-center"
+    class="flex flex-1 flex-col justify-center rounded-2xl border border-zinc-200/60 bg-zinc-50/60 p-5 text-center"
     data-popup-empty
     hidden={enabled}
   >
     <div
-      class="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-white text-zinc-500 shadow-sm ring-1 ring-zinc-200/80"
+      class="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-full bg-white text-zinc-500 shadow-sm ring-1 ring-zinc-200/70"
       aria-hidden="true"
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 11v2a1 1 0 0 0 1 1h1.2l7.3 4.4a1 1 0 0 0 1.5-.8V6.4a1 1 0 0 0-1.5-.8L5.2 10H4a1 1 0 0 0-1 1z"></path>
         <path d="M16.5 8.5a4.5 4.5 0 0 1 0 7"></path>
         <path d="M18.7 6.3a7.5 7.5 0 0 1 0 11.4"></path>
       </svg>
     </div>
-    <p class="m-0 text-xs font-medium text-zinc-500">
-      El pop-up está desactivado. Activa el switch para cargar un flyer promocional.
+    <p class="m-0 text-xs leading-relaxed text-zinc-500">
+      Flyer desactivado. Activa el switch para promocionar eventos, 2x1 o menú del día al abrir la WebApp.
     </p>
   </div>
 
-  <div class="flex min-h-0 flex-1 flex-col" data-popup-body hidden={!enabled}>
+  <div class="flex w-full min-w-0 flex-1 flex-col" data-popup-body hidden={!enabled}>
     <div
       class:list={[
-        'welcome-popup-admin__drop group relative flex w-full flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl transition-all',
-        hasImage
-          ? 'has-image aspect-[4/5] border border-zinc-200 bg-zinc-100 shadow-sm'
-          : 'aspect-[4/5] border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center hover:border-zinc-400 hover:bg-zinc-100/80',
+        'welcome-popup-admin__drop group relative mx-auto my-auto flex aspect-[4/5] w-full max-h-[360px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50/70 p-6 text-center transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/50 hover:dark:bg-zinc-900/50',
+        hasImage && 'has-image border-solid border-zinc-200 bg-zinc-100',
       ]}
       data-popup-drop
       data-popup-has-image={hasImage ? 'true' : 'false'}
     >
-      <input
-        type="file"
-        accept="image/*"
-        data-popup-file
-        class="sr-only"
-        id={`${scope}-popup-file`}
-      />
+      <input type="file" accept="image/*" data-popup-file class="sr-only" id={`${scope}-popup-file`} />
 
       {
         hasImage ? (
@@ -106,15 +129,15 @@ const hasImage = Boolean(String(banner.image_url || '').trim());
           />
         ) : (
           <div class="flex flex-col items-center justify-center" data-popup-drop-empty>
-            <div class="mb-3 rounded-full bg-white p-3 text-zinc-600 shadow-sm transition-transform group-hover:scale-105">
+            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 transition-transform group-hover:scale-105">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 16V6"></path>
                 <path d="m8 10 4-4 4 4"></path>
                 <path d="M4 18h16"></path>
               </svg>
             </div>
-            <span class="text-xs font-semibold text-zinc-800">Haz clic o arrastra tu flyer</span>
-            <span class="mt-1 text-[11px] text-zinc-400">Formato vertical (PNG, JPG o WebP)</span>
+            <span class="text-sm font-semibold text-zinc-800">Subir imagen del flyer</span>
+            <span class="mt-1 text-xs text-zinc-400">PNG, JPG o WebP vertical</span>
           </div>
         )
       }
@@ -124,7 +147,7 @@ const hasImage = Boolean(String(banner.image_url || '').trim());
           'welcome-popup-admin__drop-actions absolute inset-x-0 bottom-0 z-[2] flex flex-wrap items-center justify-center gap-2 p-3',
           hasImage
             ? 'bg-gradient-to-t from-black/55 via-black/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
-            : 'relative mt-0 bg-transparent opacity-0 pointer-events-none',
+            : 'pointer-events-none opacity-0',
         ]}
       >
         <button
@@ -132,7 +155,7 @@ const hasImage = Boolean(String(banner.image_url || '').trim());
           class="rounded-full bg-white px-3 py-1.5 text-[0.65rem] font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
           data-popup-change
         >
-          {hasImage ? 'Cambiar imagen' : 'Subir flyer'}
+          {hasImage ? 'Cambiar' : 'Subir'}
         </button>
         <button
           type="button"
@@ -144,37 +167,106 @@ const hasImage = Boolean(String(banner.image_url || '').trim());
         </button>
       </div>
     </div>
+
+    <div class="mt-4 w-full space-y-3" data-popup-schedule>
+      <div
+        class="grid w-full grid-cols-2 gap-1.5 rounded-xl bg-zinc-100 p-1.5 text-xs font-medium"
+        role="tablist"
+        aria-label="Visibilidad del flyer"
+        data-popup-schedule-tabs
+      >
+        <button
+          type="button"
+          role="tab"
+          data-popup-schedule-mode="indefinite"
+          aria-selected={durationPreset === 'indefinite' ? 'true' : 'false'}
+          class:list={[
+            'popup-seg-tab rounded-lg py-1.5 text-center text-xs transition-all',
+            durationPreset === 'indefinite'
+              ? 'popup-seg-tab--on font-medium text-zinc-900 shadow-sm'
+              : 'font-medium text-zinc-500 hover:text-zinc-800',
+          ]}
+        >
+          Siempre visible
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-popup-schedule-mode="schedule"
+          aria-selected={durationPreset === 'schedule' ? 'true' : 'false'}
+          class:list={[
+            'popup-seg-tab rounded-lg py-1.5 text-center text-xs transition-all',
+            durationPreset === 'schedule'
+              ? 'popup-seg-tab--on font-medium text-zinc-900 shadow-sm'
+              : 'font-medium text-zinc-500 hover:text-zinc-800',
+          ]}
+        >
+          Programar límite
+        </button>
+      </div>
+
+      <div class="mt-4 grid w-full min-h-[4.75rem] content-start" data-popup-schedule-slot>
+        <div
+          class:list={[
+            'grid grid-cols-2 gap-3 transition-opacity duration-200',
+            durationPreset !== 'schedule' && 'invisible pointer-events-none',
+          ]}
+          data-popup-schedule-fields
+          inert={durationPreset !== 'schedule' ? true : undefined}
+          aria-hidden={durationPreset !== 'schedule' ? 'true' : 'false'}
+        >
+          <label class="min-w-0">
+            <span class="mb-1.5 block text-[11px] font-medium text-zinc-500">Fecha límite</span>
+            <input
+              type="date"
+              data-popup-schedule-date
+              value={scheduleDate}
+              class:list={[studioInputClass, 'min-w-0']}
+            />
+          </label>
+          <label class="min-w-0">
+            <span class="mb-1.5 block text-[11px] font-medium text-zinc-500">Hora límite</span>
+            <input
+              type="time"
+              data-popup-schedule-time
+              value={scheduleTime}
+              class:list={[studioInputClass, 'min-w-0']}
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+
     <input type="hidden" data-popup-image-url value={banner.image_url} />
+    <input type="hidden" data-popup-duration-preset value={durationPreset} />
+    <input type="hidden" data-popup-expires-at value={expiresAt} />
   </div>
 
   <input type="hidden" data-popup-enabled value={enabled ? 'true' : 'false'} />
 </div>
 
 <style>
-  .flyer-switch {
-    width: 2.75rem;
-    height: 1.5rem;
-    background: #e4e4e7;
-  }
-
-  .flyer-switch.is-on {
-    background: #10b981;
-  }
-
-  .flyer-switch__knob {
-    width: 1.25rem;
-    height: 1.25rem;
-    margin-left: 0.125rem;
-  }
-
-  .flyer-switch.is-on .flyer-switch__knob {
-    transform: translateX(1.25rem);
-  }
-
   [data-popup-body][hidden],
   [data-popup-empty][hidden],
   [data-popup-remove][hidden] {
     display: none !important;
+  }
+
+  [data-popup-schedule-slot] {
+    min-height: 4.75rem;
+  }
+
+  .popup-seg-tab {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .popup-seg-tab--on {
+    background: #ffffff !important;
+    color: #18181b !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 
   .welcome-popup-admin__drop.is-dragover {
@@ -186,3 +278,124 @@ const hasImage = Boolean(String(banner.image_url || '').trim());
     opacity: 0;
   }
 </style>
+
+<script>
+  function paintPopupSwitch(toggle, on) {
+    if (!(toggle instanceof HTMLElement)) return;
+    toggle.classList.toggle('is-on', on);
+    toggle.classList.toggle('bg-emerald-500', on);
+    toggle.classList.toggle('bg-zinc-200', !on);
+    toggle.style.backgroundColor = on ? '#10b981' : '';
+    toggle.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+
+  function paintScheduleTabs(root, mode) {
+    root.querySelectorAll('[data-popup-schedule-mode]').forEach((btn) => {
+      if (!(btn instanceof HTMLElement)) return;
+      const active = btn.dataset.popupScheduleMode === mode;
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.classList.toggle('popup-seg-tab--on', active);
+      btn.classList.toggle('text-zinc-900', active);
+      btn.classList.toggle('shadow-sm', active);
+      btn.classList.toggle('text-zinc-500', !active);
+      btn.classList.toggle('hover:text-zinc-800', !active);
+    });
+    const fields = root.querySelector('[data-popup-schedule-fields]');
+    if (fields instanceof HTMLElement) {
+      const off = mode !== 'schedule';
+      fields.classList.toggle('invisible', off);
+      fields.classList.toggle('pointer-events-none', off);
+      fields.toggleAttribute('inert', off);
+      fields.setAttribute('aria-hidden', off ? 'true' : 'false');
+    }
+  }
+
+  function syncExpiresHidden(root) {
+    const presetEl = root.querySelector('[data-popup-duration-preset]');
+    const expiresEl = root.querySelector('[data-popup-expires-at]');
+    const dateEl = root.querySelector('[data-popup-schedule-date]');
+    const timeEl = root.querySelector('[data-popup-schedule-time]');
+    const mode =
+      presetEl instanceof HTMLInputElement ? presetEl.value || 'indefinite' : 'indefinite';
+
+    if (mode !== 'schedule') {
+      if (expiresEl instanceof HTMLInputElement) expiresEl.value = '';
+      return;
+    }
+
+    const date = dateEl instanceof HTMLInputElement ? dateEl.value : '';
+    const time = timeEl instanceof HTMLInputElement ? timeEl.value || '23:59' : '23:59';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      if (expiresEl instanceof HTMLInputElement) expiresEl.value = '';
+      return;
+    }
+    const [y, m, d] = date.split('-').map(Number);
+    const [hh, mm] = time.split(':').map((n) => Number(n) || 0);
+    const end = new Date(y, m - 1, d, hh, mm, 0, 0);
+    if (expiresEl instanceof HTMLInputElement) {
+      expiresEl.value = Number.isNaN(end.getTime()) ? '' : end.toISOString();
+    }
+  }
+
+  function bindWelcomePopupCard(root) {
+    if (!(root instanceof HTMLElement) || root.dataset.popupBound === '1') return;
+    root.dataset.popupBound = '1';
+
+    const toggle = root.querySelector('[data-popup-enabled-toggle]');
+    const enabledHidden = root.querySelector('[data-popup-enabled]');
+    const body = root.querySelector('[data-popup-body]');
+    const empty = root.querySelector('[data-popup-empty]');
+    const presetHidden = root.querySelector('[data-popup-duration-preset]');
+
+    let enabled =
+      enabledHidden instanceof HTMLInputElement
+        ? enabledHidden.value === 'true'
+        : toggle instanceof HTMLElement && toggle.classList.contains('is-on');
+
+    const setEnabled = (on) => {
+      enabled = Boolean(on);
+      paintPopupSwitch(toggle, enabled);
+      if (enabledHidden instanceof HTMLInputElement) {
+        enabledHidden.value = enabled ? 'true' : 'false';
+      }
+      root.dataset.popupEnabledState = enabled ? 'true' : 'false';
+      if (body instanceof HTMLElement) body.hidden = !enabled;
+      if (empty instanceof HTMLElement) empty.hidden = enabled;
+      root.dispatchEvent(new CustomEvent('ops-popup-change', { bubbles: true }));
+    };
+
+    toggle?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setEnabled(!enabled);
+    });
+
+    root.querySelectorAll('[data-popup-schedule-mode]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!(btn instanceof HTMLElement)) return;
+        const mode = btn.dataset.popupScheduleMode || 'indefinite';
+        if (presetHidden instanceof HTMLInputElement) presetHidden.value = mode;
+        paintScheduleTabs(root, mode);
+        syncExpiresHidden(root);
+        root.dispatchEvent(new CustomEvent('ops-popup-change', { bubbles: true }));
+      });
+    });
+
+    ['[data-popup-schedule-date]', '[data-popup-schedule-time]'].forEach((sel) => {
+      root.querySelector(sel)?.addEventListener('change', () => {
+        syncExpiresHidden(root);
+        root.dispatchEvent(new CustomEvent('ops-popup-change', { bubbles: true }));
+      });
+    });
+
+    syncExpiresHidden(root);
+  }
+
+  function boot() {
+    document.querySelectorAll('[data-welcome-popup]').forEach(bindWelcomePopupCard);
+  }
+
+  boot();
+  document.addEventListener('astro:page-load', boot);
+</script>
