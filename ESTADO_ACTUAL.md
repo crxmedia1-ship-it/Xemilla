@@ -1,6 +1,6 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-09-04 13:20 -04  
+> **Última Actualización:** 2026-09-04 14:40 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)
@@ -256,6 +256,7 @@ Tamaños `0` / `null` / vacío → fallback (`normalizeHomePx`).
 - **Centro:** pills `data-tab-target` — **Menú** · **Métricas** · **Operación & Anuncios** · **Identidad** (`{isSuperAdmin && …}` SSR; operativo no renderiza tab ni `#panel-identidad`). Panel ops: `#panel-perfil` / `data-tab-panel="perfil"` / `#ops-contacto-card.ops-studio`.
 - **Derecha:** **WebApp ↗** · **Guardar** (`#guardar-cambios` operativo dirty-state · `#marca-save` SuperAdmin) · ☀️/🌙 (`AdminThemeSwitcher`) · avatar + logout. Chip **← SuperAdmin** va en este cluster (`sm:inline-flex`), no debajo del header.
 - **Contenido:** `main` + paneles a **ancho completo** (`w-full max-w-none`, sin `max-w-6xl`). Identidad: sub-nav `data-marca-subtab` — Home / Nosotros / Menú / Ubicación / Reservas / Gadgets / QR.
+- **Métricas (`#panel-metricas` → `AdminMetricsPanel`):** cabecera con selector **General / Este Mes / Mes a mes**; 6 KPIs (`xl:grid-cols-6`: Totales, QR, Enlace, Nosotros, Pedir/Reservar, Maps); ranking simétrico Lista/Fotos `min-h-[580px]`. Modo Fotos usa `.studio-photo-card` (cristal negro) porque `html.admin-panel .text-white` y `.bg-zinc-950` remapean el tema. `plato_vistas` live = eventos (`created_at`); el filtro mensual agrega por mes. QR/enlace/nosotros/reservas/maps = 0 hasta tracking.
 
 
 
@@ -418,7 +419,7 @@ Whitelist aislada de Identidad. Parches tipicos:
 - [x] **Admin tab Perfil (2026-08-10):** pill + card Perfil; Instagram + TikTok/Facebook; save aislado
 - [x] **Flyer + Operación & Anuncios (2026-09-03):** grid inicial 2×2; `popup_banner` JSONB; `WelcomePopupCard` + `WelcomePopup` público; save solo `#guardar-cambios` (sin autosave); commit `ee3a135`
 - [x] **Ops layout + dark (2026-09-04):** fila 3 col (Horarios / Flyer / Mapa) + social full-width; horarios siempre 3-col horizontal; Dark Observatorio en ops (`zinc-900/80`); `#guardar-cambios` dirty rose+pulse
-- [x] **Top Nav lockup logos (2026-09-04):** wordmark Xemilla + `/` + logo local recortado (`e_trim`); header `h-16` Light/Dark glass; WebApp + Guardar + theme + avatar a la derecha; chip SuperAdmin dentro del cluster (no padding extra)
+- [x] **Métricas Studio (2026-09-04):** 6 KPIs + ranking Lista/Fotos; filtro General / Este Mes / mes; modo Fotos con cristal negro (`.studio-photo-card`) para vencer remap `text-white` / `bg-zinc-950`
 
 
 

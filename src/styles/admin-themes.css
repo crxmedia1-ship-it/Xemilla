@@ -3222,7 +3222,164 @@ html.admin-panel[data-theme='organico'] .admin-profile-dropdown__logout {
   display: none;
 }
 
-/* ── Kit-style metrics board (Mobbin) ── */
+/* KPI / ranking cards — SaaS financiero */
+html.admin-panel .studio-kpi-card {
+  background: #ffffff !important;
+  border-color: rgba(228, 228, 231, 0.8) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
+  height: auto !important;
+}
+html.admin-panel .studio-kpi-metric {
+  min-height: 145px !important;
+  border-radius: 1.5rem !important;
+}
+html.admin-panel .studio-kpi-board {
+  min-height: 0 !important;
+  border-radius: 1.5rem !important;
+}
+html.admin-panel.dark .studio-kpi-card,
+html.admin-panel[data-theme='dark'] .studio-kpi-card {
+  background: #09090b !important;
+  border-color: rgba(39, 39, 42, 0.8) !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.admin-panel.light .studio-kpi-card,
+html.admin-panel[data-theme='light'] .studio-kpi-card {
+  background: #ffffff !important;
+  border-color: rgba(228, 228, 231, 0.8) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.admin-panel .studio-accent-indigo { background: #6366f1 !important; }
+html.admin-panel .studio-accent-emerald { background: #10b981 !important; }
+html.admin-panel .studio-accent-violet { background: #8b5cf6 !important; }
+html.admin-panel .studio-accent-amber { background: #f59e0b !important; }
+html.admin-panel .studio-accent-rose { background: #f43f5e !important; }
+html.admin-panel .studio-accent-cyan { background: #06b6d4 !important; }
+
+html.admin-panel .studio-pct-emerald {
+  background: linear-gradient(to right, #10b981, #2dd4bf) !important;
+}
+html.admin-panel .studio-pct-amber {
+  background: linear-gradient(to right, #f59e0b, #fb923c) !important;
+}
+
+html.admin-panel .studio-seg-on {
+  background: #ffffff !important;
+  color: #27272a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+html.admin-panel.dark .studio-seg-on,
+html.admin-panel[data-theme='dark'] .studio-seg-on {
+  background: #3f3f46 !important;
+  color: #e4e4e7 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+html.admin-panel .view-list.hidden,
+html.admin-panel .view-grid.hidden {
+  display: none !important;
+}
+html.admin-panel .view-list:not(.hidden) {
+  display: flex !important;
+}
+html.admin-panel .view-grid:not(.hidden) {
+  display: grid !important;
+}
+html.admin-panel [data-platos-board] [hidden] {
+  display: none !important;
+}
+html.admin-panel #panel-metricas[hidden],
+html.admin-panel #panel-metricas.hidden {
+  display: none !important;
+}
+html.admin-panel #panel-metricas:not([hidden]):not(.hidden) {
+  display: flex !important;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+  gap: 1.5rem;
+}
+html.admin-panel #panel-metricas:not([hidden]):not(.hidden) [data-admin-metrics] {
+  flex: 0 1 auto;
+}
+
+html.admin-panel .studio-tf-on {
+  background: #ffffff !important;
+  color: #18181b !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+html.admin-panel.dark .studio-tf-on,
+html.admin-panel[data-theme='dark'] .studio-tf-on {
+  background: #18181b !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+html.admin-panel .studio-tf-select-on {
+  color: #18181b !important;
+  font-weight: 600;
+}
+html.admin-panel.dark .studio-tf-select-on,
+html.admin-panel[data-theme='dark'] .studio-tf-select-on {
+  color: #ffffff !important;
+}
+
+html.admin-panel .studio-photo-card {
+  background: #09090b !important;
+  color: #ffffff !important;
+  border-color: rgba(228, 228, 231, 0.6) !important;
+  border-radius: 1rem !important;
+}
+html.admin-panel.dark .studio-photo-card,
+html.admin-panel[data-theme='dark'] .studio-photo-card {
+  background: #09090b !important;
+  color: #ffffff !important;
+  border-color: rgb(39, 39, 42) !important;
+}
+html.admin-panel .studio-photo-chip {
+  background: rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html.admin-panel.dark .studio-photo-chip,
+html.admin-panel[data-theme='dark'] .studio-photo-chip {
+  background: rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+html.admin-panel .studio-photo-caption {
+  background: rgba(0, 0, 0, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html.admin-panel.dark .studio-photo-caption,
+html.admin-panel[data-theme='dark'] .studio-photo-caption {
+  background: rgba(0, 0, 0, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.admin-panel .studio-photo-caption h4,
+html.admin-panel .studio-photo-caption .text-white {
+  color: #ffffff !important;
+}
+html.admin-panel.dark .studio-photo-caption h4,
+html.admin-panel[data-theme='dark'] .studio-photo-caption h4 {
+  color: #ffffff !important;
+}
+html.admin-panel .studio-photo-meta,
+html.admin-panel .studio-photo-caption .text-zinc-300 {
+  color: #d4d4d8 !important;
+}
+html.admin-panel.dark .studio-photo-meta,
+html.admin-panel[data-theme='dark'] .studio-photo-meta {
+  color: #d4d4d8 !important;
+}
+
+/* ── Kit-style metrics board (Mobbin, legacy) ── */
 .kit-metrics {
   --kit-bg: #ebe8e1;
   --kit-card: #ffffff;

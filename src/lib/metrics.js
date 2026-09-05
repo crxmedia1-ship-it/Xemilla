@@ -22,18 +22,72 @@
  *     hoy: { total: number, mesero: number, cuenta: number },
  *     semana: { total: number, mesero: number, cuenta: number },
  *   },
- *   platosMasVistos: Array<{ nombre: string, vistas: number, pct: number }>,
+ *   platosMasVistos: Array<{ plato_id?: string, nombre: string, vistas: number, pct: number }>,
+ *   platosMenosVistos: Array<{ plato_id?: string, nombre: string, vistas: number, pct: number }>,
+ *   totalVistas: number,
+ *   eventMode: boolean,
+ *   vistasSeries: {
+ *     all: { total: number, platos: Record<string, number> },
+ *     months: Record<string, { total: number, platos: Record<string, number> }>,
+ *   },
  *   pendientes: number,
  *   totalAlertas: number,
  * }} MetricsSnapshot
  */
 
 /**
+ * @param {string | Date | number} [value]
+ */
+function monthKeyFrom(value) {
+  const d = value instanceof Date ? value : new Date(value || Date.now());
+  if (!Number.isFinite(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} vistasRows
+ * @param {boolean} eventMode
+ * @param {(row: Record<string, unknown>) => boolean} [filterFn]
+ */
+function aggregatePlatoVistas(vistasRows, eventMode, filterFn) {
+  /** @type {Map<string, { plato_id: string, nombre: string, vistas: number }>} */
+  const map = new Map();
+  for (const raw of vistasRows) {
+    if (filterFn && !filterFn(raw)) continue;
+    const id = raw?.plato_id != null ? String(raw.plato_id) : '';
+    const nombre = String(raw?.plato_nombre || raw?.nombre || 'Plato').trim() || 'Plato';
+    const add = eventMode ? 1 : Number(raw?.vistas) || 0;
+    if (add <= 0) continue;
+    const key = id || nombre.toLowerCase();
+    const cur = map.get(key) || { plato_id: id, nombre, vistas: 0 };
+    cur.vistas += add;
+    if (nombre && nombre !== 'Plato') cur.nombre = nombre;
+    map.set(key, cur);
+  }
+  return [...map.values()].sort((a, b) => b.vistas - a.vistas);
+}
+
+/**
+ * @param {Array<{ plato_id: string, vistas: number }>} ranked
+ */
+function seriesBucket(ranked) {
+  /** @type {Record<string, number>} */
+  const platos = {};
+  let total = 0;
+  for (const row of ranked) {
+    total += row.vistas;
+    if (row.plato_id) platos[row.plato_id] = row.vistas;
+  }
+  return { total, platos };
+}
+
+/**
  * @param {AlertaRow[]} rows
- * @param {Array<{ nombre?: string, plato_nombre?: string, vistas?: number }>|null} [vistasRows]
+ * @param {Array<{ nombre?: string, plato_nombre?: string, vistas?: number, created_at?: string, plato_id?: string|number }>|null} [vistasRows]
+ * @param {{ eventMode?: boolean }} [opts]
  * @returns {MetricsSnapshot}
  */
-export function computeMetricsSnapshot(rows, vistasRows = null) {
+export function computeMetricsSnapshot(rows, vistasRows = null, opts = {}) {
   const list = Array.isArray(rows) ? rows : [];
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
@@ -84,15 +138,39 @@ export function computeMetricsSnapshot(rows, vistasRows = null) {
   }
 
   const vistas = Array.isArray(vistasRows) ? vistasRows : [];
-  const platosRaw = vistas
-    .map((v) => ({
-      nombre: String(v.plato_nombre || v.nombre || 'Plato').trim() || 'Plato',
-      vistas: Number(v.vistas) || 0,
-    }))
-    .filter((v) => v.vistas > 0)
-    .sort((a, b) => b.vistas - a.vistas)
-    .slice(0, 5);
-  const vistasMax = platosRaw[0]?.vistas || 1;
+  const eventMode = Boolean(
+    opts.eventMode ??
+      (vistas.length > 0 &&
+        vistas.some((v) => v?.created_at) &&
+        !vistas.some((v) => Number(v?.vistas) > 0)),
+  );
+  const platosAll = aggregatePlatoVistas(vistas, eventMode);
+  const vistasMax = platosAll[0]?.vistas || 1;
+  const totalVistas = platosAll.reduce((acc, row) => acc + row.vistas, 0);
+  const withPct = (list) =>
+    list.map((p) => ({
+      ...p,
+      pct: Math.round((p.vistas / vistasMax) * 100),
+    }));
+
+  /** @type {Record<string, { total: number, platos: Record<string, number> }>} */
+  const months = {};
+  if (eventMode) {
+    const keys = new Set();
+    for (const row of vistas) {
+      const key = monthKeyFrom(row?.created_at);
+      if (key) keys.add(key);
+    }
+    const now = new Date();
+    for (let i = 0; i < 14; i += 1) {
+      keys.add(monthKeyFrom(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+    }
+    for (const key of keys) {
+      months[key] = seriesBucket(
+        aggregatePlatoVistas(vistas, true, (row) => monthKeyFrom(row?.created_at) === key),
+      );
+    }
+  }
 
   return {
     tiempoPromedioMinutos: avg == null ? null : Math.round(avg * 10) / 10,
@@ -111,10 +189,14 @@ export function computeMetricsSnapshot(rows, vistasRows = null) {
       hoy: volumeSince(dayAgo),
       semana: volumeSince(weekAgo),
     },
-    platosMasVistos: platosRaw.map((p) => ({
-      ...p,
-      pct: Math.round((p.vistas / vistasMax) * 100),
-    })),
+    platosMasVistos: withPct(platosAll.slice(0, 10)),
+    platosMenosVistos: withPct([...platosAll].sort((a, b) => a.vistas - b.vistas).slice(0, 10)),
+    totalVistas,
+    eventMode,
+    vistasSeries: {
+      all: seriesBucket(platosAll),
+      months,
+    },
     pendientes: list.filter((r) => !r.atendida).length,
     totalAlertas: list.length,
   };
@@ -166,23 +248,35 @@ export async function fetchMetricsSnapshot(client, opts = {}) {
   }
 
   let vistas = [];
-  let vistasQ = client
+  let eventMode = false;
+
+  let eventQ = client
     .from('plato_vistas')
-    .select('plato_nombre, vistas, plato_id')
-    .order('vistas', { ascending: false })
-    .limit(8);
+    .select('plato_id, created_at')
+    .order('created_at', { ascending: false })
+    .limit(8000);
+  if (restauranteId) eventQ = eventQ.eq('restaurante_id', restauranteId);
 
-  if (restauranteId) vistasQ = vistasQ.eq('restaurante_id', restauranteId);
-
-  const { data: vistasData, error: vistasErr } = await vistasQ;
-  if (vistasErr) {
-    // Tabla aún no migrada → UI placeholder
-    if (!/plato_vistas|column|schema cache/i.test(vistasErr.message || '')) {
-      console.warn('[metrics] plato_vistas:', vistasErr.message);
-    }
+  const eventRes = await eventQ;
+  if (!eventRes.error) {
+    eventMode = true;
+    vistas = eventRes.data || [];
   } else {
-    vistas = vistasData || [];
+    let vistasQ = client
+      .from('plato_vistas')
+      .select('plato_nombre, vistas, plato_id')
+      .order('vistas', { ascending: false })
+      .limit(400);
+    if (restauranteId) vistasQ = vistasQ.eq('restaurante_id', restauranteId);
+    const { data: vistasData, error: vistasErr } = await vistasQ;
+    if (vistasErr) {
+      if (!/plato_vistas|column|schema cache/i.test(vistasErr.message || '')) {
+        console.warn('[metrics] plato_vistas:', vistasErr.message);
+      }
+    } else {
+      vistas = vistasData || [];
+    }
   }
 
-  return computeMetricsSnapshot(alertas || [], vistas);
+  return computeMetricsSnapshot(alertas || [], vistas, { eventMode });
 }

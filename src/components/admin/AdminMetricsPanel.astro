@@ -1,420 +1,509 @@
 ---
 /**
- * Panel de Métricas — layout Kit (Mobbin): hero + grid 2×2 + donuts + strip lateral.
+ * Métricas — bento financiero: KPIs + ranking lista/fotos.
  */
+import { platoFillUrl } from '../../lib/plato-media-url.js';
+
 interface Props {
-  /** Snapshot precalculado (lib/metrics.js) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metrics: any;
   title?: string;
   subtitle?: string;
   network?: boolean;
-  /** Marca / restaurante */
   brandName?: string;
   brandLogoUrl?: string;
   brandTagline?: string;
-  /** Solo admin de local: subir logo desde Métricas */
   allowLogoUpload?: boolean;
   restauranteId?: string;
-  /** SuperAdmin red */
+  createdAt?: string | Date | null;
   localesCount?: number;
   localesActivos?: number;
+  menuPlatos?: Array<{
+    id?: string | number;
+    nombre?: string;
+    imagen_url?: string;
+    categoria_nombre?: string;
+    precio?: number | string;
+  }>;
 }
 
 const {
   metrics,
-  title = 'Métricas y Analíticas',
-  subtitle = 'Rendimiento operativo en tiempo casi real',
+  title = 'Métricas & Rendimiento',
+  subtitle = 'Analítica de tráfico y conversión',
   network = false,
-  brandName = network ? 'Xemilla' : 'Local',
-  brandLogoUrl = '',
-  brandTagline = network
-    ? 'Plataforma white-label para restaurantes'
-    : 'Operación en sala',
-  allowLogoUpload = false,
-  restauranteId = '',
+  createdAt = null,
   localesCount = 0,
   localesActivos = 0,
+  menuPlatos = [],
 } = Astro.props;
 
 const m = metrics || {};
-const volumen = m.volumen || { hoy: {}, semana: {} };
-const hoy = volumen.hoy || { total: 0, mesero: 0, cuenta: 0 };
-const semana = volumen.semana || { total: 0, mesero: 0, cuenta: 0 };
-const mesas = Array.isArray(m.mesasActivas) ? m.mesasActivas : [];
-const platos = Array.isArray(m.platosMasVistos) ? m.platosMasVistos : [];
+const masRaw = Array.isArray(m.platosMasVistos) ? m.platosMasVistos : [];
+const menosRaw = Array.isArray(m.platosMenosVistos) ? m.platosMenosVistos : [];
 
-/** @param {number} n */
-function formatHero(n) {
-  const v = Number(n) || 0;
-  if (v >= 10000) return `${Math.round(v / 1000)}K+`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  return String(v);
-}
+const MONTHS_ES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 
-const heroValue = formatHero(semana.total ?? 0);
-const heroCaption =
-  semana.total === 1
-    ? 'solicitud en los últimos 7 días'
-    : 'solicitudes en los últimos 7 días';
-
-const mixTotal = Math.max((semana.mesero || 0) + (semana.cuenta || 0), 1);
-const mixMeseroPct = Math.round(((semana.mesero || 0) / mixTotal) * 100);
-const mixCuentaPct = 100 - mixMeseroPct;
-
-/** Donut segments for mix */
-const mixSegments = [
-  { label: 'Llamar mesero', pct: mixMeseroPct, color: '#2563eb' },
-  { label: 'Pedir cuenta', pct: mixCuentaPct, color: '#f97316' },
-].filter((s) => s.pct > 0);
-
-/** Top mesas for second donut (max 3 + otros) */
-const mesaDonutRaw = mesas.slice(0, 3);
-const mesaDonutTotal = mesaDonutRaw.reduce((acc, row) => acc + (row.total || 0), 0) || 1;
-const mesaColors = ['#6366f1', '#14b8a6', '#eab308', '#a1a1aa'];
-/** @type {Array<{ label: string, pct: number, color: string }>} */
-const mesaSegments =
-  mesaDonutRaw.length > 0
-    ? mesaDonutRaw.map((row, i) => ({
-        label: `Mesa ${row.mesa}`,
-        pct: Math.round(((row.total || 0) / mesaDonutTotal) * 100),
-        color: mesaColors[i] || mesaColors[3],
-      }))
-    : [{ label: 'Sin datos', pct: 100, color: '#d4d4d8' }];
-
-/** Platos donut */
-const platosDonutRaw = platos.slice(0, 3);
-const platosDonutTotal = platosDonutRaw.reduce((acc, row) => acc + (row.vistas || 0), 0) || 1;
-const platoColors = ['#0ea5e9', '#8b5cf6', '#ec4899', '#d4d4d8'];
-/** @type {Array<{ label: string, pct: number, color: string }>} */
-const platoSegments =
-  platosDonutRaw.length > 0
-    ? platosDonutRaw.map((row, i) => ({
-        label: row.nombre,
-        pct: Math.round(((row.vistas || 0) / platosDonutTotal) * 100),
-        color: platoColors[i] || platoColors[3],
-      }))
-    : [{ label: 'Sin vistas', pct: 100, color: '#e4e4e7' }];
+const now = new Date();
+const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
 /**
- * SVG donut path segments.
- * @param {Array<{ pct: number, color: string }>} segments
+ * Meses desde el alta del restaurante hasta el mes en curso.
+ * Nunca incluye meses anteriores a `created_at`. Si no hay historial, solo el mes actual.
+ * @param {string | Date | null | undefined} createdAtRaw
+ * @param {Date} endDate
+ * @returns {Array<{ value: string, label: string }>}
  */
-function donutStrokes(segments) {
-  const r = 42;
-  const c = 2 * Math.PI * r;
-  let offset = 0;
-  return segments.map((seg) => {
-    const len = (seg.pct / 100) * c;
-    const dash = `${len} ${c - len}`;
-    const strokeDashoffset = -offset;
-    offset += len;
-    return { ...seg, dash, strokeDashoffset, r, cx: 52, cy: 52 };
+function buildMonthOptions(createdAtRaw, endDate) {
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+  let start = end;
+  if (createdAtRaw) {
+    const parsed = createdAtRaw instanceof Date ? createdAtRaw : new Date(createdAtRaw);
+    if (!Number.isNaN(parsed.getTime())) {
+      start = new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+    }
+  }
+  if (start > end) start = end;
+
+  /** @type {Array<{ value: string, label: string }>} */
+  const options = [];
+  const cursor = new Date(start.getTime());
+  while (cursor <= end) {
+    options.push({
+      value: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`,
+      label: `${MONTHS_ES[cursor.getMonth()]} ${cursor.getFullYear()}`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return options;
+}
+
+const monthOptions = buildMonthOptions(createdAt, now);
+
+/** @param {number} n */
+function formatKpi(n) {
+  return (Number(n) || 0).toLocaleString('en-US');
+}
+
+/** @param {unknown} n */
+function formatPrecio(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return '';
+  const body = Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/\.00$/, '').replace('.', ',');
+  return `$ ${body}`;
+}
+
+const totalVistas = Number(m.totalVistas) || masRaw.reduce((acc, row) => acc + (Number(row.vistas) || 0), 0);
+
+const kpiCardClass =
+  'studio-kpi-card studio-kpi-metric relative overflow-hidden p-5 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col justify-between min-h-[145px] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all';
+
+const boardClass =
+  'studio-kpi-card studio-kpi-board p-6 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-4';
+
+const photoChipClass =
+  'studio-photo-chip relative z-10 bg-black/80 backdrop-blur-md border border-white/15 text-white px-2 py-1 rounded-lg text-[11px] font-mono font-bold shadow-sm';
+
+const kpis = [
+  { key: 'vistas', label: 'Vistas Totales', value: totalVistas, hint: network ? `${localesCount} locales · ${localesActivos} activos` : 'Tráfico global', track: 'bg-indigo-500/15', fill: 'studio-accent-indigo bg-indigo-500', width: 'w-full' },
+  { key: 'qr', label: 'Entradas QR', value: 0, hint: 'Clientes en sala', track: 'bg-emerald-500/15', fill: 'studio-accent-emerald bg-emerald-500', width: 'w-full' },
+  { key: 'link', label: 'Entradas Enlace', value: 0, hint: 'Tráfico redes/bio', track: 'bg-violet-500/15', fill: 'studio-accent-violet bg-violet-500', width: 'w-full' },
+  { key: 'nosotros', label: 'Vistas Nosotros', value: 0, hint: 'Interés de marca', track: 'bg-amber-500/15', fill: 'studio-accent-amber bg-amber-500', width: 'w-full' },
+  { key: 'reservas', label: 'Pedir / Reservar', value: 0, hint: 'Intención de compra', track: 'bg-rose-500/15', fill: 'studio-accent-rose bg-rose-500', width: 'w-full' },
+  { key: 'maps', label: 'Rutas en Maps', value: 0, hint: 'Intención de visita', track: 'bg-cyan-500/15', fill: 'studio-accent-cyan bg-cyan-500', width: 'w-full' },
+];
+
+const metaById = new Map();
+const metaByName = new Map();
+for (const plato of menuPlatos) {
+  const meta = {
+    imagen: String(plato?.imagen_url || '').trim(),
+    categoria: String(plato?.categoria_nombre || '').trim(),
+    precio: formatPrecio(plato?.precio),
+  };
+  if (plato?.id != null) metaById.set(String(plato.id), meta);
+  const name = String(plato?.nombre || '').trim().toLowerCase();
+  if (name) metaByName.set(name, meta);
+}
+
+const viewById = new Map();
+const viewByName = new Map();
+for (const row of [...masRaw, ...menosRaw]) {
+  const vistas = Number(row.vistas) || 0;
+  if (row.plato_id) viewById.set(String(row.plato_id), vistas);
+  const name = String(row.nombre || '').trim().toLowerCase();
+  if (name) viewByName.set(name, Math.max(viewByName.get(name) || 0, vistas));
+}
+
+const mergedMenu = (Array.isArray(menuPlatos) ? menuPlatos : [])
+  .map((plato) => {
+    const id = plato?.id != null ? String(plato.id) : '';
+    const nombre = String(plato?.nombre || 'Plato').trim() || 'Plato';
+    const vistas = (id && viewById.get(id)) || viewByName.get(nombre.toLowerCase()) || 0;
+    return {
+      plato_id: id,
+      nombre,
+      vistas,
+      imagen: String(plato?.imagen_url || '').trim(),
+      categoria: String(plato?.categoria_nombre || '').trim(),
+      precio: formatPrecio(plato?.precio),
+    };
+  })
+  .filter((row) => row.nombre);
+
+const ranked =
+  mergedMenu.length > 0
+    ? mergedMenu
+    : [...masRaw, ...menosRaw]
+        .filter((row, i, arr) => {
+          const key = String(row.plato_id || row.nombre || i);
+          return arr.findIndex((x) => String(x.plato_id || x.nombre) === key) === i;
+        })
+        .map((row) => {
+          const id = String(row.plato_id || '');
+          const extra = (id && metaById.get(id)) || metaByName.get(String(row.nombre || '').toLowerCase()) || {};
+          return {
+            plato_id: id,
+            nombre: String(row.nombre || 'Plato'),
+            vistas: Number(row.vistas) || 0,
+            imagen: extra.imagen || '',
+            categoria: extra.categoria || '',
+            precio: extra.precio || '',
+          };
+        });
+
+const maxVistas = Math.max(
+  1,
+  ...ranked.map((row) => row.vistas),
+  ...masRaw.map((row) => Number(row.vistas) || 0),
+);
+
+function withMeta(list) {
+  return list.map((row) => {
+    const extra =
+      (row.plato_id && metaById.get(row.plato_id)) ||
+      metaByName.get(String(row.nombre || '').toLowerCase()) ||
+      {};
+    const imagen = row.imagen || extra.imagen || '';
+    const categoria = row.categoria || extra.categoria || '';
+    const precio = row.precio || extra.precio || '';
+    const detalle = [categoria, precio].filter(Boolean).join(' · ');
+    return {
+      ...row,
+      categoria,
+      precio,
+      detalle,
+      pct: row.vistas > 0 ? Math.max(6, Math.round((row.vistas / maxVistas) * 100)) : 0,
+      imagen,
+      foto: imagen ? platoFillUrl(imagen, { w: 960, h: 720 }) : '',
+    };
   });
 }
 
-const mixStrokes = donutStrokes(mixSegments.length ? mixSegments : [{ pct: 100, color: '#d4d4d8' }]);
-const mesaStrokes = donutStrokes(mesaSegments);
-const platoStrokes = donutStrokes(platoSegments);
+function takeTen(list) {
+  const rows = withMeta(list).slice(0, 10);
+  if (rows.length > 0) return rows;
+  return Array.from({ length: 5 }, () => ({
+    plato_id: '',
+    nombre: 'Sin datos aún',
+    vistas: 0,
+    pct: 0,
+    imagen: '',
+    foto: '',
+    categoria: '',
+    precio: '',
+    detalle: '',
+  }));
+}
 
-const gridMetrics = [
-  {
-    value: m.tiempoPromedioLabel || '—',
-    title: 'Tiempo de respuesta',
-    desc: 'Promedio desde alerta hasta atendida',
-    count: null,
-  },
-  {
-    value: String(hoy.total ?? 0),
-    title: 'Volumen hoy',
-    desc: `${hoy.mesero ?? 0} mesero · ${hoy.cuenta ?? 0} cuenta`,
-    count: Number(hoy.total ?? 0),
-  },
-  {
-    value: String(semana.total ?? 0),
-    title: 'Volumen 7 días',
-    desc: `${semana.mesero ?? 0} mesero · ${semana.cuenta ?? 0} cuenta`,
-    count: Number(semana.total ?? 0),
-  },
-  {
-    value: String(m.pendientes ?? 0),
-    title: 'Pendientes ahora',
-    desc: `${m.totalAlertas ?? 0} alertas en ventana`,
-    count: Number(m.pendientes ?? 0),
-  },
-];
+const topMas = takeTen([...ranked].sort((a, b) => b.vistas - a.vistas));
+const topMenos = takeTen(
+  [...ranked].sort((a, b) => a.vistas - b.vistas || a.nombre.localeCompare(b.nombre)),
+);
 
-const sideMetrics = network
-  ? [
-      { value: String(localesCount), label: 'Locales en la red', count: localesCount },
-      { value: String(localesActivos), label: 'Con acceso operativo', count: localesActivos },
-    ]
-  : [
-      { value: String(mesas.length || 0), label: 'Mesas en ranking', count: mesas.length || 0 },
-      { value: String(platos.length || 0), label: 'Platos con vistas', count: platos.length || 0 },
-    ];
+const shownDefault = Math.min(5, topMas.length);
+const canExpandMas = topMas.length > 5;
+const canExpandMenos = topMenos.length > 5;
 
-const safeLogo = String(brandLogoUrl || '').trim();
-const showUpload = allowLogoUpload && restauranteId;
+const seriesRaw = m.vistasSeries || {};
+const seriesPayload = {
+  eventMode: Boolean(m.eventMode),
+  currentMonth: currentMonthKey,
+  all: seriesRaw.all || { total: totalVistas, platos: {} },
+  months: seriesRaw.months || {},
+};
+
+const tfOn =
+  'studio-tf-on px-3 py-1.5 rounded-xl font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs';
+const tfOff =
+  'px-3 py-1.5 rounded-xl font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors';
+
+const segOn =
+  'studio-seg-on px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-700 shadow-xs font-medium text-zinc-800 dark:text-zinc-200';
+const segOff =
+  'px-2.5 py-1 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors';
 ---
 
-<section class="kit-metrics solid-obstacle" data-admin-metrics data-kit-metrics>
-  <header class="kit-metrics__intro">
-    <p class="kit-metrics__eyebrow">{network ? 'Red Xemilla' : 'Operación en sala'}</p>
-    <h2 class="kit-metrics__title">{title}</h2>
-    <p class="kit-metrics__subtitle">{subtitle}</p>
+<section
+  class="w-full flex flex-col gap-6"
+  data-admin-metrics
+  data-kit-metrics
+  data-metrics-series={JSON.stringify(seriesPayload)}
+>
+  <header class="flex flex-wrap items-center justify-between gap-4 pb-2">
+    <div class="min-w-0">
+      <h2 class="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{title}</h2>
+      <p class="mt-1 text-sm text-zinc-500">{subtitle}</p>
+    </div>
+    <div
+      class="inline-flex p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/80 text-xs"
+      data-timeframe-bar
+      role="group"
+      aria-label="Periodo de métricas"
+    >
+      <button type="button" class={tfOn} data-timeframe="all" aria-pressed="true">General</button>
+      <button type="button" class={tfOff} data-timeframe="current" aria-pressed="false">Este Mes</button>
+      <select
+        class="bg-transparent text-zinc-500 font-medium px-2 py-1 outline-none cursor-pointer hover:text-zinc-900 dark:hover:text-white"
+        data-timeframe-month
+        aria-label="Mes a mes"
+      >
+        <option value="" selected>Mes a mes</option>
+        {monthOptions.map((opt) => <option value={opt.value}>{opt.label}</option>)}
+      </select>
+    </div>
   </header>
 
-  <div class="kit-metrics__shell" data-kit-animate="0">
-  <div class="kit-metrics__board">
-    <!-- Columna hero: logo + métrica principal -->
-    <aside class="kit-metrics__hero" data-kit-animate="1">
-      <div class="kit-metrics__hero-top">
-      <div
-        class="kit-metrics__logo-slot"
-        data-metrics-logo-slot
-      >
-        {safeLogo ? (
-          <img
-            src={safeLogo}
-            alt=""
-            class="kit-metrics__logo-img mx-auto max-h-16 w-auto object-contain"
-            data-metrics-logo-img
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <span class="kit-metrics__logo-empty" data-metrics-logo-empty>
-            {showUpload ? 'Subir logo' : brandName.slice(0, 1).toUpperCase()}
-          </span>
-        )}
-        {showUpload && (
-          <label class="kit-metrics__logo-upload" title="Cambiar logo">
-            <input
-              type="file"
-              accept="image/*"
-              data-metrics-logo-file
-              data-restaurante-id={restauranteId}
-            />
-            <span aria-hidden="true">+</span>
-          </label>
-        )}
-      </div>
-
-      <div class="kit-metrics__hero-body">
-        <p class="kit-metrics__brand-name">{brandName}</p>
-        <p
-          class="kit-metrics__hero-value"
-          data-kit-count={String(semana.total ?? 0)}
-          data-kit-format="compact"
-          data-kit-display={heroValue}
-        >
-          {heroValue}
-        </p>
-        <p class="kit-metrics__hero-caption">{heroCaption}</p>
-        <p class="kit-metrics__brand-tag kit-metrics__brand-tag--desk">{brandTagline}</p>
-      </div>
-      </div>
-
-      <p class="kit-metrics__brand-tag kit-metrics__brand-tag--mob">{brandTagline}</p>
-
-      <div class="kit-metrics__hero-foot" aria-hidden="true">
-        <span class="kit-metrics__wordmark">{network ? 'Xemilla' : brandName}</span>
-      </div>
-    </aside>
-
-    <!-- Grid central -->
-    <div class="kit-metrics__main" data-kit-animate="2">
-      <div class="kit-metrics__grid">
-        {gridMetrics.map((cell, i) => (
-          <article class="kit-metrics__cell" data-kit-animate={String(3 + i)}>
-            <p
-              class="kit-metrics__cell-value"
-              {...(cell.count != null
-                ? {
-                    'data-kit-count': String(cell.count),
-                    'data-kit-display': cell.value,
-                  }
-                : {})}
-            >
-              {cell.value}
-            </p>
-            <p class="kit-metrics__cell-title">{cell.title}</p>
-            <p class="kit-metrics__cell-desc">{cell.desc}</p>
-          </article>
-        ))}
-      </div>
-
-      <div class="kit-metrics__charts">
-        <article class="kit-metrics__chart-card" data-kit-animate="7">
-          <h3 class="kit-metrics__chart-title">Mix de servicio</h3>
-          <p class="kit-metrics__chart-sub">Solicitudes · 7 días</p>
-          <div class="kit-metrics__chart-row">
-            <svg class="kit-metrics__donut" viewBox="0 0 104 104" aria-hidden="true" data-kit-donut>
-              <circle cx="52" cy="52" r="42" fill="none" stroke="currentColor" stroke-width="14" class="kit-metrics__donut-bg" />
-              {mixStrokes.map((s) => (
-                <circle
-                  cx={s.cx}
-                  cy={s.cy}
-                  r={s.r}
-                  fill="none"
-                  stroke={s.color}
-                  stroke-width="14"
-                  stroke-dasharray={s.dash}
-                  stroke-dashoffset={s.strokeDashoffset}
-                  transform="rotate(-90 52 52)"
-                  stroke-linecap="butt"
-                />
-              ))}
-            </svg>
-            <ul class="kit-metrics__legend">
-              {mixSegments.map((seg) => (
-                <li>
-                  <span class="kit-metrics__dot" style={`background:${seg.color}`} />
-                  <span class="kit-metrics__legend-label">{seg.label}</span>
-                  <span class="kit-metrics__legend-pct">{seg.pct}%</span>
-                </li>
-              ))}
-              {mixSegments.length === 0 && (
-                <li>
-                  <span class="kit-metrics__dot" style="background:#d4d4d8" />
-                  <span class="kit-metrics__legend-label">Sin solicitudes</span>
-                  <span class="kit-metrics__legend-pct">—</span>
-                </li>
-              )}
-            </ul>
-          </div>
-        </article>
-
-        <article class="kit-metrics__chart-card" data-kit-animate="8">
-          <h3 class="kit-metrics__chart-title">
-            {network ? 'Mesas más activas' : 'Interés del menú'}
-          </h3>
-          <p class="kit-metrics__chart-sub">
-            {network ? 'Top mesas · 30 días' : 'Platos más vistos'}
-          </p>
-          <div class="kit-metrics__chart-row">
-            <svg class="kit-metrics__donut" viewBox="0 0 104 104" aria-hidden="true" data-kit-donut>
-              <circle cx="52" cy="52" r="42" fill="none" stroke="currentColor" stroke-width="14" class="kit-metrics__donut-bg" />
-              {(network ? mesaStrokes : platoStrokes).map((s) => (
-                <circle
-                  cx={s.cx}
-                  cy={s.cy}
-                  r={s.r}
-                  fill="none"
-                  stroke={s.color}
-                  stroke-width="14"
-                  stroke-dasharray={s.dash}
-                  stroke-dashoffset={s.strokeDashoffset}
-                  transform="rotate(-90 52 52)"
-                  stroke-linecap="butt"
-                />
-              ))}
-            </svg>
-            <ul class="kit-metrics__legend">
-              {(network ? mesaSegments : platoSegments).map((seg) => (
-                <li>
-                  <span class="kit-metrics__dot" style={`background:${seg.color}`} />
-                  <span class="kit-metrics__legend-label">{seg.label}</span>
-                  <span class="kit-metrics__legend-pct">{seg.pct}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </article>
-      </div>
-    </div>
-
-    <!-- Strip lateral -->
-    <aside class="kit-metrics__side" data-kit-animate="9">
-      {sideMetrics.map((item, i) => (
-        <article class="kit-metrics__side-cell" data-kit-animate={String(10 + i)}>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 w-full items-stretch">
+    {
+      kpis.map((kpi) => (
+        <article class={kpiCardClass}>
+          <p class="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">{kpi.label}</p>
           <p
-            class="kit-metrics__side-value"
-            data-kit-count={String(item.count)}
-            data-kit-display={item.value}
+            class="text-3xl xl:text-4xl font-mono font-bold tracking-tight text-zinc-900 dark:text-white my-1"
+            data-kit-count={String(kpi.value)}
+            data-kit-display={formatKpi(kpi.value)}
+            data-kpi={kpi.key}
           >
-            {item.value}
+            {formatKpi(kpi.value)}
           </p>
-          <p class="kit-metrics__side-label">{item.label}</p>
+          <div class={`w-full h-1.5 ${kpi.track} rounded-full overflow-hidden mt-2`}>
+            <div class={`h-full ${kpi.fill} rounded-full ${kpi.width}`}></div>
+          </div>
+          <p class="text-[10px] text-zinc-400 font-medium mt-2">{kpi.hint}</p>
         </article>
-      ))}
-    </aside>
+      ))
+    }
   </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start pb-8">
+    <article
+      class={boardClass}
+      data-platos-board
+      data-board-sort="desc"
+      data-expanded="false"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+          <svg class="h-4 w-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 17l6-6 4 4 6-8"></path>
+            <path d="M14 7h6v6"></path>
+          </svg>
+          Top Rendimiento
+        </span>
+        <div class="inline-flex gap-1 rounded-xl bg-zinc-100 p-1 text-xs dark:bg-zinc-800" role="group" aria-label="Vista Top Rendimiento">
+          <button type="button" class={segOn} data-tab-view="list" aria-pressed="true">Lista</button>
+          <button type="button" class={segOff} data-tab-view="grid" aria-pressed="false">Fotos</button>
+        </div>
+      </div>
+
+      <div class="view-list flex flex-col gap-2 w-full">
+        {
+          topMas.map((row, i) => (
+            <div
+              class="flex items-center justify-between gap-4 p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+              data-rank={i + 1}
+              data-plato-id={row.plato_id || ''}
+              hidden={i >= 5}
+            >
+              <span class="text-emerald-500 font-mono font-bold w-6 text-xs" data-rank-label>
+                #{i + 1}
+              </span>
+              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 flex-1 truncate">
+                {row.nombre}
+              </span>
+              <div class="hidden sm:block w-28 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shrink-0">
+                <div class="studio-pct-emerald h-2 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" data-pct-bar style={`width:${row.pct}%`}></div>
+              </div>
+              <span class="text-xs font-mono font-bold text-zinc-700 dark:text-zinc-300 shrink-0" data-vistas-label>
+                {formatKpi(row.vistas)}
+              </span>
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="view-grid hidden grid grid-cols-2 gap-3 w-full">
+        {
+          topMas.map((row, i) => (
+            <article
+              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 group p-2.5 flex flex-col justify-between"
+              data-rank={i + 1}
+              data-plato-id={row.plato_id || ''}
+              hidden={i >= 5}
+            >
+              {
+                row.foto ? (
+                  <img
+                    src={row.foto}
+                    alt={row.nombre}
+                    class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null
+              }
+              <div class="relative z-10 flex items-start justify-between gap-1.5">
+                <span class={photoChipClass} data-rank-label>#{i + 1}</span>
+                <span class={photoChipClass} data-vistas-label>{formatKpi(row.vistas)}</span>
+              </div>
+              <div class="studio-photo-caption relative z-10 mt-auto p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex flex-col gap-0.5">
+                <h4 class="text-sm font-bold text-white tracking-wide truncate">{row.nombre}</h4>
+                <span class="studio-photo-meta text-xs text-zinc-300 font-mono truncate">{row.detalle || row.precio}</span>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <footer class="flex items-center justify-between gap-3">
+        <span class="text-xs text-zinc-400" data-activos-label>
+          {shownDefault} platos activos
+        </span>
+        <button
+          type="button"
+          class="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-800 disabled:pointer-events-none disabled:opacity-40 dark:hover:text-zinc-200"
+          data-expand-top
+          disabled={!canExpandMas}
+        >
+          Ver Top 10 completo ↓
+        </button>
+      </footer>
+    </article>
+
+    <article
+      class={boardClass}
+      data-platos-board
+      data-board-sort="asc"
+      data-expanded="false"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+          <svg class="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 8v4l2.5 1.5"></path>
+          </svg>
+          Oportunidades
+        </span>
+        <div class="inline-flex gap-1 rounded-xl bg-zinc-100 p-1 text-xs dark:bg-zinc-800" role="group" aria-label="Vista Oportunidades">
+          <button type="button" class={segOn} data-tab-view="list" aria-pressed="true">Lista</button>
+          <button type="button" class={segOff} data-tab-view="grid" aria-pressed="false">Fotos</button>
+        </div>
+      </div>
+
+      <div class="view-list flex flex-col gap-2 w-full">
+        {
+          topMenos.map((row, i) => (
+            <div
+              class="flex items-center justify-between gap-4 p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+              data-rank={i + 1}
+              data-plato-id={row.plato_id || ''}
+              hidden={i >= 5}
+            >
+              <span class="text-amber-500 font-mono font-bold w-6 text-xs" data-rank-label>
+                #{i + 1}
+              </span>
+              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 flex-1 truncate">
+                {row.nombre}
+              </span>
+              <div class="hidden sm:block w-28 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shrink-0">
+                <div class="studio-pct-amber h-2 bg-gradient-to-r from-amber-500 to-orange-400 rounded-full" data-pct-bar style={`width:${row.pct}%`}></div>
+              </div>
+              <span class="text-xs font-mono font-bold text-zinc-700 dark:text-zinc-300 shrink-0" data-vistas-label>
+                {formatKpi(row.vistas)}
+              </span>
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="view-grid hidden grid grid-cols-2 gap-3 w-full">
+        {
+          topMenos.map((row, i) => (
+            <article
+              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 group p-2.5 flex flex-col justify-between"
+              data-rank={i + 1}
+              data-plato-id={row.plato_id || ''}
+              hidden={i >= 5}
+            >
+              {
+                row.foto ? (
+                  <img
+                    src={row.foto}
+                    alt={row.nombre}
+                    class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null
+              }
+              <div class="relative z-10 flex items-start justify-between gap-1.5">
+                <span class={photoChipClass} data-rank-label>#{i + 1}</span>
+                <span class={photoChipClass} data-vistas-label>{formatKpi(row.vistas)}</span>
+              </div>
+              <div class="studio-photo-caption relative z-10 mt-auto p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex flex-col gap-0.5">
+                <h4 class="text-sm font-bold text-white tracking-wide truncate">{row.nombre}</h4>
+                <span class="studio-photo-meta text-xs text-zinc-300 font-mono truncate">{row.detalle || row.precio}</span>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <footer class="flex items-center justify-between gap-3">
+        <span class="text-xs text-zinc-400" data-activos-label>
+          {shownDefault} platos activos
+        </span>
+        <button
+          type="button"
+          class="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-800 disabled:pointer-events-none disabled:opacity-40 dark:hover:text-zinc-200"
+          data-expand-top
+          disabled={!canExpandMenos}
+        >
+          Ver Top 10 completo ↓
+        </button>
+      </footer>
+    </article>
   </div>
 </section>
 
 <script>
-  function initMetricsLogoUpload() {
-    document.querySelectorAll('[data-metrics-logo-file]').forEach((input) => {
-      if (!(input instanceof HTMLInputElement)) return;
-      if (input.dataset.bound === 'true') return;
-      input.dataset.bound = 'true';
-
-      input.addEventListener('change', async () => {
-        const file = input.files?.[0];
-        input.value = '';
-        if (!file) return;
-
-        const restauranteId = input.dataset.restauranteId || '';
-        const root = input.closest('[data-kit-metrics]');
-        const slot = root?.querySelector('[data-metrics-logo-slot]');
-        const img = root?.querySelector('[data-metrics-logo-img]');
-        const empty = root?.querySelector('[data-metrics-logo-empty]');
-
-        try {
-          const body = new FormData();
-          body.append('file', file);
-          const up = await fetch('/api/upload', { method: 'POST', body });
-          const upJson = await up.json().catch(() => ({}));
-          if (!up.ok || !upJson.url) {
-            throw new Error(upJson.error || 'No se pudo subir');
-          }
-          const url = String(upJson.url);
-
-          if (restauranteId) {
-            const save = await fetch('/api/update-hub-datos', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                restaurante_id: restauranteId,
-                logo_url: url,
-              }),
-            });
-            const saveJson = await save.json().catch(() => ({}));
-            if (!save.ok) throw new Error(saveJson.error || 'No se pudo guardar');
-          }
-
-          empty?.remove();
-          if (img instanceof HTMLImageElement) {
-            img.src = url;
-          } else if (slot instanceof HTMLElement) {
-            const next = document.createElement('img');
-            next.src = url;
-            next.alt = '';
-            next.className = 'kit-metrics__logo-img mx-auto max-h-16 w-auto object-contain';
-            next.dataset.metricsLogoImg = '';
-            slot.prepend(next);
-          }
-
-          const hubInput = document.getElementById('hub-logo-url');
-          if (hubInput instanceof HTMLInputElement) hubInput.value = url;
-        } catch (err) {
-          window.alert(err instanceof Error ? err.message : 'Error al subir logo');
-        }
-      });
-    });
-  }
-
-  initMetricsLogoUpload();
-  document.addEventListener('astro:page-load', initMetricsLogoUpload);
-
   /** @param {number} n */
-  function formatCompact(n) {
-    const v = Math.max(0, Number(n) || 0);
-    if (v >= 10000) return `${Math.round(v / 1000)}K+`;
-    if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-    return String(Math.round(v));
+  function formatKpi(n) {
+    return Math.max(0, Number(n) || 0).toLocaleString('en-US');
   }
 
   /**
@@ -423,8 +512,7 @@ const showUpload = allowLogoUpload && restauranteId;
   function animateCount(el) {
     const target = Number(el.dataset.kitCount);
     if (!Number.isFinite(target)) return;
-    const finalText = el.dataset.kitDisplay || String(target);
-    const format = el.dataset.kitFormat || 'int';
+    const finalText = el.dataset.kitDisplay || formatKpi(target);
     const duration = 820;
     const start = performance.now();
 
@@ -432,12 +520,7 @@ const showUpload = allowLogoUpload && restauranteId;
     function frame(now) {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - (1 - t) ** 3;
-      const val = target * eased;
-      if (format === 'compact') {
-        el.textContent = formatCompact(val);
-      } else {
-        el.textContent = String(Math.round(val));
-      }
+      el.textContent = formatKpi(Math.round(target * eased));
       if (t < 1) requestAnimationFrame(frame);
       else el.textContent = finalText;
     }
@@ -448,17 +531,208 @@ const showUpload = allowLogoUpload && restauranteId;
    * @param {HTMLElement} kit
    */
   function playKitMotion(kit) {
-    if (kit.classList.contains('is-live')) return;
-    kit.classList.add('is-live');
-    kit.querySelectorAll('[data-kit-count]').forEach((el) => {
-      if (el instanceof HTMLElement) animateCount(el);
-    });
-    kit.querySelectorAll('[data-kit-donut]').forEach((svg) => {
-      svg.classList.add('is-drawn');
+    if (kit.dataset.live === 'true') return;
+    kit.dataset.live = 'true';
+    kit.querySelectorAll('[data-kit-count]').forEach((node) => {
+      if (node instanceof HTMLElement) animateCount(node);
     });
   }
 
-  function initKitMetricsMotion() {
+  const SEG_ON =
+    'studio-seg-on px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-700 shadow-xs font-medium text-zinc-800 dark:text-zinc-200';
+  const SEG_OFF =
+    'px-2.5 py-1 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors';
+  const TF_ON =
+    'studio-tf-on px-3 py-1.5 rounded-xl font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs';
+  const TF_OFF =
+    'px-3 py-1.5 rounded-xl font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors';
+
+  /**
+   * @param {HTMLElement} board
+   */
+  function initPlatosBoard(board) {
+    if (board.dataset.ready === 'true') return;
+    board.dataset.ready = 'true';
+
+    const list = board.querySelector('.view-list');
+    const grid = board.querySelector('.view-grid');
+    const label = board.querySelector('[data-activos-label]');
+    const totalRanked = board.querySelectorAll('[data-rank]').length / 2;
+
+    /**
+     * @param {'list' | 'grid'} view
+     */
+    function setView(view) {
+      if (list instanceof HTMLElement) {
+        list.classList.toggle('hidden', view !== 'list');
+      }
+      if (grid instanceof HTMLElement) {
+        grid.classList.toggle('hidden', view !== 'grid');
+      }
+      board.querySelectorAll('[data-tab-view]').forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const on = btn.getAttribute('data-tab-view') === view;
+        btn.className = on ? SEG_ON : SEG_OFF;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+    board.querySelectorAll('[data-tab-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setView(btn.getAttribute('data-tab-view') === 'grid' ? 'grid' : 'list');
+      });
+    });
+
+    const expandBtn = board.querySelector('[data-expand-top]');
+    if (expandBtn instanceof HTMLButtonElement && !expandBtn.disabled) {
+      expandBtn.addEventListener('click', () => {
+        const next = board.dataset.expanded !== 'true';
+        board.dataset.expanded = next ? 'true' : 'false';
+        board.querySelectorAll('[data-rank]').forEach((el) => {
+          if (!(el instanceof HTMLElement)) return;
+          const rank = Number(el.getAttribute('data-rank'));
+          if (rank > 5) el.hidden = !next;
+        });
+        const shown = Math.min(next ? 10 : 5, Number.isFinite(totalRanked) ? totalRanked : 5);
+        if (label) label.textContent = `${shown} platos activos`;
+        expandBtn.textContent = next ? 'Ver Top 5 ↑' : 'Ver Top 10 completo ↓';
+      });
+    }
+  }
+
+  /**
+   * @param {unknown} raw
+   */
+  function parseSeries(raw) {
+    if (!raw) return { eventMode: false, currentMonth: '', all: { total: 0, platos: {} }, months: {} };
+    try {
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch {
+      return { eventMode: false, currentMonth: '', all: { total: 0, platos: {} }, months: {} };
+    }
+  }
+
+  /**
+   * @param {HTMLElement} kit
+   * @param {{ total?: number, platos?: Record<string, number> }} bucket
+   */
+  function applyBucket(kit, bucket) {
+    const platos = bucket?.platos || {};
+    const total = Number(bucket?.total) || 0;
+    const vistasEl = kit.querySelector('[data-kpi="vistas"]');
+    if (vistasEl instanceof HTMLElement) {
+      vistasEl.dataset.kitCount = String(total);
+      vistasEl.dataset.kitDisplay = formatKpi(total);
+      vistasEl.textContent = formatKpi(total);
+    }
+
+    kit.querySelectorAll('[data-platos-board]').forEach((board) => {
+      if (!(board instanceof HTMLElement)) return;
+      const sortAsc = board.getAttribute('data-board-sort') === 'asc';
+      const list = board.querySelector('.view-list');
+      const grid = board.querySelector('.view-grid');
+
+      /**
+       * @param {Element | null} wrap
+       */
+      function rankWrap(wrap) {
+        if (!(wrap instanceof HTMLElement)) return;
+        const cards = [...wrap.querySelectorAll('[data-plato-id]')];
+        const max = Math.max(1, ...cards.map((el) => Number(platos[el.getAttribute('data-plato-id') || ''] || 0)));
+        cards.sort((a, b) => {
+          const va = Number(platos[a.getAttribute('data-plato-id') || ''] || 0);
+          const vb = Number(platos[b.getAttribute('data-plato-id') || ''] || 0);
+          if (va !== vb) return sortAsc ? va - vb : vb - va;
+          return (a.textContent || '').localeCompare(b.textContent || '');
+        });
+        cards.forEach((el, i) => {
+          if (!(el instanceof HTMLElement)) return;
+          const id = el.getAttribute('data-plato-id') || '';
+          const vistas = Number(platos[id] || 0);
+          const pct = vistas > 0 ? Math.max(6, Math.round((vistas / max) * 100)) : 0;
+          el.setAttribute('data-rank', String(i + 1));
+          const expanded = board.dataset.expanded === 'true';
+          el.hidden = !expanded && i >= 5;
+          const rankLabel = el.querySelector('[data-rank-label]');
+          if (rankLabel) rankLabel.textContent = `#${i + 1}`;
+          const vistasLabel = el.querySelector('[data-vistas-label]');
+          if (vistasLabel) vistasLabel.textContent = formatKpi(vistas);
+          const bar = el.querySelector('[data-pct-bar]');
+          if (bar instanceof HTMLElement) bar.style.width = `${pct}%`;
+          wrap.appendChild(el);
+        });
+      }
+
+      rankWrap(list);
+      rankWrap(grid);
+    });
+  }
+
+  /**
+   * @param {HTMLElement} kit
+   */
+  function initTimeframe(kit) {
+    if (kit.dataset.tfReady === 'true') return;
+    kit.dataset.tfReady = 'true';
+
+    const series = parseSeries(kit.getAttribute('data-metrics-series'));
+    const bar = kit.querySelector('[data-timeframe-bar]');
+    const monthSelect = kit.querySelector('[data-timeframe-month]');
+    if (!(bar instanceof HTMLElement)) return;
+
+    /**
+     * @param {'all' | 'current' | 'month'} mode
+     * @param {string} [month]
+     */
+    function setTimeframe(mode, month = '') {
+      const buttons = bar.querySelectorAll('[data-timeframe]');
+      buttons.forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const on =
+          mode === 'all'
+            ? btn.getAttribute('data-timeframe') === 'all'
+            : mode === 'current'
+              ? btn.getAttribute('data-timeframe') === 'current'
+              : false;
+        btn.className = on ? TF_ON : TF_OFF;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (monthSelect instanceof HTMLSelectElement) {
+        monthSelect.classList.toggle('studio-tf-select-on', mode === 'month');
+        if (mode !== 'month') monthSelect.value = '';
+      }
+
+      let bucket = series.all || { total: 0, platos: {} };
+      if (series.eventMode) {
+        if (mode === 'current') {
+          bucket = series.months?.[series.currentMonth] || { total: 0, platos: {} };
+        } else if (mode === 'month' && month) {
+          bucket = series.months?.[month] || { total: 0, platos: {} };
+        }
+      }
+      applyBucket(kit, bucket);
+    }
+
+    bar.querySelectorAll('[data-timeframe]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-timeframe') === 'current' ? 'current' : 'all';
+        setTimeframe(mode);
+      });
+    });
+
+    if (monthSelect instanceof HTMLSelectElement) {
+      monthSelect.addEventListener('change', () => {
+        const value = monthSelect.value;
+        if (!value) {
+          setTimeframe('all');
+          return;
+        }
+        setTimeframe('month', value);
+      });
+    }
+  }
+
+  function initMetricsUi() {
     /** @type {Set<Element>} */
     const seen = new Set();
 
@@ -468,27 +742,30 @@ const showUpload = allowLogoUpload && restauranteId;
     function bindPanel(panel) {
       if (!(panel instanceof HTMLElement) || seen.has(panel)) return;
       seen.add(panel);
-
       const run = () => {
         if (panel.hidden || panel.classList.contains('hidden')) return;
         const kit = panel.querySelector('[data-kit-metrics]');
         if (kit instanceof HTMLElement) playKitMotion(kit);
       };
-
       run();
       const observer = new MutationObserver(run);
       observer.observe(panel, { attributes: true, attributeFilter: ['hidden', 'class'] });
     }
 
-    document.querySelectorAll('[data-super-panel="metricas"], [data-tab-panel="metricas"]').forEach(bindPanel);
-
+    document.querySelectorAll('[data-tab-panel="metricas"], [data-super-panel="metricas"]').forEach(bindPanel);
     document.querySelectorAll('[data-kit-metrics]').forEach((kit) => {
-      if (!(kit instanceof HTMLElement)) return;
-      const panel = kit.closest('[data-super-panel], [data-tab-panel]');
-      if (!panel) playKitMotion(kit);
+      const panel = kit.closest('[data-tab-panel], [data-super-panel]');
+      if (panel) bindPanel(panel);
+      else if (kit instanceof HTMLElement) playKitMotion(kit);
+      if (kit instanceof HTMLElement) {
+        initTimeframe(kit);
+        kit.querySelectorAll('[data-platos-board]').forEach((board) => {
+          if (board instanceof HTMLElement) initPlatosBoard(board);
+        });
+      }
     });
   }
 
-  initKitMetricsMotion();
-  document.addEventListener('astro:page-load', initKitMetricsMotion);
+  initMetricsUi();
+  document.addEventListener('astro:page-load', initMetricsUi);
 </script>

@@ -854,17 +854,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             >
               Menú
             </button>
-            <button
-              type="button"
-              role="tab"
-              id="tab-metricas"
-              data-tab-target="metricas"
-              aria-selected="false"
-              aria-controls="panel-metricas"
-              class={`${tabPillInactive}`}
-            >
-              Métricas
-            </button>
             {
               !isSuperAdmin && (
             <button
@@ -880,6 +869,17 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             </button>
               )
             }
+            <button
+              type="button"
+              role="tab"
+              id="tab-metricas"
+              data-tab-target="metricas"
+              aria-selected="false"
+              aria-controls="panel-metricas"
+              class={`${tabPillInactive}`}
+            >
+              Métricas
+            </button>
             {
               isSuperAdmin && (
                 <button
@@ -1516,18 +1516,19 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             role="tabpanel"
             aria-labelledby="tab-metricas"
             data-tab-panel="metricas"
-            class="hidden w-full min-w-0 max-w-none"
+            class="hidden w-full flex flex-col gap-6"
             hidden
           >
             <AdminMetricsPanel
               metrics={metrics}
-              title="Métricas y Analíticas"
-              subtitle={`Rendimiento de ${nombre} · alertas de mesa e interés del menú`}
+              title="Métricas & Rendimiento"
+              subtitle="Analítica de tráfico y conversión"
               brandName={nombre}
               brandLogoUrl={hubLogoUrl}
               brandTagline={String(restaurante?.eslogan || '').trim() || `Operación · ${nombre}`}
-              allowLogoUpload={isSuperAdmin}
               restauranteId={restId}
+              createdAt={restaurante?.created_at}
+              menuPlatos={platos}
             />
           </div>
 
@@ -3876,12 +3877,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               </svg>
               <span>Menú</span>
             </button>
-            <button type="button" class="studio-dock__btn" data-tab-target="metricas" aria-selected="false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path>
-              </svg>
-              <span>Métricas</span>
-            </button>
             {
               !isSuperAdmin && (
             <button type="button" class="studio-dock__btn" data-tab-target="perfil" aria-selected="false">
@@ -3893,6 +3888,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             </button>
               )
             }
+            <button type="button" class="studio-dock__btn" data-tab-target="metricas" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path>
+              </svg>
+              <span>Métricas</span>
+            </button>
             {
               isSuperAdmin ? (
                 <button type="button" class="studio-dock__btn" data-tab-target="identidad" aria-selected="false">

@@ -4,8 +4,8 @@ import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 export const prerender = false;
 
 /**
- * Registra una visualización de plato (upsert + incremento).
- * Pensado para fire-and-forget: errores no deben romper el menú.
+ * Registra una visualización de plato.
+ * Live: una fila por evento (created_at). Legacy: contador `vistas`.
  * POST { restaurante_id, plato_id, plato_nombre? }
  */
 export async function POST({ request, cookies }) {
@@ -34,29 +34,41 @@ export async function POST({ request, cookies }) {
     const service = createSupabaseServiceClient();
     const client = service ?? createSupabaseServerClient({ request, cookies });
 
-    const { data: existing, error: readErr } = await client
+    const probe = await client
       .from('plato_vistas')
       .select('id, vistas')
       .eq('restaurante_id', restauranteId)
       .eq('plato_id', platoId)
       .maybeSingle();
 
-    if (readErr) {
-      console.warn('[api/registro-vista]', readErr.message);
+    if (probe.error && /vistas|column|schema cache/i.test(probe.error.message || '')) {
+      const { error: eventErr } = await client.from('plato_vistas').insert({
+        restaurante_id: restauranteId,
+        plato_id: platoId,
+      });
+      if (eventErr) {
+        console.warn('[api/registro-vista] event:', eventErr.message);
+        return json({ ok: false }, 200);
+      }
+      return json({ ok: true });
+    }
+
+    if (probe.error) {
+      console.warn('[api/registro-vista]', probe.error.message);
       return json({ ok: false, skipped: true }, 200);
     }
 
     const now = new Date().toISOString();
 
-    if (existing?.id) {
+    if (probe.data?.id) {
       const { error: updErr } = await client
         .from('plato_vistas')
         .update({
-          vistas: (Number(existing.vistas) || 0) + 1,
+          vistas: (Number(probe.data.vistas) || 0) + 1,
           updated_at: now,
           ...(platoNombre ? { plato_nombre: platoNombre } : {}),
         })
-        .eq('id', existing.id);
+        .eq('id', probe.data.id);
 
       if (updErr) {
         console.warn('[api/registro-vista] update:', updErr.message);

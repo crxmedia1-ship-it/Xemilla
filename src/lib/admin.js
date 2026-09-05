@@ -55,6 +55,7 @@ const RESTAURANTE_ADMIN_SELECT = [
   'home_theme',
   'nosotros_theme',
   'ubicacion_theme',
+  'created_at',
 ].join(', ');
 
 /** SELECT mínimo si faltan columnas nuevas en Supabase. */
@@ -89,6 +90,7 @@ const RESTAURANTE_ADMIN_SELECT_BASE = [
   'eslogan',
   'secciones_fondo',
   'ui_estilo',
+  'created_at',
 ].join(', ');
 
 const UUID_RE =
