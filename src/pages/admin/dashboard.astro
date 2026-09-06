@@ -645,37 +645,6 @@ const tabPillBase =
 const tabPillActive = `${tabPillBase} is-on`;
 const tabPillInactive = `${tabPillBase}`;
 
-const userEmail = String(user?.email || '').trim();
-const userDisplayName = (() => {
-  const metaName = String(
-    user?.user_metadata?.full_name ||
-      user?.user_metadata?.name ||
-      user?.user_metadata?.display_name ||
-      '',
-  ).trim();
-  if (metaName) return metaName;
-  const local = userEmail.split('@')[0] || 'Admin';
-  return local
-    .split(/[._\-\s]+/)
-    .filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
-    .join(' ') || 'Admin';
-})();
-const userRoleLabel = isSuperAdmin
-  ? `${userDisplayName} (SuperAdmin)`
-  : `${userDisplayName} (Operativo)`;
-const userInitials = (() => {
-  const parts = userDisplayName.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
-  }
-  const local = userEmail.split('@')[0] || '';
-  const localParts = local.split(/[._\-\s]+/).filter(Boolean);
-  if (localParts.length >= 2) {
-    return `${localParts[0][0] || ''}${localParts[1][0] || ''}`.toUpperCase();
-  }
-  return (local.slice(0, 2) || 'AD').toUpperCase();
-})();
 const sampleBulk = isSuperAdmin
   ? `Categoría | Nombre | Descripción | Precio | Destacado | Imagen
 Crudos | Edamame | Salteado con sal marina | 6.50 | SI | https://res.cloudinary.com/demo/image/upload/sample.jpg
@@ -693,9 +662,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   adminPanel={true}
 >
   <header
-    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-zinc-200/80 bg-white/80 px-4 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/80 sm:px-8"
+    class="admin-studio-header solid-obstacle relative sticky top-0 z-50 flex h-16 w-full min-w-0 items-center justify-between gap-2 overflow-x-clip border-b border-zinc-200/80 bg-white/80 px-3 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/80 sm:gap-4 sm:px-8"
   >
-    <div class="z-10 flex h-16 max-h-16 min-w-0 shrink-0 items-center gap-2">
+    <div class="z-10 flex h-16 max-h-16 min-w-0 items-center gap-1.5 sm:gap-2">
       <a
         href={managingAsSuperAdmin || isSuperAdmin ? '/admin/super/dashboard' : '/admin/dashboard'}
         class="group flex h-16 items-center transition-opacity hover:opacity-80"
@@ -706,7 +675,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           alt="Xemilla"
           width="160"
           height="48"
-          class="admin-studio-header__xemilla block h-9 w-auto max-h-10 object-contain sm:h-10"
+          class="admin-studio-header__xemilla block h-8 w-auto max-h-9 max-w-[6.5rem] object-contain sm:h-10 sm:max-h-10 sm:max-w-none"
           loading="eager"
           decoding="async"
         />
@@ -723,12 +692,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 <img
                   src={hubLogoTrimUrl}
                   alt={restaurante.nombre_comercial || 'Restaurante'}
-                  class="admin-studio-header__venue-logo ml-2.5 block h-10 w-auto max-h-10 object-contain"
+                  class="admin-studio-header__venue-logo ml-1.5 block h-8 w-auto max-h-9 max-w-[4.75rem] object-contain sm:ml-2.5 sm:h-10 sm:max-h-10 sm:max-w-[9rem]"
                   loading="eager"
                   decoding="async"
                 />
               ) : (
-                <span class="ml-2.5 max-w-[10rem] truncate text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-200">
+                <span class="ml-1.5 max-w-[6.5rem] truncate text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-200 sm:ml-2.5 sm:max-w-[10rem]">
                   {restaurante.nombre_comercial || 'Restaurante'}
                 </span>
               )
@@ -738,7 +707,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       }
     </div>
 
-    <div class="z-10 flex shrink-0 items-center gap-2 sm:gap-4">
+    <div class="z-10 flex min-w-0 shrink-0 items-center gap-1 sm:gap-4">
       {
         (managingAsSuperAdmin || isSuperAdmin) && restaurante ? (
           <a
@@ -775,9 +744,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             data-ops-contacto-save
             data-restaurante-id={restId}
             data-save-state="idle"
-            class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
+            class="marca-save-btn admin-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg p-0 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:h-auto sm:w-auto sm:px-4 sm:py-1.5"
+            aria-label="Guardar cambios"
           >
-            Guardar
+            <svg class="size-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 5h11l3 3v11H5V5z"></path>
+              <path d="M8 5v4h8V5"></path>
+              <path d="M8 19v-6h8v6"></path>
+            </svg>
+            <span class="hidden sm:inline">Guardar</span>
           </button>
         ) : null
       }
@@ -789,50 +764,25 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             id="marca-save"
             hidden
             data-save-state="idle"
-            class="marca-save-btn admin-action-btn inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:px-4"
+            class="marca-save-btn admin-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg p-0 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:h-auto sm:w-auto sm:px-4 sm:py-1.5"
+            aria-label="Guardar cambios"
           >
-            Guardar
+            <svg class="size-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 5h11l3 3v11H5V5z"></path>
+              <path d="M8 5v4h8V5"></path>
+              <path d="M8 19v-6h8v6"></path>
+            </svg>
+            <span class="hidden sm:inline">Guardar</span>
           </button>
         ) : null
       }
 
       <AdminThemeSwitcher />
-      <div class="relative" data-admin-profile>
-        <button
-          type="button"
-          id="admin-profile-trigger"
-          class="admin-profile-trigger"
-          aria-expanded="false"
-          aria-haspopup="menu"
-          aria-controls="admin-profile-menu"
-          title={userEmail || 'Perfil'}
-          data-admin-profile-trigger
-        >
-          <span class="admin-profile-trigger__initials">{userInitials}</span>
+      <form method="POST" action="/api/admin-logout" class="hidden sm:block">
+        <button type="submit" class="admin-studio-header__link" title="Cerrar sesión">
+          Salir
         </button>
-        <div
-          id="admin-profile-menu"
-          class="admin-profile-dropdown"
-          role="menu"
-          aria-labelledby="admin-profile-trigger"
-          hidden
-          data-admin-profile-menu
-        >
-          <div class="admin-profile-dropdown__meta">
-            <p class="admin-profile-dropdown__name">{userRoleLabel}</p>
-            {
-              userEmail ? (
-                <p class="admin-profile-dropdown__email">{userEmail}</p>
-              ) : null
-            }
-          </div>
-          <form method="POST" action="/api/admin-logout" class="admin-profile-dropdown__actions">
-            <button type="submit" role="menuitem" class="admin-profile-dropdown__logout">
-              Cerrar Sesión
-            </button>
-          </form>
-        </div>
-      </div>
+      </form>
     </div>
 
     {/* Nav pills — desktop centered; mobile uses bottom dock */}
@@ -1518,7 +1468,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             role="tabpanel"
             aria-labelledby="tab-metricas"
             data-tab-panel="metricas"
-            class="hidden w-full flex flex-col gap-6"
+            class="hidden w-full min-w-0 flex flex-col gap-6 overflow-x-clip"
             hidden
           >
             <AdminMetricsPanel
@@ -6917,7 +6867,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     border-top: 1px solid var(--border-subtle);
   }
 
-  .perfil-day {
+  .perfil-studio:not(.ops-studio) .perfil-day {
     display: grid;
     grid-template-columns: 7.2rem minmax(0, 1fr) auto;
     align-items: center;
@@ -7252,27 +7202,27 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       padding-right: 0.85rem;
     }
 
-    .perfil-day {
+    .perfil-studio:not(.ops-studio) .perfil-day {
       grid-template-columns: 1fr auto;
       gap: 0.45rem 0.6rem;
     }
 
-    .perfil-day__name {
+    .perfil-studio:not(.ops-studio) .perfil-day__name {
       grid-column: 1;
       font-size: 0.88rem;
     }
 
-    .perfil-day .perfil-toggle {
+    .perfil-studio:not(.ops-studio) .perfil-day .perfil-toggle {
       grid-column: 2;
       grid-row: 1;
     }
 
-    .perfil-day__mid {
+    .perfil-studio:not(.ops-studio) .perfil-day__mid {
       grid-column: 1 / -1;
       justify-content: flex-start;
     }
 
-    .perfil-day input[type='time'] {
+    .perfil-studio:not(.ops-studio) .perfil-day input[type='time'] {
       min-width: 5.15rem;
       font-size: 0.75rem;
       padding: 0.32rem 0.4rem;
@@ -8638,12 +8588,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   function setDayClosed(row, closed) {
     if (!(row instanceof HTMLElement)) return;
     row.dataset.closed = closed ? 'true' : 'false';
-    const toggle = row.querySelector('[data-hours-toggle]');
-    if (toggle instanceof HTMLElement) {
+    row.querySelectorAll('[data-hours-toggle]').forEach((toggle) => {
+      if (!(toggle instanceof HTMLElement)) return;
       toggle.setAttribute('aria-checked', String(!closed));
       toggle.classList.toggle('is-on', !closed);
+      toggle.classList.toggle('bg-emerald-500', !closed);
       toggle.title = closed ? 'Cerrado' : 'Abierto';
-    }
+    });
     row.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((el) => {
       if (el instanceof HTMLInputElement) el.disabled = closed;
     });

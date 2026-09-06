@@ -126,7 +126,7 @@ const boardClass =
   'studio-kpi-card studio-kpi-board bg-white dark:bg-zinc-900/60 border border-zinc-200/90 dark:border-zinc-800/80 rounded-[2rem] p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-none dark:backdrop-blur-xl transition-all flex flex-col gap-4';
 
 const photoChipBase =
-  'studio-photo-chip relative z-10 px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-black/80 backdrop-blur-md border border-white/15';
+  'studio-photo-chip relative z-10 shrink-0 px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-black/80 backdrop-blur-md border border-white/15';
 
 const WEEK_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const WEEK_FALLBACK = [40, 55, 75, 48, 90, 62, 35];
@@ -306,7 +306,7 @@ const segOff =
 ---
 
 <section
-  class="w-full flex flex-col gap-6"
+  class="flex w-full min-w-0 flex-col gap-6 overflow-x-clip"
   data-admin-metrics
   data-kit-metrics
   data-metrics-series={JSON.stringify(seriesPayload)}
@@ -463,7 +463,7 @@ const segOff =
       data-expanded="false"
     >
       <div class="flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold tracking-wide text-zinc-900 dark:text-white">Top Rendimiento (Más Vistos)</h3>
+        <h3 class="min-w-0 truncate text-sm font-semibold tracking-wide text-zinc-900 dark:text-white">Top Rendimiento (Más Vistos)</h3>
         <div class="inline-flex gap-1 rounded-xl bg-zinc-100 p-1 text-xs dark:bg-zinc-800" role="group" aria-label="Vista Top Rendimiento">
           <button type="button" class={segOn} data-tab-view="list" aria-pressed="true">Lista</button>
           <button type="button" class={segOff} data-tab-view="grid" aria-pressed="false">Fotos</button>
@@ -494,11 +494,11 @@ const segOff =
         }
       </div>
 
-      <div class="view-grid hidden grid grid-cols-2 gap-4 w-full">
+      <div class="view-grid hidden grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full min-w-0">
         {
           topMas.map((row, i) => (
             <article
-              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 shadow-sm group p-2.5 flex flex-col justify-between"
+              class="studio-photo-card aspect-[16/9] sm:aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 shadow-sm group p-2.5 flex flex-col justify-between min-w-0 w-full"
               data-rank={i + 1}
               data-plato-id={row.plato_id || ''}
               hidden={i >= 5}
@@ -512,13 +512,13 @@ const segOff =
                   decoding="async"
                 />
               ) : null}
-              <div class="relative z-10 flex items-start justify-between gap-1.5">
+              <div class="relative z-10 flex min-w-0 items-start justify-between gap-1.5">
                 <span class={`${photoChipBase} studio-chip-hot text-rose-500`} data-rank-label>{formatRank(i + 1)}</span>
                 <span class={`${photoChipBase} studio-chip-ink text-white`} data-vistas-label>
                   {formatKpi(row.vistas)} vistas
                 </span>
               </div>
-              <div class="studio-photo-caption relative z-10 p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 flex flex-col gap-0.5 mt-auto">
+              <div class="studio-photo-caption relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 rounded-xl border border-white/15 bg-black/80 p-2.5 backdrop-blur-md">
                 <h4 class="text-sm font-bold text-white truncate">{row.nombre}</h4>
                 <span class="studio-photo-meta text-xs text-zinc-300 font-mono truncate">{row.detalle || row.precio}</span>
               </div>
@@ -549,7 +549,7 @@ const segOff =
       data-expanded="false"
     >
       <div class="flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold tracking-wide text-zinc-900 dark:text-white">Oportunidades (Menos Vistos)</h3>
+        <h3 class="min-w-0 truncate text-sm font-semibold tracking-wide text-zinc-900 dark:text-white">Oportunidades (Menos Vistos)</h3>
         <div class="inline-flex gap-1 rounded-xl bg-zinc-100 p-1 text-xs dark:bg-zinc-800" role="group" aria-label="Vista Oportunidades">
           <button type="button" class={segOn} data-tab-view="list" aria-pressed="true">Lista</button>
           <button type="button" class={segOff} data-tab-view="grid" aria-pressed="false">Fotos</button>
@@ -580,11 +580,11 @@ const segOff =
         }
       </div>
 
-      <div class="view-grid hidden grid grid-cols-2 gap-4 w-full">
+      <div class="view-grid hidden grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full min-w-0">
         {
           topMenos.map((row, i) => (
             <article
-              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 shadow-sm group p-2.5 flex flex-col justify-between"
+              class="studio-photo-card aspect-[16/9] sm:aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 shadow-sm group p-2.5 flex flex-col justify-between min-w-0 w-full"
               data-rank={i + 1}
               data-plato-id={row.plato_id || ''}
               hidden={i >= 5}
@@ -598,13 +598,13 @@ const segOff =
                   decoding="async"
                 />
               ) : null}
-              <div class="relative z-10 flex items-start justify-between gap-1.5">
+              <div class="relative z-10 flex min-w-0 items-start justify-between gap-1.5">
                 <span class={`${photoChipBase} studio-chip-cold text-sky-400`} data-rank-label>{formatRank(i + 1)}</span>
                 <span class={`${photoChipBase} studio-chip-ink text-white`} data-vistas-label>
                   {formatKpi(row.vistas)} vistas
                 </span>
               </div>
-              <div class="studio-photo-caption relative z-10 p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 flex flex-col gap-0.5 mt-auto">
+              <div class="studio-photo-caption relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 rounded-xl border border-white/15 bg-black/80 p-2.5 backdrop-blur-md">
                 <h4 class="text-sm font-bold text-white truncate">{row.nombre}</h4>
                 <span class="studio-photo-meta text-xs text-zinc-300 font-mono truncate">{row.detalle || row.precio}</span>
               </div>

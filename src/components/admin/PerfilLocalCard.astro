@@ -125,12 +125,12 @@ const studioIconWrapClass =
   'mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400';
 
 const studioDayRowClass =
-  'grid grid-cols-[75px_1fr_auto] sm:grid-cols-[90px_1fr_auto] items-center gap-2 sm:gap-3 py-2 border-b border-zinc-100/80 last:border-0 w-full dark:border-zinc-800/80';
+  'flex flex-col sm:grid sm:grid-cols-[90px_1fr_auto] sm:items-center gap-2 sm:gap-3 py-3 border-b border-zinc-100/80 dark:border-zinc-800/60 last:border-0 w-full min-w-0';
 
-const studioTimesClass = 'flex items-center justify-center gap-1.5 w-full min-w-0';
+const studioTimesClass = 'flex items-center justify-between gap-2 w-full min-w-0';
 
 const studioTimeInputClass =
-  'w-full max-w-[110px] sm:max-w-[125px] px-1.5 sm:px-2 py-1.5 text-center text-xs sm:text-sm font-mono bg-zinc-50 border border-zinc-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-zinc-950 transition-all text-zinc-900 appearance-none dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 focus:dark:border-zinc-600';
+  'flex-1 w-full min-w-0 px-2.5 py-1.5 text-center text-xs font-mono bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white appearance-none focus:bg-white focus:ring-1 focus:ring-zinc-950 focus:dark:border-zinc-600 sm:max-w-[125px]';
 
 const studioMapInputClass =
   'w-full px-3 py-2 text-xs sm:text-sm bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
@@ -211,15 +211,36 @@ const studioSocialInputClass =
                   data-day={dia.id}
                   data-closed={closed ? 'true' : 'false'}
                 >
-                  <span
-                    class:list={[
-                      'perfil-day__name',
-                      variant === 'studio' && 'text-xs sm:text-sm font-medium text-zinc-800 shrink-0 truncate',
-                    ]}
-                  >
-                    {dia.label}
-                    {isToday ? <em>Hoy</em> : null}
-                  </span>
+                  <div class="perfil-day__head flex w-full items-center justify-between sm:contents sm:w-auto">
+                    <span
+                      class:list={[
+                        'perfil-day__name',
+                        variant === 'studio' && 'text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200',
+                      ]}
+                    >
+                      {dia.label}
+                      {isToday ? <em>Hoy</em> : null}
+                    </span>
+                    <div class="sm:hidden shrink-0">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!closed}
+                        aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
+                        data-hours-toggle
+                        title={closed ? 'Cerrado' : 'Abierto'}
+                        class:list={[
+                          'ios-toggle',
+                          'ios-toggle--live',
+                          'perfil-toggle',
+                          'shrink-0',
+                          !closed && 'is-on bg-emerald-500',
+                        ]}
+                      >
+                        <span class="ios-toggle__knob" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                  </div>
                   <div
                     class:list={[
                       'perfil-day__mid',
@@ -247,24 +268,25 @@ const studioSocialInputClass =
                       />
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={!closed}
-                    aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
-                    data-hours-toggle
-                    title={closed ? 'Cerrado' : 'Abierto'}
-                    class:list={[
-                      'ios-toggle',
-                      'ios-toggle--live',
-                      'perfil-toggle',
-                      'shrink-0',
-                      variant === 'studio' && 'justify-self-end',
-                      !closed && 'is-on bg-emerald-500',
-                    ]}
-                  >
-                    <span class="ios-toggle__knob" aria-hidden="true"></span>
-                  </button>
+                  <div class="hidden shrink-0 justify-self-end sm:block">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!closed}
+                      aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
+                      data-hours-toggle
+                      title={closed ? 'Cerrado' : 'Abierto'}
+                      class:list={[
+                        'ios-toggle',
+                        'ios-toggle--live',
+                        'perfil-toggle',
+                        'shrink-0',
+                        !closed && 'is-on bg-emerald-500',
+                      ]}
+                    >
+                      <span class="ios-toggle__knob" aria-hidden="true"></span>
+                    </button>
+                  </div>
                 </li>
               );
             })
@@ -526,14 +548,14 @@ const studioSocialInputClass =
   function setDayRow(row, closed) {
     if (!(row instanceof HTMLElement)) return;
     row.dataset.closed = closed ? 'true' : 'false';
-    const toggle = row.querySelector('[data-hours-toggle]');
-    if (toggle instanceof HTMLElement) {
+    row.querySelectorAll('[data-hours-toggle]').forEach((toggle) => {
+      if (!(toggle instanceof HTMLElement)) return;
       toggle.setAttribute('aria-checked', String(!closed));
       toggle.classList.toggle('is-on', !closed);
       toggle.classList.toggle('bg-emerald-500', !closed);
       toggle.style.backgroundColor = !closed ? '#10b981' : '';
       toggle.title = closed ? 'Cerrado' : 'Abierto';
-    }
+    });
     row.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((el) => {
       if (el instanceof HTMLInputElement) el.disabled = closed;
     });
@@ -712,19 +734,22 @@ const studioSocialInputClass =
   }
 
   .perfil-local-ops--studio .perfil-day {
-    display: grid;
-    grid-template-columns: 75px minmax(0, 1fr) auto;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.5rem;
     width: 100%;
     min-width: 0;
-    padding: 0.5rem 0;
+    padding: 0.75rem 0;
   }
 
   @media (min-width: 640px) {
     .perfil-local-ops--studio .perfil-day {
+      display: grid;
       grid-template-columns: 90px minmax(0, 1fr) auto;
+      align-items: center;
       gap: 0.75rem;
+      padding: 0.5rem 0;
     }
   }
 
@@ -754,8 +779,8 @@ const studioSocialInputClass =
   .perfil-local-ops--studio .perfil-day__times {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.375rem;
+    justify-content: space-between;
+    gap: 0.5rem;
     width: 100%;
     min-width: 0;
   }
@@ -773,12 +798,12 @@ const studioSocialInputClass =
     flex: 1 1 0%;
     width: 100%;
     min-width: 0;
-    max-width: 110px;
+    max-width: none;
     border: 1px solid #e4e4e7;
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     background: #fafafa;
     color: #18181b;
-    padding: 0.375rem 0.375rem;
+    padding: 0.375rem 0.625rem;
     font-size: 0.75rem;
     font-weight: 500;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -791,6 +816,12 @@ const studioSocialInputClass =
   }
 
   @media (min-width: 640px) {
+    .perfil-local-ops--studio .perfil-day__mid,
+    .perfil-local-ops--studio .perfil-day__times {
+      justify-content: center;
+      gap: 0.375rem;
+    }
+
     .perfil-local-ops--studio .perfil-day input[type='time'],
     .perfil-local-ops--studio .perfil-day__time-pill,
     .perfil-group.bg-white .perfil-day input[type='time'],
@@ -799,6 +830,7 @@ const studioSocialInputClass =
       padding-left: 0.5rem;
       padding-right: 0.5rem;
       font-size: 0.875rem;
+      border-radius: 0.5rem;
     }
   }
 

@@ -1370,9 +1370,9 @@ html.admin-panel #ops-contacto-card.ops-studio .perfil-day__time-pill {
   flex: 1 1 0% !important;
   width: 100% !important;
   min-width: 0 !important;
-  max-width: 110px !important;
-  border-radius: 0.5rem !important;
-  padding: 0.375rem 0.375rem !important;
+  max-width: none !important;
+  border-radius: 0.75rem !important;
+  padding: 0.375rem 0.625rem !important;
   font-size: 0.75rem !important;
   font-weight: 500 !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
@@ -1465,8 +1465,8 @@ html.admin-panel #ops-contacto-card.ops-studio .perfil-meta {
 }
 
 html.admin-panel #ops-contacto-card.ops-studio .perfil-day {
-  padding-top: 0.5rem !important;
-  padding-bottom: 0.5rem !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
 }
 
 html.admin-panel #ops-contacto-card.ops-studio .perfil-social,
@@ -1486,20 +1486,25 @@ html.admin-panel #ops-contacto-card.ops-studio .perfil-list--hours {
 }
 
 html.admin-panel #ops-contacto-card.ops-studio .perfil-day {
-  display: grid !important;
-  grid-template-columns: 75px minmax(0, 1fr) auto !important;
-  align-items: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
   justify-content: unset !important;
+  flex-wrap: nowrap !important;
   gap: 0.5rem !important;
   width: 100% !important;
-  flex-direction: unset !important;
-  flex-wrap: nowrap !important;
+  grid-template-columns: unset !important;
 }
 
 @media (min-width: 640px) {
   html.admin-panel #ops-contacto-card.ops-studio .perfil-day {
+    display: grid !important;
     grid-template-columns: 90px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    flex-direction: unset !important;
     gap: 0.75rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
   }
 }
 
@@ -1525,13 +1530,21 @@ html.admin-panel #ops-contacto-card.ops-studio .perfil-day__mid,
 html.admin-panel #ops-contacto-card.ops-studio .perfil-day__times {
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: space-between !important;
   flex: 0 1 auto !important;
-  gap: 0.375rem !important;
+  gap: 0.5rem !important;
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
   margin-inline: 0 !important;
+}
+
+@media (min-width: 640px) {
+  html.admin-panel #ops-contacto-card.ops-studio .perfil-day__mid,
+  html.admin-panel #ops-contacto-card.ops-studio .perfil-day__times {
+    justify-content: center !important;
+    gap: 0.375rem !important;
+  }
 }
 
 html.admin-panel #ops-contacto-card.ops-studio .perfil-day .perfil-toggle {
@@ -1898,6 +1911,12 @@ html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio select {
   border-color: #27272a !important;
   color: #f4f4f5 !important;
   box-shadow: none !important;
+}
+
+html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-day input[type='time'],
+html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-day input[type='time'] {
+  background: #18181b !important;
+  background-color: #18181b !important;
 }
 
 html.admin-panel.dark #ops-contacto-card.ops-studio input::placeholder,
@@ -2270,7 +2289,8 @@ html.admin-panel .admin-studio-header {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   box-sizing: border-box;
-  overflow: visible;
+  overflow-x: clip;
+  overflow-y: visible;
   background: rgba(9, 9, 11, 0.8) !important;
   border-bottom-color: rgba(39, 39, 42, 0.8) !important;
   color: var(--text-primary);
@@ -3296,6 +3316,8 @@ html.admin-panel .studio-photo-card {
   color: #ffffff !important;
   border-color: rgba(228, 228, 231, 0.6) !important;
   border-radius: 1rem !important;
+  min-width: 0 !important;
+  width: 100%;
 }
 html.admin-panel.dark .studio-photo-card,
 html.admin-panel[data-theme='dark'] .studio-photo-card {
