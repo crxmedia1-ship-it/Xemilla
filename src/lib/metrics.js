@@ -29,6 +29,10 @@
  *   vistasSeries: {
  *     all: { total: number, platos: Record<string, number> },
  *     months: Record<string, { total: number, platos: Record<string, number> }>,
+ *     weekdays: {
+ *       all: number[],
+ *       months: Record<string, number[]>,
+ *     },
  *   },
  *   pendientes: number,
  *   totalAlertas: number,
@@ -79,6 +83,34 @@ function seriesBucket(ranked) {
     if (row.plato_id) platos[row.plato_id] = row.vistas;
   }
   return { total, platos };
+}
+
+/**
+ * Lun=0 … Dom=6
+ * @param {string | Date | number} [value]
+ */
+function weekdayIndex(value) {
+  const d = value instanceof Date ? value : new Date(value || '');
+  if (!Number.isFinite(d.getTime())) return -1;
+  const js = d.getDay();
+  return js === 0 ? 6 : js - 1;
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} vistasRows
+ * @param {boolean} eventMode
+ * @param {(row: Record<string, unknown>) => boolean} [filterFn]
+ * @returns {number[]}
+ */
+function weekdayCounts(vistasRows, eventMode, filterFn) {
+  const days = [0, 0, 0, 0, 0, 0, 0];
+  for (const raw of vistasRows) {
+    if (filterFn && !filterFn(raw)) continue;
+    const i = weekdayIndex(raw?.created_at);
+    if (i < 0) continue;
+    days[i] += eventMode ? 1 : Number(raw?.vistas) || 0;
+  }
+  return days;
 }
 
 /**
@@ -155,20 +187,23 @@ export function computeMetricsSnapshot(rows, vistasRows = null, opts = {}) {
 
   /** @type {Record<string, { total: number, platos: Record<string, number> }>} */
   const months = {};
+  /** @type {Record<string, number[]>} */
+  const weekdayMonths = {};
   if (eventMode) {
     const keys = new Set();
     for (const row of vistas) {
       const key = monthKeyFrom(row?.created_at);
       if (key) keys.add(key);
     }
-    const now = new Date();
+    const nowDate = new Date();
     for (let i = 0; i < 14; i += 1) {
-      keys.add(monthKeyFrom(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+      keys.add(monthKeyFrom(new Date(nowDate.getFullYear(), nowDate.getMonth() - i, 1)));
     }
     for (const key of keys) {
       months[key] = seriesBucket(
         aggregatePlatoVistas(vistas, true, (row) => monthKeyFrom(row?.created_at) === key),
       );
+      weekdayMonths[key] = weekdayCounts(vistas, true, (row) => monthKeyFrom(row?.created_at) === key);
     }
   }
 
@@ -196,6 +231,10 @@ export function computeMetricsSnapshot(rows, vistasRows = null, opts = {}) {
     vistasSeries: {
       all: seriesBucket(platosAll),
       months,
+      weekdays: {
+        all: weekdayCounts(vistas, eventMode),
+        months: weekdayMonths,
+      },
     },
     pendientes: list.filter((r) => !r.atendida).length,
     totalAlertas: list.length,

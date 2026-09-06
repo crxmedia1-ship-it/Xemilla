@@ -1,6 +1,6 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-09-04 14:40 -04  
+> **Última Actualización:** 2026-09-05 20:42 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)
@@ -29,12 +29,13 @@
 | Área                               | Ruta                                                                                                 |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Admin Identidad (Power Studio)     | `src/pages/admin/dashboard.astro`                                                                    |
+| Métricas Studio                    | `src/components/admin/AdminMetricsPanel.astro` + `src/lib/metrics.js`                                 |
+| Trim logos Cloudinary              | `src/lib/plato-media-url.js` → `cloudinaryTrimUrl` (`e_trim`) — header + píldora pie                 |
 | Hub SuperAdmin                     | `src/pages/admin/super/dashboard.astro`                                                              |
 | Ops UI — horario / contacto / mapa | `src/components/admin/PerfilLocalCard.astro`                                                         |
 | Ops UI — flyer de bienvenida       | `src/components/admin/WelcomePopupCard.astro`                                                        |
 | Flyer público (WebApp)             | `src/components/app/WelcomePopup.astro`                                                              |
 | Parse / serialize popup            | `src/lib/popup-banner.js`                                                                            |
-| Trim logos Cloudinary (header)     | `src/lib/plato-media-url.js` → `cloudinaryTrimUrl` (`e_trim`)                                        |
 | Shell WebApp                       | `src/components/app/RestaurantApp.astro`                                                             |
 | Homes                              | `themes/home/HomeEditorial                                                                           |
 | Atmósfera                          | `src/components/app/SectionAtmosphere.astro`                                                         |
@@ -253,10 +254,11 @@ Tamaños `0` / `null` / vacío → fallback (`normalizeHomePx`).
   2. Separador `/`.
   3. Logo del restaurante (`logo_url` vía `cloudinaryTrimUrl` / `e_trim` para recortar canvas transparente) · `h-10` · `ml-2.5` para igualar la distancia óptica al `/` (el wordmark trae padding Photoroom). Fallback: `nombre_comercial` si no hay logo.
   4. Link del wordmark: SuperAdmin → `/admin/super/dashboard`; operativo → `/admin/dashboard`.
-- **Centro:** pills `data-tab-target` — **Menú** · **Métricas** · **Operación & Anuncios** · **Identidad** (`{isSuperAdmin && …}` SSR; operativo no renderiza tab ni `#panel-identidad`). Panel ops: `#panel-perfil` / `data-tab-panel="perfil"` / `#ops-contacto-card.ops-studio`.
+- **Centro:** pills `data-tab-target` — **Menú** · **Operación & Anuncios** (solo operativo, `{!isSuperAdmin}`) · **Métricas** · **Identidad** (`{isSuperAdmin && …}` SSR; operativo no renderiza tab ni `#panel-identidad`). Dock inferior replica el mismo orden. Panel ops: `#panel-perfil` / `data-tab-panel="perfil"` / `#ops-contacto-card.ops-studio`.
 - **Derecha:** **WebApp ↗** · **Guardar** (`#guardar-cambios` operativo dirty-state · `#marca-save` SuperAdmin) · ☀️/🌙 (`AdminThemeSwitcher`) · avatar + logout. Chip **← SuperAdmin** va en este cluster (`sm:inline-flex`), no debajo del header.
 - **Contenido:** `main` + paneles a **ancho completo** (`w-full max-w-none`, sin `max-w-6xl`). Identidad: sub-nav `data-marca-subtab` — Home / Nosotros / Menú / Ubicación / Reservas / Gadgets / QR.
-- **Métricas (`#panel-metricas` → `AdminMetricsPanel`):** cabecera con selector **General / Este Mes / Mes a mes**; 6 KPIs (`xl:grid-cols-6`: Totales, QR, Enlace, Nosotros, Pedir/Reservar, Maps); ranking simétrico Lista/Fotos `min-h-[580px]`. Modo Fotos usa `.studio-photo-card` (cristal negro) porque `html.admin-panel .text-white` y `.bg-zinc-950` remapean el tema. `plato_vistas` live = eventos (`created_at`); el filtro mensual agrega por mes. QR/enlace/nosotros/reservas/maps = 0 hasta tracking.
+- **Métricas (`#panel-metricas` → `AdminMetricsPanel`):** título **Métricas & Rendimiento** (sin subtítulo) + selector **General / Este Mes / Mes a mes** (meses desde `restaurante.created_at`). Bento `xl:grid-cols-12`: **Vistas Totales** (`col-span-5`, número light + barras Lun–Dom) · **Origen del Tráfico** (`col-span-3`, dona 65/35 + totales QR Mesa / Enlace Directo) · **Acciones de Comensales** (`col-span-4`: Nosotros, Pedir/Reservar 🔔, Maps). Ranking simétrico Lista/Fotos: **Top Rendimiento (Más Vistos)** (rosa `#01`) · **Oportunidades (Menos Vistos)** (cielo `#01`). Modo Fotos: `.studio-photo-card` `aspect-[16/10]` cristal negro (vence remap `text-white` / `bg-zinc-950`). `plato_vistas` live = eventos (`created_at`); filtro mensual agrega por mes; barras semanales desde weekday series. QR / enlace / nosotros / reservas / maps = **0** hasta tracking.
+- **Pie — píldora de marca:** `#dashboard-root` footer `.admin-studio-foot-brand`. Cápsula cristal (solo logo, sin nombre comercial). `src` = `cloudinaryTrimUrl(resolveMediaUrl(logo_url))` (`e_trim` recorta canvas Photoroom). Fallback: `AdminXemillaMark`. CSS `.admin-studio-foot-brand__pill` / `__logo` en `admin-themes.css` (vencer remap `bg-white`).
 
 
 
@@ -419,7 +421,7 @@ Whitelist aislada de Identidad. Parches tipicos:
 - [x] **Admin tab Perfil (2026-08-10):** pill + card Perfil; Instagram + TikTok/Facebook; save aislado
 - [x] **Flyer + Operación & Anuncios (2026-09-03):** grid inicial 2×2; `popup_banner` JSONB; `WelcomePopupCard` + `WelcomePopup` público; save solo `#guardar-cambios` (sin autosave); commit `ee3a135`
 - [x] **Ops layout + dark (2026-09-04):** fila 3 col (Horarios / Flyer / Mapa) + social full-width; horarios siempre 3-col horizontal; Dark Observatorio en ops (`zinc-900/80`); `#guardar-cambios` dirty rose+pulse
-- [x] **Métricas Studio (2026-09-04):** 6 KPIs + ranking Lista/Fotos; filtro General / Este Mes / mes; modo Fotos con cristal negro (`.studio-photo-card`) para vencer remap `text-white` / `bg-zinc-950`
+- [x] **Métricas Studio bento (2026-09-05):** `AdminMetricsPanel` 12-col (Vistas + barras Lun–Dom · Origen dona · Acciones 🔔); ranking Top / Oportunidades Lista+Fotos; filtro General / Este Mes / mes desde `created_at`; `plato_vistas` event-mode; píldora pie solo logo (`e_trim`)
 
 
 

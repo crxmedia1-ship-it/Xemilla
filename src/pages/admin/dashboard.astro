@@ -43,6 +43,7 @@ import {
 } from '../../config/nosotros-typography.js';
 import { macrosPresentIn, resolveMacroId } from '../../config/menu-macros.js';
 import { platoFillUrl, cloudinaryTrimUrl } from '../../lib/plato-media-url.js';
+import { resolveMediaUrl } from '../../lib/cloudinary.js';
 import {
   parseHorarioSemana,
   previewHorarioHoy,
@@ -168,6 +169,7 @@ const horarioHoy = previewHorarioHoy(horarioSemana);
 const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
 const hubLogoTrimUrl = cloudinaryTrimUrl(hubLogoUrl);
+const footLogoUrl = cloudinaryTrimUrl(resolveMediaUrl(hubLogoUrl) || hubLogoUrl);
 const xemillaWordmark =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 const hubLogoBg = resolveHubLogoBg(restaurante || {});
@@ -1522,7 +1524,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             <AdminMetricsPanel
               metrics={metrics}
               title="Métricas & Rendimiento"
-              subtitle="Analítica de tráfico y conversión"
               brandName={nombre}
               brandLogoUrl={hubLogoUrl}
               brandTagline={String(restaurante?.eslogan || '').trim() || `Operación · ${nombre}`}
@@ -3809,24 +3810,20 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
 
     {
-      restaurante && hubLogoUrl ? (
-        <footer class="admin-studio-foot-brand" aria-label={hubNombre}>
-          <span
-            class="admin-studio-foot-brand__plate admin-studio-foot-brand__plate--logo"
-            style={hubLogoBg ? `--studio-brand-plate:${hubLogoBg}` : undefined}
-          >
+      restaurante && footLogoUrl ? (
+        <footer class="admin-studio-foot-brand flex justify-center my-8 pb-4" aria-label={hubNombre}>
+          <span class="admin-studio-foot-brand__pill inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-white/90 dark:bg-zinc-950/90 border border-zinc-200/90 dark:border-zinc-800/90 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all hover:scale-[1.02]">
             <img
-              src={hubLogoUrl}
-              alt=""
-              class="mx-auto max-h-16 w-auto object-contain"
+              src={footLogoUrl}
+              alt={hubNombre}
+              class="admin-studio-foot-brand__logo h-16 sm:h-[4.5rem] w-auto object-contain object-center filter dark:brightness-110 drop-shadow-sm shrink-0"
               loading="lazy"
               decoding="async"
             />
           </span>
-          <p class="admin-studio-foot-brand__name">{hubNombre}</p>
         </footer>
       ) : (
-        <AdminXemillaMark />
+        <AdminXemillaMark class="flex justify-center my-8 pb-4" />
       )
     }
     </div>

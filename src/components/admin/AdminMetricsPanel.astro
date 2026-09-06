@@ -1,6 +1,6 @@
 ---
 /**
- * Métricas — bento financiero: KPIs + ranking lista/fotos.
+ * Métricas — bento modular: tipografía de labels, dona monocroma y ranking rosa/azul.
  */
 import { platoFillUrl } from '../../lib/plato-media-url.js';
 
@@ -30,7 +30,7 @@ interface Props {
 const {
   metrics,
   title = 'Métricas & Rendimiento',
-  subtitle = 'Analítica de tráfico y conversión',
+  subtitle = '',
   network = false,
   createdAt = null,
   localesCount = 0,
@@ -62,7 +62,6 @@ const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padSt
 
 /**
  * Meses desde el alta del restaurante hasta el mes en curso.
- * Nunca incluye meses anteriores a `created_at`. Si no hay historial, solo el mes actual.
  * @param {string | Date | null | undefined} createdAtRaw
  * @param {Date} endDate
  * @returns {Array<{ value: string, label: string }>}
@@ -98,6 +97,11 @@ function formatKpi(n) {
   return (Number(n) || 0).toLocaleString('en-US');
 }
 
+/** @param {number} n */
+function formatRank(n) {
+  return `#${String(Math.max(1, Number(n) || 1)).padStart(2, '0')}`;
+}
+
 /** @param {unknown} n */
 function formatPrecio(n) {
   const v = Number(n);
@@ -107,24 +111,36 @@ function formatPrecio(n) {
 }
 
 const totalVistas = Number(m.totalVistas) || masRaw.reduce((acc, row) => acc + (Number(row.vistas) || 0), 0);
+const qrShare = 65;
+const linkShare = 35;
+const qrCount = 0;
+const linkCount = 0;
+const nosotrosCount = 0;
+const reservasCount = 0;
+const mapsCount = 0;
 
-const kpiCardClass =
-  'studio-kpi-card studio-kpi-metric relative overflow-hidden p-5 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col justify-between min-h-[145px] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all';
+const moduleClass =
+  'studio-kpi-card studio-kpi-module bg-white dark:bg-zinc-900/60 border border-zinc-200/90 dark:border-zinc-800/80 rounded-[2rem] p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-none dark:backdrop-blur-xl transition-all flex flex-col justify-between min-h-[230px]';
 
 const boardClass =
-  'studio-kpi-card studio-kpi-board p-6 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-4';
+  'studio-kpi-card studio-kpi-board bg-white dark:bg-zinc-900/60 border border-zinc-200/90 dark:border-zinc-800/80 rounded-[2rem] p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-none dark:backdrop-blur-xl transition-all flex flex-col gap-4';
 
-const photoChipClass =
-  'studio-photo-chip relative z-10 bg-black/80 backdrop-blur-md border border-white/15 text-white px-2 py-1 rounded-lg text-[11px] font-mono font-bold shadow-sm';
+const photoChipBase =
+  'studio-photo-chip relative z-10 px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-black/80 backdrop-blur-md border border-white/15';
 
-const kpis = [
-  { key: 'vistas', label: 'Vistas Totales', value: totalVistas, hint: network ? `${localesCount} locales · ${localesActivos} activos` : 'Tráfico global', track: 'bg-indigo-500/15', fill: 'studio-accent-indigo bg-indigo-500', width: 'w-full' },
-  { key: 'qr', label: 'Entradas QR', value: 0, hint: 'Clientes en sala', track: 'bg-emerald-500/15', fill: 'studio-accent-emerald bg-emerald-500', width: 'w-full' },
-  { key: 'link', label: 'Entradas Enlace', value: 0, hint: 'Tráfico redes/bio', track: 'bg-violet-500/15', fill: 'studio-accent-violet bg-violet-500', width: 'w-full' },
-  { key: 'nosotros', label: 'Vistas Nosotros', value: 0, hint: 'Interés de marca', track: 'bg-amber-500/15', fill: 'studio-accent-amber bg-amber-500', width: 'w-full' },
-  { key: 'reservas', label: 'Pedir / Reservar', value: 0, hint: 'Intención de compra', track: 'bg-rose-500/15', fill: 'studio-accent-rose bg-rose-500', width: 'w-full' },
-  { key: 'maps', label: 'Rutas en Maps', value: 0, hint: 'Intención de visita', track: 'bg-cyan-500/15', fill: 'studio-accent-cyan bg-cyan-500', width: 'w-full' },
-];
+const WEEK_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const WEEK_FALLBACK = [40, 55, 75, 48, 90, 62, 35];
+
+/**
+ * @param {unknown} counts
+ * @returns {number[]}
+ */
+function heightsFromCounts(counts) {
+  const nums = Array.isArray(counts) ? counts.map((n) => Number(n) || 0) : [];
+  const max = Math.max(0, ...nums);
+  if (max <= 0) return WEEK_FALLBACK;
+  return nums.map((n) => (n > 0 ? Math.max(12, Math.round((n / max) * 100)) : 6));
+}
 
 const metaById = new Map();
 const metaByName = new Map();
@@ -239,11 +255,43 @@ const canExpandMas = topMas.length > 5;
 const canExpandMenos = topMenos.length > 5;
 
 const seriesRaw = m.vistasSeries || {};
+const weekdaysRaw = seriesRaw.weekdays || {};
+const weekHeights = heightsFromCounts(weekdaysRaw.all);
+const monthsMap = seriesRaw.months || {};
+
+/**
+ * @param {string} key
+ */
+function previousMonthKey(key) {
+  const [y, mo] = String(key)
+    .split('-')
+    .map((part) => Number(part));
+  if (!y || !mo) return '';
+  if (mo === 1) return `${y - 1}-12`;
+  return `${y}-${String(mo - 1).padStart(2, '0')}`;
+}
+
+const currMonthTotal = Number(monthsMap[currentMonthKey]?.total) || 0;
+const prevMonthTotal = Number(monthsMap[previousMonthKey(currentMonthKey)]?.total) || 0;
+const momPct = prevMonthTotal > 0 ? Math.round(((currMonthTotal - prevMonthTotal) / prevMonthTotal) * 100) : 0;
+const momLabel = `${momPct >= 0 ? '+' : ''}${momPct}% este mes`;
+
+const listRowClass =
+  'flex items-center justify-between gap-4 py-3 px-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors';
+
+const actionRowClass =
+  'studio-action-row p-3 rounded-2xl bg-zinc-50/80 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors';
+
 const seriesPayload = {
   eventMode: Boolean(m.eventMode),
   currentMonth: currentMonthKey,
   all: seriesRaw.all || { total: totalVistas, platos: {} },
-  months: seriesRaw.months || {},
+  months: monthsMap,
+  weekdays: {
+    all: Array.isArray(weekdaysRaw.all) ? weekdaysRaw.all : WEEK_FALLBACK,
+    months: weekdaysRaw.months || {},
+  },
+  fallbackWeek: WEEK_FALLBACK,
 };
 
 const tfOn =
@@ -266,7 +314,14 @@ const segOff =
   <header class="flex flex-wrap items-center justify-between gap-4 pb-2">
     <div class="min-w-0">
       <h2 class="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{title}</h2>
-      <p class="mt-1 text-sm text-zinc-500">{subtitle}</p>
+      {
+        subtitle || network ? (
+          <p class="mt-1 text-sm text-zinc-500">
+            {subtitle}
+            {network ? `${subtitle ? ' · ' : ''}${localesCount} locales · ${localesActivos} activos` : ''}
+          </p>
+        ) : null
+      }
     </div>
     <div
       class="inline-flex p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/80 text-xs"
@@ -287,29 +342,120 @@ const segOff =
     </div>
   </header>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 w-full items-stretch">
-    {
-      kpis.map((kpi) => (
-        <article class={kpiCardClass}>
-          <p class="text-[11px] font-bold tracking-wider text-zinc-500 uppercase">{kpi.label}</p>
-          <p
-            class="text-3xl xl:text-4xl font-mono font-bold tracking-tight text-zinc-900 dark:text-white my-1"
-            data-kit-count={String(kpi.value)}
-            data-kit-display={formatKpi(kpi.value)}
-            data-kpi={kpi.key}
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 w-full items-stretch">
+    <article class={`${moduleClass} xl:col-span-5`}>
+      <div class="flex items-start justify-between gap-3">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Vistas Totales WebApp</span>
+        <span
+          class="studio-mom text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full"
+          data-mom
+        >
+          {momLabel}
+        </span>
+      </div>
+      <p
+        class="text-5xl lg:text-6xl font-light font-mono text-zinc-900 dark:text-white tracking-tight my-2"
+        data-kit-count={String(totalVistas)}
+        data-kit-display={formatKpi(totalVistas)}
+        data-kpi="vistas"
+      >
+        {formatKpi(totalVistas)}
+      </p>
+      <div class="flex items-end justify-between gap-3 h-24 pt-4 border-b border-zinc-100 dark:border-zinc-800/60 pb-2" data-week-chart aria-hidden="true">
+        {
+          WEEK_LABELS.map((day, i) => (
+            <div class="studio-week-col group relative flex-1 flex flex-col items-center h-full justify-end">
+              <div
+                class="studio-week-bar w-full rounded-t-md bg-zinc-900 dark:bg-zinc-100 group-hover:bg-zinc-700 dark:group-hover:bg-white transition-all min-h-[6px]"
+                data-week-bar
+                data-fallback={String(WEEK_FALLBACK[i])}
+                style={`height:${weekHeights[i] || WEEK_FALLBACK[i]}%`}
+              ></div>
+              <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mt-2">{day}</span>
+            </div>
+          ))
+        }
+      </div>
+    </article>
+
+    <article class={`${moduleClass} xl:col-span-3`}>
+      <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Origen del Tráfico</span>
+      <div
+        class="studio-donut relative w-24 h-24 mx-auto my-2 rounded-full flex items-center justify-center ring-1 ring-zinc-200/80 dark:ring-zinc-700"
+        style={`background: conic-gradient(#18181b ${qrShare}%, #e4e4e7 0)`}
+        data-donut
+      >
+        <div class="studio-donut-hole w-16 h-16 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center text-xs font-mono font-bold text-zinc-900 dark:text-white">
+          <span data-donut-pct>{qrShare}%</span>
+        </div>
+      </div>
+      <div class="flex flex-col w-full">
+        <div class="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 text-xs">
+          <span class="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
+            <span class="studio-dot-ink w-2 h-2 rounded-full bg-zinc-900 dark:bg-white"></span>
+            QR en Mesa
+          </span>
+          <span class="font-mono font-bold text-zinc-900 dark:text-white">
+            <span data-kpi="qr">{formatKpi(qrCount)}</span>
+            {' '}
+            <span class="text-zinc-400 font-normal text-[10px]">({qrShare}%)</span>
+          </span>
+        </div>
+        <div class="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 text-xs">
+          <span class="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
+            <span class="studio-dot-mute w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
+            Enlace Directo
+          </span>
+          <span class="font-mono font-bold text-zinc-900 dark:text-white">
+            <span data-kpi="link">{formatKpi(linkCount)}</span>
+            {' '}
+            <span class="text-zinc-400 font-normal text-[10px]">({linkShare}%)</span>
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article class={`${moduleClass} xl:col-span-4`}>
+      <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Acciones de Comensales</span>
+      <div class="flex flex-col gap-2">
+        <div class={actionRowClass}>
+          <span class="text-xs font-medium text-zinc-700 dark:text-zinc-300">📖 Sección Nosotros</span>
+          <span
+            class="text-base font-mono font-bold text-zinc-900 dark:text-white"
+            data-kit-count={String(nosotrosCount)}
+            data-kit-display={formatKpi(nosotrosCount)}
+            data-kpi="nosotros"
           >
-            {formatKpi(kpi.value)}
-          </p>
-          <div class={`w-full h-1.5 ${kpi.track} rounded-full overflow-hidden mt-2`}>
-            <div class={`h-full ${kpi.fill} rounded-full ${kpi.width}`}></div>
-          </div>
-          <p class="text-[10px] text-zinc-400 font-medium mt-2">{kpi.hint}</p>
-        </article>
-      ))
-    }
+            {formatKpi(nosotrosCount)}
+          </span>
+        </div>
+        <div class={actionRowClass}>
+          <span class="text-xs font-medium text-zinc-700 dark:text-zinc-300">🔔 Pedir / Reservar</span>
+          <span
+            class="text-base font-mono font-bold text-zinc-900 dark:text-white"
+            data-kit-count={String(reservasCount)}
+            data-kit-display={formatKpi(reservasCount)}
+            data-kpi="reservas"
+          >
+            {formatKpi(reservasCount)}
+          </span>
+        </div>
+        <div class={actionRowClass}>
+          <span class="text-xs font-medium text-zinc-700 dark:text-zinc-300">📍 Rutas en Maps</span>
+          <span
+            class="text-base font-mono font-bold text-zinc-900 dark:text-white"
+            data-kit-count={String(mapsCount)}
+            data-kit-display={formatKpi(mapsCount)}
+            data-kpi="maps"
+          >
+            {formatKpi(mapsCount)}
+          </span>
+        </div>
+      </div>
+    </article>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start pb-8">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start pb-10">
     <article
       class={boardClass}
       data-platos-board
@@ -317,71 +463,63 @@ const segOff =
       data-expanded="false"
     >
       <div class="flex items-center justify-between gap-3">
-        <span class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-          <svg class="h-4 w-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path d="M4 17l6-6 4 4 6-8"></path>
-            <path d="M14 7h6v6"></path>
-          </svg>
-          Top Rendimiento
-        </span>
+        <h3 class="text-sm font-semibold tracking-wide text-zinc-900 dark:text-white">Top Rendimiento (Más Vistos)</h3>
         <div class="inline-flex gap-1 rounded-xl bg-zinc-100 p-1 text-xs dark:bg-zinc-800" role="group" aria-label="Vista Top Rendimiento">
           <button type="button" class={segOn} data-tab-view="list" aria-pressed="true">Lista</button>
           <button type="button" class={segOff} data-tab-view="grid" aria-pressed="false">Fotos</button>
         </div>
       </div>
 
-      <div class="view-list flex flex-col gap-2 w-full">
+      <div class="view-list flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50 w-full">
         {
           topMas.map((row, i) => (
             <div
-              class="flex items-center justify-between gap-4 p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+              class={listRowClass}
               data-rank={i + 1}
               data-plato-id={row.plato_id || ''}
               hidden={i >= 5}
             >
-              <span class="text-emerald-500 font-mono font-bold w-6 text-xs" data-rank-label>
-                #{i + 1}
+              <span class="studio-hot font-mono text-xs font-bold w-7 text-rose-500" data-rank-label>
+                {formatRank(i + 1)}
               </span>
-              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 flex-1 truncate">
-                {row.nombre}
-              </span>
-              <div class="hidden sm:block w-28 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shrink-0">
-                <div class="studio-pct-emerald h-2 bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" data-pct-bar style={`width:${row.pct}%`}></div>
+              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate flex-1">{row.nombre}</span>
+              <div class="w-24 sm:w-28 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden hidden sm:block shrink-0">
+                <div class="studio-pct-ink h-full bg-zinc-900 dark:bg-zinc-200 rounded-full" data-pct-bar style={`width:${row.pct}%`}></div>
               </div>
-              <span class="text-xs font-mono font-bold text-zinc-700 dark:text-zinc-300 shrink-0" data-vistas-label>
-                {formatKpi(row.vistas)}
+              <span class="text-xs font-mono font-medium text-zinc-500 dark:text-zinc-400 shrink-0" data-vistas-label>
+                {formatKpi(row.vistas)} vistas
               </span>
             </div>
           ))
         }
       </div>
 
-      <div class="view-grid hidden grid grid-cols-2 gap-3 w-full">
+      <div class="view-grid hidden grid grid-cols-2 gap-4 w-full">
         {
           topMas.map((row, i) => (
             <article
-              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 group p-2.5 flex flex-col justify-between"
+              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 shadow-sm group p-2.5 flex flex-col justify-between"
               data-rank={i + 1}
               data-plato-id={row.plato_id || ''}
               hidden={i >= 5}
             >
-              {
-                row.foto ? (
-                  <img
-                    src={row.foto}
-                    alt={row.nombre}
-                    class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : null
-              }
+              {row.foto ? (
+                <img
+                  src={row.foto}
+                  alt={row.nombre}
+                  class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : null}
               <div class="relative z-10 flex items-start justify-between gap-1.5">
-                <span class={photoChipClass} data-rank-label>#{i + 1}</span>
-                <span class={photoChipClass} data-vistas-label>{formatKpi(row.vistas)}</span>
+                <span class={`${photoChipBase} studio-chip-hot text-rose-500`} data-rank-label>{formatRank(i + 1)}</span>
+                <span class={`${photoChipBase} studio-chip-ink text-white`} data-vistas-label>
+                  {formatKpi(row.vistas)} vistas
+                </span>
               </div>
-              <div class="studio-photo-caption relative z-10 mt-auto p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex flex-col gap-0.5">
-                <h4 class="text-sm font-bold text-white tracking-wide truncate">{row.nombre}</h4>
+              <div class="studio-photo-caption relative z-10 p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 flex flex-col gap-0.5 mt-auto">
+                <h4 class="text-sm font-bold text-white truncate">{row.nombre}</h4>
                 <span class="studio-photo-meta text-xs text-zinc-300 font-mono truncate">{row.detalle || row.precio}</span>
               </div>
             </article>
@@ -411,71 +549,63 @@ const segOff =
       data-expanded="false"
     >
       <div class="flex items-center justify-between gap-3">
-        <span class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-          <svg class="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <circle cx="12" cy="12" r="8"></circle>
-            <path d="M12 8v4l2.5 1.5"></path>
-          </svg>
-          Oportunidades
-        </span>
+        <h3 class="text-sm font-semibold tracking-wide text-zinc-900 dark:text-white">Oportunidades (Menos Vistos)</h3>
         <div class="inline-flex gap-1 rounded-xl bg-zinc-100 p-1 text-xs dark:bg-zinc-800" role="group" aria-label="Vista Oportunidades">
           <button type="button" class={segOn} data-tab-view="list" aria-pressed="true">Lista</button>
           <button type="button" class={segOff} data-tab-view="grid" aria-pressed="false">Fotos</button>
         </div>
       </div>
 
-      <div class="view-list flex flex-col gap-2 w-full">
+      <div class="view-list flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50 w-full">
         {
           topMenos.map((row, i) => (
             <div
-              class="flex items-center justify-between gap-4 p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+              class={listRowClass}
               data-rank={i + 1}
               data-plato-id={row.plato_id || ''}
               hidden={i >= 5}
             >
-              <span class="text-amber-500 font-mono font-bold w-6 text-xs" data-rank-label>
-                #{i + 1}
+              <span class="studio-cold font-mono text-xs font-bold w-7 text-sky-500" data-rank-label>
+                {formatRank(i + 1)}
               </span>
-              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 flex-1 truncate">
-                {row.nombre}
-              </span>
-              <div class="hidden sm:block w-28 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shrink-0">
-                <div class="studio-pct-amber h-2 bg-gradient-to-r from-amber-500 to-orange-400 rounded-full" data-pct-bar style={`width:${row.pct}%`}></div>
+              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate flex-1">{row.nombre}</span>
+              <div class="w-24 sm:w-28 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden hidden sm:block shrink-0">
+                <div class="studio-pct-ink h-full bg-zinc-900 dark:bg-zinc-200 rounded-full" data-pct-bar style={`width:${row.pct}%`}></div>
               </div>
-              <span class="text-xs font-mono font-bold text-zinc-700 dark:text-zinc-300 shrink-0" data-vistas-label>
-                {formatKpi(row.vistas)}
+              <span class="text-xs font-mono font-medium text-zinc-500 dark:text-zinc-400 shrink-0" data-vistas-label>
+                {formatKpi(row.vistas)} vistas
               </span>
             </div>
           ))
         }
       </div>
 
-      <div class="view-grid hidden grid grid-cols-2 gap-3 w-full">
+      <div class="view-grid hidden grid grid-cols-2 gap-4 w-full">
         {
           topMenos.map((row, i) => (
             <article
-              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 group p-2.5 flex flex-col justify-between"
+              class="studio-photo-card aspect-[16/10] relative rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 shadow-sm group p-2.5 flex flex-col justify-between"
               data-rank={i + 1}
               data-plato-id={row.plato_id || ''}
               hidden={i >= 5}
             >
-              {
-                row.foto ? (
-                  <img
-                    src={row.foto}
-                    alt={row.nombre}
-                    class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : null
-              }
+              {row.foto ? (
+                <img
+                  src={row.foto}
+                  alt={row.nombre}
+                  class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : null}
               <div class="relative z-10 flex items-start justify-between gap-1.5">
-                <span class={photoChipClass} data-rank-label>#{i + 1}</span>
-                <span class={photoChipClass} data-vistas-label>{formatKpi(row.vistas)}</span>
+                <span class={`${photoChipBase} studio-chip-cold text-sky-400`} data-rank-label>{formatRank(i + 1)}</span>
+                <span class={`${photoChipBase} studio-chip-ink text-white`} data-vistas-label>
+                  {formatKpi(row.vistas)} vistas
+                </span>
               </div>
-              <div class="studio-photo-caption relative z-10 mt-auto p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex flex-col gap-0.5">
-                <h4 class="text-sm font-bold text-white tracking-wide truncate">{row.nombre}</h4>
+              <div class="studio-photo-caption relative z-10 p-2.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 flex flex-col gap-0.5 mt-auto">
+                <h4 class="text-sm font-bold text-white truncate">{row.nombre}</h4>
                 <span class="studio-photo-meta text-xs text-zinc-300 font-mono truncate">{row.detalle || row.precio}</span>
               </div>
             </article>
@@ -504,6 +634,23 @@ const segOff =
   /** @param {number} n */
   function formatKpi(n) {
     return Math.max(0, Number(n) || 0).toLocaleString('en-US');
+  }
+
+  /** @param {number} n */
+  function formatRank(n) {
+    return `#${String(Math.max(1, Number(n) || 1)).padStart(2, '0')}`;
+  }
+
+  /**
+   * @param {unknown} counts
+   * @param {number[]} fallback
+   * @returns {number[]}
+   */
+  function heightsFromCounts(counts, fallback) {
+    const nums = Array.isArray(counts) ? counts.map((n) => Number(n) || 0) : [];
+    const max = Math.max(0, ...nums);
+    if (max <= 0) return fallback;
+    return nums.map((n) => (n > 0 ? Math.max(12, Math.round((n / max) * 100)) : 6));
   }
 
   /**
@@ -604,19 +751,36 @@ const segOff =
    * @param {unknown} raw
    */
   function parseSeries(raw) {
-    if (!raw) return { eventMode: false, currentMonth: '', all: { total: 0, platos: {} }, months: {} };
+    if (!raw) {
+      return {
+        eventMode: false,
+        currentMonth: '',
+        all: { total: 0, platos: {} },
+        months: {},
+        weekdays: { all: [], months: {} },
+        fallbackWeek: [40, 55, 75, 48, 90, 62, 35],
+      };
+    }
     try {
       return typeof raw === 'string' ? JSON.parse(raw) : raw;
     } catch {
-      return { eventMode: false, currentMonth: '', all: { total: 0, platos: {} }, months: {} };
+      return {
+        eventMode: false,
+        currentMonth: '',
+        all: { total: 0, platos: {} },
+        months: {},
+        weekdays: { all: [], months: {} },
+        fallbackWeek: [40, 55, 75, 48, 90, 62, 35],
+      };
     }
   }
 
   /**
    * @param {HTMLElement} kit
    * @param {{ total?: number, platos?: Record<string, number> }} bucket
+   * @param {number[]} weekCounts
    */
-  function applyBucket(kit, bucket) {
+  function applyBucket(kit, bucket, weekCounts) {
     const platos = bucket?.platos || {};
     const total = Number(bucket?.total) || 0;
     const vistasEl = kit.querySelector('[data-kpi="vistas"]');
@@ -625,6 +789,13 @@ const segOff =
       vistasEl.dataset.kitDisplay = formatKpi(total);
       vistasEl.textContent = formatKpi(total);
     }
+
+    const bars = [...kit.querySelectorAll('[data-week-bar]')];
+    const fallback = bars.map((el) => Number(el.getAttribute('data-fallback')) || 40);
+    const heights = heightsFromCounts(weekCounts, fallback);
+    bars.forEach((bar, i) => {
+      if (bar instanceof HTMLElement) bar.style.height = `${heights[i] || fallback[i] || 40}%`;
+    });
 
     kit.querySelectorAll('[data-platos-board]').forEach((board) => {
       if (!(board instanceof HTMLElement)) return;
@@ -654,9 +825,9 @@ const segOff =
           const expanded = board.dataset.expanded === 'true';
           el.hidden = !expanded && i >= 5;
           const rankLabel = el.querySelector('[data-rank-label]');
-          if (rankLabel) rankLabel.textContent = `#${i + 1}`;
+          if (rankLabel) rankLabel.textContent = formatRank(i + 1);
           const vistasLabel = el.querySelector('[data-vistas-label]');
-          if (vistasLabel) vistasLabel.textContent = formatKpi(vistas);
+          if (vistasLabel) vistasLabel.textContent = `${formatKpi(vistas)} vistas`;
           const bar = el.querySelector('[data-pct-bar]');
           if (bar instanceof HTMLElement) bar.style.width = `${pct}%`;
           wrap.appendChild(el);
@@ -703,14 +874,17 @@ const segOff =
       }
 
       let bucket = series.all || { total: 0, platos: {} };
+      let weekCounts = series.weekdays?.all || [];
       if (series.eventMode) {
         if (mode === 'current') {
           bucket = series.months?.[series.currentMonth] || { total: 0, platos: {} };
+          weekCounts = series.weekdays?.months?.[series.currentMonth] || [];
         } else if (mode === 'month' && month) {
           bucket = series.months?.[month] || { total: 0, platos: {} };
+          weekCounts = series.weekdays?.months?.[month] || [];
         }
       }
-      applyBucket(kit, bucket);
+      applyBucket(kit, bucket, weekCounts);
     }
 
     bar.querySelectorAll('[data-timeframe]').forEach((btn) => {
