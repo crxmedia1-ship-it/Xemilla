@@ -589,6 +589,26 @@ const studioSocialInputClass =
         root.dispatchEvent(new CustomEvent('ops-hours-change', { bubbles: true }));
       });
     });
+
+    root.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((input) => {
+      if (!(input instanceof HTMLInputElement) || input.dataset.hoursSaveBound === '1') return;
+      input.dataset.hoursSaveBound = '1';
+      const emit = () => {
+        root.dispatchEvent(new CustomEvent('ops-hours-change', { bubbles: true }));
+      };
+      input.addEventListener('input', emit);
+      input.addEventListener('change', emit);
+    });
+
+    root.querySelectorAll('[data-social-input]').forEach((input) => {
+      if (!(input instanceof HTMLInputElement) || input.dataset.socialSaveBound === '1') return;
+      input.dataset.socialSaveBound = '1';
+      const emit = () => {
+        root.dispatchEvent(new CustomEvent('ops-social-change', { bubbles: true }));
+      };
+      input.addEventListener('input', emit);
+      input.addEventListener('change', emit);
+    });
   }
 
   function bootOpsToggles() {

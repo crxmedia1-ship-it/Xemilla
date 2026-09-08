@@ -736,28 +736,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       }
 
       {
-        !isSuperAdmin && restaurante ? (
-          <button
-            type="button"
-            id="guardar-cambios"
-            hidden
-            data-ops-contacto-save
-            data-restaurante-id={restId}
-            data-save-state="idle"
-            class="marca-save-btn admin-action-btn inline-flex h-8 w-8 items-center justify-center rounded-lg p-0 text-[0.65rem] font-semibold uppercase tracking-[0.14em] transition active:scale-[0.98] disabled:opacity-50 sm:h-auto sm:w-auto sm:px-4 sm:py-1.5"
-            aria-label="Guardar cambios"
-          >
-            <svg class="size-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 5h11l3 3v11H5V5z"></path>
-              <path d="M8 5v4h8V5"></path>
-              <path d="M8 19v-6h8v6"></path>
-            </svg>
-            <span class="hidden sm:inline">Guardar</span>
-          </button>
-        ) : null
-      }
-
-      {
         isSuperAdmin && restaurante ? (
           <button
             type="button"
@@ -3790,6 +3768,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       preload="auto"
       src="https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg"
     ></audio>
+
+    <div
+      id="ops-autosave-toast"
+      class="pointer-events-none fixed right-6 bottom-20 sm:bottom-6 z-[90] px-3 py-1.5 rounded-full bg-zinc-900/90 dark:bg-white/90 text-white dark:text-zinc-900 text-xs font-mono font-medium shadow-lg backdrop-blur-md opacity-0 transition-opacity duration-300"
+      data-open="false"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      hidden
+    >
+      ✓ Guardado
+    </div>
 
     <div
       id="crx-toast"
@@ -7307,6 +7297,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   let nutricionCloseTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let arCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let opsAutoSaveTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let opsToastTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let opsToastHideTimer = null;
 
   function teardownAdminDashboard() {
     __dashboardAc?.abort();
@@ -7336,6 +7332,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (arCloseTimer) {
       clearTimeout(arCloseTimer);
       arCloseTimer = null;
+    }
+    if (opsAutoSaveTimer) {
+      clearTimeout(opsAutoSaveTimer);
+      opsAutoSaveTimer = null;
+    }
+    if (opsToastTimer) {
+      clearTimeout(opsToastTimer);
+      opsToastTimer = null;
+    }
+    if (opsToastHideTimer) {
+      clearTimeout(opsToastHideTimer);
+      opsToastHideTimer = null;
     }
   }
 
@@ -7440,28 +7448,81 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const hubCoverFileInput = document.getElementById('hub-cover-file');
   const hubLogoPreview = document.getElementById('hub-logo-preview');
   const hubCoverPreview = document.getElementById('hub-cover-preview');
-  const opsContactoSave =
-    document.getElementById('guardar-cambios') ||
-    document.getElementById('ops-contacto-save') ||
-    document.querySelector('[data-ops-contacto-save]');
   const opsContactoStatus = document.getElementById('ops-contacto-status');
   const opsDireccionInput = document.getElementById('ops-direccion');
   const welcomePopupRoot = document.querySelector('[data-welcome-popup="perfil"]');
   const opsContactoCard = document.querySelector('#ops-contacto-card');
   let opsSaveBusy = false;
+  let opsNeedsResave = false;
 
-  /** @param {'idle' | 'dirty' | 'saved'} state */
-  function setOpsSaveState(state) {
-    if (!(opsContactoSave instanceof HTMLButtonElement)) return;
-    opsContactoSave.dataset.saveState = state;
-    if (opsContactoSave.disabled) return;
-    opsContactoSave.textContent = state === 'saved' ? 'Guardado' : 'Guardar';
+  /**
+   * @param {string} msg
+   */
+  function mostrarToastFlotante(msg) {
+    const el = document.getElementById('ops-autosave-toast');
+    if (!(el instanceof HTMLElement)) return;
+    el.textContent = msg && msg.startsWith('✓') ? msg : `✓ ${msg || 'Guardado'}`;
+    el.hidden = false;
+    el.dataset.open = 'true';
+    el.style.opacity = '1';
+    if (opsToastTimer) clearTimeout(opsToastTimer);
+    if (opsToastHideTimer) clearTimeout(opsToastHideTimer);
+    opsToastTimer = setTimeout(() => {
+      el.style.opacity = '0';
+      el.dataset.open = 'false';
+      opsToastHideTimer = setTimeout(() => {
+        el.hidden = true;
+      }, 300);
+    }, 1800);
   }
 
-  function markOpsDirty() {
-    if (opsSaveBusy) return;
-    if (!(opsContactoSave instanceof HTMLButtonElement) || opsContactoSave.disabled) return;
-    setOpsSaveState('dirty');
+  function recolectarDatosOperacion() {
+    syncHorarioHidden('perfil');
+    const popupPayload = readPopupPayload(
+      welcomePopupRoot instanceof HTMLElement ? welcomePopupRoot : null,
+    );
+    return {
+      restaurante_id: restauranteId,
+      horario: fieldValue(opsHorarioInput),
+      coordenadas_maps: normalizeMapsStorage(fieldValue(opsMapsInput)),
+      instagram_url: socialField('perfil', 'instagram'),
+      facebook_url: socialField('perfil', 'facebook'),
+      tiktok_url: socialField('perfil', 'tiktok'),
+      tripadvisor_url: socialField('perfil', 'tripadvisor'),
+      whatsapp_url: socialField('perfil', 'whatsapp'),
+      telefono_url: socialField('perfil', 'telefono'),
+      instagram_activo: socialOn('instagram', 'perfil'),
+      facebook_activo: socialOn('facebook', 'perfil'),
+      tiktok_activo: socialOn('tiktok', 'perfil'),
+      tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
+      whatsapp_activo: socialOn('whatsapp', 'perfil'),
+      telefono_activo: socialOn('telefono', 'perfil'),
+      direccion: fieldValue(opsDireccionInput),
+      popup_banner: {
+        enabled: Boolean(popupPayload.popup_enabled),
+        image_url: popupPayload.popup_image_url || '',
+        title: '',
+        description: '',
+        button_text: '',
+        action_type: 'close',
+        action_url: '',
+        duration_preset: popupPayload.popup_duration_preset || 'indefinite',
+        expires_at: popupPayload.popup_expires_at || null,
+      },
+      ...popupPayload,
+    };
+  }
+
+  function autoSaveOperacion() {
+    if (opsSaveBusy) {
+      opsNeedsResave = true;
+      return;
+    }
+    if (opsAutoSaveTimer) clearTimeout(opsAutoSaveTimer);
+    opsAutoSaveTimer = setTimeout(() => {
+      opsAutoSaveTimer = null;
+      void saveOpsContacto({ silent: true });
+    }, 600);
   }
 
   const DISH_ORDER_INPUT_CLASS =
@@ -8673,6 +8734,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (!(row instanceof HTMLElement)) return;
         setDayClosed(row, row.dataset.closed !== 'true');
         syncHorarioHidden(week.getAttribute('data-hours-week') || '');
+        autoSaveOperacion();
       },
       { signal },
     );
@@ -8735,6 +8797,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (!(row instanceof HTMLElement)) return;
       event.preventDefault();
       setSocialOn(row, row.dataset.on !== 'true');
+      autoSaveOperacion();
     },
     { signal },
   );
@@ -8742,7 +8805,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   document.addEventListener(
     'ops-social-change',
     () => {
-      markOpsDirty();
+      autoSaveOperacion();
     },
     { signal },
   );
@@ -8750,13 +8813,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   document.addEventListener(
     'ops-hours-change',
     (event) => {
-      markOpsDirty();
       const t = event.target;
-      if (!(t instanceof Element)) return;
-      const week = t.closest('[data-hours-week]') || t.querySelector?.('[data-hours-week]');
-      const scope =
-        week instanceof HTMLElement ? week.getAttribute('data-hours-week') || '' : '';
-      syncHorarioHidden(scope);
+      if (t instanceof Element) {
+        const week = t.closest('[data-hours-week]') || t.querySelector?.('[data-hours-week]');
+        const scope =
+          week instanceof HTMLElement ? week.getAttribute('data-hours-week') || '' : '';
+        syncHorarioHidden(scope);
+      }
+      autoSaveOperacion();
     },
     { signal },
   );
@@ -8905,38 +8969,22 @@ Postres | Tres leches | Coco | 9.00 | SI |`
    */
   async function saveOpsContacto(opts = {}) {
     const silent = Boolean(opts.silent);
-    if (!(opsContactoSave instanceof HTMLButtonElement)) return false;
     if (!requireRestauranteId()) return false;
-    opsSaveBusy = true;
-    syncHorarioHidden('perfil');
-    const horario = fieldValue(opsHorarioInput);
-    const instagramUrl = socialField('perfil', 'instagram');
-    const facebookUrl = socialField('perfil', 'facebook');
-    const tiktokUrl = socialField('perfil', 'tiktok');
-    const tripadvisorUrl = socialField('perfil', 'tripadvisor');
-    const whatsappUrl = socialField('perfil', 'whatsapp');
-    const coordenadasMaps = normalizeMapsStorage(fieldValue(opsMapsInput));
-    const direccion = fieldValue(opsDireccionInput);
-    const popupPayload = readPopupPayload(
-      welcomePopupRoot instanceof HTMLElement ? welcomePopupRoot : null,
-    );
-    const popupBanner = {
-      enabled: Boolean(popupPayload.popup_enabled),
-      image_url: popupPayload.popup_image_url || '',
-      title: '',
-      description: '',
-      button_text: '',
-      action_type: 'close',
-      action_url: '',
-      duration_preset: popupPayload.popup_duration_preset || 'indefinite',
-      expires_at: popupPayload.popup_expires_at || null,
-    };
-
-    if (!silent) {
-      opsContactoSave.disabled = true;
-      opsContactoSave.dataset.prevLabel = opsContactoSave.textContent || 'Guardar';
-      opsContactoSave.textContent = 'Guardando…';
+    if (opsSaveBusy) {
+      opsNeedsResave = true;
+      return false;
     }
+    opsSaveBusy = true;
+    const payload = recolectarDatosOperacion();
+    const horario = payload.horario;
+    const instagramUrl = payload.instagram_url;
+    const facebookUrl = payload.facebook_url;
+    const tiktokUrl = payload.tiktok_url;
+    const tripadvisorUrl = payload.tripadvisor_url;
+    const whatsappUrl = payload.whatsapp_url;
+    const coordenadasMaps = payload.coordenadas_maps;
+    const direccion = payload.direccion;
+
     if (opsContactoStatus) {
       opsContactoStatus.textContent = silent ? 'Guardando…' : '';
       opsContactoStatus.className = 'perfil-studio__hint sr-only';
@@ -8946,26 +8994,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const res = await fetch('/api/update-operativo-contacto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurante_id: restauranteId,
-          horario,
-          coordenadas_maps: coordenadasMaps,
-          instagram_url: instagramUrl,
-          facebook_url: facebookUrl,
-          tiktok_url: tiktokUrl,
-          tripadvisor_url: tripadvisorUrl,
-          whatsapp_url: whatsappUrl,
-          telefono_url: socialField('perfil', 'telefono'),
-          instagram_activo: socialOn('instagram', 'perfil'),
-          facebook_activo: socialOn('facebook', 'perfil'),
-          tiktok_activo: socialOn('tiktok', 'perfil'),
-          tripadvisor_activo: socialOn('tripadvisor', 'perfil'),
-          whatsapp_activo: socialOn('whatsapp', 'perfil'),
-          telefono_activo: socialOn('telefono', 'perfil'),
-          direccion,
-          popup_banner: popupBanner,
-          ...popupPayload,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || 'No se pudo guardar el perfil');
@@ -9011,25 +9040,26 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (opsContactoStatus) {
         opsContactoStatus.textContent = 'Guardado';
       }
-      if (typeof showToast === 'function') {
-        showToast(silent ? 'Cambios guardados' : 'Perfil del restaurante guardado', 'ok');
+      if (silent) {
+        mostrarToastFlotante('Cambios guardados');
+      } else if (typeof showToast === 'function') {
+        showToast('Perfil del restaurante guardado', 'ok');
       }
-      setOpsSaveState('idle');
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al guardar';
       if (opsContactoStatus) {
         opsContactoStatus.textContent = msg;
       }
+      console.error('Error al autoguardar:', err);
       if (typeof showToast === 'function') showToast(msg, 'error');
       else if (!silent) alert(msg);
-      setOpsSaveState('dirty');
       return false;
     } finally {
       opsSaveBusy = false;
-      if (opsContactoSave instanceof HTMLButtonElement) {
-        opsContactoSave.disabled = false;
-        setOpsSaveState(opsContactoSave.dataset.saveState === 'dirty' ? 'dirty' : 'idle');
+      if (opsNeedsResave) {
+        opsNeedsResave = false;
+        autoSaveOperacion();
       }
     }
   }
@@ -9047,7 +9077,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     const removeBtn = root.querySelector('[data-popup-remove]');
     const imageHidden = root.querySelector('[data-popup-image-url]');
 
-    // Toggle/schedule owned by WelcomePopupCard; only sync UI locally (save via #guardar-cambios).
+    // Toggle/schedule owned by WelcomePopupCard; persist via auto-save.
     root.addEventListener(
       'ops-popup-change',
       () => {
@@ -9138,7 +9168,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         if (changeBtn instanceof HTMLElement) changeBtn.textContent = 'Subiendo…';
         const url = await uploadPopupImage(file);
         applyPopupImage(url);
-        if (typeof showToast === 'function') showToast('Flyer subido', 'ok');
+        root.dispatchEvent(new CustomEvent('ops-popup-change', { bubbles: true }));
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'No se pudo subir';
         if (typeof showToast === 'function') showToast(msg, 'error');
@@ -9167,6 +9197,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         e.preventDefault();
         e.stopPropagation();
         applyPopupImage('');
+        root.dispatchEvent(new CustomEvent('ops-popup-change', { bubbles: true }));
       },
       { signal },
     );
@@ -9247,28 +9278,30 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     { signal },
   );
 
-  opsContactoSave?.addEventListener(
-    'click',
-    (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      void saveOpsContacto({ silent: false });
-    },
-    { signal },
-  );
-
-  opsContactoCard?.addEventListener('input', markOpsDirty, { signal });
-  opsContactoCard?.addEventListener('change', markOpsDirty, { signal });
+  opsContactoCard?.addEventListener('input', autoSaveOperacion, { signal });
+  opsContactoCard?.addEventListener('change', autoSaveOperacion, { signal });
   opsContactoCard?.addEventListener(
     'ops-popup-change',
     () => {
-      markOpsDirty();
+      autoSaveOperacion();
     },
     { signal },
   );
-  setOpsSaveState('idle');
 
-  // Operación & Anuncios: estado solo en cliente hasta #guardar-cambios (sin autosave ni reload).
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState !== 'hidden') return;
+      if (opsAutoSaveTimer) {
+        clearTimeout(opsAutoSaveTimer);
+        opsAutoSaveTimer = null;
+        void saveOpsContacto({ silent: true });
+      }
+    },
+    { signal },
+  );
+
+  // Operación & Anuncios: auto-save silencioso (igual que Menú).
   document.querySelector('#ops-contacto-card')?.addEventListener(
     'submit',
     (event) => {
@@ -11296,11 +11329,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const marcaSaveBtn = document.getElementById('marca-save');
       if (marcaSaveBtn instanceof HTMLButtonElement) {
         marcaSaveBtn.hidden = !(canUseIdentidad && id === 'identidad');
-      }
-
-      const opsSaveBtn = document.getElementById('guardar-cambios');
-      if (opsSaveBtn instanceof HTMLButtonElement) {
-        opsSaveBtn.hidden = id !== 'perfil';
       }
 
       try {
