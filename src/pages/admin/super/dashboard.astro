@@ -2,12 +2,12 @@
 export const prerender = false;
 
 import Layout from '../../../layouts/Layout.astro';
-import AdminMetricsPanel from '../../../components/admin/AdminMetricsPanel.astro';
 import AdminThemeSwitcher from '../../../components/admin/AdminThemeSwitcher.astro';
 import { requireSuperAdmin, listAllRestaurantes, getSuperAdminWriteClient } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
-import { fetchMetricsSnapshot } from '../../../lib/metrics.js';
+import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
 import { resolveHubCoverUrl, resolveHubLogoBg } from '../../../lib/hub-media.js';
+import { cloudinaryTrimUrl } from '../../../lib/plato-media-url.js';
 
 const gate = await requireSuperAdmin({
   request: Astro.request,
@@ -20,7 +20,6 @@ if (!gate) {
 
 const restaurantes = await listAllRestaurantes(gate.supabase, gate.user);
 const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
-const networkMetrics = await fetchMetricsSnapshot(writeClient, { days: 30 });
 
 /** Operativo access = Auth metadata restaurante_id (not truthy restaurantes.user_id — that is often SuperAdmin). */
 /** @type {import('@supabase/supabase-js').User[]} */
@@ -55,13 +54,37 @@ const localesConAcceso = new Set(
     .map(String),
 );
 
-const networkLocalesActivos = restaurantes.filter(
-  (r) =>
-    localesConAcceso.has(String(r.id)) || localesConAcceso.has(String(r.slug)),
-).length;
+const networkIntel = await fetchNetworkIntelligence(writeClient, {
+  days: 30,
+  restaurantes,
+  localesConAcceso,
+});
 
-const xemillaLogo =
-  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
+const networkLocalesActivos = networkIntel.localesOperativos;
+
+/** @param {number} n */
+function formatKpi(n) {
+  return (Number(n) || 0).toLocaleString('es-VE');
+}
+
+/** @param {number | null | undefined} n */
+function formatTasa(n) {
+  if (n == null || !Number.isFinite(n)) return '';
+  return `${n}%`;
+}
+
+/** @param {string | null | undefined} name */
+function initialsFromName(name) {
+  return String(name || '')
+    .trim()
+    .slice(0, 2)
+    .toUpperCase() || '—';
+}
+
+const emptyCellClass = 'text-zinc-600 font-mono text-xs';
+
+const topPlatosMax = Math.max(1, ...networkIntel.topPlatos.map((p) => p.vistas), 0);
+const rankingLocalesMax = Math.max(1, ...networkIntel.rankingLocales.map((x) => x.visitas), 0);
 
 const xemillaWordmark =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
@@ -141,7 +164,7 @@ function resolveMapsEmbed(direccion) {
   description="Panel maestro de restaurantes Xemilla"
   adminPanel={true}
 >
-  <main class="super-admin-dash mx-auto min-h-dvh w-full max-w-[90rem] px-4 pb-20 pt-5 sm:px-6 lg:px-10 lg:pt-8">
+  <main class="super-admin-dash w-full min-w-full px-4 sm:px-8 lg:px-12 py-6 pb-20 min-h-dvh">
     <!-- Hero Until layout + glassmorphism (sin foto de fondo) -->
     <section class="super-until-hero solid-obstacle" aria-label="Súper Administrador">
       <header class="super-until-hero__nav">
@@ -251,7 +274,7 @@ function resolveMapsEmbed(direccion) {
             </p>
 
             <ul
-              class="super-visual-grid mt-7 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              class="super-visual-grid mt-7 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6 w-full"
               data-hub-grid
             >
             {restaurantes.map((r) => {
@@ -644,18 +667,315 @@ function resolveMapsEmbed(direccion) {
       }
     </div>
 
-    <div data-super-panel="metricas" class="mt-10" hidden>
-      <AdminMetricsPanel
-        metrics={networkMetrics}
-        network={true}
-        title="Métricas de la red"
-        subtitle="Agregado de alertas de mesa en todos los locales · últimos 30 días"
-        brandName="Xemilla"
-        brandLogoUrl={xemillaLogo}
-        brandTagline="Plataforma white-label para restaurantes"
-        localesCount={restaurantes.length}
-        localesActivos={networkLocalesActivos}
-      />
+    <div data-super-panel="metricas" class="mt-8 w-full min-w-full space-y-8" hidden>
+      <header class="w-full">
+        <p class="text-[0.68rem] font-medium uppercase tracking-[0.22em] text-zinc-500">
+          Network Intelligence
+        </p>
+        <h2 class="mt-1 text-2xl font-light tracking-tight text-zinc-100 sm:text-3xl">
+          Métricas de la red
+        </h2>
+        <p class="mt-1.5 max-w-2xl text-sm text-zinc-500">
+          Tráfico, catálogo y rendimiento agregado · últimos 30 días
+        </p>
+      </header>
+
+      <!-- A) KPIs maestros -->
+      <section
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full"
+        aria-label="KPIs maestros de red"
+      >
+        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+            Tráfico Global Red
+          </p>
+          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
+            {formatKpi(networkIntel.traficoGlobal)}
+          </p>
+          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
+            <span class="h-1 w-1 rounded-full bg-zinc-500" aria-hidden="true"></span>
+            Vistas de platos · 30 días
+          </p>
+        </article>
+
+        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+            Locales Operativos
+          </p>
+          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
+            {formatKpi(networkIntel.localesOperativos)}
+            <span class="text-2xl text-zinc-500">/ {formatKpi(networkIntel.localesTotal)}</span>
+          </p>
+          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
+            <span class="h-1 w-1 rounded-full bg-emerald-500/70" aria-hidden="true"></span>
+            Con credenciales activas
+          </p>
+        </article>
+
+        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+            Catálogo Global
+          </p>
+          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
+            {formatKpi(networkIntel.catalogoGlobal)}
+          </p>
+          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
+            <span class="h-1 w-1 rounded-full bg-zinc-500" aria-hidden="true"></span>
+            Platos activos en Supabase
+          </p>
+        </article>
+
+        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+            Conversión de Red
+          </p>
+          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
+            {formatKpi(networkIntel.conversionRed)}
+          </p>
+          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
+            <span class="h-1 w-1 rounded-full bg-zinc-500" aria-hidden="true"></span>
+            Clics WhatsApp + Maps
+          </p>
+        </article>
+      </section>
+
+      <!-- B) Tabla rendimiento por restaurante -->
+      <section class="w-full overflow-x-auto" aria-label="Rendimiento por restaurante">
+        <div class="w-full rounded-3xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-xl overflow-hidden">
+          <div class="bg-zinc-900/80 text-[11px] font-bold uppercase tracking-wider text-zinc-400 py-3.5 px-6 border-b border-zinc-800 flex items-center justify-between gap-4">
+            <span>Rendimiento por restaurante</span>
+            <span class="normal-case tracking-normal font-medium text-zinc-500">
+              Visitas · plato top · acceso
+            </span>
+          </div>
+          <table class="w-full min-w-[64rem] border-collapse text-left text-sm">
+            <thead>
+              <tr class="bg-zinc-900/80 text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
+                <th class="py-3.5 px-6 font-bold text-left">Restaurante</th>
+                <th class="py-3.5 px-6 font-bold text-left">Slug</th>
+                <th class="py-3.5 px-6 font-bold text-left tabular-nums">Visitas (30d)</th>
+                <th class="py-3.5 px-6 font-bold text-left">Plato Más Visto</th>
+                <th class="py-3.5 px-6 font-bold text-left">Tasa Clics WhatsApp</th>
+                <th class="py-3.5 px-6 font-bold text-left">Estado Acceso</th>
+                <th class="py-3.5 px-6 font-bold text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                networkIntel.porLocal.length === 0 ? (
+                  <tr>
+                    <td colspan="7" class="py-10 px-6 text-center text-zinc-500">
+                      No hay locales en la red.
+                    </td>
+                  </tr>
+                ) : (
+                  networkIntel.porLocal.map((row) => {
+                    const studioHref = `/admin/dashboard?restaurante=${encodeURIComponent(row.id)}`;
+                    const webHref = row.slug ? `/${row.slug}` : '';
+                    const logoTrim = row.logoUrl ? cloudinaryTrimUrl(row.logoUrl) : '';
+                    const tasa = formatTasa(row.tasaWhatsapp);
+                    const platoTop =
+                      row.platoMasVisto && row.platoMasVisto !== '—' ? row.platoMasVisto : '';
+                    return (
+                      <tr class="hover:bg-zinc-800/30 transition-colors border-b border-zinc-800/50 last:border-0">
+                        <td class="py-4 px-6 text-left">
+                          <div class="flex items-center gap-3">
+                            {logoTrim ? (
+                              <img
+                                src={logoTrim}
+                                alt={row.nombre}
+                                class="w-8 h-8 rounded-lg object-contain bg-zinc-950 p-1 border border-zinc-800 shrink-0"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              <div class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-300 shrink-0">
+                                {initialsFromName(row.nombre)}
+                              </div>
+                            )}
+                            <span class="text-sm font-medium text-white">{row.nombre}</span>
+                          </div>
+                        </td>
+                        <td class="py-4 px-6 text-left">
+                          {row.slug ? (
+                            <span class="text-xs font-mono text-zinc-400">/{row.slug}</span>
+                          ) : (
+                            <span class={emptyCellClass}>—</span>
+                          )}
+                        </td>
+                        <td class="py-4 px-6 text-left font-mono tabular-nums text-zinc-200">
+                          {formatKpi(row.visitas30d)}
+                        </td>
+                        <td class="py-4 px-6 text-left">
+                          {platoTop ? (
+                            <span class="text-zinc-300">{platoTop}</span>
+                          ) : (
+                            <span class={emptyCellClass}>—</span>
+                          )}
+                        </td>
+                        <td class="py-4 px-6 text-left">
+                          {tasa ? (
+                            <span class="font-mono tabular-nums text-zinc-300">{tasa}</span>
+                          ) : (
+                            <span class={emptyCellClass}>—</span>
+                          )}
+                        </td>
+                        <td class="py-4 px-6 text-left">
+                          {row.tieneAcceso ? (
+                            <span class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full text-xs font-mono">
+                              <span
+                                class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                                aria-hidden="true"
+                              />
+                              Activo
+                            </span>
+                          ) : (
+                            <span class="inline-flex items-center gap-1.5 bg-zinc-800/60 text-zinc-400 border border-zinc-700/50 px-2.5 py-1 rounded-full text-xs font-mono">
+                              <span class="h-1.5 w-1.5 rounded-full bg-zinc-500" aria-hidden="true" />
+                              Sin acceso
+                            </span>
+                          )}
+                        </td>
+                        <td class="py-4 px-6">
+                          <div class="flex items-center justify-end gap-2">
+                            <a
+                              href={studioHref}
+                              class="px-2.5 py-1 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700/80 transition-colors"
+                            >
+                              Studio ↗
+                            </a>
+                            {webHref ? (
+                              <a
+                                href={webHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="px-2.5 py-1 text-xs font-medium bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors"
+                              >
+                                WebApp ↗
+                              </a>
+                            ) : (
+                              <span class="px-2.5 py-1 text-xs font-medium text-zinc-600 rounded-lg border border-white/5">
+                                WebApp ↗
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- C) Top platos + ranking locales -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full" aria-label="Rankings de red">
+        <article class="border border-zinc-800/80 bg-zinc-900/50 backdrop-blur-xl rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+          <header class="text-sm font-semibold tracking-wide text-white flex items-center justify-between">
+            <span>Top 5 Platos Más Consultados en Toda la Red</span>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              30d
+            </span>
+          </header>
+          <ol class="flex flex-col gap-3">
+            {
+              networkIntel.topPlatos.length === 0 ? (
+                <li class="rounded-2xl border border-dashed border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
+                  Sin vistas registradas en los últimos 30 días.
+                </li>
+              ) : (
+                networkIntel.topPlatos.map((plato, i) => {
+                  const pct = Math.round((plato.vistas / topPlatosMax) * 100);
+                  return (
+                      <li class="flex flex-col gap-2">
+                        <div class="flex items-center gap-3">
+                          <span class="w-8 shrink-0 font-mono text-xs text-zinc-400">
+                            #{String(i + 1).padStart(2, '0')}
+                          </span>
+                          <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-medium text-white">{plato.nombre}</p>
+                            <p class="truncate text-[11px] text-zinc-500">{plato.restaurante}</p>
+                          </div>
+                          <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-300">
+                            {formatKpi(plato.vistas)}
+                          </span>
+                        </div>
+                        <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-800/80">
+                          <div
+                            class="h-full rounded-full bg-zinc-500/60"
+                            style={`width: ${pct}%`}
+                          />
+                        </div>
+                      </li>
+                  );
+                })
+              )
+            }
+          </ol>
+        </article>
+
+        <article class="border border-zinc-800/80 bg-zinc-900/50 backdrop-blur-xl rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+          <header class="text-sm font-semibold tracking-wide text-white flex items-center justify-between">
+            <span>Rendimiento por Local</span>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              Ranking
+            </span>
+          </header>
+          <ol class="flex flex-col gap-3">
+            {
+              networkIntel.rankingLocales.length === 0 ? (
+                <li class="rounded-2xl border border-dashed border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
+                  Sin locales para ranking.
+                </li>
+              ) : (
+                networkIntel.rankingLocales.map((local, i) => {
+                  const pct = Math.round((local.visitas / rankingLocalesMax) * 100);
+                  const logoTrim = local.logoUrl ? cloudinaryTrimUrl(local.logoUrl) : '';
+                  return (
+                      <li class="flex flex-col gap-2">
+                        <div class="flex items-center gap-3">
+                          <span class="w-8 shrink-0 font-mono text-xs text-zinc-400">
+                            #{String(i + 1).padStart(2, '0')}
+                          </span>
+                          {logoTrim ? (
+                            <img
+                              src={logoTrim}
+                              alt={local.nombre}
+                              class="w-8 h-8 rounded-lg object-contain bg-zinc-950 p-1 border border-zinc-800 shrink-0"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <div class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-300 shrink-0">
+                              {initialsFromName(local.nombre)}
+                            </div>
+                          )}
+                          <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-medium text-white">{local.nombre}</p>
+                            <p class="truncate font-mono text-[11px] text-zinc-500">
+                              {local.slug ? `/${local.slug}` : '—'}
+                            </p>
+                          </div>
+                          <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-300">
+                            {formatKpi(local.visitas)}
+                          </span>
+                        </div>
+                        <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-800/80">
+                          <div
+                            class="h-full rounded-full bg-zinc-500/60"
+                            style={`width: ${pct}%`}
+                          />
+                        </div>
+                      </li>
+                  );
+                })
+              )
+            }
+          </ol>
+        </article>
+      </section>
     </div>
   </main>
 </Layout>

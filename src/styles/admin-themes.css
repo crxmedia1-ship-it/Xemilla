@@ -417,28 +417,11 @@ html.admin-panel[data-theme='organico'] .super-hub-search {
 .super-visual-grid {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: 1fr;
+  width: 100%;
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-@media (min-width: 768px) {
-  .super-visual-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .super-visual-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1280px) {
-  .super-visual-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  /* Columnas: Tailwind (sm/md/lg/2xl) — sin max-width del hub */
 }
 
 .super-hub-card {

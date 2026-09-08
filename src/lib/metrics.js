@@ -319,3 +319,232 @@ export async function fetchMetricsSnapshot(client, opts = {}) {
 
   return computeMetricsSnapshot(alertas || [], vistas, { eventMode });
 }
+
+/**
+ * @typedef {{
+ *   id: string,
+ *   nombre: string,
+ *   slug: string,
+ *   logoUrl: string,
+ *   visitas30d: number,
+ *   platoMasVisto: string,
+ *   tasaWhatsapp: number | null,
+ *   waClicks: number,
+ *   mapsClicks: number,
+ *   tieneAcceso: boolean,
+ * }} NetworkLocalRow
+ */
+
+/**
+ * @typedef {{
+ *   traficoGlobal: number,
+ *   localesOperativos: number,
+ *   localesTotal: number,
+ *   catalogoGlobal: number,
+ *   conversionRed: number,
+ *   porLocal: NetworkLocalRow[],
+ *   topPlatos: Array<{ nombre: string, restaurante: string, vistas: number }>,
+ *   rankingLocales: Array<{ nombre: string, slug: string, visitas: number, logoUrl: string }>,
+ * }} NetworkIntelligence
+ */
+
+/**
+ * Inteligencia de red SuperAdmin: KPIs + rendimiento por local + top platos.
+ * Conversión WA/Maps queda en 0 hasta existir tracking de CTA.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {{
+ *   days?: number,
+ *   restaurantes?: Array<Record<string, unknown>>,
+ *   localesConAcceso?: Set<string>,
+ * }} [opts]
+ * @returns {Promise<NetworkIntelligence>}
+ */
+export async function fetchNetworkIntelligence(client, opts = {}) {
+  const days = opts.days ?? 30;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const restaurantes = Array.isArray(opts.restaurantes) ? opts.restaurantes : [];
+  const localesConAcceso = opts.localesConAcceso instanceof Set ? opts.localesConAcceso : new Set();
+
+  /** @type {Map<string, { nombre: string, restauranteId: string }>} */
+  const platoMeta = new Map();
+  let catalogoGlobal = 0;
+
+  const { data: platosRows, error: platosErr } = await client
+    .from('platos')
+    .select('id, nombre, restaurante_id, disponible')
+    .limit(8000);
+
+  if (platosErr) {
+    console.warn('[metrics/network] platos:', platosErr.message);
+  } else {
+    for (const p of platosRows || []) {
+      const id = p?.id != null ? String(p.id) : '';
+      if (id) {
+        platoMeta.set(id, {
+          nombre: String(p.nombre || 'Plato').trim() || 'Plato',
+          restauranteId: String(p.restaurante_id || ''),
+        });
+      }
+      if (p?.disponible !== false) catalogoGlobal += 1;
+    }
+  }
+
+  /** @type {Array<Record<string, unknown>>} */
+  let vistasRows = [];
+  let eventMode = false;
+
+  const eventRes = await client
+    .from('plato_vistas')
+    .select('plato_id, restaurante_id, created_at')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(12000);
+
+  if (!eventRes.error) {
+    eventMode = true;
+    vistasRows = eventRes.data || [];
+  } else {
+    const legacyRes = await client
+      .from('plato_vistas')
+      .select('plato_id, restaurante_id, plato_nombre, vistas')
+      .order('vistas', { ascending: false })
+      .limit(2000);
+    if (legacyRes.error) {
+      if (!/plato_vistas|column|schema cache/i.test(legacyRes.error.message || '')) {
+        console.warn('[metrics/network] plato_vistas:', legacyRes.error.message);
+      }
+    } else {
+      vistasRows = legacyRes.data || [];
+    }
+  }
+
+  /** @type {Map<string, number>} */
+  const visitasByRest = new Map();
+  /** @type {Map<string, Map<string, { nombre: string, vistas: number }>>} */
+  const platosByRest = new Map();
+  /** @type {Map<string, { nombre: string, restauranteId: string, vistas: number }>} */
+  const platosGlobal = new Map();
+
+  for (const raw of vistasRows) {
+    const restId = String(raw?.restaurante_id || '');
+    const platoId = raw?.plato_id != null ? String(raw.plato_id) : '';
+    const meta = platoId ? platoMeta.get(platoId) : null;
+    const nombre =
+      String(raw?.plato_nombre || meta?.nombre || 'Plato').trim() || 'Plato';
+    const add = eventMode ? 1 : Number(raw?.vistas) || 0;
+    if (add <= 0) continue;
+
+    if (restId) {
+      visitasByRest.set(restId, (visitasByRest.get(restId) || 0) + add);
+      if (!platosByRest.has(restId)) platosByRest.set(restId, new Map());
+      const localMap = platosByRest.get(restId);
+      const key = platoId || nombre.toLowerCase();
+      const cur = localMap.get(key) || { nombre, vistas: 0 };
+      cur.vistas += add;
+      if (nombre && nombre !== 'Plato') cur.nombre = nombre;
+      localMap.set(key, cur);
+    }
+
+    const gKey = platoId || `${restId}:${nombre.toLowerCase()}`;
+    const gCur = platosGlobal.get(gKey) || {
+      nombre,
+      restauranteId: restId || meta?.restauranteId || '',
+      vistas: 0,
+    };
+    gCur.vistas += add;
+    if (nombre && nombre !== 'Plato') gCur.nombre = nombre;
+    if (!gCur.restauranteId && (restId || meta?.restauranteId)) {
+      gCur.restauranteId = restId || meta.restauranteId;
+    }
+    platosGlobal.set(gKey, gCur);
+  }
+
+  /** @type {Map<string, string>} */
+  const nombreByRestId = new Map();
+  for (const r of restaurantes) {
+    nombreByRestId.set(String(r.id), String(r.nombre_comercial || r.slug || 'Local').trim());
+  }
+
+  /** @type {NetworkLocalRow[]} */
+  const porLocal = restaurantes.map((r) => {
+    const id = String(r.id);
+    const tieneAcceso =
+      localesConAcceso.has(id) || localesConAcceso.has(String(r.slug || ''));
+    const visitas30d = visitasByRest.get(id) || 0;
+    const localPlatos = platosByRest.get(id);
+    let platoMasVisto = '—';
+    if (localPlatos && localPlatos.size > 0) {
+      const top = [...localPlatos.values()].sort((a, b) => b.vistas - a.vistas)[0];
+      if (top?.nombre) platoMasVisto = top.nombre;
+    }
+    const waClicks = 0;
+    const mapsClicks = 0;
+    const tasaWhatsapp =
+      visitas30d > 0 ? Math.round((waClicks / visitas30d) * 1000) / 10 : null;
+    const logo = String(r.logo_url || '').trim();
+
+    return {
+      id,
+      nombre: String(r.nombre_comercial || r.slug || 'Local').trim() || 'Local',
+      slug: String(r.slug || '').trim(),
+      logoUrl: logo && /^https?:\/\//i.test(logo) ? logo : '',
+      visitas30d,
+      platoMasVisto,
+      tasaWhatsapp,
+      waClicks,
+      mapsClicks,
+      tieneAcceso,
+    };
+  });
+
+  porLocal.sort((a, b) => b.visitas30d - a.visitas30d || a.nombre.localeCompare(b.nombre, 'es'));
+
+  const traficoGlobal = porLocal.reduce((acc, row) => acc + row.visitas30d, 0);
+  const localesOperativos = porLocal.filter((row) => row.tieneAcceso).length;
+  const conversionRed = porLocal.reduce(
+    (acc, row) => acc + row.waClicks + row.mapsClicks,
+    0,
+  );
+
+  const topPlatos = [...platosGlobal.values()]
+    .sort((a, b) => b.vistas - a.vistas)
+    .slice(0, 5)
+    .map((row) => ({
+      nombre: row.nombre,
+      restaurante: nombreByRestId.get(row.restauranteId) || '—',
+      vistas: row.vistas,
+    }));
+
+  const rankingLocales = porLocal
+    .filter((row) => row.visitas30d > 0)
+    .slice(0, 8)
+    .map((row) => ({
+      nombre: row.nombre,
+      slug: row.slug,
+      visitas: row.visitas30d,
+      logoUrl: row.logoUrl,
+    }));
+
+  // Si nadie tiene tráfico, mostrar ranking por nombre (volumen 0) para UI estable
+  const rankingFallback =
+    rankingLocales.length > 0
+      ? rankingLocales
+      : porLocal.slice(0, 8).map((row) => ({
+          nombre: row.nombre,
+          slug: row.slug,
+          visitas: row.visitas30d,
+          logoUrl: row.logoUrl,
+        }));
+
+  return {
+    traficoGlobal,
+    localesOperativos,
+    localesTotal: porLocal.length,
+    catalogoGlobal,
+    conversionRed,
+    porLocal,
+    topPlatos,
+    rankingLocales: rankingFallback,
+  };
+}

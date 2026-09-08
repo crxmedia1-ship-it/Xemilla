@@ -1,9 +1,10 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-09-05 20:42 -04  
+> **Última Actualización:** 2026-09-08 03:55 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
-> **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)
+> **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)  
+> **HEAD:** `7c5cf6f` (ops auto-save; sin `#guardar-cambios` en Operación)
 
 ---
 
@@ -15,7 +16,7 @@
 | Rol                 | Cómo se determina                                                                                                       | Superficie                                                                                                                         | Responsabilidad                                                                                                                                                                                                                                        |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SuperAdmin**      | `isSuperAdminUser` / `getUserAdminRole`: email allowlist (`SUPERADMIN_EMAIL`) **o** `role === 'superadmin'` en metadata | Hub `/admin/super/`* → gestiona locales; Identidad en `/admin/dashboard`                                                           | Alta de restaurantes, métricas de red, motor de diseño, **crear credenciales operativas**                                                                                                                                                              |
-| **Admin Operativo** | `app_metadata` / `user_metadata`: `role: 'admin_operativo'` + `restaurante_id` → `isSuperAdmin === false`               | `/admin/dashboard` **Menú** + **Métricas** + **Operación & Anuncios** (SSR oculta Identidad / + Nuevo Restaurante / Guardar marca) | CRUD platos; ops (horario/contacto/mapa/flyer) vía `POST /api/update-operativo-contacto` (`whatsapp_url` + `horarios` + `instagram_url` + `redes_sociales` + `direccion` + `coordenadas_maps` + `popup_banner`); query `?restaurante=` ajeno se ignora |
+| **Admin Operativo** | `app_metadata` / `user_metadata`: `role: 'admin_operativo'` + `restaurante_id` → `isSuperAdmin === false`               | `/admin/dashboard` **Menú** + **Métricas** + **Operación & Anuncios** (SSR oculta Identidad / + Nuevo Restaurante / Guardar marca) | CRUD platos; ops (horario/contacto/mapa/flyer) **auto-save** → `POST /api/update-operativo-contacto` (`whatsapp_url` + `horarios` + `instagram_url` + `redes_sociales` + `direccion` + `coordenadas_maps` + `popup_banner`); query `?restaurante=` ajeno se ignora |
 | **Cliente final**   | —                                                                                                                       | `RestaurantApp.astro` vía `[slug].astro`                                                                                           | Home temático + paneles Menú / Nosotros / Ubicación + gadgets + **flyer de bienvenida** (`WelcomePopup`)                                                                                                                                               |
 
 
@@ -37,7 +38,8 @@
 | Flyer público (WebApp)             | `src/components/app/WelcomePopup.astro`                                                              |
 | Parse / serialize popup            | `src/lib/popup-banner.js`                                                                            |
 | Shell WebApp                       | `src/components/app/RestaurantApp.astro`                                                             |
-| Homes                              | `themes/home/HomeEditorial                                                                           |
+| Menú público                       | `src/components/app/MenuPanel.astro`                                                                 |
+| Homes                              | `src/components/themes/home/Home{Editorial,HeroCards,BentoGrid,Minimal}.astro`                        |
 | Atmósfera                          | `src/components/app/SectionAtmosphere.astro`                                                         |
 | Tokens UI                          | `src/lib/secciones-ui.js`                                                                            |
 | Themes Home/Ubicación              | `src/lib/layout-themes.js`                                                                           |
@@ -81,9 +83,38 @@ Normalizadas en `layout-themes.js` → enrutadas en `RestaurantApp.astro` (try/c
 ### Flyer de bienvenida (`popup_banner`)
 
 - **Admin:** tab **Operación & Anuncios** → `WelcomePopupCard` (toggle, dropzone póster 4:5, «Siempre visible» / «Programar límite» → `expires_at`).
-- **Persistencia:** JSONB `restaurantes.popup_banner` vía `POST /api/update-operativo-contacto` (`buildPopupBannerFromBody` / `serializePopupBanner` en `popup-banner.js`).
+- **Persistencia:** JSONB `restaurantes.popup_banner` vía auto-save de Operación → `POST /api/update-operativo-contacto` (`buildPopupBannerFromBody` / `serializePopupBanner` en `popup-banner.js`).
 - **Público:** `RestaurantApp` monta `WelcomePopup.astro` si `popupBannerIsRenderable` (enabled + `image_url` + no vencido). Una vez por sesión (`sessionStorage`).
 - **Presets:** `indefinite` | `schedule` (fecha+hora → ISO `expires_at`). Legacy `custom`/`today`/`weekend` se normalizan al parsear.
+
+
+
+### Menú público (`MenuPanel.astro` + `ui_estilo.menu`)
+
+Fuente tokens: `secciones-ui.js` → `normalizeMenuNavegacion` / `MENU_LAYOUT_OPTIONS` / `normalizePlatosLayout` / `normalizeEstiloTarjetas`. Persistencia Identidad: `POST /api/update-marca` (`menu_*`).
+
+**Navegación (`ui_estilo.menu.navegacion` / Studio layout):**
+
+
+| ID Studio / nav        | Comportamiento público                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `hub_categories`       | Portal por categorías: home de cards full-width → detalle categoría (`data-hub-view`) · back reinicia hub |
+| `scroll` (`classic_grid`) | Carta continua con chips/filtros arriba                                              |
+| `split_sidebar`        | Categorías fijas a la izquierda                                                        |
+| `swiper_catalog`       | Sliders horizontales por categoría                                                     |
+
+
+**Layout de platos (`platos_layout`):** `lista` · `grid` (2 cols; móvil corregido) · `bento` (imágenes inline reservadas al bento; detalle solo nutrición/AR si aplica).
+
+**Tarjetas (`estilo_tarjetas`):** `cristal` (default) · `solido` · `outline` · `neon` · `elevada`.
+
+**Cabecera sticky:** título hub + selector de divisa compacto (`.currency-compact`: USD / BS / EUR, tasa BCV en vivo) + cerrar. En hub home la marca/título y divisa tienen reglas CSS propias; en detalle aparece back + toolbar.
+
+**Sugerencias del chef:** `platos.destacado` → badge «Sugerencia del Chef» + clase `menu-plato-item--chef-pick` (también badge en cards de categoría del hub). Franja/destacados: `destacados_estilo` = `scroll` | `carrusel` | `fade`.
+
+**Categorías (hub):** fondo por categoría (imagen/video/color) configurable en Identidad Menú; memoria de navegación en `RestaurantApp` al cerrar/reabrir.
+
+**Gadgets en menú:** nutrición (filtros) · AR 3D (`modelo3dUrl` / gadget AR SuperAdmin).
 
 
 
@@ -238,45 +269,55 @@ Tamaños `0` / `null` / vacío → fallback (`normalizeHomePx`).
 
 ### Hub SuperAdmin — `admin/super/dashboard.astro`
 
-- Lista de locales (cards `glass-panel solid-obstacle`) + CTA **Gestionar Restaurante** → `/admin/dashboard?restaurante=…`
+- **Full bleed:** `main` = `w-full min-w-full px-4 sm:px-8 lg:px-12 py-6` (sin `max-w-5xl` / `max-w-6xl` / `max-w-[90rem]`).
+- Lista de locales: grid denso `grid-cols-1 sm:2 md:3 lg:4 2xl:5 gap-6 w-full` + CTA Studio / menú de card.
 - Badge Acceso Activo / Sin Acceso: SSR cruza Auth `listUsers` (metadata `restaurante_id`) — **no** `Boolean(user_id)` (ese campo suele ser el SuperAdmin)
-- Tabs: **Locales** · **Métricas** (red, 30 días)
+- Tabs: **Locales** · **Métricas** (Network Intelligence, 30 días)
 - Theme switcher + **Nuevo restaurante** + logout
 - **Sin** Live Preview
+
+**Tab Métricas (Network Intelligence):** no reutiliza `AdminMetricsPanel` (dona/lista de local). Tres niveles a ancho completo vía `fetchNetworkIntelligence`:
+1. **KPIs maestros** (`lg:grid-cols-4`): Tráfico Global Red · Locales Operativos (acceso/total) · Catálogo Global (platos activos) · Conversión de Red (WA+Maps; **0** hasta tracking CTA).
+2. **Tabla rendimiento** por restaurante: logo+nombre · slug · visitas 30d · plato más visto · tasa WA · estado acceso · Studio ↗ / WebApp ↗.
+3. **Top red** (`lg:grid-cols-2`): Top 5 platos de la red · ranking de locales por visitas.
 
 
 
 ### Panel restaurante — Top Nav unificado (`admin/dashboard.astro`)
 
 - **Sin sidebar.** Sticky Top Navbar fijo a **64px** (`h-16`): `sticky top-0 z-50 w-full px-4 sm:px-8 flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl`. CSS en `admin-themes.css` bloquea `height/min/max: 4rem` (el chip SuperAdmin **no** estira el header).
-- **Izquierda — lockup de logos** (sin texto “Xemilla Studio”, sin cápsula, sin nombre, sin ping):
-  1. Wordmark Xemilla (`Photoroom_20260810_004814_islrgw.png`) · `h-9`/`sm:h-10` · silueta `brightness(0)` Light / `invert(1)` Dark.
+- **Izquierda — lockup de logos** (sin texto “Xemilla Studio”, sin cápsula, sin ping):
+  1. Wordmark Xemilla (`Photoroom_20260810_004814_islrgw.png`) · `h-8` móvil / `sm:h-10` · silueta `brightness(0)` Light / `invert(1)` Dark.
   2. Separador `/`.
-  3. Logo del restaurante (`logo_url` vía `cloudinaryTrimUrl` / `e_trim` para recortar canvas transparente) · `h-10` · `ml-2.5` para igualar la distancia óptica al `/` (el wordmark trae padding Photoroom). Fallback: `nombre_comercial` si no hay logo.
+  3. Logo del restaurante (`logo_url` vía `cloudinaryTrimUrl` / `e_trim`) · recorte óptico al `/`. Fallback: `nombre_comercial` si no hay logo.
   4. Link del wordmark: SuperAdmin → `/admin/super/dashboard`; operativo → `/admin/dashboard`.
 - **Centro:** pills `data-tab-target` — **Menú** · **Operación & Anuncios** (solo operativo, `{!isSuperAdmin}`) · **Métricas** · **Identidad** (`{isSuperAdmin && …}` SSR; operativo no renderiza tab ni `#panel-identidad`). Dock inferior replica el mismo orden. Panel ops: `#panel-perfil` / `data-tab-panel="perfil"` / `#ops-contacto-card.ops-studio`.
-- **Derecha:** **WebApp ↗** · **Guardar** (`#guardar-cambios` operativo dirty-state · `#marca-save` SuperAdmin) · ☀️/🌙 (`AdminThemeSwitcher`) · avatar + logout. Chip **← SuperAdmin** va en este cluster (`sm:inline-flex`), no debajo del header.
+- **Derecha (orden DOM):** chip **← SuperAdmin** (`sm:inline-flex`, solo managingAsSuperAdmin) · **WebApp ↗** · `#marca-save` (solo SuperAdmin + tab Identidad; `hidden` fuera de Identidad) · ☀️/🌙 (`AdminThemeSwitcher`) · **Salir** desktop (`POST /api/admin-logout`). **No hay** avatar morado ni `#guardar-cambios` (queda JS residual `[data-admin-profile]` sin markup).
 - **Contenido:** `main` + paneles a **ancho completo** (`w-full max-w-none`, sin `max-w-6xl`). Identidad: sub-nav `data-marca-subtab` — Home / Nosotros / Menú / Ubicación / Reservas / Gadgets / QR.
-- **Métricas (`#panel-metricas` → `AdminMetricsPanel`):** título **Métricas & Rendimiento** (sin subtítulo) + selector **General / Este Mes / Mes a mes** (meses desde `restaurante.created_at`). Bento `xl:grid-cols-12`: **Vistas Totales** (`col-span-5`, número light + barras Lun–Dom) · **Origen del Tráfico** (`col-span-3`, dona 65/35 + totales QR Mesa / Enlace Directo) · **Acciones de Comensales** (`col-span-4`: Nosotros, Pedir/Reservar 🔔, Maps). Ranking simétrico Lista/Fotos: **Top Rendimiento (Más Vistos)** (rosa `#01`) · **Oportunidades (Menos Vistos)** (cielo `#01`). Modo Fotos: `.studio-photo-card` `aspect-[16/10]` cristal negro (vence remap `text-white` / `bg-zinc-950`). `plato_vistas` live = eventos (`created_at`); filtro mensual agrega por mes; barras semanales desde weekday series. QR / enlace / nosotros / reservas / maps = **0** hasta tracking.
+- **Métricas (`#panel-metricas` → `AdminMetricsPanel`):** título **Métricas & Rendimiento** (sin subtítulo) + selector **General / Este Mes / Mes a mes** (meses desde `restaurante.created_at`). Bento `xl:grid-cols-12`: **Vistas Totales** (`col-span-5`, número light + barras Lun–Dom) · **Origen del Tráfico** (`col-span-3`, dona 65/35 + totales QR Mesa / Enlace Directo) · **Acciones de Comensales** (`col-span-4`: Nosotros, Pedir/Reservar 🔔, Maps). Ranking simétrico Lista/Fotos: **Top Rendimiento (Más Vistos)** (rosa `#01`) · **Oportunidades (Menos Vistos)** (cielo `#01`). Modo Fotos: `.view-grid` `grid-cols-1 sm:grid-cols-2`; `.studio-photo-card` `aspect-[16/9] sm:aspect-[16/10]` cristal negro (vence remap `text-white` / `bg-zinc-950`). `plato_vistas` live = eventos (`created_at`); filtro mensual agrega por mes; barras semanales desde weekday series. QR / enlace / nosotros / reservas / maps = **0** hasta tracking.
 - **Pie — píldora de marca:** `#dashboard-root` footer `.admin-studio-foot-brand`. Cápsula cristal (solo logo, sin nombre comercial). `src` = `cloudinaryTrimUrl(resolveMediaUrl(logo_url))` (`e_trim` recorta canvas Photoroom). Fallback: `AdminXemillaMark`. CSS `.admin-studio-foot-brand__pill` / `__logo` en `admin-themes.css` (vencer remap `bg-white`).
 
 
 
-### Operación & Anuncios (2026-09-04)
+### Operación & Anuncios (2026-09-08)
 
-Tab operativo (y SuperAdmin con local). Light = Clean White; Dark = cards `zinc-900/80` bajo `html.admin-panel.dark #ops-contacto-card.ops-studio` (el remap `html.admin-panel .bg-white` sigue existiendo: no usar `bg-white` en tabs del flyer).
+Tab operativo (SSR; SuperAdmin no ve esta pill). Light = Clean White; Dark = glass `zinc-900/60` + `backdrop-blur-xl` sobre el abismo (`html.admin-panel.dark #ops-contacto-card.ops-studio`). El remap `html.admin-panel .bg-white` sigue existiendo: no usar `bg-white` en tabs del flyer.
 
 **Layout:** fila superior `lg:grid-cols-3` (Horarios · Flyer · Mapa) + fila inferior Canales de contacto a ancho completo (`socialWide`).
 
-**Horarios:** 7 días siempre en grid horizontal `grid-cols-[75px_1fr_auto]` (nombre · horas · switch). **Sin** interruptor maestro “Cerrado temporalmente”. Pill Abierto/Cerrado vive en el header de la card. Persistencia: `data-hours-open` / `data-hours-close` / `data-hours-toggle` / `data-horario-hidden`.
+**Horarios:** **Sin** interruptor maestro “Cerrado temporalmente”. Pill Abierto/Cerrado en el header de la card. Persistencia: `data-hours-open` / `data-hours-close` / `data-hours-toggle` / `data-horario-hidden`.
+- Móvil (`<sm`): columna — fila 1 nombre + switch; fila 2 rango `time` + guión (`flex-1`).
+- Desktop (`sm+`): grid `90px / 1fr / auto` (nombre · horas · switch).
 
-**Persistencia (importante):**
+**Persistencia (auto-save, 2026-09-08):**
 
-- Estado **solo en cliente** al interactuar (toggles, inputs, schedule del flyer). **Sin autosave**, sin `location.reload()`, sin submits implícitos.
-- Un único save explícito: botón `#guardar-cambios` (aparece dirty / rose + pulse) → `saveOpsContacto()` → `POST /api/update-operativo-contacto`.
-- Upload de imagen del flyer (`/api/upload` → Cloudinary) puede ocurrir al elegir archivo; el vínculo en `popup_banner` se persiste al guardar.
+- `#guardar-cambios` **eliminado**. Igual que el Menú: debounce **600 ms** (`autoSaveOperacion` → `recolectarDatosOperacion` → `saveOpsContacto({ silent: true })` → `POST /api/update-operativo-contacto`).
+- Eventos: `input`/`change` en `#ops-contacto-card`; `ops-hours-change` / `ops-social-change` / `ops-popup-change`. Sin `location.reload()`.
+- Cola: `opsSaveBusy` + `opsNeedsResave` (si hay edición durante un POST, re-dispara el debounce al terminar). Al ocultar la pestaña (`visibilitychange` → `hidden`) se cancela el timer y se fuerza un save inmediato.
+- Toast píldora `#ops-autosave-toast` (`✓ Cambios guardados`, 1.8 s, `bottom-20 sm:bottom-6 right-6`).
+- Upload de imagen del flyer (`/api/upload` → Cloudinary) dispara `ops-popup-change` y entra al mismo debounce.
 - `localOps('perfil')` resuelve `#ops-contacto-card` cuando `nestInParent` (sin `data-local-ops` en wrapper `contents`).
-- `PerfilLocalCard` `variant="studio"` también se usa en Identidad SuperAdmin: **no** filtrar layout ops-only hacia Identidad.
+- `PerfilLocalCard` `variant="studio"` también se usa en Identidad SuperAdmin: **no** filtrar layout ops-only hacia Identidad. El auto-save de ops **no** sustituye `#marca-save` / `POST /api/update-marca`.
 
 **Flyer UI:** cápsula segmentada `popup-seg-tab` / `popup-seg-tab--on` (no usar clase Tailwind `bg-white` en tabs). Slot de fecha/hora con `min-h` + clase `hidden` para no empujar el grid.
 
@@ -303,12 +344,12 @@ Rediseño denso (**sin Live Preview**, sin copy largo). Grid modular. Persistenc
 
 | Key                                  | Valor            | Nombre                       | Visual                                                                                                   |
 | ------------------------------------ | ---------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `localStorage` `xemilla-admin-theme` | `dark` (default) | **Observatorio Cósmico**     | `admin-deep-space` (orbs, nebula, stars, amber)                                                          |
-|                                      | `light`          | **La Habitación del Tiempo** | Radial void `from-white via-slate-50 to-slate-200` en `Layout.astro` — **sin palacio, sin grid texture** |
+| `localStorage` `xemilla-admin-theme` | `dark` (default) | **Abismo de Ultra-Lujo**     | Lienzo `#09090b` + halo radial `ellipse 80% 50% at 50% -10%` (`rgba(120, 119, 198, 0.08)`). **Sin** estrellas, orbes, nebulosa ni stardust. Capa única `.admin-deep-space__base`. |
+|                                      | `light`          | **La Habitación del Tiempo** | Radial void en `Layout.astro` (oculto en `.dark`) — **sin palacio, sin grid texture** |
 
 
 Scoped: `html.admin-panel` + `data-theme` / `.dark`|`.light`. Toggle: `AdminThemeSwitcher.astro`. CSS: `admin-themes.css`.  
-**Ops:** Light = Clean White (`#ops-contacto-card.ops-studio`). Dark = override zinc (`html.admin-panel.dark #ops-contacto-card.ops-studio`). **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — no usar `bg-white` en tabs del flyer (`popup-seg-tab--on`).
+**Ops:** Light = Clean White (`#ops-contacto-card.ops-studio`). Dark = glass zinc (`zinc-900/60` + `backdrop-blur-xl`). **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — no usar `bg-white` en tabs del flyer (`popup-seg-tab--on`).
 
 ---
 
@@ -327,7 +368,7 @@ Scoped: `html.admin-panel` + `data-theme` / `.dark`|`.light`. Toggle: `AdminThem
 | `@keyframes floating` + `--animate-floating`                                       | `global.css` (solo Admin drift) |
 
 
-**Conservado:** fondos temáticos Admin (`admin-deep-space` / Habitación del Tiempo void radial); wrapper slot `relative z-10 pointer-events-auto`. **No tocado:** WebApp pública `SectionAtmosphere` / Ken Burns.
+**Conservado:** fondos temáticos Admin (dark = abismo `#09090b` + halo; light = Habitación del Tiempo void radial); wrapper slot `relative z-10 pointer-events-auto`. **No tocado:** WebApp pública `SectionAtmosphere` / Ken Burns / `spatial-void` del landing.
 
 Clases residuales `.solid-obstacle` en dashboard cards son inocuas (ya no hay física).
 
@@ -411,7 +452,7 @@ Whitelist aislada de Identidad. Parches tipicos:
 - [x] Removido preset “Cargar Preset de Diseño”  
 - [x] **Removido Live Preview** (iframe / phone chrome / sync preview)  
 - [x] Top Nav unificado + Power Studio denso  
-- [x] Temas Observatorio / Void radial (sin aquarium / drift)  
+- [x] Temas admin dark/light (sin aquarium / drift); dark actual = Abismo de Ultra-Lujo (2026-09-05, `12c39ca`)  
 - [x] **Themes Home = estructura only**; atmósfera centralizada en `RestaurantApp` / `SectionAtmosphere` (2026-07-27) 
 - [x] **Admin menú VT fix (2026-07-29):** `dashboard.astro` re-bind en `astro:page-load` + AbortController teardown (`astro:before-preparation`); valida `restaurante_id`; Nuevo Plato auto-categoría `General` si no hay categorías; try/catch + toast/`console.error('Error en menú:')`
 - [x] **Operativo SSR restaurant load (2026-07-30):** metadata `restaurante_id` (app|user) → id|slug → fallback `user_id`; login `?restaurante=`; create-operativo refuerza metadata
@@ -419,9 +460,13 @@ Whitelist aislada de Identidad. Parches tipicos:
 - [x] **Admin aquarium/drift removido (2026-08-03)**
 - [x] **Admin operativo UX (2026-08-09):** thumbnails media; pills filtro; grip; card Contacto → `update-operativo-contacto`
 - [x] **Admin tab Perfil (2026-08-10):** pill + card Perfil; Instagram + TikTok/Facebook; save aislado
-- [x] **Flyer + Operación & Anuncios (2026-09-03):** grid inicial 2×2; `popup_banner` JSONB; `WelcomePopupCard` + `WelcomePopup` público; save solo `#guardar-cambios` (sin autosave); commit `ee3a135`
-- [x] **Ops layout + dark (2026-09-04):** fila 3 col (Horarios / Flyer / Mapa) + social full-width; horarios siempre 3-col horizontal; Dark Observatorio en ops (`zinc-900/80`); `#guardar-cambios` dirty rose+pulse
-- [x] **Métricas Studio bento (2026-09-05):** `AdminMetricsPanel` 12-col (Vistas + barras Lun–Dom · Origen dona · Acciones 🔔); ranking Top / Oportunidades Lista+Fotos; filtro General / Este Mes / mes desde `created_at`; `plato_vistas` event-mode; píldora pie solo logo (`e_trim`)
+- [x] **Flyer + Operación & Anuncios (2026-09-03):** grid inicial 2×2; `popup_banner` JSONB; `WelcomePopupCard` + `WelcomePopup` público; commit `ee3a135`
+- [x] **Ops layout + dark (2026-09-04):** fila 3 col (Horarios / Flyer / Mapa) + social full-width
+- [x] **Métricas Studio bento (2026-09-05):** `AdminMetricsPanel` 12-col (Vistas + barras Lun–Dom · Origen dona · Acciones 🔔); ranking Top / Oportunidades Lista+Fotos; filtro General / Este Mes / mes desde `created_at`; `plato_vistas` event-mode; píldora pie solo logo (`e_trim`); commit `12c39ca`
+- [x] **Dark Abismo + purge estrellas (2026-09-05):** `Layout.astro` / `admin-themes.css` — `#09090b` + halo radial; cards `dark:bg-zinc-900/60`; commit `12c39ca`
+- [x] **Studio móvil (2026-09-05):** header sin avatar; horarios 2 filas `<sm`; fotos métricas `grid-cols-1`; commit `e79e294`
+- [x] **Ops auto-save (2026-09-08):** sin `#guardar-cambios`; debounce 600 ms + toast `#ops-autosave-toast`; commit `7c5cf6f`
+- [x] **Menú hub + divisas + chef (2026-08 → 09):** portal `hub_categories`; `.currency-compact` USD/BS/EUR + BCV; badge «Sugerencia del Chef» (`destacado`); grid 2 cols móvil; `estilo_tarjetas` cristal/sólido/outline/neón/elevada; commits `6f4639c`…`bcf16f4`
 
 
 
@@ -429,9 +474,11 @@ Whitelist aislada de Identidad. Parches tipicos:
 
 - [ ] Vista expandida / transición al abrir secciones del Menú desde Home  
 - [ ] Unificar `DEFAULT_HOME_THEME` (`bento` en `layout-themes.js` vs default Admin/schema `editorial`)  
+- [ ] Limpiar JS residual del avatar/`[data-admin-profile]` (markup ya removido)  
 - [ ] Tests de humo: Admin save → `ui_estilo.home` → render público (3 nav styles)  
 - [ ] Tests de humo: ops save → `popup_banner` / horarios / mapas → flyer público + vencimiento `expires_at`  
-- [ ] Commitear refinamientos locales post-`ee3a135` (WelcomePopupCard segmentado, sin autosave, pulido visual) si se desea en remote
+- [ ] Tests de humo: ops auto-save debounce → fila Supabase (`horarios` / `popup_banner` / redes) sin recargar  
+- [ ] Tests de humo: menú hub open/back + divisa BCV + chef pick badge
 
 ---
 
@@ -442,11 +489,12 @@ Whitelist aislada de Identidad. Parches tipicos:
 1. **Leer este archivo primero** (SSOT).
 2. Defaults / rangos / normalize: `src/lib/secciones-ui.js`. Popup flyer: `src/lib/popup-banner.js`.
 3. SuperAdmin hub: `admin/super/dashboard.astro`. Identidad: `admin/dashboard.astro` (`marca-form`). Ops: `#ops-contacto-card` + `PerfilLocalCard` + `WelcomePopupCard`. **No existe Live Preview.**
-4. Temas admin: `xemilla-admin-theme` → dark = Observatorio · light = Habitación del Tiempo. Ops Light = Clean White; Ops Dark = `html.admin-panel.dark #ops-contacto-card.ops-studio`. **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — en tabs del flyer usar `popup-seg-tab--on`, no `bg-white`. Header: lockup logos (Xemilla PNG + `/` + `cloudinaryTrimUrl(logo_url)`), altura 64px.
-5. Persistencia Identidad: `POST /api/update-marca`. Ops: `POST /api/update-operativo-contacto` **solo** al clic en `#guardar-cambios` (sin autosave).
-6. Render público: `RestaurantApp.astro` → atmósfera + Home + chrome + `WelcomePopup` si `popupBannerIsRenderable`. Themes **no** pintan fondos.
-7. **No inventar** `IdentidadMarca.astro`: vive en `dashboard.astro`.
-8. `logo_size` = **10–400** (default 160). CSS vars cortas + aliases `--home-`*.
+4. Temas admin: `xemilla-admin-theme` → dark = Abismo de Ultra-Lujo (`#09090b` + halo, **sin estrellas**) · light = Habitación del Tiempo. Ops Light = Clean White; Ops Dark = glass zinc sobre el abismo. **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — en tabs del flyer usar `popup-seg-tab--on`, no `bg-white`. Header: lockup logos, 64px; **sin** avatar ni `#guardar-cambios`; operativo = WebApp ↗ + tema + Salir.
+5. Persistencia Identidad: `POST /api/update-marca` (`#marca-save`, SuperAdmin). Ops: auto-save debounce 600 ms → `POST /api/update-operativo-contacto` (toast `#ops-autosave-toast`). CRUD Menú (platos) tiene su propio auto-save en el tab Menú.
+6. Render público: `RestaurantApp.astro` → atmósfera + Home + chrome + `MenuPanel` + `WelcomePopup` si `popupBannerIsRenderable`. Themes Home **no** pintan fondos.
+7. Menú: `ui_estilo.menu.navegacion` (`hub_categories` | `scroll` | `split_sidebar` | `swiper_catalog`); chef = `platos.destacado`; divisas = `.currency-compact`.
+8. **No inventar** `IdentidadMarca.astro`: vive en `dashboard.astro`.
+9. `logo_size` = **10–400** (default 160). CSS vars cortas + aliases `--home-`*.
 
 ---
 
