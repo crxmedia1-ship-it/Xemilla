@@ -111,44 +111,46 @@ const redes = [
 ];
 
 const studioCardBase =
-  'w-full min-w-0 p-6 lg:p-7 bg-white border border-zinc-200/80 rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col dark:bg-zinc-900/80 dark:border-zinc-800 dark:shadow-none dark:backdrop-blur-xl';
+  'identidad-studio-card w-full min-w-0 bg-white dark:bg-zinc-900/60 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] dark:shadow-none backdrop-blur-xl transition-all flex flex-col gap-5';
 const studioHoursCardClass = `${studioCardBase} h-full w-full justify-between`;
-const studioMapCardClass = `${studioCardBase} h-full w-full justify-between gap-4`;
-const studioSocialCardClass =
-  'w-full min-w-0 p-6 lg:p-8 bg-white border border-zinc-200/80 rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col dark:bg-zinc-900/80 dark:border-zinc-800 dark:shadow-none dark:backdrop-blur-xl';
+const studioMapCardClass = `${studioCardBase} h-full w-full justify-between`;
+const studioSocialCardClass = studioCardBase;
 
 const studioInputClass =
-  'w-full min-w-0 bg-zinc-50 border border-zinc-200/70 text-zinc-900 rounded-xl px-3 py-2 text-xs placeholder:text-zinc-400 focus:bg-white focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600 focus:dark:bg-zinc-950';
+  'w-full px-3.5 py-2 text-xs sm:text-sm bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-zinc-400 dark:focus:border-zinc-600 outline-none transition-all';
 
-const studioHeadTitleClass = 'm-0 text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100';
+const studioHeadTitleClass = 'm-0 text-sm font-semibold tracking-tight text-zinc-900 dark:text-white';
 const studioIconWrapClass =
   'mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400';
 
 const studioDayRowClass =
-  'flex flex-col sm:grid sm:grid-cols-[90px_1fr_auto] sm:items-center gap-2 sm:gap-3 py-3 border-b border-zinc-100/80 dark:border-zinc-800/60 last:border-0 w-full min-w-0';
+  'grid grid-cols-[85px_1fr_auto] items-center gap-3 py-2.5 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 w-full min-w-0';
 
 const studioTimesClass = 'flex items-center justify-between gap-2 w-full min-w-0';
 
 const studioTimeInputClass =
-  'flex-1 w-full min-w-0 px-2.5 py-1.5 text-center text-xs font-mono bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white appearance-none focus:bg-white focus:ring-1 focus:ring-zinc-950 focus:dark:border-zinc-600 sm:max-w-[125px]';
+  'flex-1 w-full min-w-0 px-2.5 py-1.5 text-center text-xs sm:text-sm font-mono rounded-xl outline-none transition-all bg-zinc-50 border border-zinc-200 text-zinc-900 focus:bg-white focus:border-zinc-400 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white focus:dark:border-zinc-600 appearance-none sm:max-w-[125px]';
 
-const studioMapInputClass =
-  'w-full px-3 py-2 text-xs sm:text-sm bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
+const studioMapInputClass = studioInputClass;
 
 const studioSocialRowClass =
-  'flex w-full min-w-0 flex-wrap items-center gap-3 border-b border-zinc-100 py-2.5 last:border-0 sm:flex-nowrap dark:border-zinc-800/80';
+  'flex w-full min-w-0 flex-wrap items-center gap-3 border-b border-zinc-100 py-2.5 last:border-0 sm:flex-nowrap dark:border-zinc-800/60';
 
 const studioSocialGridClass =
   'grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 w-full';
 
 const studioSocialWideCellClass =
-  'flex w-full min-w-0 flex-col rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-3 transition-colors hover:bg-white dark:border-zinc-800/80 dark:bg-zinc-950/40 hover:dark:bg-zinc-900/50';
+  'flex w-full min-w-0 flex-col rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-800/80 dark:bg-zinc-900/40 hover:dark:bg-zinc-900/50';
 
-const studioSocialStackedInputClass =
-  'w-full px-3.5 py-2 text-xs sm:text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all placeholder:text-zinc-400 dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
+const studioSocialStackedInputClass = studioInputClass;
 
 const studioSocialInputClass =
-  'flex-1 w-full min-w-0 order-last sm:order-none px-3.5 py-2 text-xs sm:text-sm bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:ring-1 focus:ring-zinc-950 outline-none transition-all dark:bg-zinc-950/80 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 focus:dark:border-zinc-600';
+  `flex-1 w-full min-w-0 order-last sm:order-none ${studioInputClass}`;
+
+const studioStatusOpenClass =
+  'perfil-status is-open shrink-0 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1.5';
+const studioStatusClosedClass =
+  'perfil-status is-closed shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700';
 ---
 
 <div
@@ -175,14 +177,17 @@ const studioSocialInputClass =
               </div>
             ) : null}
             <div class="min-w-0">
-              <h3 class:list={[variant === 'studio' && studioHeadTitleClass]}>Horario de atención</h3>
+              <h3 class:list={[variant === 'studio' && studioHeadTitleClass]}>Horario de Atención</h3>
             </div>
             </div>
             <span
               id={variant === 'studio' && scope === 'perfil' ? 'ops-open-badge' : undefined}
               class:list={[
-                'perfil-status shrink-0',
-                horarioHoy.open ? 'is-open' : 'is-closed',
+                variant === 'studio'
+                  ? horarioHoy.open
+                    ? studioStatusOpenClass
+                    : studioStatusClosedClass
+                  : ['perfil-status shrink-0', horarioHoy.open ? 'is-open' : 'is-closed'],
               ]}
             >
               {horarioHoy.text}
@@ -211,7 +216,7 @@ const studioSocialInputClass =
                   data-day={dia.id}
                   data-closed={closed ? 'true' : 'false'}
                 >
-                  <div class="perfil-day__head flex w-full items-center justify-between sm:contents sm:w-auto">
+                  <div class="perfil-day__head contents">
                     <span
                       class:list={[
                         'perfil-day__name',
@@ -221,25 +226,30 @@ const studioSocialInputClass =
                       {dia.label}
                       {isToday ? <em>Hoy</em> : null}
                     </span>
-                    <div class="sm:hidden shrink-0">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={!closed}
-                        aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
-                        data-hours-toggle
-                        title={closed ? 'Cerrado' : 'Abierto'}
-                        class:list={[
-                          'ios-toggle',
-                          'ios-toggle--live',
-                          'perfil-toggle',
-                          'shrink-0',
-                          !closed && 'is-on bg-emerald-500',
-                        ]}
-                      >
-                        <span class="ios-toggle__knob" aria-hidden="true"></span>
-                      </button>
-                    </div>
+                    {
+                      variant !== 'studio' ? (
+                        <div class="sm:hidden shrink-0">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={!closed}
+                            aria-label={closed ? `${dia.label} cerrado` : `${dia.label} abierto`}
+                            data-hours-toggle
+                            title={closed ? 'Cerrado' : 'Abierto'}
+                            class:list={[
+                              'ios-toggle',
+                              'ios-toggle--live',
+                              'perfil-toggle',
+                              'shrink-0',
+                              'bg-zinc-200 dark:bg-zinc-800',
+                              !closed && 'is-on bg-emerald-500 dark:bg-emerald-500',
+                            ]}
+                          >
+                            <span class="ios-toggle__knob bg-white shadow-sm" aria-hidden="true"></span>
+                          </button>
+                        </div>
+                      ) : null
+                    }
                   </div>
                   <div
                     class:list={[
@@ -268,7 +278,7 @@ const studioSocialInputClass =
                       />
                     </span>
                   </div>
-                  <div class="hidden shrink-0 justify-self-end sm:block">
+                  <div class:list={[variant === 'studio' ? 'shrink-0 justify-self-end' : 'hidden shrink-0 justify-self-end sm:block']}>
                     <button
                       type="button"
                       role="switch"
@@ -281,10 +291,11 @@ const studioSocialInputClass =
                         'ios-toggle--live',
                         'perfil-toggle',
                         'shrink-0',
-                        !closed && 'is-on bg-emerald-500',
+                        'bg-zinc-200 dark:bg-zinc-800',
+                              !closed && 'is-on bg-emerald-500 dark:bg-emerald-500',
                       ]}
                     >
-                      <span class="ios-toggle__knob" aria-hidden="true"></span>
+                      <span class="ios-toggle__knob bg-white shadow-sm" aria-hidden="true"></span>
                     </button>
                   </div>
                 </li>
@@ -318,10 +329,10 @@ const studioSocialInputClass =
         <div class:list={['perfil-map w-full', variant === 'studio' && 'flex flex-col gap-4']} data-maps-preview>
           <div
             class:list={[
-              'perfil-map__frame relative w-full overflow-hidden border border-zinc-200',
+              'perfil-map__frame relative w-full overflow-hidden',
               variant === 'studio'
-                ? 'h-60 lg:h-72 rounded-2xl shadow-inner'
-                : 'rounded-xl border-zinc-200',
+                ? 'h-52 w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-inner'
+                : 'rounded-xl border border-zinc-200',
             ]}
           >
             {
@@ -446,8 +457,8 @@ const studioSocialInputClass =
                   variant === 'studio' ? (
                     <>
                       <div class="flex w-full items-center justify-between gap-2 mb-1.5">
-                        <span class="perfil-social__brand min-w-0">
-                          <span class={`perfil-social__glyph perfil-social__glyph--${net.icon}`} aria-hidden="true"></span>
+                        <span class="perfil-social__brand min-w-0 text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                          <span class={`perfil-social__glyph perfil-social__glyph--${net.icon} text-zinc-500 dark:text-zinc-400`} aria-hidden="true"></span>
                           {net.label}
                         </span>
                         <button
@@ -462,10 +473,11 @@ const studioSocialInputClass =
                             'ios-toggle--live',
                             'perfil-toggle',
                             'shrink-0',
-                            net.state.on && 'is-on bg-emerald-500',
+                            'bg-zinc-200 dark:bg-zinc-800',
+                            net.state.on && 'is-on bg-emerald-500 dark:bg-emerald-500',
                           ]}
                         >
-                          <span class="ios-toggle__knob" aria-hidden="true"></span>
+                          <span class="ios-toggle__knob bg-white shadow-sm" aria-hidden="true"></span>
                         </button>
                       </div>
                       <input
@@ -498,10 +510,11 @@ const studioSocialInputClass =
                             'ios-toggle',
                             'ios-toggle--live',
                             'perfil-toggle',
-                            net.state.on && 'is-on bg-emerald-500',
+                            'bg-zinc-200 dark:bg-zinc-800',
+                            net.state.on && 'is-on bg-emerald-500 dark:bg-emerald-500',
                           ]}
                         >
-                          <span class="ios-toggle__knob" aria-hidden="true"></span>
+                          <span class="ios-toggle__knob bg-white shadow-sm" aria-hidden="true"></span>
                         </button>
                       </div>
                       <input
@@ -535,6 +548,7 @@ const studioSocialInputClass =
       toggle.setAttribute('aria-checked', String(on));
       toggle.classList.toggle('is-on', on);
       toggle.classList.toggle('bg-emerald-500', on);
+      toggle.classList.toggle('dark:bg-emerald-500', on);
       toggle.style.backgroundColor = on ? '#10b981' : '';
       toggle.title = on ? 'Visible en la WebApp' : 'Oculta en la WebApp';
     }
@@ -553,6 +567,7 @@ const studioSocialInputClass =
       toggle.setAttribute('aria-checked', String(!closed));
       toggle.classList.toggle('is-on', !closed);
       toggle.classList.toggle('bg-emerald-500', !closed);
+      toggle.classList.toggle('dark:bg-emerald-500', !closed);
       toggle.style.backgroundColor = !closed ? '#10b981' : '';
       toggle.title = closed ? 'Cerrado' : 'Abierto';
     });
@@ -637,34 +652,57 @@ const studioSocialInputClass =
     background: var(--bg-card, rgba(24, 24, 27, 0.55));
   }
 
+  /* Escape admin remaps (.bg-white → botón negro) */
+  html.admin-panel .identidad-studio-card,
+  .perfil-local-ops--studio .identidad-studio-card,
   .perfil-local-ops--studio .perfil-group.ops-card,
   .perfil-local-ops--studio .perfil-group.ops-studio-card,
-  .perfil-group.bg-white.border-zinc-200,
+  .perfil-local-ops--studio .perfil-group.identidad-studio-card,
   .perfil-local-ops--studio .perfil-group.rounded-3xl {
-    margin-bottom: 0;
-    overflow: visible;
-    border-radius: 1.5rem;
-    border: 1px solid rgba(228, 228, 231, 0.8);
-    background: #ffffff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    padding: 1.5rem;
+    margin-bottom: 0 !important;
+    overflow: visible !important;
+    border-radius: 1.5rem !important;
+    border: 1px solid rgba(228, 228, 231, 0.9) !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: inherit !important;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.03) !important;
+    padding: 1.5rem !important;
+    gap: 1.25rem;
   }
 
-  @media (min-width: 1024px) {
-    .perfil-local-ops--studio .perfil-group.ops-card,
-    .perfil-local-ops--studio .perfil-group.ops-studio-card,
-    .perfil-group.bg-white.border-zinc-200,
-    .perfil-local-ops--studio .perfil-group.rounded-3xl {
-      padding: 1.75rem;
+  @media (min-width: 640px) {
+    html.admin-panel .identidad-studio-card,
+    .perfil-local-ops--studio .identidad-studio-card {
+      padding: 1.75rem !important;
     }
   }
 
+  html.admin-panel.dark .identidad-studio-card,
+  html.admin-panel[data-theme='dark'] .identidad-studio-card,
+  html.admin-panel[data-theme='onyx'] .identidad-studio-card,
+  html.admin-panel.dark .perfil-local-ops--studio .identidad-studio-card,
+  html.admin-panel[data-theme='dark'] .perfil-local-ops--studio .identidad-studio-card,
+  html.admin-panel[data-theme='onyx'] .perfil-local-ops--studio .identidad-studio-card {
+    background: rgba(24, 24, 27, 0.6) !important;
+    background-color: rgba(24, 24, 27, 0.6) !important;
+    border-color: rgba(39, 39, 42, 0.8) !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
   .perfil-local-ops--studio .perfil-group__head,
-  .perfil-group.bg-white .perfil-group__head {
-    padding: 0 0 1rem;
-    margin-bottom: 0.25rem;
-    border-bottom: 1px solid rgba(244, 244, 245, 0.9);
+  .identidad-studio-card .perfil-group__head {
+    padding: 0 0 0.75rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid rgba(244, 244, 245, 0.95);
     align-items: flex-start;
+  }
+
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-group__head,
+  html.admin-panel.dark .identidad-studio-card .perfil-group__head {
+    border-bottom-color: rgba(39, 39, 42, 0.6);
   }
 
   .perfil-local-ops--studio .perfil-group__head.flex-col {
@@ -673,14 +711,20 @@ const studioSocialInputClass =
   }
 
   .perfil-local-ops--studio .perfil-group__head h3,
-  .perfil-group.bg-white .perfil-group__head h3 {
+  .identidad-studio-card .perfil-group__head h3 {
     color: #18181b;
     font-size: 0.875rem;
     font-weight: 600;
     letter-spacing: -0.025em;
   }
 
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-group__head h3,
+  html.admin-panel.dark .identidad-studio-card .perfil-group__head h3 {
+    color: #ffffff;
+  }
+
   .perfil-local-ops--studio .perfil-group__sub,
+  .identidad-studio-card .perfil-group__sub,
   .perfil-group.bg-white .perfil-group__sub {
     color: #71717a;
     font-size: 0.75rem;
@@ -740,7 +784,20 @@ const studioSocialInputClass =
   .perfil-local-ops--studio .perfil-social__brand,
   .perfil-group.bg-white .perfil-day__name,
   .perfil-group.bg-white .perfil-social__brand {
-    color: #18181b;
+    color: #27272a;
+  }
+
+  :global(html.admin-panel.dark) .perfil-local-ops--studio .perfil-day__name,
+  :global(html.admin-panel.dark) .perfil-local-ops--studio .perfil-social__brand,
+  :global(html.admin-panel[data-theme='dark']) .perfil-local-ops--studio .perfil-social__brand,
+  :global(html.admin-panel[data-theme='onyx']) .perfil-local-ops--studio .perfil-social__brand {
+    color: #e4e4e7 !important;
+  }
+
+  :global(html.admin-panel.dark) .perfil-local-ops--studio .perfil-social__glyph,
+  :global(html.admin-panel[data-theme='dark']) .perfil-local-ops--studio .perfil-social__glyph,
+  :global(html.admin-panel[data-theme='onyx']) .perfil-local-ops--studio .perfil-social__glyph {
+    filter: brightness(1.25);
   }
 
   .perfil-local-ops--studio .perfil-list--hours {
@@ -754,23 +811,23 @@ const studioSocialInputClass =
   }
 
   .perfil-local-ops--studio .perfil-day {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: 85px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
     width: 100%;
     min-width: 0;
-    padding: 0.75rem 0;
+    padding: 0.625rem 0;
+    border-top: 0;
+    border-bottom: 1px solid #f4f4f5;
   }
 
-  @media (min-width: 640px) {
-    .perfil-local-ops--studio .perfil-day {
-      display: grid;
-      grid-template-columns: 90px minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.5rem 0;
-    }
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-day {
+    border-bottom-color: rgba(39, 39, 42, 0.6);
+  }
+
+  .perfil-local-ops--studio .perfil-day:last-child {
+    border-bottom: 0;
   }
 
   .perfil-local-ops--studio .perfil-day__name {
@@ -778,9 +835,6 @@ const studioSocialInputClass =
     font-size: 0.75rem;
     font-weight: 500;
     color: #27272a;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   @media (min-width: 640px) {
@@ -789,10 +843,12 @@ const studioSocialInputClass =
     }
   }
 
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-day__name {
+    color: #e4e4e7;
+  }
+
   .perfil-local-ops--studio .perfil-day .perfil-toggle {
-    margin-left: 0;
     flex-shrink: 0;
-    justify-self: end;
   }
 
   .perfil-local-ops--studio .perfil-day__mid,
@@ -805,10 +861,17 @@ const studioSocialInputClass =
     min-width: 0;
   }
 
+  .perfil-local-ops--studio .perfil-day__to {
+    color: #a1a1aa;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
   .perfil-local-ops--studio .perfil-day input[type='time'],
   .perfil-local-ops--studio .perfil-day__time-pill,
-  .perfil-group.bg-white .perfil-day input[type='time'],
-  .perfil-group.bg-white .perfil-day__time-pill {
+  .identidad-studio-card .perfil-day input[type='time'],
+  .identidad-studio-card .perfil-day__time-pill {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: textfield;
@@ -819,10 +882,11 @@ const studioSocialInputClass =
     width: 100%;
     min-width: 0;
     max-width: none;
-    border: 1px solid #e4e4e7;
-    border-radius: 0.75rem;
-    background: #fafafa;
-    color: #18181b;
+    border: 1px solid #e4e4e7 !important;
+    border-radius: 0.75rem !important;
+    background: #fafafa !important;
+    background-color: #fafafa !important;
+    color: #18181b !important;
     padding: 0.375rem 0.625rem;
     font-size: 0.75rem;
     font-weight: 500;
@@ -830,32 +894,77 @@ const studioSocialInputClass =
     font-variant-numeric: tabular-nums;
     text-align: center;
     line-height: 1.25;
-    box-shadow: none;
+    box-shadow: none !important;
     box-sizing: border-box;
     overflow: visible;
+    outline: none;
   }
 
   @media (min-width: 640px) {
-    .perfil-local-ops--studio .perfil-day__mid,
-    .perfil-local-ops--studio .perfil-day__times {
-      justify-content: center;
-      gap: 0.375rem;
-    }
-
     .perfil-local-ops--studio .perfil-day input[type='time'],
     .perfil-local-ops--studio .perfil-day__time-pill,
-    .perfil-group.bg-white .perfil-day input[type='time'],
-    .perfil-group.bg-white .perfil-day__time-pill {
+    .identidad-studio-card .perfil-day input[type='time'] {
       max-width: 125px;
-      padding-left: 0.5rem;
-      padding-right: 0.5rem;
       font-size: 0.875rem;
-      border-radius: 0.5rem;
     }
   }
 
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-day input[type='time'],
+  html.admin-panel.dark .identidad-studio-card .perfil-day input[type='time'],
+  html.admin-panel[data-theme='dark'] .perfil-local-ops--studio .perfil-day input[type='time'] {
+    background: rgba(24, 24, 27, 0.6) !important;
+    background-color: rgba(24, 24, 27, 0.6) !important;
+    border-color: #27272a !important;
+    color: #ffffff !important;
+  }
+
+  .perfil-local-ops--studio .perfil-field input,
+  .perfil-local-ops--studio .perfil-field textarea,
+  .perfil-local-ops--studio .perfil-social input,
+  .identidad-studio-card .perfil-field input,
+  .identidad-studio-card .perfil-field textarea,
+  .identidad-studio-card .perfil-social input {
+    background: #fafafa !important;
+    background-color: #fafafa !important;
+    border: 1px solid #e4e4e7 !important;
+    border-radius: 0.75rem !important;
+    color: #18181b !important;
+    box-shadow: none !important;
+  }
+
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-field input,
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-field textarea,
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-social input,
+  html.admin-panel.dark .identidad-studio-card .perfil-field input,
+  html.admin-panel.dark .identidad-studio-card .perfil-field textarea,
+  html.admin-panel.dark .identidad-studio-card .perfil-social input,
+  html.admin-panel[data-theme='dark'] .perfil-local-ops--studio .perfil-social input,
+  html.admin-panel[data-theme='onyx'] .perfil-local-ops--studio .perfil-social input,
+  html.admin-panel[data-theme='dark'] .identidad-studio-card .perfil-social input,
+  html.admin-panel[data-theme='onyx'] .identidad-studio-card .perfil-social input {
+    background: rgba(9, 9, 11, 0.8) !important;
+    background-color: rgba(9, 9, 11, 0.8) !important;
+    border-color: #27272a !important;
+    color: #ffffff !important;
+  }
+
+  .perfil-local-ops--studio .perfil-map__frame,
+  .identidad-studio-card .perfil-map__frame {
+    height: 13rem !important;
+    border-radius: 1rem !important;
+    border: 1px solid #e4e4e7 !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+  }
+
+  html.admin-panel.dark .perfil-local-ops--studio .perfil-map__frame,
+  html.admin-panel.dark .identidad-studio-card .perfil-map__frame {
+    border-color: #27272a !important;
+  }
+
   .perfil-local-ops--studio .perfil-day input[type='time']::-moz-focus-inner,
-  .perfil-group.bg-white .perfil-day input[type='time']::-moz-focus-inner {
+  .perfil-group.bg-white .perfil-day input[type='time']::-moz-focus-inner,
+  .identidad-studio-card .perfil-day input[type='time']::-moz-focus-inner {
     border: 0;
     padding: 0;
   }
@@ -986,7 +1095,14 @@ const studioSocialInputClass =
 
   .perfil-local-ops--studio .perfil-toggle,
   .perfil-group.bg-white .perfil-toggle {
-    --toggle-off: #d4d4d8;
+    --toggle-off: #e4e4e7;
+    --toggle-on: #10b981;
+  }
+
+  :global(html.admin-panel.dark) .perfil-local-ops--studio .perfil-toggle,
+  :global(html.admin-panel[data-theme='dark']) .perfil-local-ops--studio .perfil-toggle,
+  :global(html.admin-panel[data-theme='onyx']) .perfil-local-ops--studio .perfil-toggle {
+    --toggle-off: #27272a;
     --toggle-on: #10b981;
   }
 

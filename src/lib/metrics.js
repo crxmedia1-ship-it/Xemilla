@@ -337,7 +337,19 @@ export async function fetchMetricsSnapshot(client, opts = {}) {
 
 /**
  * @typedef {{
+ *   total: number,
+ *   byRest: Record<string, number>,
+ *   topPlatoByRest: Record<string, string>,
+ *   topPlatos: Array<{ nombre: string, restaurante: string, vistas: number }>,
+ *   rankingMayor: Array<{ id: string, nombre: string, slug: string, visitas: number, logoUrl: string }>,
+ *   rankingMenor: Array<{ id: string, nombre: string, slug: string, visitas: number, logoUrl: string }>,
+ * }} NetworkSeriesBucket
+ */
+
+/**
+ * @typedef {{
  *   traficoGlobal: number,
+ *   vistasWebApps: number,
  *   localesOperativos: number,
  *   localesTotal: number,
  *   catalogoGlobal: number,
@@ -345,12 +357,43 @@ export async function fetchMetricsSnapshot(client, opts = {}) {
  *   porLocal: NetworkLocalRow[],
  *   topPlatos: Array<{ nombre: string, restaurante: string, vistas: number }>,
  *   rankingLocales: Array<{ nombre: string, slug: string, visitas: number, logoUrl: string }>,
+ *   rankingMenor: Array<{ nombre: string, slug: string, visitas: number, logoUrl: string }>,
+ *   series: {
+ *     eventMode: boolean,
+ *     currentMonth: string,
+ *     all: NetworkSeriesBucket,
+ *     months: Record<string, NetworkSeriesBucket>,
+ *   },
+ *   firstRestaurantAt: string | null,
  * }} NetworkIntelligence
  */
 
 /**
- * Inteligencia de red SuperAdmin: KPIs + rendimiento por local + top platos.
- * Conversión WA/Maps queda en 0 hasta existir tracking de CTA.
+ * @param {string | Date | number} [value]
+ */
+function monthKeyFromDate(value) {
+  return monthKeyFrom(value);
+}
+
+/**
+ * Agrega un bucket vacío de serie de red.
+ * @returns {NetworkSeriesBucket}
+ */
+function emptyNetworkBucket() {
+  return {
+    total: 0,
+    byRest: {},
+    topPlatoByRest: {},
+    topPlatos: [],
+    rankingMayor: [],
+    rankingMenor: [],
+  };
+}
+
+/**
+ * Inteligencia de red SuperAdmin: KPIs + series temporales (General / mes) + rankings.
+ * "Vistas Totales WebApps" = tráfico agregado de la red (eventos de visita en WebApps),
+ * no el desglose por plato (ese vive en Top Platos / Plato Más Visto).
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {{
@@ -361,10 +404,23 @@ export async function fetchMetricsSnapshot(client, opts = {}) {
  * @returns {Promise<NetworkIntelligence>}
  */
 export async function fetchNetworkIntelligence(client, opts = {}) {
-  const days = opts.days ?? 30;
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const restaurantes = Array.isArray(opts.restaurantes) ? opts.restaurantes : [];
   const localesConAcceso = opts.localesConAcceso instanceof Set ? opts.localesConAcceso : new Set();
+
+  const now = new Date();
+  const currentMonth = monthKeyFromDate(now);
+
+  /** @type {string | null} */
+  let firstRestaurantAt = null;
+  for (const r of restaurantes) {
+    const raw = r?.created_at;
+    if (!raw) continue;
+    const t = Date.parse(String(raw));
+    if (!Number.isFinite(t)) continue;
+    if (!firstRestaurantAt || t < Date.parse(firstRestaurantAt)) {
+      firstRestaurantAt = new Date(t).toISOString();
+    }
+  }
 
   /** @type {Map<string, { nombre: string, restauranteId: string }>} */
   const platoMeta = new Map();
@@ -394,12 +450,12 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
   let vistasRows = [];
   let eventMode = false;
 
+  // Sin filtro de 30d: General = histórico agregado de toda la red
   const eventRes = await client
     .from('plato_vistas')
     .select('plato_id, restaurante_id, created_at')
-    .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(12000);
+    .limit(20000);
 
   if (!eventRes.error) {
     eventMode = true;
@@ -419,26 +475,44 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
     }
   }
 
-  /** @type {Map<string, number>} */
-  const visitasByRest = new Map();
-  /** @type {Map<string, Map<string, { nombre: string, vistas: number }>>} */
-  const platosByRest = new Map();
-  /** @type {Map<string, { nombre: string, restauranteId: string, vistas: number }>} */
-  const platosGlobal = new Map();
+  /**
+   * @typedef {{
+   *   total: number,
+   *   byRest: Map<string, number>,
+   *   platosByRest: Map<string, Map<string, { nombre: string, vistas: number }>>,
+   *   platosGlobal: Map<string, { nombre: string, restauranteId: string, vistas: number }>,
+   * }} AccBucket
+   */
 
-  for (const raw of vistasRows) {
+  /** @returns {AccBucket} */
+  function makeAcc() {
+    return {
+      total: 0,
+      byRest: new Map(),
+      platosByRest: new Map(),
+      platosGlobal: new Map(),
+    };
+  }
+
+  /**
+   * @param {AccBucket} acc
+   * @param {Record<string, unknown>} raw
+   * @param {number} add
+   */
+  function pushEvent(acc, raw, add) {
+    if (add <= 0) return;
     const restId = String(raw?.restaurante_id || '');
     const platoId = raw?.plato_id != null ? String(raw.plato_id) : '';
     const meta = platoId ? platoMeta.get(platoId) : null;
     const nombre =
       String(raw?.plato_nombre || meta?.nombre || 'Plato').trim() || 'Plato';
-    const add = eventMode ? 1 : Number(raw?.vistas) || 0;
-    if (add <= 0) continue;
+
+    acc.total += add;
 
     if (restId) {
-      visitasByRest.set(restId, (visitasByRest.get(restId) || 0) + add);
-      if (!platosByRest.has(restId)) platosByRest.set(restId, new Map());
-      const localMap = platosByRest.get(restId);
+      acc.byRest.set(restId, (acc.byRest.get(restId) || 0) + add);
+      if (!acc.platosByRest.has(restId)) acc.platosByRest.set(restId, new Map());
+      const localMap = acc.platosByRest.get(restId);
       const key = platoId || nombre.toLowerCase();
       const cur = localMap.get(key) || { nombre, vistas: 0 };
       cur.vistas += add;
@@ -447,7 +521,7 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
     }
 
     const gKey = platoId || `${restId}:${nombre.toLowerCase()}`;
-    const gCur = platosGlobal.get(gKey) || {
+    const gCur = acc.platosGlobal.get(gKey) || {
       nombre,
       restauranteId: restId || meta?.restauranteId || '',
       vistas: 0,
@@ -457,7 +531,24 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
     if (!gCur.restauranteId && (restId || meta?.restauranteId)) {
       gCur.restauranteId = restId || meta.restauranteId;
     }
-    platosGlobal.set(gKey, gCur);
+    acc.platosGlobal.set(gKey, gCur);
+  }
+
+  const allAcc = makeAcc();
+  /** @type {Map<string, AccBucket>} */
+  const monthAcc = new Map();
+
+  for (const raw of vistasRows) {
+    const add = eventMode ? 1 : Number(raw?.vistas) || 0;
+    if (add <= 0) continue;
+    pushEvent(allAcc, raw, add);
+
+    if (eventMode) {
+      const mk = monthKeyFromDate(raw?.created_at);
+      if (!mk) continue;
+      if (!monthAcc.has(mk)) monthAcc.set(mk, makeAcc());
+      pushEvent(monthAcc.get(mk), raw, add);
+    }
   }
 
   /** @type {Map<string, string>} */
@@ -466,22 +557,94 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
     nombreByRestId.set(String(r.id), String(r.nombre_comercial || r.slug || 'Local').trim());
   }
 
+  /**
+   * @param {AccBucket} acc
+   * @returns {NetworkSeriesBucket}
+   */
+  function finalizeBucket(acc) {
+    /** @type {Record<string, number>} */
+    const byRest = {};
+    for (const [id, n] of acc.byRest) byRest[id] = n;
+
+    /** @type {Record<string, string>} */
+    const topPlatoByRest = {};
+    for (const [restId, localMap] of acc.platosByRest) {
+      const top = [...localMap.values()].sort((a, b) => b.vistas - a.vistas)[0];
+      if (top?.nombre) topPlatoByRest[restId] = top.nombre;
+    }
+
+    const topPlatos = [...acc.platosGlobal.values()]
+      .sort((a, b) => b.vistas - a.vistas)
+      .slice(0, 5)
+      .map((row) => ({
+        nombre: row.nombre,
+        restaurante: nombreByRestId.get(row.restauranteId) || '—',
+        vistas: row.vistas,
+      }));
+
+    const ranked = restaurantes
+      .map((r) => {
+        const id = String(r.id);
+        const logo = String(r.logo_url || '').trim();
+        return {
+          id,
+          nombre: String(r.nombre_comercial || r.slug || 'Local').trim() || 'Local',
+          slug: String(r.slug || '').trim(),
+          visitas: byRest[id] || 0,
+          logoUrl: logo && /^https?:\/\//i.test(logo) ? logo : '',
+        };
+      })
+      .sort((a, b) => b.visitas - a.visitas || a.nombre.localeCompare(b.nombre, 'es'));
+
+    const withTraffic = ranked.filter((row) => row.visitas > 0);
+    const rankingMayor = (withTraffic.length > 0 ? withTraffic : ranked).slice(0, 8);
+    const rankingMenor = (
+      withTraffic.length > 0
+        ? [...withTraffic].sort((a, b) => a.visitas - b.visitas || a.nombre.localeCompare(b.nombre, 'es'))
+        : [...ranked].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+    ).slice(0, 8);
+
+    return {
+      total: acc.total,
+      byRest,
+      topPlatoByRest,
+      topPlatos,
+      rankingMayor,
+      rankingMenor,
+    };
+  }
+
+  const allBucket = finalizeBucket(allAcc);
+  /** @type {Record<string, NetworkSeriesBucket>} */
+  const months = {};
+  for (const [key, acc] of monthAcc) {
+    months[key] = finalizeBucket(acc);
+  }
+  // Asegurar mes actual presente (aunque vacío) para "Este Mes"
+  if (!months[currentMonth]) months[currentMonth] = emptyNetworkBucket();
+
+  // Seed meses vacíos entre primer restaurante y ahora (UI estable)
+  if (firstRestaurantAt) {
+    const start = new Date(firstRestaurantAt);
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    while (cursor <= end) {
+      const key = monthKeyFromDate(cursor);
+      if (key && !months[key]) months[key] = emptyNetworkBucket();
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+
   /** @type {NetworkLocalRow[]} */
   const porLocal = restaurantes.map((r) => {
     const id = String(r.id);
     const tieneAcceso =
       localesConAcceso.has(id) || localesConAcceso.has(String(r.slug || ''));
-    const visitas30d = visitasByRest.get(id) || 0;
-    const localPlatos = platosByRest.get(id);
-    let platoMasVisto = '—';
-    if (localPlatos && localPlatos.size > 0) {
-      const top = [...localPlatos.values()].sort((a, b) => b.vistas - a.vistas)[0];
-      if (top?.nombre) platoMasVisto = top.nombre;
-    }
+    const visitas = allBucket.byRest[id] || 0;
     const waClicks = 0;
     const mapsClicks = 0;
     const tasaWhatsapp =
-      visitas30d > 0 ? Math.round((waClicks / visitas30d) * 1000) / 10 : null;
+      visitas > 0 ? Math.round((waClicks / visitas) * 1000) / 10 : null;
     const logo = String(r.logo_url || '').trim();
 
     return {
@@ -489,8 +652,8 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
       nombre: String(r.nombre_comercial || r.slug || 'Local').trim() || 'Local',
       slug: String(r.slug || '').trim(),
       logoUrl: logo && /^https?:\/\//i.test(logo) ? logo : '',
-      visitas30d,
-      platoMasVisto,
+      visitas30d: visitas,
+      platoMasVisto: allBucket.topPlatoByRest[id] || '—',
       tasaWhatsapp,
       waClicks,
       mapsClicks,
@@ -500,51 +663,40 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
 
   porLocal.sort((a, b) => b.visitas30d - a.visitas30d || a.nombre.localeCompare(b.nombre, 'es'));
 
-  const traficoGlobal = porLocal.reduce((acc, row) => acc + row.visitas30d, 0);
+  const vistasWebApps = allBucket.total;
   const localesOperativos = porLocal.filter((row) => row.tieneAcceso).length;
   const conversionRed = porLocal.reduce(
     (acc, row) => acc + row.waClicks + row.mapsClicks,
     0,
   );
 
-  const topPlatos = [...platosGlobal.values()]
-    .sort((a, b) => b.vistas - a.vistas)
-    .slice(0, 5)
-    .map((row) => ({
-      nombre: row.nombre,
-      restaurante: nombreByRestId.get(row.restauranteId) || '—',
-      vistas: row.vistas,
-    }));
-
-  const rankingLocales = porLocal
-    .filter((row) => row.visitas30d > 0)
-    .slice(0, 8)
-    .map((row) => ({
-      nombre: row.nombre,
-      slug: row.slug,
-      visitas: row.visitas30d,
-      logoUrl: row.logoUrl,
-    }));
-
-  // Si nadie tiene tráfico, mostrar ranking por nombre (volumen 0) para UI estable
-  const rankingFallback =
-    rankingLocales.length > 0
-      ? rankingLocales
-      : porLocal.slice(0, 8).map((row) => ({
-          nombre: row.nombre,
-          slug: row.slug,
-          visitas: row.visitas30d,
-          logoUrl: row.logoUrl,
-        }));
-
   return {
-    traficoGlobal,
+    traficoGlobal: vistasWebApps,
+    vistasWebApps,
     localesOperativos,
     localesTotal: porLocal.length,
     catalogoGlobal,
     conversionRed,
     porLocal,
-    topPlatos,
-    rankingLocales: rankingFallback,
+    topPlatos: allBucket.topPlatos,
+    rankingLocales: allBucket.rankingMayor.map((row) => ({
+      nombre: row.nombre,
+      slug: row.slug,
+      visitas: row.visitas,
+      logoUrl: row.logoUrl,
+    })),
+    rankingMenor: allBucket.rankingMenor.map((row) => ({
+      nombre: row.nombre,
+      slug: row.slug,
+      visitas: row.visitas,
+      logoUrl: row.logoUrl,
+    })),
+    series: {
+      eventMode,
+      currentMonth,
+      all: allBucket,
+      months,
+    },
+    firstRestaurantAt,
   };
 }

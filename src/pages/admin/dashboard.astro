@@ -605,26 +605,42 @@ const marcaHasOperationalGadgets = hasOperationalGadgets({
   boutique: marca.gadget_boutique,
 });
 
-const fieldClass =
-  'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/50';
-/** Campos claros para paneles blancos del Studio (Gadgets). */
-const gadgetFieldClass =
-  'w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-xs text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200';
-const labelClass = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
-const gadgetLabelClass = 'block text-xs font-medium text-neutral-600 mb-1.5';
-/** Glass Bento chrome. */
+/** Glass Bento chrome (Menú, modales, bulk). */
 const bounceWallClass =
   'relative z-10 dark:bg-zinc-900/95 bg-white/80 backdrop-blur-xl border border-zinc-500/10 rounded-2xl shadow-xl';
-const studioCardClass = `studio-card ${bounceWallClass} solid-obstacle hover:border-indigo-500/40 transition-all duration-300 p-4 space-y-3 gap-3`;
-/** Estado activo unificado (verde) para tarjetas de layout del Studio. */
-const studioLayoutCardActive =
-  'studio-layout-card--active border-emerald-500 bg-emerald-50/60 shadow-sm ring-1 ring-emerald-500/20 hover:border-emerald-500 hover:bg-emerald-50/60 hover:shadow-sm hover:ring-emerald-500/20';
+/** Bento unificado Identidad — Light blanco / Dark zinc glass (escape via .identidad-studio-card) */
+const identidadCardClass =
+  'identidad-studio-card studio-card relative z-10 solid-obstacle bg-white dark:bg-zinc-900/60 border border-zinc-200/90 dark:border-zinc-800/80 text-zinc-900 dark:text-zinc-100 rounded-3xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] dark:shadow-none backdrop-blur-xl transition-all flex flex-col gap-5';
+const studioCardClass = identidadCardClass;
+/** Encabezados de tarjeta Identidad */
+const identidadHeadingClass =
+  'text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-4 block';
+/** Inputs Identidad — light zinc-50 / dark zinc-950 */
+const fieldClass =
+  'w-full rounded-xl px-3.5 py-2 text-xs sm:text-sm outline-none transition-all bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white dark:placeholder:text-zinc-600 focus:dark:border-zinc-600';
+const identidadFieldClass = fieldClass;
+/** Campos Gadgets / QR — misma matriz Light/Dark */
+const gadgetFieldClass = fieldClass;
+const labelClass = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-500';
+const gadgetLabelClass = 'block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5';
+/** Selectores de plantilla — activo esmeralda */
+const studioLayoutCardBase =
+  'studio-layout-card group relative rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer min-h-[85px]';
 const studioLayoutCardIdle =
-  'border-white/12 bg-transparent hover:border-white/25 hover:bg-white/[0.03]';
+  'bg-zinc-50/80 hover:bg-zinc-100 border border-zinc-200/90 text-zinc-600 dark:bg-zinc-900/40 dark:hover:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400';
+const studioLayoutCardActive =
+  'studio-layout-card--active bg-emerald-500/10 border-2 border-emerald-500 text-emerald-950 shadow-xs dark:bg-emerald-500/15 dark:border-emerald-400 dark:text-emerald-100';
 const studioLayoutBadgeActive =
-  'bg-emerald-500 text-white font-semibold text-[10px] px-2 py-0.5 rounded-full';
+  'px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-600 text-white dark:bg-emerald-500 dark:text-zinc-950 shadow-xs';
+/** Sliders de escala Identidad */
+const identidadRangeClass = 'w-full accent-emerald-500 dark:accent-emerald-400 bg-zinc-200 dark:bg-zinc-800 rounded-full h-1.5';
+const identidadRangeValueClass = 'font-mono text-xs font-bold text-zinc-900 dark:text-white tabular-nums';
 const colorRowClass =
-  'flex items-center gap-2 rounded-full border border-white/10 bg-zinc-950/60 px-2 py-1.5';
+  'identidad-color-capsule flex items-center gap-2.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/90 dark:border-zinc-800 transition-all';
+const colorPickerClass =
+  'w-7 h-7 rounded-full border border-zinc-200 dark:border-zinc-700 cursor-pointer overflow-hidden p-0 shrink-0 bg-transparent';
+const colorHexClass =
+  'bg-transparent text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none w-20 uppercase tracking-wide placeholder:text-zinc-400';
 function formatNutricionPreview(plato) {
   const parts = [];
   if (plato?.calorias != null && String(plato.calorias).trim() !== '') {
@@ -1630,7 +1646,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-estructura">
                       <div class="flex flex-wrap items-end justify-between gap-2">
                         <div>
-                          <p id="marca-sec-estructura" class={labelClass}>Estructura &amp; Layout</p>
+                          <p id="marca-sec-estructura" class={identidadHeadingClass}>Estructura &amp; Layout</p>
                           <p class="mt-1 text-[11px] leading-relaxed text-zinc-500">
                             Elige la composición del Home. La navegación se deriva del layout.
                           </p>
@@ -1644,7 +1660,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             return (
                               <label
                                 class:list={[
-                                  'home-layout-card group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 transition duration-200',
+                                  'home-layout-card',
+                                  studioLayoutCardBase,
                                   selected ? studioLayoutCardActive : studioLayoutCardIdle,
                                 ]}
                               >
@@ -1658,7 +1675,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   data-home-theme={opt.theme}
                                 />
                                 <span class="flex items-start justify-between gap-2">
-                                  <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-white">
+                                  <span class="text-[0.74rem] font-semibold tracking-[0.04em]">
                                     {opt.label}
                                   </span>
                                   <span
@@ -1668,7 +1685,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                     ]}
                                     data-home-layout-activo
                                   >
-                                    Activo
+                                    ACTIVO
                                   </span>
                                 </span>
                                 <span class="text-[11px] leading-snug text-neutral-400">{opt.hint}</span>
@@ -1676,10 +1693,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   class:list={[
                                     'mt-auto inline-flex w-fit rounded-full px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em]',
                                     selected
-                                      ? 'bg-emerald-500/15 text-emerald-700'
-                                      : opt.theme === 'hamburguesa'
-                                        ? 'bg-white/10 text-neutral-300'
-                                        : 'bg-white/[0.06] text-neutral-400',
+                                      ? 'bg-emerald-600/15 text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-200'
+                                      : 'bg-zinc-200/60 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
                                   ]}
                                 >
                                   {opt.theme === 'hamburguesa' ? '☰ Nav' : 'Frontal'}
@@ -1694,7 +1709,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     {/* Columna izquierda — Identidad & Textos */}
                     <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-identidad-textos">
-                      <p id="marca-sec-identidad-textos" class={labelClass}>Identidad &amp; Textos</p>
+                      <p id="marca-sec-identidad-textos" class={identidadHeadingClass}>Identidad &amp; Textos</p>
 
                       <label class="block space-y-1.5">
                         <span class={labelClass}>Combo Tipográfico</span>
@@ -1737,12 +1752,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               <label class="block min-w-0 space-y-1.5" for={field.id}>
                                 <span class="flex items-center justify-between gap-2 px-0.5">
                                   <span class="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-zinc-400">{field.label}</span>
-                                  <span class="tabular-nums text-[0.62rem] text-zinc-500">
+                                  <span class={identidadRangeValueClass}>
                                     <span data-px-value-for={field.id}>{field.value}</span> px
                                   </span>
                                 </span>
                                 <input type="number" id={field.id} name={field.name} value={field.value} min={field.min} max={field.max} step="1" inputmode="numeric" class="sr-only" tabindex="-1" aria-hidden="true" />
-                                <input type="range" min={field.min} max={field.max} step="1" value={field.value} data-px-slider-for={field.id} class="w-full accent-white" aria-label={`${field.label} tamaño`} />
+                                <input type="range" min={field.min} max={field.max} step="1" value={field.value} data-px-slider-for={field.id} class={identidadRangeClass} aria-label={`${field.label} tamaño`} />
                               </label>
                             ))
                           }
@@ -1752,7 +1767,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     {/* Columna derecha — Logo & Atmósfera */}
                     <section class={studioCardClass} aria-labelledby="marca-sec-logo-atmosfera">
-                      <p id="marca-sec-logo-atmosfera" class={labelClass}>Logo &amp; Atmósfera</p>
+                      <p id="marca-sec-logo-atmosfera" class={identidadHeadingClass}>Logo &amp; Atmósfera</p>
 
                       <div class="flex items-center gap-5 rounded-xl border border-white/15 bg-transparent px-4 py-4">
                         <div
@@ -1897,22 +1912,33 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           Boolean(marca.home_overlay_estilo)
                         }
                       >
-                        <label class="block space-y-1.5" for="marca-home-overlay-opacity">
-                          <span class="flex items-center justify-between gap-2">
-                            <span class={labelClass}>Opacidad Overlay</span>
-                            <span class="tabular-nums text-[0.65rem] text-zinc-500"><span data-px-value-for="marca-home-overlay-opacity">{marca.home_overlay_opacity}</span>%</span>
-                          </span>
-                          <div class="flex items-center gap-2">
-                            <input type="range" min={HOME_PX_RANGES.overlay.min} max={HOME_PX_RANGES.overlay.max} step="1" value={marca.home_overlay_opacity} data-px-slider-for="marca-home-overlay-opacity" class="min-w-0 flex-1 accent-white" aria-label="Opacidad Overlay" />
-                            <input type="number" id="marca-home-overlay-opacity" name="home_overlay_opacity" value={marca.home_overlay_opacity} min={HOME_PX_RANGES.overlay.min} max={HOME_PX_RANGES.overlay.max} step="1" inputmode="numeric" class={`${fieldClass} w-16 shrink-0 tabular-nums`} />
+                        <div>
+                          <div class="mb-1.5 flex items-center justify-between">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Opacidad Overlay</span>
+                            <span
+                              id="overlay-opacity-val"
+                              class="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                            >{marca.home_overlay_opacity}%</span>
                           </div>
-                        </label>
+                          <input
+                            type="range"
+                            id="marca-home-overlay-opacity"
+                            name="home_overlay_opacity"
+                            min={HOME_PX_RANGES.overlay.min}
+                            max={HOME_PX_RANGES.overlay.max}
+                            step="5"
+                            value={marca.home_overlay_opacity}
+                            class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-200 accent-emerald-500 dark:bg-zinc-800"
+                            aria-label="Opacidad Overlay"
+                            data-overlay-opacity-range
+                          />
+                        </div>
                       </div>
                     </section>
 
                     {/* Cinemática & Efectos */}
                     <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-cinematica">
-                      <p id="marca-sec-cinematica" class={labelClass}>Cinemática &amp; Efectos</p>
+                      <p id="marca-sec-cinematica" class={identidadHeadingClass}>Cinemática &amp; Efectos</p>
                       <div class="grid gap-4 md:grid-cols-3">
                         <label class="block space-y-1.5" for="marca-home-efecto-entrada">
                           <span class={labelClass}>Animación de Entrada</span>
@@ -1971,7 +1997,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     <details class={`${studioCardClass} lg:col-span-2 group`} aria-labelledby="marca-sec-avanzado">
                       <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                         <div>
-                          <p id="marca-sec-avanzado" class={labelClass}>Opciones Avanzadas</p>
+                          <p id="marca-sec-avanzado" class={identidadHeadingClass}>Opciones Avanzadas</p>
                           <p class="mt-1 text-[11px] text-zinc-500">Share image, ícono PWA y CSS personalizado</p>
                         </div>
                         <span class="text-zinc-500 transition group-open:rotate-180" aria-hidden="true">▾</span>
@@ -2006,7 +2032,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     {/* Layouts superiores */}
                     <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-nosotros-layouts">
                       <div>
-                        <p id="marca-sec-nosotros-layouts" class={labelClass}>Estructura &amp; Layout</p>
+                        <p id="marca-sec-nosotros-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
                         <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
                           Elige la composición narrativa de la sección Nosotros.
                         </p>
@@ -2018,7 +2044,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             return (
                               <label
                                 class:list={[
-                                  'nosotros-layout-card group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 transition duration-200',
+                                  'nosotros-layout-card',
+                                  studioLayoutCardBase,
                                   selected ? studioLayoutCardActive : studioLayoutCardIdle,
                                 ]}
                               >
@@ -2032,7 +2059,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   data-nosotros-theme={opt.theme}
                                 />
                                 <span class="flex items-start justify-between gap-2">
-                                  <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-white">
+                                  <span class="text-[0.74rem] font-semibold tracking-[0.04em]">
                                     {opt.label}
                                   </span>
                                   <span
@@ -2042,7 +2069,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                     ]}
                                     data-nosotros-layout-activo
                                   >
-                                    Activo
+                                    ACTIVO
                                   </span>
                                 </span>
                                 <span class="text-[11px] leading-snug text-neutral-400">{opt.hint}</span>
@@ -2056,7 +2083,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     {/* Columna izquierda — Estilo & Atmósfera */}
                     <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-nosotros-estilo">
-                      <p id="marca-sec-nosotros-estilo" class={labelClass}>Estilo &amp; Atmósfera</p>
+                      <p id="marca-sec-nosotros-estilo" class={identidadHeadingClass}>Estilo &amp; Atmósfera</p>
 
                       <label class="block space-y-1.5">
                         <span class={labelClass}>Tipografía títulos</span>
@@ -2155,7 +2182,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     {/* Columna derecha — Narrativa & Bloques */}
                     <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-nosotros-bloques">
-                      <p id="marca-sec-nosotros-bloques" class={labelClass}>Narrativa &amp; Bloques</p>
+                      <p id="marca-sec-nosotros-bloques" class={identidadHeadingClass}>Narrativa &amp; Bloques</p>
 
                       <div id="nosotros-bloques-list" class="space-y-3">
                         {
@@ -2335,7 +2362,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-menu-layouts">
                       <div>
-                        <p id="marca-sec-menu-layouts" class={labelClass}>Estructura &amp; Layout</p>
+                        <p id="marca-sec-menu-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
                         <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
                           Elige la experiencia de navegación del menú digital.
                         </p>
@@ -2347,7 +2374,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             return (
                               <label
                                 class:list={[
-                                  'menu-layout-card group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 transition duration-200',
+                                  'menu-layout-card',
+                                  studioLayoutCardBase,
                                   selected ? studioLayoutCardActive : studioLayoutCardIdle,
                                 ]}
                               >
@@ -2361,7 +2389,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   data-menu-navegacion={opt.navegacion}
                                 />
                                 <span class="flex items-start justify-between gap-2">
-                                  <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-white">{opt.label}</span>
+                                  <span class="text-[0.74rem] font-semibold tracking-[0.04em]">{opt.label}</span>
                                   <span
                                     class:list={[
                                       'shrink-0',
@@ -2369,7 +2397,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                     ]}
                                     data-menu-layout-activo
                                   >
-                                    Activo
+                                    ACTIVO
                                   </span>
                                 </span>
                                 <span class="text-[11px] leading-snug text-neutral-400">{opt.hint}</span>
@@ -2383,7 +2411,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     {/* Columna izquierda */}
                     <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-menu-estructura">
-                      <p id="marca-sec-menu-estructura" class={labelClass}>Estructura &amp; Componentes</p>
+                      <p id="marca-sec-menu-estructura" class={identidadHeadingClass}>Estructura &amp; Componentes</p>
 
                       <label class="block space-y-1.5">
                         <span class={labelClass}>Layout de Platos</span>
@@ -2437,7 +2465,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                     {/* Columna derecha */}
                     <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-menu-atmosfera">
-                      <p id="marca-sec-menu-atmosfera" class={labelClass}>Atmósfera, Media &amp; Tipografía</p>
+                      <p id="marca-sec-menu-atmosfera" class={identidadHeadingClass}>Atmósfera, Media &amp; Tipografía</p>
 
                       <div id="menu-fondo-general" class="space-y-3" hidden={marca.menu_fondos_cinematicos}>
                         <div class="relative flex items-center gap-4 rounded-xl border border-white/15 bg-transparent px-3 py-3">
@@ -2577,7 +2605,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       aria-labelledby="marca-sec-menu-hub"
                     >
                       <div class="space-y-1">
-                        <p id="marca-sec-menu-hub" class={labelClass}>Portal Hub — tarjetas por categoría</p>
+                        <p id="marca-sec-menu-hub" class={identidadHeadingClass}>Portal Hub — tarjetas por categoría</p>
                         <p class="text-[11px] leading-relaxed text-neutral-400">
                           Color, imagen o video de fondo para cada tarjeta del portal. Sin URLs a la vista.
                         </p>
@@ -2737,7 +2765,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       data-cinematic-fondos-card
                     >
                       <div class="space-y-1">
-                        <p id="marca-sec-menu-cinematic" class={labelClass}>Fondos por Categoría</p>
+                        <p id="marca-sec-menu-cinematic" class={identidadHeadingClass}>Fondos por Categoría</p>
                         <p class="text-[11px] leading-relaxed text-neutral-400">
                           Color, imagen o video por categoría. Sin URLs a la vista.
                         </p>
@@ -2889,15 +2917,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   {/* —— HORARIOS & UBICACIÓN (Identidad / SuperAdmin) —— */}
                   <div data-marca-panel="ubicacion" class="overflow-visible" hidden>
                     <div
-                      class="relative z-10 grid grid-cols-1 gap-4 lg:grid-cols-2"
+                      class="relative z-10 grid grid-cols-1 gap-5 lg:grid-cols-2"
                       data-marca-ubicacion-controls
                       style={`--color-acento: ${marca.color_primario || '#818cf8'};`}
                       data-local-ops="marca"
                     >
-                      <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-ubicacion-layouts">
+                      <section class={`${identidadCardClass} lg:col-span-2`} aria-labelledby="marca-sec-ubicacion-layouts">
                         <div>
-                          <p id="marca-sec-ubicacion-layouts" class={labelClass}>Estructura &amp; Layout</p>
-                          <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
+                          <p id="marca-sec-ubicacion-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
+                          <p class="mt-1 text-[11px] leading-relaxed text-zinc-500">
                             Elige la composición de Horarios y Ubicación en la WebApp.
                           </p>
                         </div>
@@ -2908,7 +2936,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               return (
                                 <label
                                   class:list={[
-                                    'ubicacion-layout-card group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 transition duration-200',
+                                    'ubicacion-layout-card',
+                                    studioLayoutCardBase,
                                     selected ? studioLayoutCardActive : studioLayoutCardIdle,
                                   ]}
                                 >
@@ -2922,7 +2951,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                     data-ubicacion-theme={opt.theme}
                                   />
                                   <span class="flex items-start justify-between gap-2">
-                                    <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-white">
+                                    <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-zinc-900 dark:text-white">
                                       {opt.label}
                                     </span>
                                     <span
@@ -2932,10 +2961,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                       ]}
                                       data-ubicacion-layout-activo
                                     >
-                                      Activo
+                                      ACTIVO
                                     </span>
                                   </span>
-                                  <span class="text-[11px] leading-snug text-neutral-400">{opt.hint}</span>
+                                  <span class="text-[11px] leading-snug text-zinc-500">{opt.hint}</span>
                                 </label>
                               );
                             })
@@ -2950,13 +2979,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         />
                       </section>
 
-                      {/* Columna izquierda — Atmósfera, colores & mapa */}
-                      <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-ubicacion-atmosfera">
-                        <p id="marca-sec-ubicacion-atmosfera" class={labelClass}>Atmósfera, Colores &amp; Mapa</p>
+                      {/* Columna izquierda — Atmósfera + Mapa */}
+                      <div class="flex flex-col gap-5 min-w-0">
+                      <section class={identidadCardClass} aria-labelledby="marca-sec-ubicacion-atmosfera">
+                        <p id="marca-sec-ubicacion-atmosfera" class={identidadHeadingClass}>Atmósfera, Colores &amp; Mapa</p>
 
                         <label class="block space-y-1.5">
                           <span class={labelClass}>Tipografía títulos</span>
-                          <select id="marca-ubicacion-fuente-titulo" name="ubicacion_fuente_titulo" class={fieldClass}>
+                          <select id="marca-ubicacion-fuente-titulo" name="ubicacion_fuente_titulo" class={identidadFieldClass}>
                             {
                               NOSOTROS_FUENTES_TITULO.map((opt) => (
                                 <option value={opt.id} selected={marca.ubicacion_fuente_titulo === opt.id}>
@@ -2969,7 +2999,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                         <label class="block space-y-1.5">
                           <span class={labelClass}>Tipografía cuerpo</span>
-                          <select id="marca-ubicacion-fuente-cuerpo" name="ubicacion_fuente_cuerpo" class={fieldClass}>
+                          <select id="marca-ubicacion-fuente-cuerpo" name="ubicacion_fuente_cuerpo" class={identidadFieldClass}>
                             {
                               NOSOTROS_FUENTES_CUERPO.map((opt) => (
                                 <option value={opt.id} selected={marca.ubicacion_fuente_cuerpo === opt.id}>
@@ -2980,30 +3010,30 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </select>
                         </label>
 
-                        <div class="grid grid-cols-3 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3">
+                        <div class="grid grid-cols-3 gap-3">
                           <label class="block min-w-0 space-y-1.5">
-                            <span class="text-xs font-mono text-zinc-400">Fondo</span>
-                            <div class="flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5" data-ubicacion-fondo-color hidden={marca.fondo_ubicacion_tipo !== 'color'}>
-                              <input type="color" id="marca-fondo-ubicacion-valor-picker" value={hexPickerValue(marca.fondo_ubicacion_tipo === 'color' ? marca.fondo_ubicacion_valor : '#0a0a0a', '#0a0a0a')} class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />
-                              <input type="text" id="marca-fondo-ubicacion-valor-color" value={marca.fondo_ubicacion_tipo === 'color' ? marca.fondo_ubicacion_valor : ''} placeholder="#0a0a0a" spellcheck="false" class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wide text-zinc-300 outline-none placeholder:text-zinc-600" />
+                            <span class="text-xs font-mono text-zinc-500">Fondo</span>
+                            <div class={colorRowClass} data-ubicacion-fondo-color hidden={marca.fondo_ubicacion_tipo !== 'color'}>
+                              <input type="color" id="marca-fondo-ubicacion-valor-picker" value={hexPickerValue(marca.fondo_ubicacion_tipo === 'color' ? marca.fondo_ubicacion_valor : '#0a0a0a', '#0a0a0a')} class={colorPickerClass} />
+                              <input type="text" id="marca-fondo-ubicacion-valor-color" value={marca.fondo_ubicacion_tipo === 'color' ? marca.fondo_ubicacion_valor : ''} placeholder="#0a0a0a" spellcheck="false" class={colorHexClass} />
                             </div>
                             <div class="min-w-0" data-ubicacion-fondo-url hidden={marca.fondo_ubicacion_tipo === 'color'}>
-                              <input type="text" inputmode="url" id="marca-fondo-ubicacion-valor-url" value={marca.fondo_ubicacion_tipo === 'color' ? '' : marca.fondo_ubicacion_valor} placeholder="https://…" class={fieldClass} />
+                              <input type="text" inputmode="url" id="marca-fondo-ubicacion-valor-url" value={marca.fondo_ubicacion_tipo === 'color' ? '' : marca.fondo_ubicacion_valor} placeholder="https://…" class={identidadFieldClass} />
                               <span class="sr-only" data-ubicacion-fondo-url-label>{marca.fondo_ubicacion_tipo === 'video' ? 'URL del video' : 'URL de la imagen'}</span>
                             </div>
                           </label>
                           <label class="block min-w-0 space-y-1.5">
-                            <span class="text-xs font-mono text-zinc-400">Texto</span>
-                            <div class="flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5">
-                              <input type="color" id="marca-ubicacion-color-titulo-picker" value={hexPickerValue(marca.ubicacion_color_titulo, '#ffffff')} class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />
-                              <input type="text" id="marca-ubicacion-color-titulo" name="ubicacion_color_titulo" value={marca.ubicacion_color_titulo} placeholder="#ffffff" spellcheck="false" class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wide text-zinc-300 outline-none placeholder:text-zinc-600" />
+                            <span class="text-xs font-mono text-zinc-500">Texto</span>
+                            <div class={colorRowClass}>
+                              <input type="color" id="marca-ubicacion-color-titulo-picker" value={hexPickerValue(marca.ubicacion_color_titulo, '#ffffff')} class={colorPickerClass} />
+                              <input type="text" id="marca-ubicacion-color-titulo" name="ubicacion_color_titulo" value={marca.ubicacion_color_titulo} placeholder="#ffffff" spellcheck="false" class={colorHexClass} />
                             </div>
                           </label>
                           <label class="block min-w-0 space-y-1.5">
-                            <span class="text-xs font-mono text-zinc-400">Acento</span>
-                            <div class="flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5">
-                              <input type="color" id="marca-ubicacion-color-acento-picker" value={hexPickerValue(marca.ubicacion_color_acento || marca.color_primario, '#9f1239')} class="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />
-                              <input type="text" id="marca-ubicacion-color-acento" name="ubicacion_color_acento" value={marca.ubicacion_color_acento} placeholder={marca.color_primario || '#9f1239'} spellcheck="false" class="min-w-0 flex-1 border-0 bg-transparent px-0.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wide text-zinc-300 outline-none placeholder:text-zinc-600" />
+                            <span class="text-xs font-mono text-zinc-500">Acento</span>
+                            <div class={colorRowClass}>
+                              <input type="color" id="marca-ubicacion-color-acento-picker" value={hexPickerValue(marca.ubicacion_color_acento || marca.color_primario, '#9f1239')} class={colorPickerClass} />
+                              <input type="text" id="marca-ubicacion-color-acento" name="ubicacion_color_acento" value={marca.ubicacion_color_acento} placeholder={marca.color_primario || '#9f1239'} spellcheck="false" class={colorHexClass} />
                             </div>
                           </label>
                         </div>
@@ -3016,7 +3046,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <label class="block space-y-1.5">
                             <span class={labelClass}>Tipo de fondo</span>
-                            <select id="marca-fondo-ubicacion-tipo" name="fondo_ubicacion_tipo" class={fieldClass}>
+                            <select id="marca-fondo-ubicacion-tipo" name="fondo_ubicacion_tipo" class={identidadFieldClass}>
                               <option value="color" selected={marca.fondo_ubicacion_tipo === 'color'}>Color</option>
                               <option value="image" selected={marca.fondo_ubicacion_tipo === 'image'}>Imagen</option>
                               <option value="video" selected={marca.fondo_ubicacion_tipo === 'video'}>Video</option>
@@ -3024,7 +3054,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </label>
                           <label class="block space-y-1.5">
                             <span class={labelClass}>Contenedor</span>
-                            <select id="marca-ubicacion-grid-estilo" name="ubicacion_grid_estilo" class={fieldClass}>
+                            <select id="marca-ubicacion-grid-estilo" name="ubicacion_grid_estilo" class={identidadFieldClass}>
                               <option value="solido" selected={marca.ubicacion_grid_estilo === 'solido'}>Sólido</option>
                               <option value="vidrio" selected={marca.ubicacion_grid_estilo === 'vidrio' || !marca.ubicacion_grid_estilo}>Vidrio</option>
                               <option value="blur" selected={marca.ubicacion_grid_estilo === 'blur'}>Blur</option>
@@ -3034,49 +3064,49 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                         <button
                           type="button"
-                          class="inline-flex items-center justify-center rounded-lg border border-white/15 bg-transparent px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-zinc-300 transition hover:border-white/30 hover:text-white"
+                          class="inline-flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-300 transition hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-white"
                           data-copy-home-colors-ubicacion
                         >
                           Usar colores del Home
                         </button>
-
-                        <div class="space-y-2 border-t border-white/10 pt-3">
-                          <p class={labelClass}>Mapa</p>
-                          <PerfilLocalCard
-                            scope="marca"
-                            nestInParent={true}
-                            showHours={false}
-                            showSocial={false}
-                            showMap={true}
-                            variant="studio"
-                            mapsInputId="marca-coordenadas"
-                            horarioHiddenId="marca-horarios-map-unused"
-                            horarioText={opsHorario}
-                            horarioSemana={horarioSemana}
-                            horarioHoy={horarioHoy}
-                            mapsUrl={opsMaps}
-                            mapsEmbed={opsMapsEmbed}
-                            mapsOpen={opsMapsOpen}
-                            instagram={opsInstagram}
-                            facebook={opsFacebook}
-                            tiktok={opsTiktok}
-                            tripadvisor={opsTripadvisor}
-                            whatsapp={opsWhatsapp}
-                            telefono={opsTelefonoContacto}
-                            socialIdPrefix="marca-redes-map-"
-                          />
-                        </div>
                       </section>
 
-                      {/* Columna derecha — Horario & contacto */}
-                      <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-ubicacion-contenido">
-                        <p id="marca-sec-ubicacion-contenido" class={labelClass}>Horario de Atención &amp; Contacto</p>
+                      <PerfilLocalCard
+                        scope="marca"
+                        nestInParent={false}
+                        showHours={false}
+                        showSocial={false}
+                        showMap={true}
+                        variant="studio"
+                        mapsInputId="marca-coordenadas"
+                        horarioHiddenId="marca-horarios-map-unused"
+                        horarioText={opsHorario}
+                        horarioSemana={horarioSemana}
+                        horarioHoy={horarioHoy}
+                        mapsUrl={opsMaps}
+                        mapsEmbed={opsMapsEmbed}
+                        mapsOpen={opsMapsOpen}
+                        direccion={opsDireccion}
+                        direccionInputId="marca-direccion"
+                        instagram={opsInstagram}
+                        facebook={opsFacebook}
+                        tiktok={opsTiktok}
+                        tripadvisor={opsTripadvisor}
+                        whatsapp={opsWhatsapp}
+                        telefono={opsTelefonoContacto}
+                        socialIdPrefix="marca-redes-map-"
+                      />
+                      </div>
+
+                      {/* Columna derecha — Horario + Canales */}
+                      <div class="flex flex-col gap-5 min-w-0" aria-labelledby="marca-sec-ubicacion-contenido">
+                        <p id="marca-sec-ubicacion-contenido" class="sr-only">Horario de Atención &amp; Contacto</p>
                         <PerfilLocalCard
                           scope="marca"
-                          nestInParent={true}
+                          nestInParent={false}
                           showMap={false}
                           showHours={true}
-                          showSocial={true}
+                          showSocial={false}
                           variant="studio"
                           mapsInputId="marca-coordenadas-unused"
                           horarioHiddenId="marca-horarios"
@@ -3092,9 +3122,32 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           tripadvisor={opsTripadvisor}
                           whatsapp={opsWhatsapp}
                           telefono={opsTelefonoContacto}
+                          socialIdPrefix="marca-redes-hours-"
+                        />
+                        <PerfilLocalCard
+                          scope="marca"
+                          nestInParent={false}
+                          showMap={false}
+                          showHours={false}
+                          showSocial={true}
+                          variant="studio"
+                          mapsInputId="marca-coordenadas-social-unused"
+                          horarioHiddenId="marca-horarios-social-unused"
+                          horarioText={opsHorario}
+                          horarioSemana={horarioSemana}
+                          horarioHoy={horarioHoy}
+                          mapsUrl={opsMaps}
+                          mapsEmbed={opsMapsEmbed}
+                          mapsOpen={opsMapsOpen}
+                          instagram={opsInstagram}
+                          facebook={opsFacebook}
+                          tiktok={opsTiktok}
+                          tripadvisor={opsTripadvisor}
+                          whatsapp={opsWhatsapp}
+                          telefono={opsTelefonoContacto}
                           socialIdPrefix="marca-redes-"
                         />
-                      </section>
+                      </div>
                     </div>
                   </div>
 
@@ -3107,7 +3160,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     >
                       <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-reservas-layouts">
                         <div>
-                          <p id="marca-sec-reservas-layouts" class={labelClass}>Estructura &amp; Layout</p>
+                          <p id="marca-sec-reservas-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
                           <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
                             Elige cómo el comensal pide o reserva mesa.
                           </p>
@@ -3119,7 +3172,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                               return (
                                 <label
                                   class:list={[
-                                    'reservas-layout-card group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 transition duration-200',
+                                    'reservas-layout-card',
+                                    studioLayoutCardBase,
                                     selected ? studioLayoutCardActive : studioLayoutCardIdle,
                                   ]}
                                 >
@@ -3133,7 +3187,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                     data-reservas-destino={opt.destino}
                                   />
                                   <span class="flex items-start justify-between gap-2">
-                                    <span class="text-[0.74rem] font-semibold tracking-[0.04em] text-white">
+                                    <span class="text-[0.74rem] font-semibold tracking-[0.04em]">
                                       {opt.label}
                                     </span>
                                     <span
@@ -3143,7 +3197,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                       ]}
                                       data-reservas-layout-activo
                                     >
-                                      Activo
+                                      ACTIVO
                                     </span>
                                   </span>
                                   <span class="text-[11px] leading-snug text-neutral-400">{opt.hint}</span>
@@ -3163,7 +3217,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                       {/* Columna izquierda */}
                       <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-reservas-visual">
-                        <p id="marca-sec-reservas-visual" class={labelClass}>Visual &amp; Ubicación del Botón</p>
+                        <p id="marca-sec-reservas-visual" class={identidadHeadingClass}>Visual &amp; Ubicación del Botón</p>
 
                         <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-2.5">
                           <span class="min-w-0">
@@ -3243,7 +3297,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                       {/* Columna derecha */}
                       <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-reservas-motor">
-                        <p id="marca-sec-reservas-motor" class={labelClass}>Motor &amp; Datos de Destino</p>
+                        <p id="marca-sec-reservas-motor" class={identidadHeadingClass}>Motor &amp; Datos de Destino</p>
 
                         <div data-reservas-panel="whatsapp_concierge" hidden={marca.reservas_layout !== 'whatsapp_concierge'} class="space-y-3">
                           <label class="block space-y-1.5">
@@ -3374,11 +3428,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   {/* —— GADGETS —— */}
                   <div
                     data-marca-panel="gadgets"
-                    class="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+                    class="identidad-studio-card space-y-4 rounded-3xl border border-zinc-200/90 bg-white p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all dark:border-zinc-800/80 dark:bg-zinc-900/60 dark:shadow-none"
                     hidden
                   >
                     <div>
-                      <p class="text-sm font-semibold text-neutral-900">Gadgets</p>
+                      <p class="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1 block">Gadgets</p>
                       <p class="mt-0.5 text-xs text-neutral-500">
                         Módulos opcionales del menú digital. Activá solo lo que uses.
                       </p>
@@ -3389,7 +3443,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       {/* 1. Wi‑Fi */}
                       <article
                         class:list={[
-                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
                           marca.gadget_wifi && 'gadget-card--on',
                         ]}
                         data-gadget-card
@@ -3429,7 +3483,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       {/* 2. AR / 3D */}
                       <article
                         class:list={[
-                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
                           marca.gadget_ar && 'gadget-card--on',
                         ]}
                         data-gadget-card
@@ -3464,7 +3518,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       {/* 3. Alérgenos */}
                       <article
                         class:list={[
-                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
                           marca.gadget_nutricion && 'gadget-card--on',
                         ]}
                         data-gadget-card
@@ -3515,7 +3569,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       {/* 4. Boutique */}
                       <article
                         class:list={[
-                          'gadget-card flex h-full flex-col bg-white border border-neutral-200 rounded-xl p-4 shadow-sm hover:border-neutral-300 transition-all',
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
                           marca.gadget_boutique && 'gadget-card--on',
                         ]}
                         data-gadget-card
@@ -3573,14 +3627,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   {/* —— QR & IMPRESIÓN (Centro de Recursos) —— */}
                   <div
                     data-marca-panel="qr"
-                    class="space-y-5 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5"
+                    class="identidad-studio-card space-y-5 rounded-3xl border border-zinc-200/90 bg-white p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all dark:border-zinc-800/80 dark:bg-zinc-900/60 dark:shadow-none sm:p-6"
                     hidden
                     data-qr-slug={publicSlug}
                     data-qr-logo={marca.logo_url || ''}
                     data-qr-brand={marca.color_primario || '#9f1239'}
                   >
                     <header class="space-y-1">
-                      <p id="qr-section-title" class="text-sm font-semibold text-neutral-900">QR &amp; Impresión</p>
+                      <p id="qr-section-title" class="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1 block">QR &amp; Impresión</p>
                       <p class="text-xs text-neutral-500">Centro de recursos y descarga del menú digital</p>
                     </header>
 
@@ -3739,7 +3793,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
     {
       restaurante && footLogoUrl ? (
-        <footer class="admin-studio-foot-brand flex justify-center my-8 pb-4" aria-label={hubNombre}>
+        <footer class="admin-studio-foot-brand flex justify-center mt-12 mb-6 pb-4" aria-label={hubNombre}>
           <span class="admin-studio-foot-brand__pill inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-white/90 dark:bg-zinc-950/90 border border-zinc-200/90 dark:border-zinc-800/90 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all hover:scale-[1.02]">
             <img
               src={footLogoUrl}
@@ -3751,7 +3805,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           </span>
         </footer>
       ) : (
-        <AdminXemillaMark class="flex justify-center my-8 pb-4" />
+        <AdminXemillaMark class="flex justify-center mt-12 mb-6 pb-4" />
       )
     }
     </div>
@@ -5010,92 +5064,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     outline-color: rgba(24, 24, 27, 0.28);
   }
 
-  /* ── Gadget cards (Studio white / light) ── */
-  :global(html.admin-panel) [data-marca-panel='gadgets'],
-  [data-marca-panel='gadgets'] {
-    background: #ffffff !important;
-    border-color: #e5e5e5 !important;
-    color: #262626 !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-  }
-
-  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card,
+  /* ── Gadget cards — theme owned by admin-themes.css (Light/Dark) ── */
   [data-marca-panel='gadgets'] .gadget-card {
-    background: #ffffff !important;
-    border-color: #e5e5e5 !important;
-    color: #262626 !important;
     opacity: 1;
   }
 
-  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card.gadget-card--on,
-  [data-marca-panel='gadgets'] .gadget-card.gadget-card--on {
-    border-color: #10b981 !important;
-    background-color: rgba(236, 253, 245, 0.7) !important;
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.04),
-      0 0 0 1px rgba(16, 185, 129, 0.22) !important;
-  }
-
-  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card__icon,
-  [data-marca-panel='gadgets'] .gadget-card__icon {
-    background: #f5f5f5 !important;
-    color: #404040 !important;
-    border: none !important;
-  }
-
-  :global(html.admin-panel) [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon,
-  [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon {
-    background: #d1fae5 !important;
-    color: #047857 !important;
-  }
-
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='text'],
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='url'],
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='number'],
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='password'],
-  :global(html.admin-panel) [data-marca-panel='gadgets'] select,
-  [data-marca-panel='gadgets'] input[type='text'],
-  [data-marca-panel='gadgets'] input[type='url'],
-  [data-marca-panel='gadgets'] input[type='number'],
-  [data-marca-panel='gadgets'] input[type='password'],
-  [data-marca-panel='gadgets'] select {
-    background-color: #fafafa !important;
-    border-color: #e5e5e5 !important;
-    color: #262626 !important;
-    box-shadow: none !important;
-  }
-
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='text']::placeholder,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='url']::placeholder,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='number']::placeholder,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='password']::placeholder,
-  [data-marca-panel='gadgets'] input[type='text']::placeholder,
-  [data-marca-panel='gadgets'] input[type='url']::placeholder,
-  [data-marca-panel='gadgets'] input[type='number']::placeholder,
-  [data-marca-panel='gadgets'] input[type='password']::placeholder {
-    color: #a3a3a3 !important;
-  }
-
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='text']:focus,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='url']:focus,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='number']:focus,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] input[type='password']:focus,
-  :global(html.admin-panel) [data-marca-panel='gadgets'] select:focus,
-  [data-marca-panel='gadgets'] input[type='text']:focus,
-  [data-marca-panel='gadgets'] input[type='url']:focus,
-  [data-marca-panel='gadgets'] input[type='number']:focus,
-  [data-marca-panel='gadgets'] input[type='password']:focus,
-  [data-marca-panel='gadgets'] select:focus {
-    border-color: #a3a3a3 !important;
-    box-shadow: 0 0 0 2px rgba(163, 163, 163, 0.25) !important;
-  }
-
-  [data-marca-panel='gadgets'] option {
-    background: #ffffff;
-    color: #262626;
-  }
-
-  /* Config accordion */
   .gadget-card__config {
     display: grid;
     grid-template-rows: 0fr;
@@ -8653,7 +8626,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (!(toggle instanceof HTMLElement)) return;
       toggle.setAttribute('aria-checked', String(!closed));
       toggle.classList.toggle('is-on', !closed);
-      toggle.classList.toggle('bg-emerald-500', !closed);
+      toggle.classList.toggle('bg-zinc-900', !closed);
+      toggle.classList.toggle('dark:bg-white', !closed);
       toggle.title = closed ? 'Cerrado' : 'Abierto';
     });
     row.querySelectorAll('[data-hours-open], [data-hours-close]').forEach((el) => {
@@ -11584,13 +11558,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   wireColorPair('marca-nosotros-color-titulo-picker', 'marca-nosotros-color-titulo');
   wireColorPair('marca-nosotros-color-cuerpo-picker', 'marca-nosotros-color-cuerpo');
 
-  // Home layout cards → theme canónico + glow de selección (verde unificado)
+  // Home layout cards → theme canónico + selección monocroma ultra-lujo
   const STUDIO_LAYOUT_CARD_ACTIVE =
-    'studio-layout-card--active border-emerald-500 bg-emerald-50/60 shadow-sm ring-1 ring-emerald-500/20 hover:border-emerald-500 hover:bg-emerald-50/60 hover:shadow-sm hover:ring-emerald-500/20';
+    'studio-layout-card--active bg-emerald-500/10 border-2 border-emerald-500 text-emerald-950 shadow-xs dark:bg-emerald-500/15 dark:border-emerald-400 dark:text-emerald-100';
   const STUDIO_LAYOUT_CARD_IDLE =
-    'border-white/12 bg-transparent hover:border-white/25 hover:bg-white/[0.03]';
+    'bg-zinc-50/80 hover:bg-zinc-100 border border-zinc-200/90 text-zinc-600 dark:bg-zinc-900/40 dark:hover:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400';
   const STUDIO_LAYOUT_BADGE_ACTIVE =
-    'bg-emerald-500 text-white font-semibold text-[10px] px-2 py-0.5 rounded-full';
+    'px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-600 text-white dark:bg-emerald-500 dark:text-zinc-950 shadow-xs';
 
   const syncStudioLayoutCard = (label, on) => {
     if (!(label instanceof HTMLElement)) return;
@@ -12309,6 +12283,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   overlayEstiloSelect?.addEventListener('change', syncOverlayEstiloUi, { signal });
   syncOverlayEstiloUi();
 
+  const overlayOpacityRange = document.querySelector('[data-overlay-opacity-range]');
+  const overlayOpacityVal = document.getElementById('overlay-opacity-val');
+  const syncOverlayOpacityVal = () => {
+    if (!(overlayOpacityRange instanceof HTMLInputElement)) return;
+    if (overlayOpacityVal instanceof HTMLElement) {
+      overlayOpacityVal.textContent = `${overlayOpacityRange.value}%`;
+    }
+  };
+  overlayOpacityRange?.addEventListener('input', syncOverlayOpacityVal, { signal });
+  overlayOpacityRange?.addEventListener('change', syncOverlayOpacityVal, { signal });
+  syncOverlayOpacityVal();
+
   // Sync number readouts ↔ range sliders (Escalas sizes + overlay)
   const pxSliderRoot = marcaForm instanceof HTMLElement ? marcaForm : document;
   pxSliderRoot.querySelectorAll('[data-px-slider-for]').forEach((slider) => {
@@ -12482,7 +12468,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const bloquesList = document.getElementById('nosotros-bloques-list');
   const addBloqueBtn = document.getElementById('nosotros-add-bloque');
   const fieldClassJs =
-    'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs font-mono text-white outline-none transition placeholder:text-zinc-600 focus:border-white focus:ring-0';
+    'w-full rounded-xl px-3.5 py-2 text-xs sm:text-sm outline-none transition-all bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white dark:placeholder:text-zinc-600 focus:dark:border-zinc-600';
   const labelClassJs = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500';
 
   function renumberBloques() {

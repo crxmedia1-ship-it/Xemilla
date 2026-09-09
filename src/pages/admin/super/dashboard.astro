@@ -3,7 +3,12 @@ export const prerender = false;
 
 import Layout from '../../../layouts/Layout.astro';
 import AdminThemeSwitcher from '../../../components/admin/AdminThemeSwitcher.astro';
-import { requireSuperAdmin, listAllRestaurantes, getSuperAdminWriteClient } from '../../../lib/superadmin.js';
+import {
+  requireSuperAdmin,
+  listAllRestaurantes,
+  getSuperAdminWriteClient,
+  createRestauranteAsSuperAdmin,
+} from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
 import { resolveHubCoverUrl, resolveHubLogoBg } from '../../../lib/hub-media.js';
@@ -17,6 +22,52 @@ const gate = await requireSuperAdmin({
 if (!gate) {
   return Astro.redirect('/admin/login');
 }
+
+/** Prefill / error for modal "Nuevo Restaurante" */
+let createErrorMsg = '';
+const createPrefill = {
+  nombre: '',
+  slug: '',
+  whatsapp: '',
+  logoUrl: '',
+  hubCoverUrl: '',
+};
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const intent = String(form.get('intent') ?? '');
+  if (intent === 'create-restaurante') {
+    createPrefill.nombre = String(form.get('nombre_comercial') ?? '');
+    createPrefill.slug = String(form.get('slug') ?? '');
+    createPrefill.whatsapp = String(
+      form.get('whatsapp_num') ?? form.get('whatsapp_url') ?? '',
+    );
+    createPrefill.logoUrl = String(form.get('logo_url') ?? '');
+    createPrefill.hubCoverUrl = String(
+      form.get('hub_cover_url') ?? form.get('portada_url') ?? '',
+    );
+
+    const result = await createRestauranteAsSuperAdmin(gate.supabase, gate.user, {
+      userId: gate.user.id,
+      nombreComercial: createPrefill.nombre,
+      slug: createPrefill.slug,
+      whatsapp: createPrefill.whatsapp,
+      logoUrl: createPrefill.logoUrl,
+      hubCoverUrl: createPrefill.hubCoverUrl,
+    });
+
+    if (result.error) {
+      createErrorMsg = result.error;
+    } else if (result.restaurante) {
+      return Astro.redirect('/admin/super/dashboard');
+    }
+  }
+}
+
+const openNuevoRestModal = Boolean(createErrorMsg);
+const logoTrimPrefill = createPrefill.logoUrl
+  ? cloudinaryTrimUrl(createPrefill.logoUrl)
+  : '';
 
 const restaurantes = await listAllRestaurantes(gate.supabase, gate.user);
 const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
@@ -81,10 +132,87 @@ function initialsFromName(name) {
     .toUpperCase() || '—';
 }
 
-const emptyCellClass = 'text-zinc-600 font-mono text-xs';
+const emptyCellClass = 'super-net-empty text-zinc-300 dark:text-zinc-700 font-mono text-xs';
+
+const kpiCardClass =
+  'super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none transition-all flex flex-col justify-between min-h-[150px]';
+const kpiLabelClass =
+  'text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500';
+const kpiValueClass =
+  'super-net-kpi-value text-4xl lg:text-5xl font-extralight font-mono text-zinc-900 dark:text-white tracking-tight my-2';
+const kpiHintClass =
+  'text-[11px] text-zinc-500 font-medium flex items-center gap-1.5';
+const studioBtnClass =
+  'super-net-btn-studio px-3 py-1.5 text-xs font-medium rounded-xl transition-colors shadow-xs bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-800 dark:text-zinc-100';
+const webappBtnClass =
+  'super-net-btn-web px-3 py-1.5 text-xs font-medium rounded-xl border border-zinc-200/80 dark:border-zinc-800 transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300';
 
 const topPlatosMax = Math.max(1, ...networkIntel.topPlatos.map((p) => p.vistas), 0);
 const rankingLocalesMax = Math.max(1, ...networkIntel.rankingLocales.map((x) => x.visitas), 0);
+const rankingMenorMax = Math.max(
+  1,
+  ...(networkIntel.rankingMenor || []).map((x) => x.visitas),
+  0,
+);
+
+const MONTHS_ES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
+
+/**
+ * Meses desde el primer restaurante hasta Septiembre 2026 (mes en curso del Hub).
+ * @param {string | null | undefined} createdAtRaw
+ */
+function buildNetworkMonthOptions(createdAtRaw) {
+  const end = new Date(2026, 8, 1); // Septiembre 2026
+  const now = new Date();
+  const endClamped =
+    now < end ? new Date(now.getFullYear(), now.getMonth(), 1) : end;
+  let start = endClamped;
+  if (createdAtRaw) {
+    const parsed = new Date(createdAtRaw);
+    if (!Number.isNaN(parsed.getTime())) {
+      start = new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+    }
+  }
+  if (start > endClamped) start = endClamped;
+
+  /** @type {Array<{ value: string, label: string }>} */
+  const options = [];
+  const cursor = new Date(start.getTime());
+  while (cursor <= endClamped) {
+    options.push({
+      value: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`,
+      label: `${MONTHS_ES[cursor.getMonth()]} ${cursor.getFullYear()}`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return options;
+}
+
+const networkMonthOptions = buildNetworkMonthOptions(networkIntel.firstRestaurantAt);
+const networkSeriesPayload = networkIntel.series || {
+  eventMode: false,
+  currentMonth: '',
+  all: { total: 0, byRest: {}, topPlatoByRest: {}, topPlatos: [], rankingMayor: [], rankingMenor: [] },
+  months: {},
+};
+
+const tfOnClass =
+  'super-tf-on px-3 py-1.5 rounded-xl font-semibold bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs';
+const tfOffClass =
+  'px-3 py-1.5 rounded-xl font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors';
 
 const xemillaWordmark =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
@@ -207,10 +335,16 @@ function resolveMapsEmbed(direccion) {
 
         <div class="super-until-hero__actions">
           <AdminThemeSwitcher class="super-until-hero__theme" />
-          <a href="/admin/super/nuevo-restaurante" class="super-until-hero__cta">
+          <button
+            type="button"
+            class="super-until-hero__cta"
+            data-nuevo-rest-open
+            aria-haspopup="dialog"
+            aria-controls="nuevo-rest-modal"
+          >
             <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
             Nuevo restaurante
-          </a>
+          </button>
           <form method="POST" action="/api/admin-logout" class="super-until-hero__logout">
             <button type="submit" class="super-until-hero__logout-btn">Salir</button>
           </form>
@@ -233,6 +367,16 @@ function resolveMapsEmbed(direccion) {
             <p class="text-sm leading-relaxed text-zinc-400">
               Todavía no hay locales registrados. Creá el primero.
             </p>
+            <button
+              type="button"
+              class="super-until-hero__cta mt-5 inline-flex"
+              data-nuevo-rest-open
+              aria-haspopup="dialog"
+              aria-controls="nuevo-rest-modal"
+            >
+              <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
+              Nuevo restaurante
+            </button>
           </div>
         ) : (
           <>
@@ -667,17 +811,49 @@ function resolveMapsEmbed(direccion) {
       }
     </div>
 
-    <div data-super-panel="metricas" class="mt-8 w-full min-w-full space-y-8" hidden>
-      <header class="w-full">
-        <p class="text-[0.68rem] font-medium uppercase tracking-[0.22em] text-zinc-500">
-          Network Intelligence
-        </p>
-        <h2 class="mt-1 text-2xl font-light tracking-tight text-zinc-100 sm:text-3xl">
-          Métricas de la red
-        </h2>
-        <p class="mt-1.5 max-w-2xl text-sm text-zinc-500">
-          Tráfico, catálogo y rendimiento agregado · últimos 30 días
-        </p>
+    <div
+      data-super-panel="metricas"
+      class="super-net mt-8 w-full min-w-full space-y-8"
+      hidden
+      data-network-series={JSON.stringify(networkSeriesPayload)}
+    >
+      <header class="w-full flex flex-wrap items-end justify-between gap-4">
+        <div class="min-w-0">
+          <p class="text-[0.68rem] font-medium uppercase tracking-[0.22em] text-zinc-500">
+            Network Intelligence
+          </p>
+          <h2 class="mt-1 text-2xl font-light tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
+            Métricas de la red
+          </h2>
+          <p class="mt-1.5 max-w-2xl text-sm text-zinc-500">
+            Tráfico, catálogo y rendimiento agregado
+          </p>
+        </div>
+        <div
+          class="super-tf-bar inline-flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 text-xs"
+          data-super-timeframe-bar
+          role="group"
+          aria-label="Periodo de métricas de red"
+        >
+          <button type="button" class={tfOnClass} data-super-timeframe="all" aria-pressed="true">
+            General
+          </button>
+          <button type="button" class={tfOffClass} data-super-timeframe="current" aria-pressed="false">
+            Este Mes
+          </button>
+          <select
+            class="bg-transparent text-zinc-500 font-medium px-2 py-1 outline-none cursor-pointer hover:text-zinc-900 dark:hover:text-white"
+            data-super-timeframe-select
+            aria-label="Mes a mes"
+          >
+            <option value="" selected>Mes a mes</option>
+            {
+              networkMonthOptions.map((opt) => (
+                <option value={opt.value}>{opt.label}</option>
+              ))
+            }
+          </select>
+        </div>
       </header>
 
       <!-- A) KPIs maestros -->
@@ -685,55 +861,45 @@ function resolveMapsEmbed(direccion) {
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full"
         aria-label="KPIs maestros de red"
       >
-        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-            Tráfico Global Red
+        <article class={kpiCardClass}>
+          <p class={kpiLabelClass}>Vistas Totales WebApps</p>
+          <p class={kpiValueClass} data-net-kpi="vistas-webapps">
+            {formatKpi(networkIntel.vistasWebApps ?? networkIntel.traficoGlobal)}
           </p>
-          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
-            {formatKpi(networkIntel.traficoGlobal)}
-          </p>
-          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
-            <span class="h-1 w-1 rounded-full bg-zinc-500" aria-hidden="true"></span>
-            Vistas de platos · 30 días
+          <p class={kpiHintClass}>
+            <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
+            Vistas globales en WebApps
           </p>
         </article>
 
-        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-            Locales Operativos
-          </p>
-          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
+        <article class={kpiCardClass}>
+          <p class={kpiLabelClass}>Locales Operativos</p>
+          <p class={kpiValueClass}>
             {formatKpi(networkIntel.localesOperativos)}
-            <span class="text-2xl text-zinc-500">/ {formatKpi(networkIntel.localesTotal)}</span>
+            <span class="text-2xl text-zinc-400 dark:text-zinc-500">
+              / {formatKpi(networkIntel.localesTotal)}
+            </span>
           </p>
-          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
+          <p class={kpiHintClass}>
             <span class="h-1 w-1 rounded-full bg-emerald-500/70" aria-hidden="true"></span>
             Con credenciales activas
           </p>
         </article>
 
-        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-            Catálogo Global
-          </p>
-          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
-            {formatKpi(networkIntel.catalogoGlobal)}
-          </p>
-          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
-            <span class="h-1 w-1 rounded-full bg-zinc-500" aria-hidden="true"></span>
+        <article class={kpiCardClass}>
+          <p class={kpiLabelClass}>Catálogo Global</p>
+          <p class={kpiValueClass}>{formatKpi(networkIntel.catalogoGlobal)}</p>
+          <p class={kpiHintClass}>
+            <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
             Platos activos en Supabase
           </p>
         </article>
 
-        <article class="p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl flex flex-col justify-between min-h-[150px] shadow-sm hover:border-zinc-700 transition-all">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-            Conversión de Red
-          </p>
-          <p class="text-5xl font-extralight font-mono text-white tracking-tight my-2">
-            {formatKpi(networkIntel.conversionRed)}
-          </p>
-          <p class="text-[11px] text-zinc-500 font-medium flex items-center gap-1.5">
-            <span class="h-1 w-1 rounded-full bg-zinc-500" aria-hidden="true"></span>
+        <article class={kpiCardClass}>
+          <p class={kpiLabelClass}>Conversión de Red</p>
+          <p class={kpiValueClass}>{formatKpi(networkIntel.conversionRed)}</p>
+          <p class={kpiHintClass}>
+            <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
             Clics WhatsApp + Maps
           </p>
         </article>
@@ -741,26 +907,28 @@ function resolveMapsEmbed(direccion) {
 
       <!-- B) Tabla rendimiento por restaurante -->
       <section class="w-full overflow-x-auto" aria-label="Rendimiento por restaurante">
-        <div class="w-full rounded-3xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-xl overflow-hidden">
-          <div class="bg-zinc-900/80 text-[11px] font-bold uppercase tracking-wider text-zinc-400 py-3.5 px-6 border-b border-zinc-800 flex items-center justify-between gap-4">
+        <div class="super-net-card w-full rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none">
+          <div class="bg-zinc-50/80 dark:bg-zinc-900/80 border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 py-3.5 px-6 flex items-center justify-between gap-4">
             <span>Rendimiento por restaurante</span>
-            <span class="normal-case tracking-normal font-medium text-zinc-500">
-              Visitas · plato top · acceso
+            <span class="normal-case tracking-normal font-medium text-zinc-500" data-net-visits-hint>
+              Visitas · periodo seleccionado
             </span>
           </div>
           <table class="w-full min-w-[64rem] border-collapse text-left text-sm">
             <thead>
-              <tr class="bg-zinc-900/80 text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
+              <tr class="bg-zinc-50/80 dark:bg-zinc-900/80 border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                 <th class="py-3.5 px-6 font-bold text-left">Restaurante</th>
                 <th class="py-3.5 px-6 font-bold text-left">Slug</th>
-                <th class="py-3.5 px-6 font-bold text-left tabular-nums">Visitas (30d)</th>
+                <th class="py-3.5 px-6 font-bold text-left tabular-nums" data-net-visits-col>
+                  Visitas
+                </th>
                 <th class="py-3.5 px-6 font-bold text-left">Plato Más Visto</th>
                 <th class="py-3.5 px-6 font-bold text-left">Tasa Clics WhatsApp</th>
                 <th class="py-3.5 px-6 font-bold text-left">Estado Acceso</th>
                 <th class="py-3.5 px-6 font-bold text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-net-table-body>
               {
                 networkIntel.porLocal.length === 0 ? (
                   <tr>
@@ -777,71 +945,74 @@ function resolveMapsEmbed(direccion) {
                     const platoTop =
                       row.platoMasVisto && row.platoMasVisto !== '—' ? row.platoMasVisto : '';
                     return (
-                      <tr class="hover:bg-zinc-800/30 transition-colors border-b border-zinc-800/50 last:border-0">
+                      <tr
+                        class="border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 transition-colors"
+                        data-net-row={row.id}
+                      >
                         <td class="py-4 px-6 text-left">
                           <div class="flex items-center gap-3">
                             {logoTrim ? (
                               <img
                                 src={logoTrim}
                                 alt={row.nombre}
-                                class="w-8 h-8 rounded-lg object-contain bg-zinc-950 p-1 border border-zinc-800 shrink-0"
+                                class="w-8 h-8 rounded-lg object-contain bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shrink-0"
                                 loading="lazy"
                                 decoding="async"
                               />
                             ) : (
-                              <div class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-300 shrink-0">
+                              <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-500 dark:text-zinc-300 shrink-0">
                                 {initialsFromName(row.nombre)}
                               </div>
                             )}
-                            <span class="text-sm font-medium text-white">{row.nombre}</span>
+                            <span class="text-sm font-semibold text-zinc-900 dark:text-white">{row.nombre}</span>
                           </div>
                         </td>
                         <td class="py-4 px-6 text-left">
                           {row.slug ? (
-                            <span class="text-xs font-mono text-zinc-400">/{row.slug}</span>
+                            <span class="text-xs font-mono text-zinc-500 dark:text-zinc-400">/{row.slug}</span>
                           ) : (
                             <span class={emptyCellClass}>—</span>
                           )}
                         </td>
-                        <td class="py-4 px-6 text-left font-mono tabular-nums text-zinc-200">
+                        <td
+                          class="py-4 px-6 text-left font-mono tabular-nums text-zinc-800 dark:text-zinc-200"
+                          data-net-visitas
+                        >
                           {formatKpi(row.visitas30d)}
                         </td>
-                        <td class="py-4 px-6 text-left">
+                        <td class="py-4 px-6 text-left" data-net-plato-top>
                           {platoTop ? (
-                            <span class="text-zinc-300">{platoTop}</span>
+                            <span class="text-zinc-700 dark:text-zinc-300">{platoTop}</span>
                           ) : (
                             <span class={emptyCellClass}>—</span>
                           )}
                         </td>
                         <td class="py-4 px-6 text-left">
                           {tasa ? (
-                            <span class="font-mono tabular-nums text-zinc-300">{tasa}</span>
+                            <span class="font-mono tabular-nums text-zinc-700 dark:text-zinc-300">{tasa}</span>
                           ) : (
                             <span class={emptyCellClass}>—</span>
                           )}
                         </td>
                         <td class="py-4 px-6 text-left">
                           {row.tieneAcceso ? (
-                            <span class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full text-xs font-mono">
+                            <span class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full text-xs font-mono">
                               <span
-                                class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                                class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
                                 aria-hidden="true"
                               />
                               Activo
                             </span>
                           ) : (
-                            <span class="inline-flex items-center gap-1.5 bg-zinc-800/60 text-zinc-400 border border-zinc-700/50 px-2.5 py-1 rounded-full text-xs font-mono">
-                              <span class="h-1.5 w-1.5 rounded-full bg-zinc-500" aria-hidden="true" />
+                            <span class="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 px-2.5 py-1 rounded-full text-xs font-mono">
+                              <span class="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true" />
                               Sin acceso
                             </span>
                           )}
                         </td>
                         <td class="py-4 px-6">
                           <div class="flex items-center justify-end gap-2">
-                            <a
-                              href={studioHref}
-                              class="px-2.5 py-1 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700/80 transition-colors"
-                            >
+                            <a href={studioHref} class={studioBtnClass}>
                               Studio ↗
                             </a>
                             {webHref ? (
@@ -849,12 +1020,12 @@ function resolveMapsEmbed(direccion) {
                                 href={webHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="px-2.5 py-1 text-xs font-medium bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors"
+                                class={webappBtnClass}
                               >
                                 WebApp ↗
                               </a>
                             ) : (
-                              <span class="px-2.5 py-1 text-xs font-medium text-zinc-600 rounded-lg border border-white/5">
+                              <span class={`${webappBtnClass} opacity-40 pointer-events-none`}>
                                 WebApp ↗
                               </span>
                             )}
@@ -870,41 +1041,42 @@ function resolveMapsEmbed(direccion) {
         </div>
       </section>
 
-      <!-- C) Top platos + ranking locales -->
+      <!-- C) Top platos + ranking mayor/menor -->
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full" aria-label="Rankings de red">
-        <article class="border border-zinc-800/80 bg-zinc-900/50 backdrop-blur-xl rounded-3xl p-6 shadow-sm flex flex-col gap-4">
-          <header class="text-sm font-semibold tracking-wide text-white flex items-center justify-between">
+        <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col">
+          <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
             <span>Top 5 Platos Más Consultados en Toda la Red</span>
-            <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              30d
+            <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 shrink-0" data-net-period-label>
+              General
             </span>
           </header>
-          <ol class="flex flex-col gap-3">
+          <ol class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50" data-net-top-platos>
             {
               networkIntel.topPlatos.length === 0 ? (
-                <li class="rounded-2xl border border-dashed border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
-                  Sin vistas registradas en los últimos 30 días.
+                <li class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500" data-net-empty>
+                  Sin vistas registradas en el periodo.
                 </li>
               ) : (
                 networkIntel.topPlatos.map((plato, i) => {
                   const pct = Math.round((plato.vistas / topPlatosMax) * 100);
                   return (
-                      <li class="flex flex-col gap-2">
+                      <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0" data-net-plato-row>
                         <div class="flex items-center gap-3">
-                          <span class="w-8 shrink-0 font-mono text-xs text-zinc-400">
+                          <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500" data-net-rank>
                             #{String(i + 1).padStart(2, '0')}
                           </span>
                           <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-medium text-white">{plato.nombre}</p>
-                            <p class="truncate text-[11px] text-zinc-500">{plato.restaurante}</p>
+                            <p class="truncate text-sm font-medium text-zinc-900 dark:text-white" data-net-name>{plato.nombre}</p>
+                            <p class="truncate text-[11px] text-zinc-500" data-net-rest>{plato.restaurante}</p>
                           </div>
-                          <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-300">
+                          <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300" data-net-count>
                             {formatKpi(plato.vistas)}
                           </span>
                         </div>
-                        <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-800/80">
+                        <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
                           <div
-                            class="h-full rounded-full bg-zinc-500/60"
+                            class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60"
+                            data-net-bar
                             style={`width: ${pct}%`}
                           />
                         </div>
@@ -916,69 +1088,543 @@ function resolveMapsEmbed(direccion) {
           </ol>
         </article>
 
-        <article class="border border-zinc-800/80 bg-zinc-900/50 backdrop-blur-xl rounded-3xl p-6 shadow-sm flex flex-col gap-4">
-          <header class="text-sm font-semibold tracking-wide text-white flex items-center justify-between">
-            <span>Rendimiento por Local</span>
-            <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              Ranking
-            </span>
-          </header>
-          <ol class="flex flex-col gap-3">
-            {
-              networkIntel.rankingLocales.length === 0 ? (
-                <li class="rounded-2xl border border-dashed border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
-                  Sin locales para ranking.
-                </li>
-              ) : (
-                networkIntel.rankingLocales.map((local, i) => {
-                  const pct = Math.round((local.visitas / rankingLocalesMax) * 100);
-                  const logoTrim = local.logoUrl ? cloudinaryTrimUrl(local.logoUrl) : '';
-                  return (
-                      <li class="flex flex-col gap-2">
-                        <div class="flex items-center gap-3">
-                          <span class="w-8 shrink-0 font-mono text-xs text-zinc-400">
-                            #{String(i + 1).padStart(2, '0')}
-                          </span>
-                          {logoTrim ? (
-                            <img
-                              src={logoTrim}
-                              alt={local.nombre}
-                              class="w-8 h-8 rounded-lg object-contain bg-zinc-950 p-1 border border-zinc-800 shrink-0"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <div class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-300 shrink-0">
-                              {initialsFromName(local.nombre)}
+        <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col gap-6">
+          <div>
+            <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
+              <span>Mayor tráfico</span>
+              <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 shrink-0">
+                Ranking
+              </span>
+            </header>
+            <ol class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50" data-net-rank-mayor>
+              {
+                networkIntel.rankingLocales.length === 0 ? (
+                  <li class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
+                    Sin locales para ranking.
+                  </li>
+                ) : (
+                  networkIntel.rankingLocales.map((local, i) => {
+                    const pct = Math.round((local.visitas / rankingLocalesMax) * 100);
+                    const logoTrim = local.logoUrl ? cloudinaryTrimUrl(local.logoUrl) : '';
+                    return (
+                        <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0" data-net-local-row>
+                          <div class="flex items-center gap-3">
+                            <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500" data-net-rank>
+                              #{String(i + 1).padStart(2, '0')}
+                            </span>
+                            {logoTrim ? (
+                              <img
+                                src={logoTrim}
+                                alt={local.nombre}
+                                class="w-8 h-8 rounded-lg object-contain bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shrink-0"
+                                loading="lazy"
+                                decoding="async"
+                                data-net-logo
+                              />
+                            ) : (
+                              <div
+                                class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-500 dark:text-zinc-300 shrink-0"
+                                data-net-initials
+                              >
+                                {initialsFromName(local.nombre)}
+                              </div>
+                            )}
+                            <div class="min-w-0 flex-1">
+                              <p class="truncate text-sm font-medium text-zinc-900 dark:text-white" data-net-name>{local.nombre}</p>
+                              <p class="truncate font-mono text-[11px] text-zinc-500" data-net-slug>
+                                {local.slug ? `/${local.slug}` : '—'}
+                              </p>
                             </div>
-                          )}
-                          <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-medium text-white">{local.nombre}</p>
-                            <p class="truncate font-mono text-[11px] text-zinc-500">
-                              {local.slug ? `/${local.slug}` : '—'}
-                            </p>
+                            <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300" data-net-count>
+                              {formatKpi(local.visitas)}
+                            </span>
                           </div>
-                          <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-300">
-                            {formatKpi(local.visitas)}
-                          </span>
-                        </div>
-                        <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-800/80">
-                          <div
-                            class="h-full rounded-full bg-zinc-500/60"
-                            style={`width: ${pct}%`}
-                          />
-                        </div>
-                      </li>
-                  );
-                })
-              )
-            }
-          </ol>
+                          <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
+                            <div
+                              class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60"
+                              data-net-bar
+                              style={`width: ${pct}%`}
+                            />
+                          </div>
+                        </li>
+                    );
+                  })
+                )
+              }
+            </ol>
+          </div>
+
+          <div class="border-t border-zinc-100 dark:border-zinc-800/50 pt-5">
+            <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
+              <span>Menor tráfico</span>
+              <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 shrink-0">
+                Ranking
+              </span>
+            </header>
+            <ol class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50" data-net-rank-menor>
+              {
+                (networkIntel.rankingMenor || []).length === 0 ? (
+                  <li class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
+                    Sin locales para ranking.
+                  </li>
+                ) : (
+                  (networkIntel.rankingMenor || []).map((local, i) => {
+                    const pct = Math.round((local.visitas / rankingMenorMax) * 100);
+                    const logoTrim = local.logoUrl ? cloudinaryTrimUrl(local.logoUrl) : '';
+                    return (
+                        <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0" data-net-local-row>
+                          <div class="flex items-center gap-3">
+                            <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500" data-net-rank>
+                              #{String(i + 1).padStart(2, '0')}
+                            </span>
+                            {logoTrim ? (
+                              <img
+                                src={logoTrim}
+                                alt={local.nombre}
+                                class="w-8 h-8 rounded-lg object-contain bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shrink-0"
+                                loading="lazy"
+                                decoding="async"
+                                data-net-logo
+                              />
+                            ) : (
+                              <div
+                                class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-500 dark:text-zinc-300 shrink-0"
+                                data-net-initials
+                              >
+                                {initialsFromName(local.nombre)}
+                              </div>
+                            )}
+                            <div class="min-w-0 flex-1">
+                              <p class="truncate text-sm font-medium text-zinc-900 dark:text-white" data-net-name>{local.nombre}</p>
+                              <p class="truncate font-mono text-[11px] text-zinc-500" data-net-slug>
+                                {local.slug ? `/${local.slug}` : '—'}
+                              </p>
+                            </div>
+                            <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300" data-net-count>
+                              {formatKpi(local.visitas)}
+                            </span>
+                          </div>
+                          <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
+                            <div
+                              class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60"
+                              data-net-bar
+                              style={`width: ${pct}%`}
+                            />
+                          </div>
+                        </li>
+                    );
+                  })
+                )
+              }
+            </ol>
+          </div>
         </article>
       </section>
     </div>
+
+    <!-- Modal: Nuevo Restaurante -->
+    <div
+      id="nuevo-rest-modal"
+      class="nuevo-rest-modal fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="nuevo-rest-title"
+      hidden={!openNuevoRestModal}
+      data-nuevo-rest-overlay
+      data-open-on-load={openNuevoRestModal ? 'true' : 'false'}
+    >
+      <div
+        class="nuevo-rest-modal__card w-full max-w-xl rounded-3xl p-6 sm:p-8 bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 shadow-2xl flex flex-col gap-4"
+        data-nuevo-rest-card
+      >
+        <header class="flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-3">
+            <h2
+              id="nuevo-rest-title"
+              class="nuevo-rest-modal__title text-xl font-medium text-zinc-900 dark:text-white"
+            >
+              Nuevo Restaurante
+            </h2>
+            <button
+              type="button"
+              class="nuevo-rest-modal__close text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg text-lg leading-none"
+              data-nuevo-rest-close
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
+          <p class="text-xs text-zinc-400 dark:text-zinc-500">
+            Alta rápida en la red Xemilla
+          </p>
+        </header>
+
+        <form method="POST" id="nuevo-rest-form" class="flex flex-col gap-5" novalidate>
+          <input type="hidden" name="intent" value="create-restaurante" />
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="nombre_comercial" class="sr-only">Nombre comercial</label>
+              <input
+                id="nombre_comercial"
+                name="nombre_comercial"
+                type="text"
+                required
+                autocomplete="organization"
+                placeholder="Nombre comercial"
+                value={createPrefill.nombre}
+                class="nuevo-rest-field bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-zinc-400 outline-none w-full"
+              />
+            </div>
+            <div>
+              <label for="slug" class="sr-only">Slug</label>
+              <input
+                id="slug"
+                name="slug"
+                type="text"
+                required
+                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                placeholder="slug-publico"
+                value={createPrefill.slug}
+                class="nuevo-rest-field bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-zinc-400 outline-none w-full"
+              />
+            </div>
+
+            <div class="col-span-2">
+              <label for="whatsapp_num" class="sr-only">WhatsApp</label>
+              <input
+                id="whatsapp_num"
+                name="whatsapp_num"
+                type="tel"
+                required
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="+58 414..."
+                value={createPrefill.whatsapp}
+                class="nuevo-rest-field bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-zinc-400 outline-none w-full"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <button
+                type="button"
+                class="relative h-28 w-full rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col items-center justify-center p-2 cursor-pointer hover:border-zinc-400 transition-colors text-center text-xs text-zinc-500 overflow-hidden"
+                data-upload-trigger="logo"
+                aria-label="Subir logo"
+              >
+                <div
+                  class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 p-2"
+                  data-upload-placeholder="logo"
+                  hidden={Boolean(logoTrimPrefill)}
+                >
+                  <span class="font-medium">Logo</span>
+                  <span class="text-[10px] text-zinc-400">PNG · clic</span>
+                </div>
+                <div class="absolute inset-0" data-upload-preview="logo" hidden={!logoTrimPrefill}>
+                  <img
+                    src={logoTrimPrefill || undefined}
+                    alt="Logo"
+                    class="h-full w-full object-contain p-2"
+                    data-upload-img="logo"
+                    hidden={!logoTrimPrefill}
+                  />
+                </div>
+                <span
+                  class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-zinc-950/50 text-[11px] font-medium text-white backdrop-blur-[2px]"
+                  data-upload-loading="logo"
+                >
+                  Cargando...
+                </span>
+              </button>
+              <input type="file" id="input-logo-file" accept="image/*" class="hidden" />
+              <input type="hidden" id="logo_url" name="logo_url" value={createPrefill.logoUrl} />
+              <p
+                class="mt-1 min-h-[1rem] text-[10px] text-zinc-400"
+                role="status"
+                data-upload-status="logo"
+              ></p>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                class="relative h-28 w-full rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col items-center justify-center p-2 cursor-pointer hover:border-zinc-400 transition-colors text-center text-xs text-zinc-500 overflow-hidden"
+                data-upload-trigger="portada"
+                aria-label="Subir portada Hub"
+              >
+                <div
+                  class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 p-2"
+                  data-upload-placeholder="portada"
+                  hidden={Boolean(createPrefill.hubCoverUrl)}
+                >
+                  <span class="font-medium">Portada Hub</span>
+                  <span class="text-[10px] text-zinc-400">JPG · clic</span>
+                </div>
+                <div
+                  class="absolute inset-0"
+                  data-upload-preview="portada"
+                  hidden={!createPrefill.hubCoverUrl}
+                >
+                  <img
+                    src={createPrefill.hubCoverUrl || undefined}
+                    alt="Portada"
+                    class="h-full w-full object-cover"
+                    data-upload-img="portada"
+                    hidden={!createPrefill.hubCoverUrl}
+                  />
+                </div>
+                <span
+                  class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-zinc-950/50 text-[11px] font-medium text-white backdrop-blur-[2px]"
+                  data-upload-loading="portada"
+                >
+                  Cargando...
+                </span>
+              </button>
+              <input type="file" id="input-portada-file" accept="image/*" class="hidden" />
+              <input
+                type="hidden"
+                id="hub_cover_url"
+                name="hub_cover_url"
+                value={createPrefill.hubCoverUrl}
+                data-portada-hidden
+              />
+              <input
+                type="hidden"
+                name="portada_url"
+                value={createPrefill.hubCoverUrl}
+                data-portada-alias
+              />
+              <p
+                class="mt-1 min-h-[1rem] text-[10px] text-zinc-400"
+                role="status"
+                data-upload-status="portada"
+              ></p>
+            </div>
+          </div>
+
+          {
+            createErrorMsg && (
+              <p
+                class="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-rose-600 dark:text-rose-400"
+                role="alert"
+              >
+                {createErrorMsg}
+              </p>
+            )
+          }
+
+          <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-900">
+            <button
+              type="button"
+              class="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 px-4 py-2"
+              data-nuevo-rest-close
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              id="create-submit"
+              class="nuevo-rest-submit px-5 py-2.5 rounded-xl font-medium text-xs bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 transition-all shadow-sm disabled:cursor-wait disabled:opacity-60"
+            >
+              Crear
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
 </Layout>
+
+<style is:global>
+  /* Escape admin remaps (bg-white / text-white) for Network Metrics */
+  html.admin-panel .super-net-card {
+    background-color: #ffffff !important;
+    color: inherit !important;
+    border-color: rgba(228, 228, 231, 0.9) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03) !important;
+  }
+
+  html.admin-panel.dark .super-net-card,
+  html.admin-panel[data-theme='dark'] .super-net-card,
+  html.admin-panel[data-theme='onyx'] .super-net-card {
+    background-color: #09090b !important;
+    border-color: rgba(39, 39, 42, 0.8) !important;
+    box-shadow: none !important;
+  }
+
+  html.admin-panel .super-net .super-net-kpi-value {
+    color: #18181b !important;
+  }
+
+  html.admin-panel.dark .super-net .super-net-kpi-value,
+  html.admin-panel[data-theme='dark'] .super-net .super-net-kpi-value,
+  html.admin-panel[data-theme='onyx'] .super-net .super-net-kpi-value {
+    color: #ffffff !important;
+  }
+
+  html.admin-panel .super-net-btn-studio {
+    background-color: #18181b !important;
+    color: #ffffff !important;
+  }
+
+  html.admin-panel .super-net-btn-studio:hover {
+    background-color: #27272a !important;
+    color: #ffffff !important;
+  }
+
+  html.admin-panel.dark .super-net-btn-studio,
+  html.admin-panel[data-theme='dark'] .super-net-btn-studio,
+  html.admin-panel[data-theme='onyx'] .super-net-btn-studio {
+    background-color: #27272a !important;
+    color: #e4e4e7 !important;
+  }
+
+  html.admin-panel.dark .super-net-btn-studio:hover,
+  html.admin-panel[data-theme='dark'] .super-net-btn-studio:hover,
+  html.admin-panel[data-theme='onyx'] .super-net-btn-studio:hover {
+    background-color: #3f3f46 !important;
+    color: #e4e4e7 !important;
+  }
+
+  html.admin-panel .super-net-btn-web {
+    background-color: #f4f4f5 !important;
+    color: #3f3f46 !important;
+    border-color: rgba(228, 228, 231, 0.8) !important;
+  }
+
+  html.admin-panel .super-net-btn-web:hover {
+    background-color: #e4e4e7 !important;
+    color: #3f3f46 !important;
+  }
+
+  html.admin-panel.dark .super-net-btn-web,
+  html.admin-panel[data-theme='dark'] .super-net-btn-web,
+  html.admin-panel[data-theme='onyx'] .super-net-btn-web {
+    background-color: #18181b !important;
+    color: #d4d4d8 !important;
+    border-color: #27272a !important;
+  }
+
+  html.admin-panel.dark .super-net-btn-web:hover,
+  html.admin-panel[data-theme='dark'] .super-net-btn-web:hover,
+  html.admin-panel[data-theme='onyx'] .super-net-btn-web:hover {
+    background-color: #27272a !important;
+    color: #d4d4d8 !important;
+  }
+
+  html.admin-panel .super-net-empty {
+    color: #d4d4d8 !important;
+  }
+
+  html.admin-panel.dark .super-net-empty,
+  html.admin-panel[data-theme='dark'] .super-net-empty,
+  html.admin-panel[data-theme='onyx'] .super-net-empty {
+    color: #3f3f46 !important;
+  }
+
+  html.admin-panel .super-net .text-sm.font-semibold,
+  html.admin-panel .super-net header.text-sm.font-semibold {
+    color: #18181b !important;
+  }
+
+  html.admin-panel.dark .super-net .text-sm.font-semibold,
+  html.admin-panel.dark .super-net header.text-sm.font-semibold,
+  html.admin-panel[data-theme='dark'] .super-net .text-sm.font-semibold,
+  html.admin-panel[data-theme='onyx'] .super-net .text-sm.font-semibold {
+    color: #ffffff !important;
+  }
+
+  /* Nuevo Restaurante modal — escape admin remaps */
+  html.admin-panel .nuevo-rest-modal__card {
+    background-color: #ffffff !important;
+    color: inherit !important;
+    border-color: rgba(228, 228, 231, 0.9) !important;
+  }
+
+  html.admin-panel.dark .nuevo-rest-modal__card,
+  html.admin-panel[data-theme='dark'] .nuevo-rest-modal__card,
+  html.admin-panel[data-theme='onyx'] .nuevo-rest-modal__card {
+    background-color: #09090b !important;
+    border-color: rgba(39, 39, 42, 0.8) !important;
+  }
+
+  html.admin-panel .nuevo-rest-modal__title {
+    color: #18181b !important;
+  }
+
+  html.admin-panel.dark .nuevo-rest-modal__title,
+  html.admin-panel[data-theme='dark'] .nuevo-rest-modal__title,
+  html.admin-panel[data-theme='onyx'] .nuevo-rest-modal__title {
+    color: #ffffff !important;
+  }
+
+  html.admin-panel .nuevo-rest-field {
+    background-color: #fafafa !important;
+    color: #18181b !important;
+  }
+
+  html.admin-panel.dark .nuevo-rest-field,
+  html.admin-panel[data-theme='dark'] .nuevo-rest-field,
+  html.admin-panel[data-theme='onyx'] .nuevo-rest-field {
+    background-color: rgba(24, 24, 27, 0.6) !important;
+    color: #ffffff !important;
+  }
+
+  html.admin-panel .nuevo-rest-submit {
+    background-color: #18181b !important;
+    color: #ffffff !important;
+  }
+
+  html.admin-panel .nuevo-rest-submit:hover:not(:disabled) {
+    background-color: #27272a !important;
+    color: #ffffff !important;
+  }
+
+  html.admin-panel.dark .nuevo-rest-submit,
+  html.admin-panel[data-theme='dark'] .nuevo-rest-submit,
+  html.admin-panel[data-theme='onyx'] .nuevo-rest-submit {
+    background-color: #ffffff !important;
+    color: #09090b !important;
+  }
+
+  html.admin-panel.dark .nuevo-rest-submit:hover:not(:disabled),
+  html.admin-panel[data-theme='dark'] .nuevo-rest-submit:hover:not(:disabled),
+  html.admin-panel[data-theme='onyx'] .nuevo-rest-submit:hover:not(:disabled) {
+    background-color: #e4e4e7 !important;
+    color: #09090b !important;
+  }
+
+  html.admin-panel .nuevo-rest-modal[hidden] {
+    display: none !important;
+  }
+
+  /* Timeframe selector — escape bg-white remap */
+  html.admin-panel .super-tf-bar {
+    background-color: #f4f4f5 !important;
+    border-color: rgba(228, 228, 231, 0.8) !important;
+  }
+
+  html.admin-panel.dark .super-tf-bar,
+  html.admin-panel[data-theme='dark'] .super-tf-bar,
+  html.admin-panel[data-theme='onyx'] .super-tf-bar {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+  }
+
+  html.admin-panel .super-tf-on {
+    background-color: #ffffff !important;
+    color: #18181b !important;
+  }
+
+  html.admin-panel.dark .super-tf-on,
+  html.admin-panel[data-theme='dark'] .super-tf-on,
+  html.admin-panel[data-theme='onyx'] .super-tf-on {
+    background-color: #27272a !important;
+    color: #ffffff !important;
+  }
+</style>
 
 <script>
   function initSuperTabs() {
@@ -1908,12 +2554,539 @@ function resolveMapsEmbed(direccion) {
     });
   }
 
+  function initNuevoRestModal() {
+    const overlay = document.querySelector('[data-nuevo-rest-overlay]');
+    if (!(overlay instanceof HTMLElement)) return;
+    if (overlay.dataset.bound === 'true') return;
+    overlay.dataset.bound = 'true';
+
+    const form = document.getElementById('nuevo-rest-form');
+    const slugInput = document.getElementById('slug');
+    const nombreInput = document.getElementById('nombre_comercial');
+    const submitBtn = document.getElementById('create-submit');
+    const card = overlay.querySelector('[data-nuevo-rest-card]');
+
+    /**
+     * @param {string | null | undefined} value
+     */
+    function toSlug(value) {
+      return String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    /**
+     * @param {string} url
+     */
+    function cloudinaryTrim(url) {
+      const raw = String(url || '').trim();
+      if (!raw) return '';
+      const marker = '/upload/';
+      const at = raw.indexOf(marker);
+      if (at === -1 || !/cloudinary\.com/i.test(raw)) return raw;
+      const after = raw.slice(at + marker.length);
+      if (/e_trim/.test(after)) return raw;
+      return `${raw.slice(0, at + marker.length)}e_trim/${after}`;
+    }
+
+    function openModal() {
+      overlay.hidden = false;
+      document.documentElement.classList.add('overflow-hidden');
+      const focusEl = nombreInput instanceof HTMLInputElement ? nombreInput : null;
+      window.setTimeout(() => focusEl?.focus(), 30);
+    }
+
+    function closeModal() {
+      overlay.hidden = true;
+      document.documentElement.classList.remove('overflow-hidden');
+      overlay.dataset.openOnLoad = 'false';
+    }
+
+    document.querySelectorAll('[data-nuevo-rest-open]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openModal();
+      });
+    });
+
+    document.querySelectorAll('[data-nuevo-rest-close]').forEach((btn) => {
+      btn.addEventListener('click', () => closeModal());
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    if (card instanceof HTMLElement) {
+      card.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !overlay.hidden) closeModal();
+    });
+
+    let slugTouched = Boolean(
+      slugInput instanceof HTMLInputElement && slugInput.value.trim(),
+    );
+
+    slugInput?.addEventListener('input', () => {
+      slugTouched = true;
+      if (slugInput instanceof HTMLInputElement) {
+        const cleaned = toSlug(slugInput.value);
+        if (cleaned !== slugInput.value) slugInput.value = cleaned;
+      }
+    });
+
+    nombreInput?.addEventListener('input', () => {
+      if (!slugTouched && slugInput instanceof HTMLInputElement) {
+        slugInput.value = toSlug(
+          nombreInput instanceof HTMLInputElement ? nombreInput.value : '',
+        );
+      }
+    });
+
+    /**
+     * @param {File} file
+     * @returns {Promise<{ url: string }>}
+     */
+    async function uploadToCloudinary(file) {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body });
+      /** @type {{ ok?: boolean, url?: string, secure_url?: string, error?: string }} */
+      const data = await res.json().catch(() => ({}));
+      const url = String(data.url || data.secure_url || '').trim();
+      if (!res.ok || !url) {
+        throw new Error(data.error || 'No se pudo subir la imagen');
+      }
+      return { url };
+    }
+
+    /**
+     * @param {'logo' | 'portada'} kind
+     * @param {boolean} loading
+     */
+    function setLoading(kind, loading) {
+      const el = document.querySelector(`[data-upload-loading="${kind}"]`);
+      if (el instanceof HTMLElement) {
+        el.classList.toggle('hidden', !loading);
+        el.classList.toggle('flex', loading);
+      }
+    }
+
+    /**
+     * @param {'logo' | 'portada'} kind
+     * @param {string} url
+     */
+    function showPreview(kind, url) {
+      const placeholder = document.querySelector(`[data-upload-placeholder="${kind}"]`);
+      const preview = document.querySelector(`[data-upload-preview="${kind}"]`);
+      const img = document.querySelector(`[data-upload-img="${kind}"]`);
+      const src = kind === 'logo' ? cloudinaryTrim(url) : url;
+      if (img instanceof HTMLImageElement) {
+        img.src = src;
+        img.hidden = false;
+      }
+      if (placeholder instanceof HTMLElement) placeholder.hidden = true;
+      if (preview instanceof HTMLElement) preview.hidden = false;
+    }
+
+    /**
+     * @param {'logo' | 'portada'} kind
+     * @param {string} message
+     * @param {'idle' | 'ok' | 'err'} state
+     */
+    function setStatus(kind, message, state) {
+      const el = document.querySelector(`[data-upload-status="${kind}"]`);
+      if (!(el instanceof HTMLElement)) return;
+      el.textContent = message;
+      el.className =
+        state === 'ok'
+          ? 'mt-1 min-h-[1rem] text-[10px] text-emerald-600 dark:text-emerald-400'
+          : state === 'err'
+            ? 'mt-1 min-h-[1rem] text-[10px] text-rose-600 dark:text-rose-400'
+            : 'mt-1 min-h-[1rem] text-[10px] text-zinc-400';
+    }
+
+    /**
+     * @param {'logo' | 'portada'} kind
+     */
+    function bindUploader(kind) {
+      const fileInput = document.getElementById(
+        kind === 'logo' ? 'input-logo-file' : 'input-portada-file',
+      );
+      const trigger = document.querySelector(`[data-upload-trigger="${kind}"]`);
+      if (!(fileInput instanceof HTMLInputElement) || !(trigger instanceof HTMLElement)) {
+        return;
+      }
+
+      trigger.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files?.[0];
+        fileInput.value = '';
+        if (!file) return;
+
+        setLoading(kind, true);
+        setStatus(kind, 'Cargando...', 'idle');
+
+        try {
+          const { url } = await uploadToCloudinary(file);
+
+          if (kind === 'logo') {
+            const hidden = document.getElementById('logo_url');
+            if (hidden instanceof HTMLInputElement) hidden.value = url;
+          } else {
+            const hidden = document.querySelector('[data-portada-hidden]');
+            const alias = document.querySelector('[data-portada-alias]');
+            if (hidden instanceof HTMLInputElement) hidden.value = url;
+            if (alias instanceof HTMLInputElement) alias.value = url;
+          }
+
+          showPreview(kind, url);
+          setStatus(kind, '✓ Subido', 'ok');
+        } catch (err) {
+          setStatus(
+            kind,
+            err instanceof Error ? err.message : 'Error al subir',
+            'err',
+          );
+        } finally {
+          setLoading(kind, false);
+        }
+      });
+    }
+
+    bindUploader('logo');
+    bindUploader('portada');
+
+    // Prefill previews after validation error
+    {
+      const logoHidden = document.getElementById('logo_url');
+      if (logoHidden instanceof HTMLInputElement && logoHidden.value.trim()) {
+        showPreview('logo', logoHidden.value.trim());
+      }
+      const portadaHidden = document.querySelector('[data-portada-hidden]');
+      if (portadaHidden instanceof HTMLInputElement && portadaHidden.value.trim()) {
+        showPreview('portada', portadaHidden.value.trim());
+      }
+    }
+
+    form?.addEventListener('submit', () => {
+      if (submitBtn instanceof HTMLButtonElement) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creando…';
+      }
+    });
+
+    // ?nuevo=1 or SSR error reopen
+    const params = new URLSearchParams(window.location.search);
+    if (overlay.dataset.openOnLoad === 'true' || params.get('nuevo') === '1') {
+      openModal();
+      if (params.get('nuevo') === '1') {
+        params.delete('nuevo');
+        const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, '', next);
+      }
+    }
+  }
+
+  function initSuperNetTimeframe() {
+    const panel = document.querySelector('[data-super-panel="metricas"]');
+    if (!(panel instanceof HTMLElement)) return;
+    if (panel.dataset.tfBound === 'true') return;
+    panel.dataset.tfBound = 'true';
+
+    const bar = panel.querySelector('[data-super-timeframe-bar]');
+    const monthSelect = panel.querySelector('[data-super-timeframe-select]');
+    if (!(bar instanceof HTMLElement)) return;
+
+    /** @type {any} */
+    let series = {
+      eventMode: false,
+      currentMonth: '',
+      all: { total: 0, byRest: {}, topPlatoByRest: {}, topPlatos: [], rankingMayor: [], rankingMenor: [] },
+      months: {},
+    };
+    try {
+      const raw = panel.getAttribute('data-network-series');
+      if (raw) series = JSON.parse(raw);
+    } catch {
+      /* keep empty */
+    }
+
+    const TF_ON =
+      'super-tf-on px-3 py-1.5 rounded-xl font-semibold bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs';
+    const TF_OFF =
+      'px-3 py-1.5 rounded-xl font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors';
+
+    /**
+     * @param {number} n
+     */
+    function formatKpi(n) {
+      return (Number(n) || 0).toLocaleString('es-VE');
+    }
+
+    /**
+     * @param {unknown} value
+     */
+    function esc(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * @param {string | null | undefined} name
+     */
+    function initials(name) {
+      return String(name || '')
+        .trim()
+        .slice(0, 2)
+        .toUpperCase() || '—';
+    }
+
+    /**
+     * @param {string} url
+     */
+    function trimLogo(url) {
+      const raw = String(url || '').trim();
+      if (!raw) return '';
+      const marker = '/upload/';
+      const at = raw.indexOf(marker);
+      if (at === -1 || !/cloudinary\.com/i.test(raw)) return raw;
+      const after = raw.slice(at + marker.length);
+      if (/e_trim/.test(after)) return raw;
+      return `${raw.slice(0, at + marker.length)}e_trim/${after}`;
+    }
+
+    /**
+     * @param {any} bucket
+     * @param {string} periodLabel
+     */
+    function applyBucket(bucket, periodLabel) {
+      const data = bucket || {
+        total: 0,
+        byRest: {},
+        topPlatoByRest: {},
+        topPlatos: [],
+        rankingMayor: [],
+        rankingMenor: [],
+      };
+
+      const kpi = panel.querySelector('[data-net-kpi="vistas-webapps"]');
+      if (kpi instanceof HTMLElement) kpi.textContent = formatKpi(data.total);
+
+      const col = panel.querySelector('[data-net-visits-col]');
+      if (col instanceof HTMLElement) {
+        col.textContent = periodLabel === 'General' ? 'Visitas' : `Visitas (${periodLabel})`;
+      }
+      const hint = panel.querySelector('[data-net-visits-hint]');
+      if (hint instanceof HTMLElement) {
+        hint.textContent =
+          periodLabel === 'General'
+            ? 'Visitas · histórico agregado'
+            : `Visitas · ${periodLabel}`;
+      }
+      panel.querySelectorAll('[data-net-period-label]').forEach((el) => {
+        el.textContent = periodLabel;
+      });
+
+      panel.querySelectorAll('[data-net-row]').forEach((row) => {
+        if (!(row instanceof HTMLElement)) return;
+        const id = row.getAttribute('data-net-row') || '';
+        const visitas = Number(data.byRest?.[id]) || 0;
+        const visitasEl = row.querySelector('[data-net-visitas]');
+        if (visitasEl instanceof HTMLElement) visitasEl.textContent = formatKpi(visitas);
+
+        const topName = String(data.topPlatoByRest?.[id] || '').trim();
+        const platoCell = row.querySelector('[data-net-plato-top]');
+        if (platoCell instanceof HTMLElement) {
+          if (topName) {
+            platoCell.innerHTML = `<span class="text-zinc-700 dark:text-zinc-300">${esc(topName)}</span>`;
+          } else {
+            platoCell.innerHTML =
+              '<span class="super-net-empty text-zinc-300 dark:text-zinc-700 font-mono text-xs">—</span>';
+          }
+        }
+      });
+
+      /**
+       * @param {HTMLElement | null} list
+       * @param {Array<{ nombre: string, restaurante: string, vistas: number }>} items
+       */
+      function renderTopPlatos(list, items) {
+        if (!(list instanceof HTMLElement)) return;
+        const rows = Array.isArray(items) ? items : [];
+        if (rows.length === 0) {
+          list.innerHTML =
+            '<li class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">Sin vistas registradas en el periodo.</li>';
+          return;
+        }
+        const max = Math.max(1, ...rows.map((r) => Number(r.vistas) || 0));
+        list.innerHTML = rows
+          .map((plato, i) => {
+            const vistas = Number(plato.vistas) || 0;
+            const pct = Math.round((vistas / max) * 100);
+            return `<li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+              <div class="flex items-center gap-3">
+                <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500">#${String(i + 1).padStart(2, '0')}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-zinc-900 dark:text-white">${esc(plato.nombre || '—')}</p>
+                  <p class="truncate text-[11px] text-zinc-500">${esc(plato.restaurante || '—')}</p>
+                </div>
+                <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">${formatKpi(vistas)}</span>
+              </div>
+              <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
+                <div class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60" style="width:${pct}%"></div>
+              </div>
+            </li>`;
+          })
+          .join('');
+      }
+
+      /**
+       * @param {HTMLElement | null} list
+       * @param {Array<{ nombre: string, slug: string, visitas: number, logoUrl?: string }>} items
+       */
+      function renderLocalRank(list, items) {
+        if (!(list instanceof HTMLElement)) return;
+        const rows = Array.isArray(items) ? items : [];
+        if (rows.length === 0) {
+          list.innerHTML =
+            '<li class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">Sin locales para ranking.</li>';
+          return;
+        }
+        const max = Math.max(1, ...rows.map((r) => Number(r.visitas) || 0));
+        list.innerHTML = rows
+          .map((local, i) => {
+            const vistas = Number(local.visitas) || 0;
+            const pct = Math.round((vistas / max) * 100);
+            const logo = trimLogo(local.logoUrl || '');
+            const media = logo
+              ? `<img src="${esc(logo)}" alt="${esc(local.nombre || '')}" class="w-8 h-8 rounded-lg object-contain bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shrink-0" loading="lazy" decoding="async" />`
+              : `<div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-500 dark:text-zinc-300 shrink-0">${esc(initials(local.nombre))}</div>`;
+            const slug = local.slug ? `/${local.slug}` : '—';
+            return `<li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+              <div class="flex items-center gap-3">
+                <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500">#${String(i + 1).padStart(2, '0')}</span>
+                ${media}
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-zinc-900 dark:text-white">${esc(local.nombre || '—')}</p>
+                  <p class="truncate font-mono text-[11px] text-zinc-500">${esc(slug)}</p>
+                </div>
+                <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">${formatKpi(vistas)}</span>
+              </div>
+              <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
+                <div class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60" style="width:${pct}%"></div>
+              </div>
+            </li>`;
+          })
+          .join('');
+      }
+
+      renderTopPlatos(
+        /** @type {HTMLElement | null} */ (panel.querySelector('[data-net-top-platos]')),
+        data.topPlatos,
+      );
+      renderLocalRank(
+        /** @type {HTMLElement | null} */ (panel.querySelector('[data-net-rank-mayor]')),
+        data.rankingMayor,
+      );
+      renderLocalRank(
+        /** @type {HTMLElement | null} */ (panel.querySelector('[data-net-rank-menor]')),
+        data.rankingMenor,
+      );
+    }
+
+    /**
+     * @param {'all' | 'current' | 'month'} mode
+     * @param {string} [month]
+     */
+    function setTimeframe(mode, month = '') {
+      bar.querySelectorAll('[data-super-timeframe]').forEach((btn) => {
+        if (!(btn instanceof HTMLElement)) return;
+        const on =
+          mode === 'all'
+            ? btn.getAttribute('data-super-timeframe') === 'all'
+            : mode === 'current'
+              ? btn.getAttribute('data-super-timeframe') === 'current'
+              : false;
+        btn.className = on ? TF_ON : TF_OFF;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (monthSelect instanceof HTMLSelectElement) {
+        monthSelect.classList.toggle('super-tf-on', mode === 'month');
+        if (mode !== 'month') monthSelect.value = '';
+      }
+
+      let bucket = series.all;
+      let label = 'General';
+      if (series.eventMode) {
+        if (mode === 'current') {
+          bucket = series.months?.[series.currentMonth] || {
+            total: 0,
+            byRest: {},
+            topPlatoByRest: {},
+            topPlatos: [],
+            rankingMayor: [],
+            rankingMenor: [],
+          };
+          label = 'Este mes';
+        } else if (mode === 'month' && month) {
+          bucket = series.months?.[month] || {
+            total: 0,
+            byRest: {},
+            topPlatoByRest: {},
+            topPlatos: [],
+            rankingMayor: [],
+            rankingMenor: [],
+          };
+          const opt =
+            monthSelect instanceof HTMLSelectElement
+              ? [...monthSelect.options].find((o) => o.value === month)
+              : null;
+          label = opt?.textContent?.trim() || month;
+        }
+      }
+      applyBucket(bucket, label);
+    }
+
+    bar.querySelectorAll('[data-super-timeframe]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-super-timeframe') === 'current' ? 'current' : 'all';
+        setTimeframe(mode);
+      });
+    });
+
+    if (monthSelect instanceof HTMLSelectElement) {
+      monthSelect.addEventListener('change', () => {
+        const value = monthSelect.value;
+        if (!value) {
+          setTimeframe('all');
+          return;
+        }
+        setTimeframe('month', value);
+      });
+    }
+  }
+
   function initSuperHub() {
     initSuperTabs();
     initHubSearch();
     initCardMenus();
     initFichaForms();
     initOperativoForms();
+    initNuevoRestModal();
+    initSuperNetTimeframe();
     void hydrateLogoPlatesFromCovers();
   }
 

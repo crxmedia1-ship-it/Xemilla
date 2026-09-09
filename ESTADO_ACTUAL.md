@@ -1,10 +1,10 @@
 # XEMILLA — ESTADO ACTUAL DEL PROYECTO
 
-> **Última Actualización:** 2026-09-08 03:55 -04  
+> **Última Actualización:** 2026-09-08 22:30 -04  
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)  
-> **HEAD:** `7c5cf6f` (ops auto-save; sin `#guardar-cambios` en Operación)
+> **HEAD:** `main` — Identidad Light/Dark + Hub modal/métricas (ver commit más reciente)
 
 ---
 
@@ -272,14 +272,15 @@ Tamaños `0` / `null` / vacío → fallback (`normalizeHomePx`).
 - **Full bleed:** `main` = `w-full min-w-full px-4 sm:px-8 lg:px-12 py-6` (sin `max-w-5xl` / `max-w-6xl` / `max-w-[90rem]`).
 - Lista de locales: grid denso `grid-cols-1 sm:2 md:3 lg:4 2xl:5 gap-6 w-full` + CTA Studio / menú de card.
 - Badge Acceso Activo / Sin Acceso: SSR cruza Auth `listUsers` (metadata `restaurante_id`) — **no** `Boolean(user_id)` (ese campo suele ser el SuperAdmin)
-- Tabs: **Locales** · **Métricas** (Network Intelligence, 30 días)
-- Theme switcher + **Nuevo restaurante** + logout
+- Tabs: **Locales** · **Métricas** (Network Intelligence)
+- Theme switcher + **Nuevo restaurante** (modal flotante) + logout
 - **Sin** Live Preview
+- **Alta de local:** `/admin/super/nuevo-restaurante` **redirige** a `/admin/super/dashboard?nuevo=1`. El formulario vive en el modal `#nuevo-rest-modal` (`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm`). POST SSR `intent=create-restaurante` → `createRestauranteAsSuperAdmin`. Dropzones Logo + Portada Hub 50/50 → `POST /api/upload` (Cloudinary). Escape CSS: `.nuevo-rest-modal__card` (el remap `.bg-white` no aplica).
 
-**Tab Métricas (Network Intelligence):** no reutiliza `AdminMetricsPanel` (dona/lista de local). Tres niveles a ancho completo vía `fetchNetworkIntelligence`:
-1. **KPIs maestros** (`lg:grid-cols-4`): Tráfico Global Red · Locales Operativos (acceso/total) · Catálogo Global (platos activos) · Conversión de Red (WA+Maps; **0** hasta tracking CTA).
-2. **Tabla rendimiento** por restaurante: logo+nombre · slug · visitas 30d · plato más visto · tasa WA · estado acceso · Studio ↗ / WebApp ↗.
-3. **Top red** (`lg:grid-cols-2`): Top 5 platos de la red · ranking de locales por visitas.
+**Tab Métricas (Network Intelligence):** no reutiliza `AdminMetricsPanel`. Datos: `fetchNetworkIntelligence` (`src/lib/metrics.js`) sobre `plato_vistas` (mismo stream que Studio; **no** hay tabla de pageviews). Series `all` + `months` desde `restaurantes.created_at`.
+- **Selector temporal:** píldora `[ General ]` · `[ Este Mes ]` · `<select>` mes a mes.
+- **KPIs** (`lg:grid-cols-4`, cards `super-net-card`): **Vistas Totales WebApps** (suma global de visitas WebApp) · Locales Operativos · Catálogo Global · Conversión de Red (WA+Maps; **0** hasta tracking CTA). Números `text-4xl lg:text-5xl font-extralight font-mono`.
+- **Tabla:** logo+nombre · slug · visitas del periodo · plato más visto · tasa WA · estado acceso · **Studio ↗** (`bg-zinc-900`) / **WebApp ↗** (`bg-zinc-100`). JS recalcula KPI, columna visitas, top platos y rankings al cambiar el timeframe.
 
 
 
@@ -323,7 +324,17 @@ Tab operativo (SSR; SuperAdmin no ve esta pill). Light = Clean White; Dark = gla
 
 ### Power Studio Identidad (Home / Core)
 
-Rediseño denso (**sin Live Preview**, sin copy largo). Grid modular. Persistencia: `POST /api/update-marca`.
+Rediseño denso (**sin Live Preview**). Bento unificado Light/Dark. Persistencia: `POST /api/update-marca` (`#marca-save`). Horarios/mapa/redes en Identidad: `PerfilLocalCard` (`marca-horarios`, `marca-coordenadas`, `marca-redes-*`).
+
+**Matriz Light / Dark (cards `.identidad-studio-card`):**
+- Light: `bg-white` + borde zinc + sombra suave (escape CSS — el remap `html.admin-panel .bg-white` **pinta botón negro** si no hay escape).
+- Dark: `dark:bg-zinc-900/60` glass + `backdrop-blur-xl`.
+- Inputs: Light `zinc-50` · Dark `zinc-950`. Sliders: track zinc, acento `emerald-500`.
+- **Selectores de plantilla (Estructura & Layout):** inactivo zinc; **activo esmeralda** (`bg-emerald-500/10` + `border-emerald-500`) + badge `ACTIVO`. **No** usar `bg-zinc-950` / `text-white` en esas cards (remap → negro sobre negro).
+- **Cápsulas de color** (Horarios → Atmósfera): `.identidad-color-capsule` (`zinc-50` Light, no `bg-white`). Picker redondo + HEX mono.
+- **Opacidad Overlay:** un solo `input[type=range]` `#marca-home-overlay-opacity` (`name="home_overlay_opacity"`, 0–90, step 5) + valor vivo `#overlay-opacity-val`.
+- **Canales de contacto (Dark):** labels `zinc-200`, inputs `zinc-950/80` texto blanco; switches track `emerald-500`.
+- **Gadgets activos:** `.gadget-card--on` borde/fondo esmeralda + toggle `emerald-500` (no negro/blanco).
 
 
 | Card                                       | Campos                                                                                                                                                                    |
@@ -334,10 +345,12 @@ Rediseño denso (**sin Live Preview**, sin copy largo). Grid modular. Persistenc
 | **Colores** (slim)                         | `subtexto_color`, `color_primario` (+ hidden `color_texto`)                                                                                                               |
 | **Escalas de Tipografía y Logo** (visible) | solo `logo_size` · `titulo_size` · `eslogan_size` · `menu_size` (sin X/Y)                                                                                                 |
 | **Share & CSS**                            | `share_image_url`, `app_icon_url`, `css_avanzado`                                                                                                                         |
-| **Gadgets / QR**                           | paneles blancos modulares (selección verde fija)                                                                                                                          |
+| **Gadgets / QR**                           | mismo bento Light/Dark; gadget ON = esmeralda                                                                                                                             |
 
 
 **Live Preview: REMOVIDO** — no hay iframe, phone chrome, sticky split-screen ni sync de CSS vars hacia preview. “Abrir WebApp ↗” abre `/{slug}` en pestaña nueva.
+
+**Trampas de remap (`admin-themes.css`):** `.bg-white` → `--btn-primary-bg` (negro en Light). `.text-white` → `--text-primary` (negro en Light). Escapes: `.identidad-studio-card`, `.identidad-color-capsule`, `.super-net-card`, `.nuevo-rest-modal__card`, `.studio-layout-card--active`.
 
 ### Temas admin (dark / light)
 
@@ -349,7 +362,9 @@ Rediseño denso (**sin Live Preview**, sin copy largo). Grid modular. Persistenc
 
 
 Scoped: `html.admin-panel` + `data-theme` / `.dark`|`.light`. Toggle: `AdminThemeSwitcher.astro`. CSS: `admin-themes.css`.  
-**Ops:** Light = Clean White (`#ops-contacto-card.ops-studio`). Dark = glass zinc (`zinc-900/60` + `backdrop-blur-xl`). **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — no usar `bg-white` en tabs del flyer (`popup-seg-tab--on`).
+**Ops:** Light = Clean White (`#ops-contacto-card.ops-studio`). Dark = glass zinc (`zinc-900/60` + `backdrop-blur-xl`).  
+**Identidad / Hub:** Light = cards blancas reales vía escape; Dark = zinc glass. Activos de layout + gadgets + switches de horario/redes = **esmeralda**.  
+**Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — no usar `bg-white` crudo en cards Identidad, cápsulas de color, KPIs Hub ni tabs del flyer (`popup-seg-tab--on`).
 
 ---
 
@@ -466,6 +481,8 @@ Whitelist aislada de Identidad. Parches tipicos:
 - [x] **Dark Abismo + purge estrellas (2026-09-05):** `Layout.astro` / `admin-themes.css` — `#09090b` + halo radial; cards `dark:bg-zinc-900/60`; commit `12c39ca`
 - [x] **Studio móvil (2026-09-05):** header sin avatar; horarios 2 filas `<sm`; fotos métricas `grid-cols-1`; commit `e79e294`
 - [x] **Ops auto-save (2026-09-08):** sin `#guardar-cambios`; debounce 600 ms + toast `#ops-autosave-toast`; commit `7c5cf6f`
+- [x] **Hub Network Intelligence + modal alta (2026-09-08):** KPI Vistas Totales WebApps + timeframe General/mes; alta en modal (`?nuevo=1`); `nuevo-restaurante.astro` solo redirect
+- [x] **Identidad Light/Dark + esmeralda (2026-09-08):** bento blanco/glass; plantillas y gadgets ON en verde; overlay slider único; cápsulas de color sin remap negro; contacto Dark legible
 - [x] **Menú hub + divisas + chef (2026-08 → 09):** portal `hub_categories`; `.currency-compact` USD/BS/EUR + BCV; badge «Sugerencia del Chef» (`destacado`); grid 2 cols móvil; `estilo_tarjetas` cristal/sólido/outline/neón/elevada; commits `6f4639c`…`bcf16f4`
 
 
@@ -489,7 +506,7 @@ Whitelist aislada de Identidad. Parches tipicos:
 1. **Leer este archivo primero** (SSOT).
 2. Defaults / rangos / normalize: `src/lib/secciones-ui.js`. Popup flyer: `src/lib/popup-banner.js`.
 3. SuperAdmin hub: `admin/super/dashboard.astro`. Identidad: `admin/dashboard.astro` (`marca-form`). Ops: `#ops-contacto-card` + `PerfilLocalCard` + `WelcomePopupCard`. **No existe Live Preview.**
-4. Temas admin: `xemilla-admin-theme` → dark = Abismo de Ultra-Lujo (`#09090b` + halo, **sin estrellas**) · light = Habitación del Tiempo. Ops Light = Clean White; Ops Dark = glass zinc sobre el abismo. **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario — en tabs del flyer usar `popup-seg-tab--on`, no `bg-white`. Header: lockup logos, 64px; **sin** avatar ni `#guardar-cambios`; operativo = WebApp ↗ + tema + Salir.
+4. Temas admin: `xemilla-admin-theme` → dark = Abismo de Ultra-Lujo (`#09090b` + halo, **sin estrellas**) · light = Habitación del Tiempo. Ops Light = Clean White; Ops Dark = glass zinc. Identidad/Hub: cards blancas vía `.identidad-studio-card` / `.super-net-card`. Activo layout/gadgets = esmeralda. **Cuidado:** `html.admin-panel .bg-white` remapea a botón primario. Header: lockup logos, 64px; **sin** avatar ni `#guardar-cambios`; operativo = WebApp ↗ + tema + Salir. Alta SuperAdmin = modal en el Hub, no la página llena `nuevo-restaurante.astro`.
 5. Persistencia Identidad: `POST /api/update-marca` (`#marca-save`, SuperAdmin). Ops: auto-save debounce 600 ms → `POST /api/update-operativo-contacto` (toast `#ops-autosave-toast`). CRUD Menú (platos) tiene su propio auto-save en el tab Menú.
 6. Render público: `RestaurantApp.astro` → atmósfera + Home + chrome + `MenuPanel` + `WelcomePopup` si `popupBannerIsRenderable`. Themes Home **no** pintan fondos.
 7. Menú: `ui_estilo.menu.navegacion` (`hub_categories` | `scroll` | `split_sidebar` | `swiper_catalog`); chef = `platos.destacado`; divisas = `.currency-compact`.
