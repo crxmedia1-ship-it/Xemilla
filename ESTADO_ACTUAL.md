@@ -4,7 +4,7 @@
 > **Brand / Parent:** CRX  
 > **Stack:** Astro 7 · Tailwind CSS 4 · Supabase · Cloudinary · Vercel (`@astrojs/vercel`)  
 > **Runtime:** Node `>=22.12.0` · SSR (`output: 'server'`)  
-> **HEAD:** `main` — Identidad Light/Dark + Hub modal/métricas (ver commit más reciente)
+> **HEAD:** `90b68e4` (Identidad Light/Dark + Hub modal/métricas; gadgets ON esmeralda)
 
 ---
 
