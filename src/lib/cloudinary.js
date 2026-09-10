@@ -1,28 +1,58 @@
 import { v2 as cloudinary } from 'cloudinary';
 
 /**
- * Resuelve CLOUDINARY_URL desde todas las fuentes posibles.
- * @returns {string}
- */
-export function resolveCloudinaryUrl() {
-  const candidates = [
-    import.meta.env.CLOUDINARY_URL,
-    process.env.CLOUDINARY_URL,
-  ];
-
-  for (const value of candidates) {
-    const url = String(value ?? '').trim();
-    if (url) return stripQuotes(url);
-  }
-
-  return '';
-}
-
-/**
  * @param {string} value
  */
 function stripQuotes(value) {
   return value.replace(/^["']|["']$/g, '');
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function envString(value) {
+  return stripQuotes(String(value ?? '').trim());
+}
+
+/**
+ * Lee una variable de entorno (Vite + Node).
+ * @param {string} name
+ * @returns {string}
+ */
+function readEnv(name) {
+  const fromMeta =
+    typeof import.meta !== 'undefined' && import.meta.env
+      ? import.meta.env[name]
+      : undefined;
+  return envString(fromMeta) || envString(process.env[name]);
+}
+
+/**
+ * Credenciales Root estrictas desde env (sin CLOUDINARY_URL).
+ * @returns {{ cloud_name: string, api_key: string, api_secret: string } | null}
+ */
+export function resolveCloudinaryCredentials() {
+  const api_key = readEnv('CLOUDINARY_API_KEY');
+  const api_secret = readEnv('CLOUDINARY_API_SECRET');
+  const cloud_name =
+    readEnv('PUBLIC_CLOUDINARY_CLOUD_NAME') || readEnv('CLOUDINARY_CLOUD_NAME');
+
+  if (api_key && api_secret && cloud_name) {
+    return { cloud_name, api_key, api_secret };
+  }
+
+  return null;
+}
+
+/**
+ * Construye connection string solo desde las 3 variables Root.
+ * @returns {string}
+ */
+export function resolveCloudinaryUrl() {
+  const creds = resolveCloudinaryCredentials();
+  if (!creds) return '';
+  return `cloudinary://${creds.api_key}:${creds.api_secret}@${creds.cloud_name}`;
 }
 
 /**
@@ -45,22 +75,23 @@ export function parseCloudinaryUrl(connectionUrl) {
 }
 
 /**
- * Inicializa el SDK de forma explícita con el string de conexión.
- * @param {string} [connectionUrl]
+ * Inicializa el SDK estrictamente con CLOUDINARY_API_KEY / SECRET / PUBLIC_CLOUDINARY_CLOUD_NAME.
+ * @param {string} [connectionUrl] Ignorado salvo para tests; preferimos env Root.
  * @returns {typeof cloudinary | null}
  */
 export function initCloudinary(connectionUrl) {
-  const url = stripQuotes(String(connectionUrl ?? resolveCloudinaryUrl()).trim());
-  if (!url) return null;
+  const parsed =
+    resolveCloudinaryCredentials() ||
+    (connectionUrl ? parseCloudinaryUrl(connectionUrl) : null);
 
-  const parsed = parseCloudinaryUrl(url);
   if (!parsed) {
-    console.error('[cloudinary] CLOUDINARY_URL con formato inválido');
+    console.error(
+      '[cloudinary] Faltan CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET / PUBLIC_CLOUDINARY_CLOUD_NAME',
+    );
     return null;
   }
 
-  // Disponible para el SDK si algún método lee process.env
-  process.env.CLOUDINARY_URL = url;
+  delete process.env.CLOUDINARY_URL;
 
   cloudinary.config({
     cloud_name: parsed.cloud_name,
@@ -138,12 +169,15 @@ export function optimizedPublicUrl(result) {
 }
 
 /**
- * Cloud name desde CLOUDINARY_URL (o fallback del proyecto).
+ * Cloud name desde PUBLIC_CLOUDINARY_CLOUD_NAME.
  * @returns {string}
  */
 export function getCloudinaryCloudName() {
-  const parsed = parseCloudinaryUrl(resolveCloudinaryUrl());
-  return parsed?.cloud_name || 'dgphys1xd';
+  return (
+    resolveCloudinaryCredentials()?.cloud_name ||
+    readEnv('PUBLIC_CLOUDINARY_CLOUD_NAME') ||
+    'wdmzaemi'
+  );
 }
 
 /**

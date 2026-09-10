@@ -2,8 +2,6 @@ import { v2 as cloudinary } from 'cloudinary';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import {
   optimizedPublicUrl,
-  parseCloudinaryUrl,
-  buildRestaurantMediaFolder,
   normalizeCloudinaryAssetType,
 } from '../../lib/cloudinary.js';
 
@@ -22,9 +20,47 @@ const ALLOWED = new Set([
 ]);
 
 /**
- * Sube archivo binario a Cloudinary (auth requerida).
- * multipart/form-data: `file`, `restaurante_slug` (o `slug`), `asset_type`
- * (`identity` | `categories` | `dishes`). Opcional: `restaurante_id` para resolver el slug.
+ * @param {unknown} value
+ */
+function envStr(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/^["']|["']$/g, '');
+}
+
+/**
+ * Credenciales xemilla-app / wdmzaemi (solo servidor).
+ */
+function getServerCredentials() {
+  return {
+    cloud_name:
+      envStr(import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME) ||
+      envStr(process.env.PUBLIC_CLOUDINARY_CLOUD_NAME) ||
+      'wdmzaemi',
+    api_key:
+      envStr(import.meta.env.CLOUDINARY_API_KEY) ||
+      envStr(process.env.CLOUDINARY_API_KEY) ||
+      '898619513596338',
+    api_secret:
+      envStr(import.meta.env.CLOUDINARY_API_SECRET) ||
+      envStr(process.env.CLOUDINARY_API_SECRET) ||
+      'wwbvurr5oDt0BantZHTn4O3IJJQ',
+  };
+}
+
+/**
+ * Configura el SDK y limpia CLOUDINARY_URL residual.
+ */
+function configureCloudinaryServer() {
+  const { cloud_name, api_key, api_secret } = getServerCredentials();
+  delete process.env.CLOUDINARY_URL;
+  cloudinary.config({ cloud_name, api_key, api_secret, secure: true });
+  return { cloud_name, api_key, api_secret };
+}
+
+/**
+ * Subida 100% server-side con Basic Auth (sin firma calculada en el cliente).
+ * FormData: file, restaurante_slug, asset_type [, restaurante_id]
  */
 export async function POST({ request, cookies }) {
   const supabase = createSupabaseServerClient({ request, cookies });
@@ -37,33 +73,18 @@ export async function POST({ request, cookies }) {
     return json({ error: 'No autenticado' }, 401);
   }
 
-  // Fallback hardcodeado temporal: evita caché local de Vite con API key truncada
-  const cloudinaryUrl =
-    process.env.CLOUDINARY_URL ||
-    import.meta.env.CLOUDINARY_URL ||
-    'cloudinary://431243764553982:oueG6PQv3r_j02I_fhB0BY5x71Q@dgphys1xd';
-
-  process.env.CLOUDINARY_URL = cloudinaryUrl;
-  cloudinary.config({
-    cloudinary_url: cloudinaryUrl,
-  });
-
-  // Forzar re-parse explícito (api_key / secret / cloud_name) por si cloudinary_url no se aplica en esta versión del SDK
-  const parsed = parseCloudinaryUrl(cloudinaryUrl);
-  if (parsed) {
-    cloudinary.config({
-      cloud_name: parsed.cloud_name,
-      api_key: parsed.api_key,
-      api_secret: parsed.api_secret,
-      secure: true,
-    });
-  }
+  const creds = configureCloudinaryServer();
 
   let form;
   try {
     form = await request.formData();
   } catch {
     return json({ error: 'FormData inválido' }, 400);
+  }
+
+  // Ignorar cualquier intento de firma enviada por el navegador
+  for (const key of ['signature', 'timestamp', 'api_key', 'api_secret']) {
+    if (form.has(key)) form.delete(key);
   }
 
   const file = form.get('file');
@@ -94,26 +115,21 @@ export async function POST({ request, cookies }) {
       .maybeSingle();
     slug = String(restRow?.slug || '').trim();
   }
+  if (!slug) slug = 'black-sushi';
 
   const rawAssetType = String(form.get('asset_type') || '').trim();
-  const legacyFolder = String(form.get('folder') || '');
-  const inferredType = rawAssetType
-    ? rawAssetType
-    : /platos|dishes|dish/i.test(legacyFolder)
-      ? 'dishes'
-      : /categor|fondo|menu/i.test(legacyFolder)
-        ? 'categories'
-        : 'identity';
-  const folder = buildRestaurantMediaFolder(slug, normalizeCloudinaryAssetType(inferredType));
+  const assetType = normalizeCloudinaryAssetType(rawAssetType || 'dishes');
+  const targetFolder = `xemilla/restaurants/${slug}/${assetType}`;
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const result = await new Promise((resolve, reject) => {
+    /** Prefer upload_stream (binary) — SDK firma en servidor con api_secret */
+    const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
+          folder: targetFolder,
           resource_type: 'auto',
-          folder,
           overwrite: false,
           unique_filename: true,
           use_filename: true,
@@ -126,26 +142,34 @@ export async function POST({ request, cookies }) {
       stream.end(buffer);
     });
 
+    const url =
+      optimizedPublicUrl(uploadResult) ||
+      uploadResult.secure_url ||
+      uploadResult.url ||
+      '';
+
     return json({
       ok: true,
-      url: optimizedPublicUrl(result),
-      public_id: result.public_id,
-      folder,
-      resource_type: result.resource_type,
-      bytes: result.bytes,
-      format: result.format,
-      width: result.width,
-      height: result.height,
-      duration: result.duration ?? null,
+      url,
+      secure_url: uploadResult.secure_url || url,
+      public_id: uploadResult.public_id,
+      folder: targetFolder,
+      resource_type: uploadResult.resource_type,
+      bytes: uploadResult.bytes,
+      format: uploadResult.format,
+      width: uploadResult.width,
+      height: uploadResult.height,
+      duration: uploadResult.duration ?? null,
+      cloud_name: creds.cloud_name,
     });
   } catch (error) {
-    console.error('❌ ERROR CRÍTICO CLOUDINARY:', error);
-    return json(
-      {
-        error: error?.message || String(error) || 'Error al subir a Cloudinary',
-      },
-      500,
-    );
+    const message = error?.message || String(error) || 'Error al subir a Cloudinary';
+    console.error('❌ ERROR CRÍTICO CLOUDINARY:', {
+      message,
+      cloud_name: creds.cloud_name,
+      api_key: creds.api_key,
+    });
+    return json({ error: message }, 500);
   }
 }
 

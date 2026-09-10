@@ -1,5 +1,7 @@
 /**
  * Recorte 4:3 de fotos de plato (admin + detalle WebApp).
+ * La subida NUNCA va a api.cloudinary.com desde el navegador:
+ * solo FormData → POST /api/upload (firma autenticada en el servidor).
  */
 
 /**
@@ -22,7 +24,7 @@ function cancelledError() {
 
 /**
  * @param {File|string} source
-   * @returns {Promise}
+ * @returns {Promise<File>}
  */
 export function cropPlatoImage(source) {
   return new Promise((resolve, reject) => {
@@ -57,20 +59,39 @@ export function cropPlatoImage(source) {
 }
 
 /**
- * @param {File} file
- * @param {string} restauranteId
+ * Sube el Blob/File del recorte SOLO vía nuestro backend.
+ * No genera signature / timestamp / api_key en el cliente.
+ *
+ * @param {Blob|File} croppedBlob
+ * @param {string} [restauranteId]
  * @param {string} [restauranteSlug]
+ * @returns {Promise<string>} secure URL
  */
-export async function uploadPlatoMediaFile(file, restauranteId, restauranteSlug) {
-  const fd = new FormData();
-  fd.set('file', file);
-  if (restauranteId) fd.set('restaurante_id', restauranteId);
-  if (restauranteSlug) fd.set('restaurante_slug', restauranteSlug);
-  fd.set('asset_type', 'dishes');
-  const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+export async function uploadPlatoMediaFile(croppedBlob, restauranteId, restauranteSlug) {
+  const currentSlug = String(restauranteSlug || '').trim() || 'black-sushi';
+  const formData = new FormData();
+  const file =
+    croppedBlob instanceof File
+      ? croppedBlob
+      : new File([croppedBlob], 'plato.jpg', {
+          type: croppedBlob.type || 'image/jpeg',
+        });
+
+  formData.append('file', file, file.name || 'plato.jpg');
+  formData.append('restaurante_slug', currentSlug);
+  formData.append('asset_type', 'dishes');
+  if (restauranteId) formData.append('restaurante_id', String(restauranteId));
+
+  const uploadRes = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  /** @type {{ ok?: boolean, url?: string, secure_url?: string, error?: string }} */
   const uploadJson = await uploadRes.json().catch(() => ({}));
-  if (!uploadRes.ok) throw new Error(uploadJson.error || 'No se pudo subir a Cloudinary');
-  const url = uploadJson.url;
+  if (!uploadRes.ok || uploadJson.ok === false) {
+    throw new Error(uploadJson.error || 'No se pudo subir a Cloudinary');
+  }
+  const url = uploadJson.url || uploadJson.secure_url;
   if (!url) throw new Error('Cloudinary no devolvió URL');
   return String(url);
 }

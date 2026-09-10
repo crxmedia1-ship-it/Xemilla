@@ -3,7 +3,12 @@
  * Recorte tipo Apple Photos para el Hub:
  * - cover → 100% del grid (16:9), modo Llenar
  * - logo  → placa inferior (~5.5:1): Encajar (default) o Llenar + color de fondo
+ * - plato → 4:3
  * API: window.XemillaImageCrop.open({ file?, url?, aspect:'logo'|'cover'|'plato', fit?, background?, onConfirm })
+ *
+ * Importante: este modal SOLO recorta y devuelve un File/Blob vía onConfirm.
+ * NO sube a Cloudinary ni genera firmas. La subida la hace el caller con
+ * fetch('/api/upload', { method:'POST', body: FormData }).
  */
 ---
 
