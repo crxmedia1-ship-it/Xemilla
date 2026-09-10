@@ -1,5 +1,6 @@
 /**
- * Agregación de métricas operativas (alertas_mesas + plato_vistas).
+ * Agregación de métricas operativas (plato_vistas).
+ * El módulo alertas_mesas fue retirado del esquema; las alertas van vacías.
  */
 
 /**
@@ -250,41 +251,12 @@ export function emptyMetricsSnapshot() {
 }
 
 /**
- * Carga alertas + vistas y calcula snapshot.
+ * Carga vistas de platos y calcula snapshot (sin alertas_mesas).
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {{ restauranteId?: string | null, days?: number }} [opts]
  */
 export async function fetchMetricsSnapshot(client, opts = {}) {
-  const days = opts.days ?? 30;
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const restauranteId = opts.restauranteId ? String(opts.restauranteId) : null;
-
-  let alertasQ = client
-    .from('alertas_mesas')
-    .select('id, restaurante_id, mesa, tipo, atendida, atendida_at, created_at')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(2000);
-
-  if (restauranteId) alertasQ = alertasQ.eq('restaurante_id', restauranteId);
-
-  let { data: alertas, error: alertasErr } = await alertasQ;
-  if (alertasErr && /atendida_at|column|schema cache/i.test(alertasErr.message || '')) {
-    console.warn('[metrics] atendida_at no disponible; SELECT legacy.', alertasErr.message);
-    let legacyQ = client
-      .from('alertas_mesas')
-      .select('id, restaurante_id, mesa, tipo, atendida, created_at')
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(2000);
-    if (restauranteId) legacyQ = legacyQ.eq('restaurante_id', restauranteId);
-    const legacy = await legacyQ;
-    alertas = legacy.data;
-    alertasErr = legacy.error;
-  }
-  if (alertasErr) {
-    console.warn('[metrics] alertas_mesas:', alertasErr.message);
-  }
 
   let vistas = [];
   let eventMode = false;
@@ -300,24 +272,9 @@ export async function fetchMetricsSnapshot(client, opts = {}) {
   if (!eventRes.error) {
     eventMode = true;
     vistas = eventRes.data || [];
-  } else {
-    let vistasQ = client
-      .from('plato_vistas')
-      .select('plato_nombre, vistas, plato_id')
-      .order('vistas', { ascending: false })
-      .limit(400);
-    if (restauranteId) vistasQ = vistasQ.eq('restaurante_id', restauranteId);
-    const { data: vistasData, error: vistasErr } = await vistasQ;
-    if (vistasErr) {
-      if (!/plato_vistas|column|schema cache/i.test(vistasErr.message || '')) {
-        console.warn('[metrics] plato_vistas:', vistasErr.message);
-      }
-    } else {
-      vistas = vistasData || [];
-    }
   }
 
-  return computeMetricsSnapshot(alertas || [], vistas, { eventMode });
+  return computeMetricsSnapshot([], vistas, { eventMode });
 }
 
 /**
@@ -460,19 +417,6 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
   if (!eventRes.error) {
     eventMode = true;
     vistasRows = eventRes.data || [];
-  } else {
-    const legacyRes = await client
-      .from('plato_vistas')
-      .select('plato_id, restaurante_id, plato_nombre, vistas')
-      .order('vistas', { ascending: false })
-      .limit(2000);
-    if (legacyRes.error) {
-      if (!/plato_vistas|column|schema cache/i.test(legacyRes.error.message || '')) {
-        console.warn('[metrics/network] plato_vistas:', legacyRes.error.message);
-      }
-    } else {
-      vistasRows = legacyRes.data || [];
-    }
   }
 
   /**

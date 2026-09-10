@@ -69,7 +69,6 @@ export async function POST({ request, cookies }) {
  * @param {{ request: Request, cookies: import('astro').AstroCookies }} ctx
  */
 async function handleUpdateMarca({ request, cookies }) {
-  console.info('[api/update-marca] POST recibido');
   const supabase = createSupabaseServerClient({ request, cookies });
 
   const {
@@ -462,14 +461,12 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
 
     const badCol = colMatch?.[1];
     if (badCol && Object.prototype.hasOwnProperty.call(current, badCol)) {
-      console.warn('[api/update-marca] omitiendo columna ausente:', badCol, msg);
       delete current[badCol];
       // Si falla nosotros_theme plano, ya va en ui_estilo.nosotros.theme
       continue;
     }
 
     if (badCol && selectCols.includes(badCol)) {
-      console.warn('[api/update-marca] omitiendo columna del SELECT:', badCol, msg);
       selectCols = selectCols.filter((c) => c !== badCol);
       continue;
     }
@@ -490,7 +487,6 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
       ];
       const next = optional.find((k) => Object.prototype.hasOwnProperty.call(current, k));
       if (next) {
-        console.warn('[api/update-marca] fallback omit:', next, msg);
         delete current[next];
         continue;
       }

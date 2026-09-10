@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Class-based dark: AdminThemeSwitcher toggles `.dark` on <html> */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Dark variant desactivado — panel y UI solo light */
+@custom-variant dark (&:where(.dark-disabled-never-match));
 
 @theme {
   --color-cream: #f3eee6;

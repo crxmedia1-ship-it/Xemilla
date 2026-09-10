@@ -139,47 +139,6 @@ const RESTAURANTE_SELECT_BASE = [
   'gadget_reservas',
 ].join(', ');
 
-const RESTAURANTE_SELECT_FULL = [
-  RESTAURANTE_SELECT_BASE,
-  'gadget_wifi_ssid',
-  'gadget_wifi_clave',
-  'gadget_boutique',
-  'gadget_nutricion',
-  'gadget_ar',
-  'color_primario',
-  'color_fondo',
-  'color_texto',
-  'tipo_letra',
-  'imagen_fondo',
-  'estilo_adn',
-  'menu_font',
-  'direccion',
-  'horarios',
-  'instagram_url',
-  'whatsapp_url',
-  'coordenadas_maps',
-  'nosotros_subtitulo',
-  'nosotros_titulo',
-  'nosotros_imagen',
-  'nosotros_texto',
-  'config_reservas',
-  'config_wifi',
-  'config_boutique',
-  'custom_css',
-  'logo_url',
-  'eslogan',
-  'secciones_fondo',
-  'nosotros_bloques',
-  'redes_sociales',
-  'share_image_url',
-  'app_icon_url',
-  'popup_banner',
-  'ui_estilo',
-  'home_theme',
-  'nosotros_theme',
-  'ubicacion_theme',
-].join(', ');
-
 /**
  * Lista de slugs publicados (build / getStaticPaths).
  * @returns {Promise<string[]>}
@@ -239,14 +198,6 @@ async function enrichThemesWithServiceRole(row) {
   }
 
   if (!data) return row;
-
-  console.log('[supabase] identidad visual via service role:', {
-    home_theme: data.home_theme,
-    nosotros_theme: data.nosotros_theme,
-    ubicacion_theme: data.ubicacion_theme,
-    has_ui_estilo: data.ui_estilo != null,
-    has_secciones_fondo: data.secciones_fondo != null,
-  });
 
   return {
     ...row,
@@ -559,14 +510,6 @@ async function loadRestauranteBySlug(slug) {
   // Local desactivado (impago / pausa): no exponer WebApp pública
   if (row.activo === false) return null;
 
-  console.log('[getRestauranteBySlug] fila Supabase (completa):', row);
-  console.log(
-    '[getRestauranteBySlug] raw home_theme:',
-    row.home_theme,
-    'ubicacion_theme:',
-    row.ubicacion_theme,
-  );
-
   let categoriasRaw = [];
   let catError = null;
   let platosResult = { data: [], error: null };
@@ -598,61 +541,13 @@ async function loadRestauranteBySlug(slug) {
   let platos = platosResult.data;
   let platosError = platosResult.error;
   if (platosError) {
-    const msg = platosError.message || '';
-    console.warn('[supabase] platos SELECT fallback.', msg);
-    const platosClient = createSupabaseServiceClient() || supabase;
-    const missingOrden = /\borden\b/i.test(msg);
-    const nutSelect = missingOrden
-      ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url'
-      : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
-    const nutRetry = await platosClient
-      .from('platos')
-      .select(nutSelect)
-      .eq('restaurante_id', row.id)
-      .eq('disponible', true)
-      .order(nutSelect.includes('orden') ? 'orden' : 'id', { ascending: true })
-      .order('id', { ascending: true });
-    if (!nutRetry.error) {
-      platos = nutRetry.data;
-      platosError = null;
-    } else {
-      const select = missingOrden
-        ? 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, modelo_3d_url'
-        : 'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, orden, modelo_3d_url';
-      const fallback = await platosClient
-        .from('platos')
-        .select(select)
-        .eq('restaurante_id', row.id)
-        .eq('disponible', true)
-        .order(select.includes('orden') ? 'orden' : 'id', { ascending: true })
-        .order('id', { ascending: true });
-      platos = fallback.data;
-      platosError = fallback.error;
-    }
+    console.error('[supabase] platos:', platosError.message);
+    return null;
   }
 
   let categorias = categoriasRaw;
   if (catError) {
-    const missingBg = /bg_type|bg_valor|column|schema cache/i.test(catError.message || '');
-    if (missingBg) {
-      console.warn('[supabase] categorias bg_* no disponibles; SELECT sin fondos.', catError.message);
-      const fallback = await supabase
-        .from('categorias')
-        .select('id, nombre, orden')
-        .eq('restaurante_id', row.id)
-        .order('orden', { ascending: true });
-      if (fallback.error) {
-        console.error('[supabase] categorias:', fallback.error.message);
-        return null;
-      }
-      categorias = fallback.data;
-    } else {
-      console.error('[supabase] categorias:', catError.message);
-      return null;
-    }
-  }
-  if (platosError) {
-    console.error('[supabase] platos:', platosError.message);
+    console.error('[supabase] categorias:', catError.message);
     return null;
   }
 

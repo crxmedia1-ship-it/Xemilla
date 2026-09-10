@@ -19,7 +19,7 @@ interface Props {
   appIcon?: string;
   /** Absolute page URL for og:url */
   ogUrl?: string;
-  /** Activa shell admin (tema dark/light persistido en localStorage). */
+  /** Activa shell admin (siempre light). */
   adminPanel?: boolean;
 }
 
@@ -51,15 +51,15 @@ const iconHref =
   appIcon?.trim() ||
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
 const shareImage = ogImage?.trim() || '';
-const initialThemeColor = adminPanel ? '#030712' : themeColor;
+const initialThemeColor = adminPanel ? '#f8fafc' : themeColor;
 ---
 
 <!doctype html>
 <html
   lang="es"
-  data-theme={adminPanel ? 'dark' : theme}
+  data-theme={adminPanel ? 'light' : theme}
   class:list={[
-    adminPanel && 'admin-panel dark transition-colors duration-500 ease-in-out',
+    adminPanel && 'admin-panel light transition-colors duration-500 ease-in-out',
   ]}
 >
   <head>
@@ -110,28 +110,14 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
           (function () {
             try {
               var KEY = 'xemilla-admin-theme';
-              var raw = '';
-              try {
-                raw = localStorage.getItem(KEY) || '';
-              } catch (e) {}
-              var v = String(raw).trim().toLowerCase();
-              var light =
-                v === 'light' ||
-                v === 'claro' ||
-                v === 'alabastro' ||
-                v === 'organico' ||
-                v === 'organic' ||
-                v === 'cristalino';
-              var id = light ? 'light' : 'dark';
               var root = document.documentElement;
-              root.classList.add('admin-panel');
-              root.classList.toggle('dark', id === 'dark');
-              root.classList.toggle('light', id === 'light');
-              root.setAttribute('data-theme', id);
+              root.classList.add('admin-panel', 'light');
+              root.classList.remove('dark');
+              root.setAttribute('data-theme', 'light');
               var meta = document.getElementById('meta-theme-color');
-              if (meta) meta.setAttribute('content', id === 'light' ? '#eef1f4' : '#050505');
+              if (meta) meta.setAttribute('content', '#f8fafc');
               try {
-                localStorage.setItem(KEY, id);
+                localStorage.setItem(KEY, 'light');
               } catch (e) {}
             } catch (e) {}
           })();
@@ -149,17 +135,11 @@ const initialThemeColor = adminPanel ? '#030712' : themeColor;
   >
     {
       adminPanel ? (
-        <>
-          <div class="admin-deep-space" aria-hidden="true">
-            <div class="admin-deep-space__base"></div>
-          </div>
-          {/* Light: Habitación del Tiempo — void radial; hidden in Dark */}
-          <div
-            class="pointer-events-none fixed inset-0 z-[-1] opacity-100 transition-opacity duration-1000 dark:opacity-0 dark:hidden block"
-            style="background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,255,255,0.98), transparent 55%), linear-gradient(180deg, #f7f8fa 0%, #eef1f5 100%);"
-            aria-hidden="true"
-          ></div>
-        </>
+        <div
+          class="pointer-events-none fixed inset-0 z-[-1]"
+          style="background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,255,255,0.98), transparent 55%), linear-gradient(180deg, #f7f8fa 0%, #eef1f5 100%);"
+          aria-hidden="true"
+        ></div>
       ) : (
         <div class="atmosphere" aria-hidden="true">
           <div class="atmosphere__base"></div>

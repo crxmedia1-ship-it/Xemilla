@@ -44,11 +44,6 @@ const ubicacionThemeResolved = normalizeUbicacionTheme(
   restauranteRaw?.ubicacion_theme ?? DEFAULT_UBICACION_THEME,
 );
 
-console.log('🔥 [SUPABASE READ]', {
-  raw_db: homeThemeRawDb,
-  sanitized: sanitizeTheme(homeThemeRawDb),
-});
-
 /**
  * Home y Ubicación son plantillas independientes.
  * home_theme se deja RAW; el sanitize controla solo el componente montado.

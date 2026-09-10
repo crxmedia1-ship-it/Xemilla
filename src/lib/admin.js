@@ -123,7 +123,6 @@ async function fetchRestauranteAdmin(client, filter) {
     return null;
   }
 
-  console.warn('[admin] columnas nuevas no disponibles; SELECT base.', msg);
   const base = await run(RESTAURANTE_ADMIN_SELECT_BASE);
   if (!base.error) return base.data ?? null;
 
@@ -237,27 +236,22 @@ export async function getAdminDashboardData(ctx, opts = {}) {
 
   const readClient = isSuper ? writeClient : operativoReadClient;
 
-  const platosSelectWithNutricion =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
-  const platosSelectNutNoOrden =
+  // Schema actual: platos no tiene `orden` — un solo SELECT evita reintentos SSR.
+  const platosSelect =
     'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
-  const platosSelectNutNoJoin =
+  const platosSelectNoJoin =
     'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
-  const platosSelectWithOrden =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, orden, categorias(nombre)';
-  const platosSelectBase =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, categorias(nombre)';
 
   const loadPlatos = (select) =>
     readClient
       .from('platos')
       .select(select)
       .eq('restaurante_id', restaurante.id)
-      .order(select.includes('orden') ? 'orden' : 'categoria_id', { ascending: true })
+      .order('categoria_id', { ascending: true })
       .order('id', { ascending: true });
 
   const [{ data: platosRaw, error: platosError }, catResult] = await Promise.all([
-    loadPlatos(platosSelectWithNutricion),
+    loadPlatos(platosSelect),
     readClient
       .from('categorias')
       .select('id, nombre, orden, bg_type, bg_valor')
@@ -269,49 +263,18 @@ export async function getAdminDashboardData(ctx, opts = {}) {
   let platosLoadError = platosError;
   if (platosLoadError) {
     const msg = platosLoadError.message || '';
-    console.warn('[admin] platos SELECT fallback.', msg);
-    const missingOrden = /\borden\b/i.test(msg);
-    const nutRetry = await loadPlatos(
-      missingOrden ? platosSelectNutNoOrden : platosSelectNutNoJoin,
-    );
-    if (!nutRetry.error) {
-      platos = nutRetry.data;
-      platosLoadError = null;
-    } else {
-      const nutNoJoin = await loadPlatos(platosSelectNutNoJoin);
-      if (!nutNoJoin.error) {
-        platos = nutNoJoin.data;
-        platosLoadError = null;
-      } else {
-        const fallback = await loadPlatos(
-          missingOrden ? platosSelectBase : platosSelectWithOrden,
-        );
-        if (fallback.error && !missingOrden) {
-          const baseFallback = await loadPlatos(platosSelectBase);
-          platos = baseFallback.data;
-          platosLoadError = baseFallback.error;
-        } else {
-          platos = fallback.data;
-          platosLoadError = fallback.error;
-        }
-      }
+    const joinFail = /categorias|relationship|embed|foreign/i.test(msg);
+    if (joinFail) {
+      const retry = await loadPlatos(platosSelectNoJoin);
+      platos = retry.data;
+      platosLoadError = retry.error;
     }
   }
 
   let categorias = catResult.data;
   if (catResult.error) {
-    const missingBg = /bg_type|bg_valor|column|schema cache/i.test(catResult.error.message || '');
-    if (missingBg) {
-      const fallback = await readClient
-        .from('categorias')
-        .select('id, nombre, orden')
-        .eq('restaurante_id', restaurante.id)
-        .order('orden', { ascending: true });
-      categorias = fallback.data;
-    } else {
-      console.error('[admin] categorias:', catResult.error.message);
-      categorias = [];
-    }
+    console.error('[admin] categorias:', catResult.error.message);
+    categorias = [];
   }
 
   if (platosLoadError) {

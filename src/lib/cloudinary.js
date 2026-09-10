@@ -106,17 +106,48 @@ export function initCloudinary(connectionUrl) {
 /** Carpetas de Asset Management: identity | categories | dishes */
 export const CLOUDINARY_ASSET_TYPES = new Set(['identity', 'categories', 'dishes']);
 
+/** Entrega CDN: formato/calidad auto + tope de ancho (c_limit no upscale). */
+const MEDIA_TX_DEFAULT = 'f_auto,q_auto,w_800,c_limit';
+const MEDIA_TX_THUMB = 'f_auto,q_auto,w_400,c_limit';
+
 /**
- * Transformaciones de entrega (0 créditos extra: f_auto / q_auto).
- * @type {Record<'logo' | 'cover' | 'dish', string>}
+ * Transformaciones de entrega por tipo de media.
+ * @type {Record<'logo' | 'thumb' | 'cover' | 'dish', string>}
  */
 export const CLOUDINARY_MEDIA_TRANSFORMS = {
-  logo: 'c_fit,w_400,h_200,f_auto,q_auto',
-  cover: 'c_fill,g_auto,w_1200,f_auto,q_auto:eco',
-  dish: 'c_fill,g_auto,w_800,h_600,f_auto,q_auto:eco',
+  logo: MEDIA_TX_THUMB,
+  thumb: MEDIA_TX_THUMB,
+  cover: MEDIA_TX_DEFAULT,
+  dish: MEDIA_TX_DEFAULT,
 };
 
-const DEFAULT_MEDIA_TRANSFORM = 'f_auto,q_auto';
+const DEFAULT_MEDIA_TRANSFORM = MEDIA_TX_DEFAULT;
+
+/**
+ * @param {string} rest Path after `/upload/`
+ */
+function stripExistingDeliveryTransforms(rest) {
+  let out = String(rest || '');
+  const known = [...Object.values(CLOUDINARY_MEDIA_TRANSFORMS), DEFAULT_MEDIA_TRANSFORM, 'f_auto,q_auto'];
+  for (const prefix of known) {
+    if (out === prefix) return '';
+    if (out.startsWith(`${prefix}/`)) {
+      out = out.slice(prefix.length + 1);
+    }
+  }
+  // Peeling de segmentos de transformación (c_*, w_*, f_auto,q_auto, …)
+  for (;;) {
+    const slash = out.indexOf('/');
+    const seg = slash === -1 ? out : out.slice(0, slash);
+    if (!seg || /^v\d+$/i.test(seg)) break;
+    const looksLikeTx =
+      seg.includes(',') ||
+      /^(f_auto|q_auto|c_|w_|h_|g_|e_|fl_|dpr_|ar_|b_|t_)/i.test(seg);
+    if (!looksLikeTx) break;
+    out = slash === -1 ? '' : out.slice(slash + 1);
+  }
+  return out.replace(/^f_auto,q_auto(?::\w+)?\//, '');
+}
 
 /**
  * @param {unknown} value
@@ -208,7 +239,7 @@ export function applyCloudinaryDeliveryTransform(url, type) {
   const key = String(type || '').trim().toLowerCase();
   const tx =
     key && key in CLOUDINARY_MEDIA_TRANSFORMS
-      ? CLOUDINARY_MEDIA_TRANSFORMS[/** @type {'logo' | 'cover' | 'dish'} */ (key)]
+      ? CLOUDINARY_MEDIA_TRANSFORMS[/** @type {'logo' | 'thumb' | 'cover' | 'dish'} */ (key)]
       : DEFAULT_MEDIA_TRANSFORM;
 
   let rest = raw.slice(at + marker.length);
@@ -216,14 +247,8 @@ export function applyCloudinaryDeliveryTransform(url, type) {
     return raw;
   }
 
-  const known = [...Object.values(CLOUDINARY_MEDIA_TRANSFORMS), DEFAULT_MEDIA_TRANSFORM];
-  for (const prefix of known) {
-    if (rest.startsWith(`${prefix}/`)) {
-      rest = rest.slice(prefix.length + 1);
-      break;
-    }
-  }
-  rest = rest.replace(/^f_auto,q_auto(?::\w+)?\//, '');
+  rest = stripExistingDeliveryTransforms(rest);
+  if (!rest) return raw;
 
   return `${raw.slice(0, at + marker.length)}${tx}/${rest}`;
 }
@@ -232,7 +257,8 @@ export function applyCloudinaryDeliveryTransform(url, type) {
  * Normaliza URLs de media (logo, OG, etc.) e inyecta transformaciones Cloudinary.
  * - Vacío → `null`
  * - URLs externas / locales (no Cloudinary) → intactas
- * - `type`: `logo` | `cover` | `dish` | omitido (`f_auto,q_auto`)
+ * - `type`: `logo` | `thumb` | `cover` | `dish` | omitido → `f_auto,q_auto,w_800,c_limit`
+ *   (`logo` / `thumb` → `w_400`)
  *
  * @param {unknown} pathOrUrl
  * @param {string} [type]

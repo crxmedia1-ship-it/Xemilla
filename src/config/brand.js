@@ -215,7 +215,7 @@ export function normalizeBrandSlug(slug) {
 }
 
 /**
- * Carrd string → filas para UbicacionPanel / live status.
+ * Carrd string → filas de ubicación / live status.
  * @param {unknown} horarios
  * @returns {Array<{ dia: string, horas: string }>}
  */

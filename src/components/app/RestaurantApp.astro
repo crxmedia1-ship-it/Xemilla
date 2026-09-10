@@ -8,9 +8,9 @@ import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
 import GadgetFloatingButton from './GadgetFloatingButton.astro';
 import WelcomePopup from './WelcomePopup.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
-import HomeHeroCards from '../themes/home/HomeHeroCards.astro';
-import HomeBentoGrid from '../themes/home/HomeBentoGrid.astro';
-import HomeMinimal from '../themes/home/HomeMinimal.astro';
+import HomeSheet from '../themes/home/HomeSheet.astro';
+import HomeSplit from '../themes/home/HomeSplit.astro';
+import HomeCards from '../themes/home/HomeCards.astro';
 import UbicacionModal from '../themes/ubicacion/UbicacionModal.astro';
 import UbicacionSplitMap from '../themes/ubicacion/UbicacionSplitMap.astro';
 import UbicacionMinimal from '../themes/ubicacion/UbicacionMinimal.astro';
@@ -93,11 +93,6 @@ const nosotrosTheme = normalizeNosotrosTheme(
     restaurante?.uiEstilo?.nosotros?.theme ??
     DEFAULT_NOSOTROS_THEME,
 );
-
-console.log('🔥 [SUPABASE READ]', {
-  raw_db: restaurante?.home_theme,
-  resolved: resolvedHome,
-});
 
 /** Fondos desde Identidad de Marca (independientes de home_theme) */
 const fondos = restaurante?.seccionesFondo ?? {};
@@ -267,7 +262,7 @@ try {
   }
 } catch (e) {
   console.error('Error renderizando tema:', e);
-  homeTheme = 'bento';
+  homeTheme = 'editorial';
   homeProps = {
     ...resolveSafeHomeProps({ nombre: 'Restaurante', estilos: restaurante?.estilos }),
     showReservas,
@@ -370,19 +365,19 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             if (homeTheme === 'editorial') {
               return <HomeEditorial {...homeProps} />;
             }
-            if (homeTheme === 'hamburguesa') {
-              return <HomeMinimal {...homeProps} />;
+            if (homeTheme === 'sheet' || homeTheme === 'cinematic' || homeTheme === 'hamburguesa' || homeTheme === 'minimal') {
+              return <HomeSheet {...homeProps} />;
             }
-            if (homeTheme === 'hero') {
-              return <HomeHeroCards {...homeProps} />;
+            if (homeTheme === 'split') {
+              return <HomeSplit {...homeProps} />;
             }
-            if (homeTheme === 'minimal') {
-              return <HomeMinimal {...homeProps} />;
+            if (homeTheme === 'cards' || homeTheme === 'bento' || homeTheme === 'hero') {
+              return <HomeCards {...homeProps} />;
             }
-            return <HomeBentoGrid {...homeProps} />;
+            return <HomeEditorial {...homeProps} />;
           } catch (e) {
             console.error('Error renderizando tema:', e);
-            return <HomeBentoGrid {...homeProps} />;
+            return <HomeEditorial {...homeProps} />;
           }
         })()
       }
@@ -1854,7 +1849,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         }, 120);
       });
 
-      // Delegación: cubre HomeBentoGrid / Hero / Editorial (incl. UBICACIÓN)
+      // Delegación: Home / Editorial / nav (incl. UBICACIÓN)
       root.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;

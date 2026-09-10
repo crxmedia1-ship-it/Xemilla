@@ -1,64 +1,15 @@
 /* ─── Xemilla Admin Panel Themes ───
- * Root attribute: data-theme = dark | light
- * Classes: html.admin-panel.dark | html.admin-panel.light
- * Legacy aliases (normalized in JS): onyx→dark, alabastro/organico→light
- * Persistencia: localStorage `xemilla-admin-theme`
- *
- * dark  = Abismo de Ultra-Lujo (zinc-950 + radial sutil)
- * light = La Habitación del Tiempo (Hyperbolic Void)
+ * Solo light (La Habitación del Tiempo).
+ * Root: html.admin-panel.light / data-theme=light
  */
 
-html.admin-panel {
-  color-scheme: dark;
-  --font-admin: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
-  transition:
-    color 500ms ease-in-out,
-    background-color 500ms ease-in-out;
-}
-
-/* ── Dark: Abismo de Ultra-Lujo (zinc-950 + halo radial) ── */
 html.admin-panel,
-html.admin-panel.dark,
-html.admin-panel[data-theme='dark'],
-html.admin-panel[data-theme='onyx'] {
-  color-scheme: dark;
-  --bg-principal: #09090b;
-  --bg-card: rgba(24, 24, 27, 0.6);
-  --bg-card-elevated: rgba(24, 24, 27, 0.78);
-  --color-acento: #e4e4e7;
-  --color-acento-soft: rgba(255, 255, 255, 0.12);
-  --color-toggle-on: #10b981;
-  --btn-primary-bg: #ffffff;
-  --btn-primary-fg: #09090b;
-  --text-primary: #f4f4f5;
-  --text-muted: #a1a1aa;
-  --text-soft: #71717a;
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --field-bg: rgba(12, 12, 12, 0.85);
-  --field-text: #ffffff;
-  --overlay-soft: rgba(255, 255, 255, 0.04);
-  --shadow-card: 0 18px 40px rgba(0, 0, 0, 0.55);
-  --focus-ring: rgba(255, 255, 255, 0.18);
-  --focus-border: #d4d4d8;
-  --brand-pill-bg: rgba(255, 255, 255, 0.05);
-  --brand-pill-border: rgba(255, 255, 255, 0.1);
-  --logo-pedestal-bg: rgba(0, 0, 0, 0.4);
-  --logo-pedestal-shadow: 0 0 24px rgba(255, 255, 255, 0.06);
-}
-
-html.admin-panel.dark,
-html.admin-panel[data-theme='dark'],
-html.admin-panel[data-theme='onyx'] {
-  background-color: #09090b;
-}
-
-/* ── Día claro (light) — architectural daylight ── */
 html.admin-panel.light,
 html.admin-panel[data-theme='light'],
 html.admin-panel[data-theme='alabastro'],
 html.admin-panel[data-theme='organico'] {
   color-scheme: light;
+  --font-admin: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
   background-color: transparent;
   --bg-principal: #f1f5f9;
   --bg-card: rgba(255, 255, 255, 0.96);
@@ -83,45 +34,9 @@ html.admin-panel[data-theme='organico'] {
   --brand-pill-border: rgba(24, 24, 27, 0.1);
   --logo-pedestal-bg: rgba(255, 255, 255, 0.9);
   --logo-pedestal-shadow: 0 0 20px rgba(15, 23, 42, 0.08);
-}
-
-/* ── Atmosphere shell (admin only) ── */
-.admin-deep-space {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-}
-
-/* Dark: sólido abisal + halo radial ejecutivo (sin estrellas / partículas) */
-.admin-deep-space__base {
-  position: absolute;
-  inset: 0;
-  background-color: #09090b;
-  background-image: radial-gradient(
-    ellipse 80% 50% at 50% -10%,
-    rgba(120, 119, 198, 0.08),
-    rgba(255, 255, 255, 0)
-  );
-  background-attachment: fixed;
-  transition: background 500ms ease-in-out, opacity 500ms ease-in-out;
-}
-
-html.admin-panel.light .admin-deep-space,
-html.admin-panel[data-theme='light'] .admin-deep-space,
-html.admin-panel[data-theme='alabastro'] .admin-deep-space,
-html.admin-panel[data-theme='organico'] .admin-deep-space {
-  opacity: 0;
-  visibility: hidden;
-}
-
-html.admin-panel.light .admin-deep-space__base,
-html.admin-panel[data-theme='light'] .admin-deep-space__base,
-html.admin-panel[data-theme='alabastro'] .admin-deep-space__base,
-html.admin-panel[data-theme='organico'] .admin-deep-space__base {
-  background: transparent;
-  opacity: 0;
+  transition:
+    color 500ms ease-in-out,
+    background-color 500ms ease-in-out;
 }
 
 html.admin-panel body.theme-body,
@@ -227,12 +142,7 @@ html.admin-panel .text-zinc-950,
 html.admin-panel .text-black {
   color: var(--btn-primary-fg) !important;
 }
-html.admin-panel.dark .hover\:bg-zinc-100:hover,
-html.admin-panel[data-theme='dark'] .hover\:bg-zinc-100:hover,
-html.admin-panel[data-theme='onyx'] .hover\:bg-zinc-100:hover {
-  background-color: #f4f4f5 !important;
-  filter: none;
-}
+
 html.admin-panel.light .hover\:bg-zinc-100:hover,
 html.admin-panel[data-theme='light'] .hover\:bg-zinc-100:hover,
 html.admin-panel[data-theme='alabastro'] .hover\:bg-zinc-100:hover,
@@ -260,26 +170,6 @@ html.admin-panel .studio-card {
     transform 300ms ease-out;
 }
 
-html.admin-panel.dark .studio-card,
-html.admin-panel.dark .glass-panel,
-html.admin-panel[data-theme='dark'] .studio-card,
-html.admin-panel[data-theme='dark'] .glass-panel,
-html.admin-panel[data-theme='onyx'] .studio-card,
-html.admin-panel[data-theme='onyx'] .glass-panel {
-  background: rgba(24, 24, 27, 0.6);
-  border: 1px solid rgba(39, 39, 42, 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-html.admin-panel.dark .studio-card:hover,
-html.admin-panel.dark .glass-panel:hover,
-html.admin-panel[data-theme='dark'] .studio-card:hover,
-html.admin-panel[data-theme='dark'] .glass-panel:hover,
-html.admin-panel[data-theme='onyx'] .studio-card:hover,
-html.admin-panel[data-theme='onyx'] .glass-panel:hover {
-  border-color: rgba(39, 39, 42, 1);
-}
 
 html.admin-panel.light .studio-card:hover,
 html.admin-panel.light .glass-panel:hover,
@@ -303,44 +193,18 @@ html.admin-panel label.studio-layout-card--active:focus-within {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
-html.admin-panel.dark label.studio-layout-card--active,
-html.admin-panel.dark label.studio-layout-card--active:hover,
-html.admin-panel.dark label.studio-layout-card--active:focus-within,
-html.admin-panel[data-theme='dark'] label.studio-layout-card--active,
-html.admin-panel[data-theme='dark'] label.studio-layout-card--active:hover,
-html.admin-panel[data-theme='dark'] label.studio-layout-card--active:focus-within,
-html.admin-panel[data-theme='onyx'] label.studio-layout-card--active,
-html.admin-panel[data-theme='onyx'] label.studio-layout-card--active:hover,
-html.admin-panel[data-theme='onyx'] label.studio-layout-card--active:focus-within {
-  border-color: #34d399 !important;
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  color: #d1fae5 !important;
-  box-shadow: none !important;
-}
 
 html.admin-panel label.studio-layout-card--active .text-neutral-400,
 html.admin-panel label.studio-layout-card--active .text-zinc-500 {
   color: #047857 !important;
 }
 
-html.admin-panel.dark label.studio-layout-card--active .text-neutral-400,
-html.admin-panel.dark label.studio-layout-card--active .text-zinc-500,
-html.admin-panel[data-theme='dark'] label.studio-layout-card--active .text-neutral-400,
-html.admin-panel[data-theme='dark'] label.studio-layout-card--active .text-zinc-500 {
-  color: #6ee7b7 !important;
-}
 
 html.admin-panel label.studio-layout-card--active .font-mono.font-bold {
   background-color: #059669 !important;
   color: #ffffff !important;
 }
 
-html.admin-panel.dark label.studio-layout-card--active .font-mono.font-bold,
-html.admin-panel[data-theme='dark'] label.studio-layout-card--active .font-mono.font-bold,
-html.admin-panel[data-theme='onyx'] label.studio-layout-card--active .font-mono.font-bold {
-  background-color: #10b981 !important;
-  color: #09090b !important;
-}
 
 /* Identidad bento — escape remap .bg-white → botón primario */
 html.admin-panel #panel-identidad .identidad-studio-card,
@@ -355,18 +219,6 @@ html.admin-panel #panel-identidad .studio-card.identidad-studio-card {
   -webkit-backdrop-filter: blur(24px);
 }
 
-html.admin-panel.dark #panel-identidad .identidad-studio-card,
-html.admin-panel.dark #panel-identidad .studio-card.identidad-studio-card,
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-studio-card,
-html.admin-panel[data-theme='dark'] #panel-identidad .studio-card.identidad-studio-card,
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-studio-card,
-html.admin-panel[data-theme='onyx'] #panel-identidad .studio-card.identidad-studio-card {
-  background: rgba(24, 24, 27, 0.6) !important;
-  background-color: rgba(24, 24, 27, 0.6) !important;
-  border-color: rgba(39, 39, 42, 0.8) !important;
-  box-shadow: none !important;
-  color: #f4f4f5 !important;
-}
 
 html.admin-panel #panel-identidad .identidad-studio-card input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
 html.admin-panel #panel-identidad .identidad-studio-card select,
@@ -379,46 +231,18 @@ html.admin-panel #panel-identidad .identidad-studio-card textarea {
   box-shadow: none !important;
 }
 
-html.admin-panel.dark #panel-identidad .identidad-studio-card input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
-html.admin-panel.dark #panel-identidad .identidad-studio-card select,
-html.admin-panel.dark #panel-identidad .identidad-studio-card textarea,
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-studio-card input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-studio-card select,
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-studio-card textarea,
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-studio-card input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-studio-card select,
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-studio-card textarea {
-  background: #09090b !important;
-  background-color: #09090b !important;
-  border-color: #27272a !important;
-  color: #ffffff !important;
-}
 
 html.admin-panel #panel-identidad .identidad-studio-card input::placeholder,
 html.admin-panel #panel-identidad .identidad-studio-card textarea::placeholder {
   color: #a1a1aa !important;
 }
 
-html.admin-panel.dark #panel-identidad .identidad-studio-card input::placeholder,
-html.admin-panel.dark #panel-identidad .identidad-studio-card textarea::placeholder,
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-studio-card input::placeholder,
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-studio-card textarea::placeholder,
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-studio-card input::placeholder,
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-studio-card textarea::placeholder {
-  color: #52525b !important;
-}
 
 html.admin-panel #panel-identidad input[type='range'] {
   accent-color: #10b981;
   background: #e4e4e7;
 }
 
-html.admin-panel.dark #panel-identidad input[type='range'],
-html.admin-panel[data-theme='dark'] #panel-identidad input[type='range'],
-html.admin-panel[data-theme='onyx'] #panel-identidad input[type='range'] {
-  accent-color: #34d399;
-  background: #27272a;
-}
 
 html.admin-panel #panel-identidad .identidad-color-capsule {
   background: #fafafa !important;
@@ -427,14 +251,6 @@ html.admin-panel #panel-identidad .identidad-color-capsule {
   color: #18181b !important;
 }
 
-html.admin-panel.dark #panel-identidad .identidad-color-capsule,
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-color-capsule,
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-color-capsule {
-  background: rgba(9, 9, 11, 0.7) !important;
-  background-color: rgba(9, 9, 11, 0.7) !important;
-  border-color: #27272a !important;
-  color: #f4f4f5 !important;
-}
 
 html.admin-panel #panel-identidad .identidad-color-capsule input[type='text'] {
   background: transparent !important;
@@ -446,11 +262,6 @@ html.admin-panel #panel-identidad .identidad-color-capsule input[type='text'] {
   padding: 0 !important;
 }
 
-html.admin-panel.dark #panel-identidad .identidad-color-capsule input[type='text'],
-html.admin-panel[data-theme='dark'] #panel-identidad .identidad-color-capsule input[type='text'],
-html.admin-panel[data-theme='onyx'] #panel-identidad .identidad-color-capsule input[type='text'] {
-  color: #f4f4f5 !important;
-}
 
 html.admin-panel #panel-identidad .identidad-color-capsule input[type='color'] {
   width: 1.75rem !important;
@@ -483,11 +294,6 @@ html.admin-panel #panel-identidad .perfil-social__brand {
   color: #27272a !important;
 }
 
-html.admin-panel.dark #panel-identidad .perfil-social__brand,
-html.admin-panel[data-theme='dark'] #panel-identidad .perfil-social__brand,
-html.admin-panel[data-theme='onyx'] #panel-identidad .perfil-social__brand {
-  color: #e4e4e7 !important;
-}
 
 /* SuperAdmin visual cards — bento shell + media viewport */
 .super-hub-search {
@@ -1289,14 +1095,6 @@ html.admin-panel [data-marca-panel='gadgets'] {
   -webkit-backdrop-filter: blur(24px);
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] {
-  background: rgba(24, 24, 27, 0.6) !important;
-  border-color: rgba(39, 39, 42, 0.8) !important;
-  color: #f4f4f5 !important;
-  box-shadow: none !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .gadget-card {
   background: rgba(250, 250, 250, 0.8) !important;
@@ -1308,13 +1106,6 @@ html.admin-panel [data-marca-panel='gadgets'] .gadget-card {
     box-shadow 200ms ease !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .gadget-card,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .gadget-card,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .gadget-card {
-  background: rgba(9, 9, 11, 0.4) !important;
-  border-color: #27272a !important;
-  color: #f4f4f5 !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .gadget-card.gadget-card--on {
   border-color: #10b981 !important;
@@ -1322,49 +1113,24 @@ html.admin-panel [data-marca-panel='gadgets'] .gadget-card.gadget-card--on {
   box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.18) !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .gadget-card.gadget-card--on,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .gadget-card.gadget-card--on,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .gadget-card.gadget-card--on {
-  border-color: #34d399 !important;
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.2) !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .gadget-card__icon {
   background: #f4f4f5 !important;
   color: #3f3f46 !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .gadget-card__icon,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .gadget-card__icon,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .gadget-card__icon {
-  background: #27272a !important;
-  color: #a1a1aa !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon {
   background: #d1fae5 !important;
   color: #047857 !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .gadget-card.gadget-card--on .gadget-card__icon {
-  background: rgba(16, 185, 129, 0.28) !important;
-  color: #6ee7b7 !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .ios-toggle.is-on {
   background: #10b981 !important;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .ios-toggle.is-on,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .ios-toggle.is-on,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .ios-toggle.is-on {
-  background: #10b981 !important;
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.22) !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .gadget-note-on {
   border-color: #6ee7b7 !important;
@@ -1372,13 +1138,6 @@ html.admin-panel [data-marca-panel='gadgets'] .gadget-note-on {
   color: #065f46 !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .gadget-note-on,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .gadget-note-on,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .gadget-note-on {
-  border-color: rgba(52, 211, 153, 0.35) !important;
-  background: rgba(16, 185, 129, 0.12) !important;
-  color: #a7f3d0 !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] input[type='text'],
 html.admin-panel [data-marca-panel='gadgets'] input[type='url'],
@@ -1394,31 +1153,6 @@ html.admin-panel [data-marca-panel='gadgets'] textarea {
   border-radius: 0.75rem !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] input[type='text'],
-html.admin-panel.dark [data-marca-panel='gadgets'] input[type='url'],
-html.admin-panel.dark [data-marca-panel='gadgets'] input[type='number'],
-html.admin-panel.dark [data-marca-panel='gadgets'] input[type='password'],
-html.admin-panel.dark [data-marca-panel='gadgets'] input[type='email'],
-html.admin-panel.dark [data-marca-panel='gadgets'] select,
-html.admin-panel.dark [data-marca-panel='gadgets'] textarea,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input[type='text'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input[type='url'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input[type='number'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input[type='password'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input[type='email'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] select,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] textarea,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input[type='text'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input[type='url'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input[type='number'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input[type='password'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input[type='email'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] select,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] textarea {
-  background-color: rgba(9, 9, 11, 0.8) !important;
-  border-color: #27272a !important;
-  color: #ffffff !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] input[type='text']::placeholder,
 html.admin-panel [data-marca-panel='gadgets'] input[type='url']::placeholder,
@@ -1428,11 +1162,6 @@ html.admin-panel [data-marca-panel='gadgets'] input[type='email']::placeholder {
   color: #a1a1aa !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] input::placeholder,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input::placeholder,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input::placeholder {
-  color: #52525b !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] input[type='text']:focus,
 html.admin-panel [data-marca-panel='gadgets'] input[type='url']:focus,
@@ -1446,32 +1175,12 @@ html.admin-panel [data-marca-panel='gadgets'] textarea:focus {
   box-shadow: none !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] input:focus,
-html.admin-panel.dark [data-marca-panel='gadgets'] select:focus,
-html.admin-panel.dark [data-marca-panel='gadgets'] textarea:focus,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] input:focus,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] select:focus,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] textarea:focus,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] input:focus,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] select:focus,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] textarea:focus {
-  border-color: #52525b !important;
-  background-color: rgba(9, 9, 11, 0.95) !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] h4,
 html.admin-panel [data-marca-panel='gadgets'] .text-neutral-900 {
   color: #18181b !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] h4,
-html.admin-panel.dark [data-marca-panel='gadgets'] .text-neutral-900,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] h4,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .text-neutral-900,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] h4,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .text-neutral-900 {
-  color: #f4f4f5 !important;
-}
 
 html.admin-panel [data-marca-panel='gadgets'] .text-neutral-500 {
   color: #71717a !important;
@@ -1485,23 +1194,6 @@ html.admin-panel [data-marca-panel='gadgets'] .text-neutral-800 {
   color: #27272a !important;
 }
 
-html.admin-panel.dark [data-marca-panel='gadgets'] .text-neutral-500,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .text-neutral-500,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .text-neutral-500 {
-  color: #a1a1aa !important;
-}
-
-html.admin-panel.dark [data-marca-panel='gadgets'] .text-neutral-600,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .text-neutral-600,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .text-neutral-600 {
-  color: #a1a1aa !important;
-}
-
-html.admin-panel.dark [data-marca-panel='gadgets'] .text-neutral-800,
-html.admin-panel[data-theme='dark'] [data-marca-panel='gadgets'] .text-neutral-800,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='gadgets'] .text-neutral-800 {
-  color: #e4e4e7 !important;
-}
 
 /* Operación & Anuncios — Clean White (override tema oscuro / remap de .bg-white) */
 html.admin-panel #panel-perfil,
@@ -1997,30 +1689,12 @@ html.admin-panel #ops-contacto-card.ops-studio .perfil-toggle {
   box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06) !important;
 }
 
-html.admin-panel.dark #ops-contacto-card.ops-studio .ios-toggle,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-toggle,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .ios-toggle,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-toggle,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio .ios-toggle,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio .perfil-toggle {
-  --toggle-off: #27272a;
-  --toggle-on: #10b981;
-  background: #27272a !important;
-}
 
 html.admin-panel #ops-contacto-card.ops-studio .ios-toggle.is-on,
 html.admin-panel #ops-contacto-card.ops-studio .perfil-toggle.is-on,
 html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle].is-on,
 html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-checked='true'],
-html.admin-panel #ops-contacto-card.ops-studio .bg-emerald-500,
-html.admin-panel.dark #ops-contacto-card.ops-studio .ios-toggle.is-on,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-toggle.is-on,
-html.admin-panel.dark #ops-contacto-card.ops-studio [data-popup-enabled-toggle].is-on,
-html.admin-panel.dark #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-checked='true'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .ios-toggle.is-on,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-toggle.is-on,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio .ios-toggle.is-on,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio .perfil-toggle.is-on {
+html.admin-panel #ops-contacto-card.ops-studio .bg-emerald-500 {
   background: #10b981 !important;
   background-color: #10b981 !important;
 }
@@ -2050,15 +1724,6 @@ html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
 }
 
-html.admin-panel.dark #ops-contacto-card.ops-studio [data-popup-enabled-toggle].is-on,
-html.admin-panel.dark #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-checked='true'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio [data-popup-enabled-toggle].is-on,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-checked='true'],
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio [data-popup-enabled-toggle].is-on,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio [data-popup-enabled-toggle][aria-checked='true'] {
-  background: #10b981 !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22) !important;
-}
 
 html.admin-panel #ops-contacto-card.ops-studio [data-popup-switch-knob],
 html.admin-panel #ops-contacto-card.ops-studio [data-popup-enabled-toggle] .ios-toggle__knob {
@@ -2160,168 +1825,8 @@ html.admin-panel #ops-contacto-card.ops-studio .ops-save:hover {
   color: #ffffff !important;
 }
 
-/* Observatorio Cósmico — Operación & Anuncios (dark) */
-html.admin-panel.dark #ops-contacto-card.ops-studio,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio {
-  color: #f4f4f5 !important;
-}
+/
 
-html.admin-panel.dark #ops-contacto-card.ops-studio .ops-studio-card,
-html.admin-panel.dark #ops-contacto-card.ops-studio .ops-card,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-group.ops-card,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-group.rounded-3xl,
-html.admin-panel.dark #ops-contacto-card.ops-studio .welcome-popup-admin,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .ops-studio-card,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .ops-card,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-group.ops-card,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-group.rounded-3xl,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .welcome-popup-admin {
-  background: rgba(24, 24, 27, 0.8) !important;
-  background-color: rgba(24, 24, 27, 0.8) !important;
-  border-color: #27272a !important;
-  color: #f4f4f5 !important;
-  box-shadow: none !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-studio__title,
-html.admin-panel.dark #ops-contacto-card.ops-studio .text-zinc-900,
-html.admin-panel.dark #ops-contacto-card.ops-studio h3,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-day__name,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-social__brand,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-meta strong,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-meta a,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .text-zinc-900,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio h3,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-day__name,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-social__brand {
-  color: #f4f4f5 !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-studio__kicker,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-studio__lead,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-studio__hint,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-group__sub,
-html.admin-panel.dark #ops-contacto-card.ops-studio .text-zinc-500,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-meta span,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-footnote,
-html.admin-panel.dark #ops-contacto-card.ops-studio .text-zinc-700,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-day__to,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .text-zinc-500 {
-  color: #a1a1aa !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio input[type='text'],
-html.admin-panel.dark #ops-contacto-card.ops-studio input[type='url'],
-html.admin-panel.dark #ops-contacto-card.ops-studio input[type='tel'],
-html.admin-panel.dark #ops-contacto-card.ops-studio input[type='date'],
-html.admin-panel.dark #ops-contacto-card.ops-studio input[type='time'],
-html.admin-panel.dark #ops-contacto-card.ops-studio textarea,
-html.admin-panel.dark #ops-contacto-card.ops-studio select,
-html.admin-panel.dark #ops-contacto-card.ops-studio .ops-input,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio input[type='text'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio input[type='url'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio input[type='tel'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio input[type='time'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio textarea,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio select {
-  background: rgba(9, 9, 11, 0.8) !important;
-  background-color: rgba(9, 9, 11, 0.8) !important;
-  border-color: #27272a !important;
-  color: #f4f4f5 !important;
-  box-shadow: none !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-day input[type='time'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-day input[type='time'] {
-  background: #18181b !important;
-  background-color: #18181b !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio input::placeholder,
-html.admin-panel.dark #ops-contacto-card.ops-studio textarea::placeholder,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio input::placeholder {
-  color: #52525b !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio input:focus,
-html.admin-panel.dark #ops-contacto-card.ops-studio textarea:focus,
-html.admin-panel.dark #ops-contacto-card.ops-studio select:focus,
-html.admin-panel.dark #ops-contacto-card.ops-studio .ops-input:focus,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio input:focus {
-  background: rgba(9, 9, 11, 0.95) !important;
-  border-color: #52525b !important;
-  box-shadow: 0 0 0 2px rgba(82, 82, 91, 0.25) !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .welcome-popup-admin__drop,
-html.admin-panel.dark #ops-contacto-card.ops-studio .welcome-popup-admin__empty,
-html.admin-panel.dark #ops-contacto-card.ops-studio [data-popup-empty],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .welcome-popup-admin__drop {
-  background: rgba(9, 9, 11, 0.5) !important;
-  border-color: #27272a !important;
-  color: #a1a1aa !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .welcome-popup-admin__drop:hover,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .welcome-popup-admin__drop:hover {
-  background: rgba(24, 24, 27, 0.5) !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-map__frame,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-map__frame {
-  background: rgba(9, 9, 11, 0.5) !important;
-  border-color: #27272a !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-day,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-social,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-meta,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-day {
-  border-bottom-color: rgba(39, 39, 42, 0.8) !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social,
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social:last-child,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social {
-  background: rgba(9, 9, 11, 0.4) !important;
-  border-color: rgba(39, 39, 42, 0.8) !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social:hover,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social:hover {
-  background: rgba(24, 24, 27, 0.7) !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social input[data-social-input],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-list--social-grid .perfil-social input[data-social-input] {
-  background: rgba(9, 9, 11, 0.8) !important;
-  background-color: rgba(9, 9, 11, 0.8) !important;
-  border-color: #27272a !important;
-  color: #f4f4f5 !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .popup-seg-tab--on,
-html.admin-panel.dark #ops-contacto-card.ops-studio .popup-seg-tab[aria-selected='true'],
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .popup-seg-tab--on {
-  background: #27272a !important;
-  color: #ffffff !important;
-  box-shadow: none !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio [data-popup-schedule-tabs],
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-seg,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-seg {
-  background: rgba(9, 9, 11, 0.5) !important;
-}
-
-html.admin-panel.dark #ops-contacto-card.ops-studio .welcome-popup-admin__preview-phone,
-html.admin-panel.dark #ops-contacto-card.ops-studio .welcome-popup-admin__preview-screen {
-  background: #18181b !important;
-  border-color: #27272a !important;
-}
 
 html.admin-panel #ops-contacto-card.ops-studio .perfil-mini {
   background: #f4f4f5 !important;
@@ -2339,13 +1844,6 @@ html.admin-panel #ops-contacto-card.ops-studio .perfil-status.is-open {
   border: 1px solid rgba(16, 185, 129, 0.2) !important;
 }
 
-html.admin-panel.dark #ops-contacto-card.ops-studio .perfil-status.is-open,
-html.admin-panel[data-theme='dark'] #ops-contacto-card.ops-studio .perfil-status.is-open,
-html.admin-panel[data-theme='onyx'] #ops-contacto-card.ops-studio .perfil-status.is-open {
-  background: rgba(16, 185, 129, 0.1) !important;
-  color: #34d399 !important;
-  border-color: rgba(16, 185, 129, 0.2) !important;
-}
 
 html.admin-panel #ops-contacto-card.ops-studio .perfil-status.is-closed {
   background: #f4f4f5 !important;
@@ -2427,8 +1925,6 @@ html.admin-panel [data-tab-panel][hidden] {
 @media (prefers-reduced-motion: reduce) {
   html.admin-panel,
   html.admin-panel body.theme-body,
-  html.admin-panel .admin-deep-space,
-  html.admin-panel .admin-deep-space__base,
   html.admin-panel .glass-panel,
   html.admin-panel .studio-card,
   html.admin-panel .ios-toggle,
@@ -2517,14 +2013,6 @@ html.admin-panel [data-marca-panel='qr'] {
   -webkit-backdrop-filter: blur(24px);
 }
 
-html.admin-panel.dark [data-marca-panel='qr'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] {
-  background: rgba(24, 24, 27, 0.6) !important;
-  border-color: rgba(39, 39, 42, 0.8) !important;
-  color: #f4f4f5 !important;
-  box-shadow: none !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] .qr-style-btn {
   background: rgba(250, 250, 250, 0.9) !important;
@@ -2533,13 +2021,6 @@ html.admin-panel [data-marca-panel='qr'] .qr-style-btn {
   box-shadow: none !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .qr-style-btn {
-  background: rgba(9, 9, 11, 0.55) !important;
-  border-color: #27272a !important;
-  color: #d4d4d8 !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
   background: #09090b !important;
@@ -2548,13 +2029,6 @@ html.admin-panel [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
   box-shadow: none !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .qr-style-btn[aria-pressed='true'] {
-  background: #ffffff !important;
-  border-color: #ffffff !important;
-  color: #09090b !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] .qr-btn-primary {
   background: #171717 !important;
@@ -2565,17 +2039,6 @@ html.admin-panel [data-marca-panel='qr'] .qr-btn-primary:hover:not(:disabled) {
   background: #262626 !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .qr-btn-primary,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-btn-primary,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .qr-btn-primary {
-  background: #ffffff !important;
-  color: #09090b !important;
-}
-html.admin-panel.dark [data-marca-panel='qr'] .qr-btn-primary:hover:not(:disabled),
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-btn-primary:hover:not(:disabled),
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .qr-btn-primary:hover:not(:disabled) {
-  background: #f4f4f5 !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] .qr-btn-secondary,
 html.admin-panel [data-marca-panel='qr'] .qr-action-btn {
@@ -2589,16 +2052,6 @@ html.admin-panel [data-marca-panel='qr'] .qr-action-btn:hover:not(:disabled) {
   border-color: #d4d4d8 !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .qr-btn-secondary,
-html.admin-panel.dark [data-marca-panel='qr'] .qr-action-btn,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-btn-secondary,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .qr-action-btn,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .qr-btn-secondary,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .qr-action-btn {
-  background: rgba(9, 9, 11, 0.55) !important;
-  border-color: #27272a !important;
-  color: #d4d4d8 !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] input[type='text'],
 html.admin-panel [data-marca-panel='qr'] input[type='url'],
@@ -2609,19 +2062,6 @@ html.admin-panel [data-marca-panel='qr'] textarea {
   box-shadow: none !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] input[type='text'],
-html.admin-panel.dark [data-marca-panel='qr'] input[type='url'],
-html.admin-panel.dark [data-marca-panel='qr'] textarea,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] input[type='text'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] input[type='url'],
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] textarea,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] input[type='text'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] input[type='url'],
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] textarea {
-  background-color: rgba(9, 9, 11, 0.8) !important;
-  border-color: #27272a !important;
-  color: #ffffff !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] #qr-public-url {
   background-color: transparent !important;
@@ -2634,12 +2074,6 @@ html.admin-panel [data-marca-panel='qr'] .bg-white {
   color: inherit !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .bg-white,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .bg-white,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .bg-white {
-  background-color: rgba(24, 24, 27, 0.85) !important;
-  color: #f4f4f5 !important;
-}
 
 html.admin-panel [data-marca-panel='qr'] .text-neutral-900 {
   color: #18181b !important;
@@ -2655,27 +2089,6 @@ html.admin-panel [data-marca-panel='qr'] .text-neutral-500 {
   color: #71717a !important;
 }
 
-html.admin-panel.dark [data-marca-panel='qr'] .text-neutral-900,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .text-neutral-900,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .text-neutral-900 {
-  color: #f4f4f5 !important;
-}
-html.admin-panel.dark [data-marca-panel='qr'] .text-neutral-800,
-html.admin-panel.dark [data-marca-panel='qr'] .text-neutral-700,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .text-neutral-800,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .text-neutral-700,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .text-neutral-800,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .text-neutral-700 {
-  color: #d4d4d8 !important;
-}
-html.admin-panel.dark [data-marca-panel='qr'] .text-neutral-600,
-html.admin-panel.dark [data-marca-panel='qr'] .text-neutral-500,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .text-neutral-600,
-html.admin-panel[data-theme='dark'] [data-marca-panel='qr'] .text-neutral-500,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .text-neutral-600,
-html.admin-panel[data-theme='onyx'] [data-marca-panel='qr'] .text-neutral-500 {
-  color: #a1a1aa !important;
-}
 
 /* Logo central del QR: 23% del marco (rango seguro ECC H: 22–24%) */
 html.admin-panel [data-marca-panel='qr'] .qr-logo-plate {
@@ -2731,25 +2144,12 @@ html.admin-panel[data-theme='light'] .admin-studio-header__xemilla {
   opacity: 0.92;
 }
 
-html.admin-panel.dark .admin-studio-header__xemilla,
-html.admin-panel[data-theme='dark'] .admin-studio-header__xemilla {
-  filter: brightness(0) invert(1);
-  opacity: 0.96;
-}
-
-html.admin-panel.dark .admin-studio-header__venue-logo,
-html.admin-panel[data-theme='dark'] .admin-studio-header__venue-logo {
-  filter: brightness(1.08);
-}
 
 html.admin-panel.light .admin-studio-header .select-none,
 html.admin-panel[data-theme='light'] .admin-studio-header .select-none {
   color: #d4d4d8 !important;
 }
-html.admin-panel.dark .admin-studio-header .select-none,
-html.admin-panel[data-theme='dark'] .admin-studio-header .select-none {
-  color: #52525b !important;
-}
+
 
 .admin-studio-header__tabs {
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2860,17 +2260,7 @@ html.admin-panel .admin-superadmin-chip:hover {
   border-color: #71717a !important;
   color: #09090b !important;
 }
-html.admin-panel.dark .admin-superadmin-chip,
-html.admin-panel[data-theme='dark'] .admin-superadmin-chip {
-  background: #3f3f46 !important;
-  border-color: #71717a !important;
-  color: #fafafa !important;
-}
-html.admin-panel.dark .admin-superadmin-chip:hover,
-html.admin-panel[data-theme='dark'] .admin-superadmin-chip:hover {
-  background: #52525b !important;
-  border-color: #a1a1aa !important;
-}
+
 
 html.admin-panel .placeholder\:text-zinc-600::placeholder,
 html.admin-panel .placeholder\:text-zinc-700::placeholder {
@@ -2961,11 +2351,6 @@ html.admin-panel .focus\:border-white\/25:focus {
   object-fit: contain;
 }
 
-html.admin-panel.dark .admin-xemilla-mark__img,
-html.admin-panel[data-theme='dark'] .admin-xemilla-mark__img,
-html.admin-panel[data-theme='onyx'] .admin-xemilla-mark__img {
-  filter: brightness(1.15);
-}
 
 html.admin-panel.light .admin-xemilla-mark__img,
 html.admin-panel[data-theme='light'] .admin-xemilla-mark__img,
@@ -3177,11 +2562,6 @@ html.admin-panel[data-theme='light'] .admin-studio-brand__plate--mono {
   display: block;
 }
 
-html.admin-panel.dark .admin-studio-venue,
-html.admin-panel[data-theme='dark'] .admin-studio-venue {
-  background: rgba(39, 39, 42, 0.6);
-  border-color: rgba(63, 63, 70, 0.6);
-}
 
 html.admin-panel.light .admin-studio-venue,
 html.admin-panel[data-theme='light'] .admin-studio-venue,
@@ -3191,10 +2571,6 @@ html.admin-panel[data-theme='organico'] .admin-studio-venue {
   border-color: rgba(228, 228, 231, 0.8);
 }
 
-html.admin-panel.dark .admin-studio-venue span,
-html.admin-panel[data-theme='dark'] .admin-studio-venue span {
-  color: #f4f4f5;
-}
 
 .admin-studio-foot-brand {
   display: flex;
@@ -3225,12 +2601,6 @@ html.admin-panel[data-theme='dark'] .admin-studio-venue span {
   transform: scale(1.02);
 }
 
-html.admin-panel.dark .admin-studio-foot-brand__pill,
-html.admin-panel[data-theme='dark'] .admin-studio-foot-brand__pill {
-  background: rgba(9, 9, 11, 0.9) !important;
-  border-color: rgba(39, 39, 42, 0.9) !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
-}
 
 .admin-studio-foot-brand__logo {
   height: 4rem !important;
@@ -3251,10 +2621,6 @@ html.admin-panel[data-theme='dark'] .admin-studio-foot-brand__pill {
   }
 }
 
-html.admin-panel.dark .admin-studio-foot-brand__logo,
-html.admin-panel[data-theme='dark'] .admin-studio-foot-brand__logo {
-  filter: brightness(1.1) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
-}
 
 .admin-studio-foot-brand__name {
   margin: 0;
@@ -3267,10 +2633,6 @@ html.admin-panel[data-theme='dark'] .admin-studio-foot-brand__logo {
   user-select: none;
 }
 
-html.admin-panel.dark .admin-studio-foot-brand__name,
-html.admin-panel[data-theme='dark'] .admin-studio-foot-brand__name {
-  color: #d4d4d8 !important;
-}
 
 @keyframes admin-live-pulse {
   0% {
@@ -3282,80 +2644,6 @@ html.admin-panel[data-theme='dark'] .admin-studio-foot-brand__name {
   100% {
     box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
   }
-}
-
-/* Sol / Luna toggle */
-.admin-mode-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 9999px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-card);
-  color: var(--text-muted);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  cursor: pointer;
-  transition:
-    color 200ms ease,
-    border-color 200ms ease,
-    background-color 200ms ease,
-    transform 180ms ease,
-    box-shadow 200ms ease;
-}
-
-.admin-mode-toggle:hover {
-  color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--color-acento) 40%, var(--border-subtle));
-  transform: scale(1.04);
-}
-
-.admin-mode-toggle:focus-visible {
-  outline: 2px solid var(--color-acento);
-  outline-offset: 2px;
-}
-
-.admin-mode-toggle__icon {
-  display: grid;
-  place-items: center;
-  line-height: 1;
-  font-size: 0.95rem;
-  transition: opacity 200ms ease, transform 280ms ease;
-}
-
-.admin-mode-toggle__icon--sun {
-  display: none;
-}
-
-.admin-mode-toggle__icon--moon {
-  display: grid;
-}
-
-html.admin-panel.dark .admin-mode-toggle__icon--sun,
-html.admin-panel[data-theme='dark'] .admin-mode-toggle__icon--sun,
-html.admin-panel[data-theme='onyx'] .admin-mode-toggle__icon--sun {
-  display: none;
-}
-html.admin-panel.dark .admin-mode-toggle__icon--moon,
-html.admin-panel[data-theme='dark'] .admin-mode-toggle__icon--moon,
-html.admin-panel[data-theme='onyx'] .admin-mode-toggle__icon--moon {
-  display: grid;
-}
-
-html.admin-panel.light .admin-mode-toggle__icon--sun,
-html.admin-panel[data-theme='light'] .admin-mode-toggle__icon--sun,
-html.admin-panel[data-theme='alabastro'] .admin-mode-toggle__icon--sun,
-html.admin-panel[data-theme='organico'] .admin-mode-toggle__icon--sun {
-  display: grid;
-}
-html.admin-panel.light .admin-mode-toggle__icon--moon,
-html.admin-panel[data-theme='light'] .admin-mode-toggle__icon--moon,
-html.admin-panel[data-theme='alabastro'] .admin-mode-toggle__icon--moon,
-html.admin-panel[data-theme='organico'] .admin-mode-toggle__icon--moon {
-  display: none;
 }
 
 /* Wide logo pedestal — Identidad & Marca */
@@ -3546,11 +2834,6 @@ html.admin-panel[data-theme='organico'] .admin-profile-dropdown__logout {
   background: rgba(0, 0, 0, 0.03);
 }
 
-/* Legacy switcher (si aparece en otra página) */
-.admin-theme-switcher {
-  display: none;
-}
-
 /* KPI / ranking cards — bento financiero */
 html.admin-panel .studio-kpi-card {
   background: #ffffff !important;
@@ -3560,14 +2843,7 @@ html.admin-panel .studio-kpi-card {
   min-height: 0 !important;
   border-radius: 2rem !important;
 }
-html.admin-panel.dark .studio-kpi-card,
-html.admin-panel[data-theme='dark'] .studio-kpi-card {
-  background: rgba(24, 24, 27, 0.6) !important;
-  border: 1px solid rgba(39, 39, 42, 0.8) !important;
-  box-shadow: none !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
+
 html.admin-panel .studio-kpi-module {
   min-height: 230px !important;
 }
@@ -3576,68 +2852,39 @@ html.admin-panel .studio-week-bar {
   background: #18181b !important;
   min-height: 6px;
 }
-html.admin-panel.dark .studio-week-bar,
-html.admin-panel[data-theme='dark'] .studio-week-bar {
-  background: #f4f4f5 !important;
-}
+
 html.admin-panel .studio-week-col:hover .studio-week-bar,
 html.admin-panel .group:hover .studio-week-bar {
   background: #3f3f46 !important;
 }
-html.admin-panel.dark .studio-week-col:hover .studio-week-bar,
-html.admin-panel.dark .group:hover .studio-week-bar,
-html.admin-panel[data-theme='dark'] .studio-week-col:hover .studio-week-bar,
-html.admin-panel[data-theme='dark'] .group:hover .studio-week-bar {
-  background: #ffffff !important;
-}
+
 
 html.admin-panel .studio-donut {
   background: conic-gradient(#18181b 65%, #e4e4e7 0) !important;
   box-shadow: 0 0 0 1px rgba(228, 228, 231, 0.8);
 }
-html.admin-panel.dark .studio-donut,
-html.admin-panel[data-theme='dark'] .studio-donut {
-  background: conic-gradient(#ffffff 65%, #27272a 0) !important;
-  box-shadow: 0 0 0 1px rgb(63, 63, 70);
-}
-html.admin-panel.dark .studio-donut,
-html.admin-panel[data-theme='dark'] .studio-donut {
-  background: conic-gradient(#ffffff 65%, #27272a 0) !important;
-}
+
+
 html.admin-panel .studio-donut-hole {
   background: #ffffff !important;
   color: #18181b !important;
 }
-html.admin-panel.dark .studio-donut-hole,
-html.admin-panel[data-theme='dark'] .studio-donut-hole {
-  background: #09090b !important;
-  color: #ffffff !important;
-}
+
 
 html.admin-panel .studio-mom {
   background: rgba(16, 185, 129, 0.1) !important;
   color: #059669 !important;
 }
-html.admin-panel.dark .studio-mom,
-html.admin-panel[data-theme='dark'] .studio-mom {
-  background: rgba(16, 185, 129, 0.14) !important;
-  color: #34d399 !important;
-}
+
 
 html.admin-panel .studio-dot-ink {
   background: #18181b !important;
 }
-html.admin-panel.dark .studio-dot-ink,
-html.admin-panel[data-theme='dark'] .studio-dot-ink {
-  background: #ffffff !important;
-}
+
 html.admin-panel .studio-dot-mute {
   background: #d4d4d8 !important;
 }
-html.admin-panel.dark .studio-dot-mute,
-html.admin-panel[data-theme='dark'] .studio-dot-mute {
-  background: #3f3f46 !important;
-}
+
 
 html.admin-panel .studio-action-row {
   background: rgba(250, 250, 250, 0.8) !important;
@@ -3647,15 +2894,8 @@ html.admin-panel .studio-action-row {
 html.admin-panel .studio-action-row:hover {
   border-color: #d4d4d8 !important;
 }
-html.admin-panel.dark .studio-action-row,
-html.admin-panel[data-theme='dark'] .studio-action-row {
-  background: rgba(24, 24, 27, 0.4) !important;
-  border-color: rgba(39, 39, 42, 0.6) !important;
-}
-html.admin-panel.dark .studio-action-row:hover,
-html.admin-panel[data-theme='dark'] .studio-action-row:hover {
-  border-color: #3f3f46 !important;
-}
+
+
 html.admin-panel .studio-hot {
   color: #f43f5e !important;
 }
@@ -3665,29 +2905,18 @@ html.admin-panel .studio-cold {
 html.admin-panel .studio-pct-ink {
   background: #18181b !important;
 }
-html.admin-panel.dark .studio-pct-ink,
-html.admin-panel[data-theme='dark'] .studio-pct-ink {
-  background: #e4e4e7 !important;
-}
+
 html.admin-panel .studio-pct-mute {
   background: #a1a1aa !important;
 }
-html.admin-panel.dark .studio-pct-mute,
-html.admin-panel[data-theme='dark'] .studio-pct-mute {
-  background: #52525b !important;
-}
+
 
 html.admin-panel .studio-seg-on {
   background: #ffffff !important;
   color: #27272a !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
-html.admin-panel.dark .studio-seg-on,
-html.admin-panel[data-theme='dark'] .studio-seg-on {
-  background: #3f3f46 !important;
-  color: #e4e4e7 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
+
 
 html.admin-panel .view-list.hidden,
 html.admin-panel .view-grid.hidden {
@@ -3722,20 +2951,12 @@ html.admin-panel .studio-tf-on {
   color: #18181b !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
-html.admin-panel.dark .studio-tf-on,
-html.admin-panel[data-theme='dark'] .studio-tf-on {
-  background: #18181b !important;
-  color: #ffffff !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
+
 html.admin-panel .studio-tf-select-on {
   color: #18181b !important;
   font-weight: 600;
 }
-html.admin-panel.dark .studio-tf-select-on,
-html.admin-panel[data-theme='dark'] .studio-tf-select-on {
-  color: #ffffff !important;
-}
+
 
 html.admin-panel .studio-photo-card {
   background: #09090b !important;
@@ -3745,12 +2966,7 @@ html.admin-panel .studio-photo-card {
   min-width: 0 !important;
   width: 100%;
 }
-html.admin-panel.dark .studio-photo-card,
-html.admin-panel[data-theme='dark'] .studio-photo-card {
-  background: #09090b !important;
-  color: #ffffff !important;
-  border-color: rgb(39, 39, 42) !important;
-}
+
 html.admin-panel .studio-photo-chip {
   background: rgba(0, 0, 0, 0.8) !important;
   color: #ffffff !important;
@@ -3758,12 +2974,7 @@ html.admin-panel .studio-photo-chip {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-html.admin-panel.dark .studio-photo-chip,
-html.admin-panel[data-theme='dark'] .studio-photo-chip {
-  background: rgba(0, 0, 0, 0.8) !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-}
+
 html.admin-panel .studio-photo-chip.studio-chip-hot {
   color: #f43f5e !important;
 }
@@ -3779,27 +2990,17 @@ html.admin-panel .studio-photo-caption {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-html.admin-panel.dark .studio-photo-caption,
-html.admin-panel[data-theme='dark'] .studio-photo-caption {
-  background: rgba(0, 0, 0, 0.8) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-}
+
 html.admin-panel .studio-photo-caption h4,
 html.admin-panel .studio-photo-caption .text-white {
   color: #ffffff !important;
 }
-html.admin-panel.dark .studio-photo-caption h4,
-html.admin-panel[data-theme='dark'] .studio-photo-caption h4 {
-  color: #ffffff !important;
-}
+
 html.admin-panel .studio-photo-meta,
 html.admin-panel .studio-photo-caption .text-zinc-300 {
   color: #d4d4d8 !important;
 }
-html.admin-panel.dark .studio-photo-meta,
-html.admin-panel[data-theme='dark'] .studio-photo-meta {
-  color: #d4d4d8 !important;
-}
+
 
 /* ── Kit-style metrics board (Mobbin, legacy) ── */
 .kit-metrics {
@@ -3811,15 +3012,6 @@ html.admin-panel[data-theme='dark'] .studio-photo-meta {
   font-family: var(--font-admin);
 }
 
-html.admin-panel.dark .kit-metrics,
-html.admin-panel[data-theme='onyx'] .kit-metrics,
-html.admin-panel[data-theme='dark'] .kit-metrics {
-  --kit-bg: #1a1a1c;
-  --kit-card: #111113;
-  --kit-ink: #fafafa;
-  --kit-muted: #a1a1aa;
-  --kit-line: rgba(255, 255, 255, 0.08);
-}
 
 .kit-metrics__intro {
   margin-bottom: 1.35rem;
@@ -4537,11 +3729,6 @@ html.admin-panel[data-theme='dark'] .kit-metrics {
   filter: brightness(0);
 }
 
-html.admin-panel.dark .super-until-hero__brand-img,
-html.admin-panel[data-theme='dark'] .super-until-hero__brand-img,
-html.admin-panel[data-theme='onyx'] .super-until-hero__brand-img {
-  filter: brightness(0) invert(1);
-}
 
 html.admin-panel.light .super-until-hero__brand-img,
 html.admin-panel[data-theme='light'] .super-until-hero__brand-img,
@@ -4674,12 +3861,6 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   color: var(--text-primary) !important;
   border-color: var(--border-strong);
   background: var(--bg-card-elevated);
-}
-
-.super-until-hero .admin-mode-toggle,
-.super-until-hero__theme.admin-mode-toggle {
-  width: 2.15rem;
-  height: 2.15rem;
 }
 
 .super-until-hero__copy {
@@ -5111,43 +4292,6 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-html.admin-panel.dark .studio-status-bento,
-html.admin-panel[data-theme='dark'] .studio-status-bento,
-html.admin-panel.dark .studio-macro-row,
-html.admin-panel[data-theme='dark'] .studio-macro-row,
-html.admin-panel.dark .studio-subcat-row:not([hidden]):not(.is-empty),
-html.admin-panel[data-theme='dark'] .studio-subcat-row:not([hidden]):not(.is-empty) {
-  background: rgba(24, 24, 27, 0.8);
-  border-color: #27272a;
-}
-
-html.admin-panel.dark .status-filter-pill:hover,
-html.admin-panel.dark .macro-filter-pill:hover,
-html.admin-panel.dark .cat-filter-pill:hover,
-html.admin-panel[data-theme='dark'] .status-filter-pill:hover,
-html.admin-panel[data-theme='dark'] .macro-filter-pill:hover,
-html.admin-panel[data-theme='dark'] .cat-filter-pill:hover {
-  background: rgba(39, 39, 42, 0.5);
-  color: #f4f4f5;
-}
-
-html.admin-panel.dark .status-filter-pill.is-on,
-html.admin-panel.dark .status-filter-pill[aria-pressed='true'],
-html.admin-panel.dark .macro-filter-pill.is-on,
-html.admin-panel.dark .macro-filter-pill[aria-pressed='true'],
-html.admin-panel.dark .cat-filter-pill.is-on,
-html.admin-panel.dark .cat-filter-pill[aria-pressed='true'],
-html.admin-panel.dark .status-filter-pill--live.is-on,
-html.admin-panel.dark .status-filter-pill--off.is-on,
-html.admin-panel.dark .status-filter-pill--star.is-on,
-html.admin-panel[data-theme='dark'] .status-filter-pill.is-on,
-html.admin-panel[data-theme='dark'] .macro-filter-pill.is-on,
-html.admin-panel[data-theme='dark'] .cat-filter-pill.is-on {
-  background: #27272a;
-  color: #ffffff;
-  border-color: #3f3f46;
-  box-shadow: none;
-}
 
 html.admin-panel.light .studio-status-bento,
 html.admin-panel[data-theme='light'] .studio-status-bento,

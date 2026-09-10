@@ -1,7 +1,7 @@
 ---
 /**
- * Home Editorial — Luxe / Catálogo de autor (maqueta alta gama).
- * Solo estructura (logo / títulos / nav). Atmósfera vive en RestaurantApp.
+ * HomeEditorial — Grand Editorial (ultra-lujo).
+ * Tipografía pura Michelin/Monocle. Cero subtextos, cero cajas en nav.
  */
 import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
 import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
@@ -16,17 +16,7 @@ interface Props {
   eslogan?: string;
   taglineSuperior?: string;
   tagline_superior?: string;
-  menuLink?: string;
-  menu_link?: string;
-  menu_subtitle?: string;
-  menuSubtitle?: string;
   estilos?: Record<string, string>;
-  showWifi?: boolean;
-  showDividir?: boolean;
-  showLlamarMesero?: boolean;
-  showBoutique?: boolean;
-  wifiSsid?: string;
-  wifiClave?: string;
   reservasCta?: {
     label: string;
     href: string;
@@ -36,19 +26,8 @@ interface Props {
   showReservas?: boolean;
   reservas_activo?: boolean;
   reservas_texto?: string;
-  reservas_subtitulo?: string;
   reservas_link?: string;
-  homeUi?: {
-    titulo_size?: number | string;
-    logo_size?: number | string;
-    eslogan_size?: number | string;
-    tracking?: string;
-    subtitulo_color?: string;
-  };
-  onOpenUbicacion?: () => void;
-  onOpenNosotros?: () => void;
-  onOpenMenu?: () => void;
-  onOpenReservas?: () => void;
+  homeUi?: Record<string, unknown>;
   restaurante?: Record<string, unknown>;
 }
 
@@ -64,171 +43,66 @@ const {
   logoLetter,
   logoUrl,
   tagline,
-  taglineSuperior,
-  showWifi,
-  showDividir,
-  showLlamarMesero,
-  showBoutique,
-  wifiSsid,
   reservasCta,
   homeUi,
 } = resolveSafeHomeProps(props);
 
 const {
   logoSizePx,
-  tituloSizePx,
-  esloganSizePx,
-  menuSizePx,
-  tituloColor,
-  esloganColor,
-  menuColor,
   estiloNavegacion,
   overlayEstilo,
   efectoEntrada,
 } = resolveHomePxSizes(homeUi || props?.homeUi);
 
 const navFrontal = estiloNavegacion === 'frontal';
-const navHamburguesa = estiloNavegacion === 'hamburguesa';
+const immersiveLogoOnly = estiloNavegacion === 'hamburguesa';
 const navAppTabs = estiloNavegacion === 'app_tabs';
-/** Pantalla limpia Alchemist: solo logo centrado */
-const immersiveLogoOnly = navHamburguesa;
 const textShadowPuro = overlayEstilo === 'puro';
+
 const animRise = efectoEntrada === 'rise';
 const animBlur = efectoEntrada === 'blur';
 const animReveal = efectoEntrada === 'reveal';
 const animZoom = efectoEntrada === 'zoom';
 const animTracking = efectoEntrada === 'tracking';
 const hasEntrance = animRise || animBlur || animZoom || animTracking;
-const hasReveal = animReveal;
 
-/** Fallbacks sólidos — nunca vacíos aunque la DB mande null. Offsets X/Y ignorados (layout centrado). */
-const logoPx = logoSizePx || 160;
-const tituloPx = tituloSizePx || 28;
-const esloganPx = esloganSizePx || 14;
-const menuPx = menuSizePx || 16;
+const logoPx = logoSizePx || 130;
+const logoFallbackStyle = `max-height: var(--home-logo-size, ${logoPx}px); height: var(--home-logo-size, ${logoPx}px); width: var(--home-logo-size, ${logoPx}px); font-size: calc(var(--home-logo-size, ${logoPx}px) * 0.28);`;
 
-const logoImgStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); max-width: min(100%, 18rem); width: auto; object-fit: contain;`;
-const logoFallbackStyle = `height: var(--logo-size, var(--home-logo-size, ${logoPx}px)); width: var(--logo-size, var(--home-logo-size, ${logoPx}px)); font-size: calc(var(--logo-size, var(--home-logo-size, ${logoPx}px)) * 0.28); color: var(--titulo-color, ${tituloColor || '#ffffff'}); border:1px solid color-mix(in srgb, var(--titulo-color, ${tituloColor || '#ffffff'}) 18%, transparent); border-radius:9999px;`;
-const tituloColorCss = `var(--titulo-color, ${tituloColor || '#ffffff'})`;
-const esloganColorCss = `var(--eslogan-color, ${esloganColor || '#e5e7eb'})`;
-const menuColorCss = `var(--menu-color, ${menuColor || '#ffffff'})`;
-const subtextoColorCss = `var(--subtexto-color, var(--home-subtexto-color, var(--color-primary, var(--color-primario, #9f1239))))`;
-const bordeDestacadoCss = `var(--borde-destacado, var(--home-borde-destacado, var(--color-primary, var(--color-primario, #9f1239))))`;
-const tituloStyle = `font-size: var(--titulo-size, ${tituloPx}px); color: ${tituloColorCss};`;
-const esloganStyle = `font-size: var(--eslogan-size, ${esloganPx}px); color: ${esloganColorCss};`;
-const menuTitleStyle = `font-size: var(--menu-size, var(--home-menu-size, ${menuPx}px)); color: ${menuColorCss}`;
-const menuSubStyle = `color: ${subtextoColorCss}`;
+const eslogan = tagline || String(props?.eslogan || r?.eslogan || '').trim();
+const taglineDisplay = (tagline || eslogan || 'EXPERIENCIA GASTRONÓMICA').toUpperCase();
 
-/** Subtítulo del menú: prop | tagline_superior | eslogan | vacío (sin demo hardcode) */
-const menuSubtitle = String(
-  props?.menu_subtitle ||
-    props?.menuSubtitle ||
-    r?.menu_subtitle ||
-    r?.menuSubtitle ||
-    taglineSuperior ||
-    props?.taglineSuperior ||
-    props?.tagline_superior ||
-    tagline ||
-    '',
-)
-  .trim()
-  .toUpperCase();
+const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
+const reservasIsExternal = reservasLink !== '#';
 
-const eslogan =
-  tagline ||
-  String(props?.eslogan || r?.eslogan || '').trim() ||
-  '';
-
-/** Eyebrow encima del branding: ui_estilo.home.tagline_superior */
-const eyebrow = String(
-  taglineSuperior ||
-    props?.taglineSuperior ||
-    props?.tagline_superior ||
-    '',
-).trim();
-
-/**
- * Reservas / CTA destacado — visible si el switch está activo.
- * reservas_activo !== false → por defecto visible cuando el gadget está ON.
- */
-const mostrarReservas =
-  Boolean(
-    props?.showReservas ??
-      props?.reservas_activo ??
-      r?.reservas_activo ??
-      reservasCta,
-  ) &&
-  props?.reservas_activo !== false &&
-  r?.reservas_activo !== false;
-
-const textoReservas = String(
-  props?.reservas_texto ||
-    r?.reservas_texto ||
-    reservasCta?.label ||
-    'PEDIR / RESERVAR',
-)
-  .trim()
-  .toUpperCase() || 'PEDIR / RESERVAR';
-
-const subtituloReservas = String(
-  props?.reservas_subtitulo ||
-    r?.reservas_subtitulo ||
-    reservasCta?.subtitulo ||
-    'EXPERIENCIA PREMIUM',
-)
-  .trim()
-  .toUpperCase() || 'EXPERIENCIA PREMIUM';
-
-const reservasLink = String(
-  props?.reservas_link ||
-    r?.reservas_link ||
-    reservasCta?.href ||
-    '#',
-).trim() || '#';
-
-/** Gadgets opcionales (debajo del índice principal, sin hairlines) */
-const extras: Array<{
+type NavItem = {
   id: string;
   label: string;
-  subtitle: string;
-  kind: 'section' | 'boutique';
-  requiresMesa?: boolean;
-}> = [];
+  kind: 'section' | 'reservas';
+};
 
-if (showWifi) {
-  extras.push({
-    id: 'wifi',
-    label: 'WI-FI',
-    subtitle: wifiSsid ? `RED: ${wifiSsid}` : 'CONECTAR',
-    kind: 'section',
-  });
-}
-if (showBoutique) {
-  extras.push({
-    id: 'boutique',
-    label: 'BOUTIQUE',
-    subtitle: 'MERCHANDISE',
-    kind: 'boutique',
-  });
-}
+/** Labels cortos y simétricos — no wrap en 360–390px */
+const navItems: NavItem[] = [
+  { id: 'menu', label: 'EL MENÚ', kind: 'section' },
+  { id: 'reservas', label: 'RESERVAS & PEDIDOS', kind: 'reservas' },
+  { id: 'nosotros', label: 'NOSOTROS', kind: 'section' },
+  { id: 'ubicacion', label: 'CONTACTO & VISITA', kind: 'section' },
+];
 
-const rowClass =
-  'editorial-row group flex w-full cursor-pointer flex-col items-center justify-center py-5 text-center transition-opacity duration-300 hover:opacity-70 focus-visible:opacity-70 focus-visible:outline-none';
+const linkClass =
+  'editorial-link group relative flex w-full max-w-xs cursor-pointer select-none flex-col items-center justify-center px-4 py-2.5 transition-transform duration-300 active:scale-[0.97] focus:outline-none sm:max-w-md sm:py-3.5 md:hover:scale-105';
 ---
 
 <div
   class:list={[
-    'home-editorial linktree-home relative z-10 flex min-h-dvh w-full flex-col items-center gap-6 bg-transparent px-6 pb-12 pt-[max(3rem,env(safe-area-inset-top))] sm:px-8 font-[family-name:var(--font-body,var(--fuente-principal))] text-[color:var(--color-text,var(--color-texto))]',
-    (immersiveLogoOnly || navAppTabs) && 'justify-center',
-    navFrontal && 'justify-start',
-    navAppTabs && 'home-editorial--app-tabs pb-24',
-    immersiveLogoOnly && 'home-editorial--michelin',
+    'home-editorial linktree-home relative z-10 flex min-h-[100dvh] w-full select-none flex-col items-center justify-between bg-transparent px-6 py-10 sm:py-14 md:py-16 font-[family-name:var(--font-body,var(--fuente-principal))]',
     textShadowPuro && 'home-editorial--overlay-puro',
     animRise && 'home-anim-rise',
     animBlur && 'home-anim-blur',
     animReveal && 'home-anim-reveal',
     animZoom && 'home-anim-zoom',
     animTracking && 'home-anim-tracking',
+    navAppTabs && 'pb-24',
   ]}
   data-linktree-home
   data-home-theme="editorial"
@@ -236,355 +110,176 @@ const rowClass =
   data-nav-mode={estiloNavegacion}
   data-overlay-estilo={overlayEstilo}
   data-efecto-entrada={efectoEntrada}
-  style={[homeUi?.subtitulo_color ? `--home-subtitulo-color:${homeUi.subtitulo_color}` : '']
-    .filter(Boolean)
-    .join('; ')}
 >
-  {/* ── 1. Bloques centrados: Logo / Título+Eslogan (sin offsets X/Y) ── */}
+  {/* ── Branding ── */}
   <header
     class:list={[
-      'flex w-full flex-col items-center justify-center gap-4 text-center',
-      immersiveLogoOnly && 'relative z-10',
+      'mx-auto flex max-w-xl flex-col items-center gap-3 text-center',
+      hasEntrance && 'home-enter home-enter--logo',
+      immersiveLogoOnly && 'my-auto',
     ]}
     data-home-header
   >
-    <div
-      class:list={[
-        'editorial-block editorial-block--logo flex w-full shrink-0 items-center justify-center',
-        hasEntrance && 'home-enter home-enter--logo',
-      ]}
-      data-editorial-enter="logo"
-      data-home-block="logo"
-    >
-      <div
-        class="flex min-h-[120px] w-full shrink-0 items-center justify-center"
-        data-home-logo
-      >
-        {
-          logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={nombre || 'Logo'}
-              class="max-w-full shrink-0 object-contain"
-              data-home-logo
-              style={logoImgStyle}
-            />
-          ) : (
-            <span
-              class="flex shrink-0 items-center justify-center font-medium uppercase tracking-[0.28em]"
-              data-home-logo-fallback
-              style={logoFallbackStyle}
-              aria-hidden="true"
-            >
-              {logoLetter}
-            </span>
-          )
-        }
-      </div>
+    <div class="flex items-center justify-center" data-home-logo>
+      {
+        logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={nombre || 'Logo'}
+            class="max-h-[var(--home-logo-size,130px)] h-[var(--home-logo-size,130px)] w-auto max-w-[85vw] object-contain drop-shadow-[0_4px_20px_rgba(255,255,255,0.08)] sm:h-[var(--home-logo-size,170px)] sm:max-h-[var(--home-logo-size,170px)] md:h-[var(--home-logo-size,200px)] md:max-h-[var(--home-logo-size,200px)]"
+            data-home-logo
+          />
+        ) : (
+          <span
+            class="flex items-center justify-center font-medium uppercase tracking-[0.28em] text-white/90"
+            data-home-logo-fallback
+            style={logoFallbackStyle}
+            aria-hidden="true"
+          >
+            {logoLetter || (logoText || nombre || '?').slice(0, 1)}
+          </span>
+        )
+      }
     </div>
 
     {
       !immersiveLogoOnly ? (
-        <div
-          class="editorial-block editorial-block--branding flex w-full shrink-0 flex-col items-center justify-center gap-3"
-          data-home-block="branding"
+        <p
+          class:list={[
+            'font-mono text-[10px] uppercase tracking-[0.3em] text-white/60 min-[390px]:text-xs',
+            hasEntrance && 'home-enter home-enter--eslogan',
+          ]}
+          data-home-eslogan
+          data-home-tagline-superior
         >
-          {eyebrow ? (
-            <p
-              class="mx-auto max-w-[20rem] text-[0.62rem] font-light uppercase tracking-[0.32em] opacity-70"
-              style={esloganStyle}
-              data-home-tagline-superior
-            >
-              {eyebrow}
-            </p>
-          ) : null}
-
-          {!logoUrl && logoText ? (
-            <div
-              class:list={[
-                'flex w-full shrink-0 items-center justify-center',
-                hasEntrance && 'home-enter home-enter--titulo',
-                hasReveal && 'overflow-hidden',
-              ]}
-              data-editorial-enter="titulo"
-            >
-              <p
-                class:list={[
-                  'mx-auto shrink-0 font-medium uppercase leading-[1.15] tracking-[0.28em] font-[family-name:var(--font-heading,var(--fuente-display))]',
-                  hasReveal && 'home-reveal-inner home-reveal--titulo',
-                ]}
-                data-home-titulo
-                style={tituloStyle}
-              >
-                {logoText}
-              </p>
-            </div>
-          ) : null}
-
-          {eslogan ? (
-            <div
-              class:list={[
-                'flex w-full shrink-0 items-center justify-center',
-                hasEntrance && 'home-enter home-enter--eslogan',
-                hasReveal && 'overflow-hidden',
-              ]}
-              data-editorial-enter="eslogan"
-            >
-              <p
-                class:list={[
-                  'mx-auto max-w-[18rem] shrink-0 font-light uppercase leading-relaxed tracking-[0.25em]',
-                  hasReveal && 'home-reveal-inner home-reveal--eslogan',
-                ]}
-                style={esloganStyle}
-                data-home-eslogan
-              >
-                {eslogan}
-              </p>
-            </div>
-          ) : null}
-        </div>
+          {taglineDisplay}
+        </p>
       ) : null
     }
   </header>
 
-  {/* ── 2. Navegación frontal (lista central). hamburguesa/app_tabs viven en RestaurantApp ── */}
+  {/* ── Navegación Editorial Pura (solo frontal) ── */}
   {
     navFrontal ? (
-  <div
-    class="contents"
-    data-editorial-overlay="false"
-  >
-    <div
-      class:list={[
-        'editorial-block editorial-block--nav w-full shrink-0',
-        hasEntrance && 'home-enter home-enter--botones',
-      ]}
-      data-editorial-enter="botones"
-      data-home-block="nav"
-    >
-    <nav
-      class="mx-auto mt-4 flex w-full max-w-[22rem] flex-col items-center justify-center"
-      aria-label={`Navegación ${nombre}`}
-      data-editorial-nav
-      data-home-menu
-    >
-    {/* Opción 1: EL MENÚ */}
-    <button
-      type="button"
-      data-open-section="menu"
-      class={rowClass}
-      aria-label="El menú"
-    >
-      <span
-        class="block font-medium uppercase leading-none tracking-[0.22em] font-[family-name:var(--font-heading,var(--fuente-display))]"
-        style={menuTitleStyle}
+      <nav
+        class:list={[
+          'mx-auto my-auto flex w-full max-w-xl flex-col items-center justify-center space-y-4 py-2 sm:space-y-6 sm:py-4 md:space-y-8',
+          hasEntrance && 'home-enter home-enter--botones',
+        ]}
+        aria-label={`Navegación ${nombre || 'restaurante'}`}
+        data-editorial-nav
+        data-home-menu
+        data-home-block="nav"
       >
-        EL MENÚ
-      </span>
-      {
-        menuSubtitle ? (
-          <span
-            class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
-            style={menuSubStyle}
-          >
-            {menuSubtitle}
-          </span>
-        ) : null
-      }
-    </button>
+        {
+          navItems.map((item) => {
+            const inner = (
+              <>
+                <span class="editorial-title whitespace-nowrap text-center font-serif text-base uppercase leading-none tracking-[0.24em] text-white/85 drop-shadow-sm transition-all duration-300 group-hover:text-white min-[390px]:text-lg min-[390px]:tracking-[0.28em] sm:text-2xl sm:tracking-[0.35em] md:text-3xl lg:text-4xl">
+                  {item.label}
+                </span>
+                <span
+                  class="editorial-rule mt-2.5 h-px w-6 bg-white/20 transition-all duration-300 ease-out group-hover:w-16 group-hover:bg-emerald-400 sm:mt-3.5"
+                  aria-hidden="true"
+                />
+              </>
+            );
 
-    {/* Opción 2: PEDIR / RESERVAR — CTA destacado (entre MENÚ y NOSOTROS) */}
-    {
-      mostrarReservas ? (
-        <a
-          href={reservasLink}
-          target={reservasLink !== '#' ? '_blank' : undefined}
-          rel={reservasLink !== '#' ? 'noopener noreferrer' : undefined}
-          data-reservas-home-cta
-          class="editorial-cta group mx-auto my-6 block w-full max-w-sm border p-4 text-center transition-transform active:scale-95"
-          style={`border-color: ${bordeDestacadoCss};`}
-        >
-          <span class="block font-bold tracking-[0.25em]" style={menuTitleStyle}>
-            {textoReservas}
-          </span>
-          <span class="mt-1 block text-xs tracking-[0.2em] opacity-80" style={menuSubStyle}>
-            {subtituloReservas}
-          </span>
-        </a>
-      ) : null
-    }
+            if (item.kind === 'reservas') {
+              if (reservasIsExternal) {
+                return (
+                  <a
+                    href={reservasLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-tab-trigger="reservas"
+                    data-reservas-home-cta
+                    class={linkClass}
+                  >
+                    {inner}
+                  </a>
+                );
+              }
+              return (
+                <button type="button" data-tab-trigger="reservas" data-reservas-home-cta class={linkClass}>
+                  {inner}
+                </button>
+              );
+            }
 
-    {/* Opción 3: NOSOTROS */}
-    <button
-      type="button"
-      data-open-section="nosotros"
-      class={rowClass}
-      aria-label="Nosotros"
-    >
-      <span
-        class="block font-medium uppercase leading-none tracking-[0.22em]"
-        style={menuTitleStyle}
-      >
-        NOSOTROS
-      </span>
-      <span
-        class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
-        style={menuSubStyle}
-      >
-        NUESTRA FILOSOFÍA
-      </span>
-    </button>
-
-    {/* Horarios y Ubicación */}
-    <button
-      type="button"
-      data-open-section="ubicacion"
-      data-open-ubicacion="true"
-      class={rowClass}
-      aria-label="Horarios y Ubicación"
-    >
-      <span
-        class="block font-medium uppercase leading-none tracking-[0.22em]"
-        style={menuTitleStyle}
-      >
-        HORARIOS Y UBICACIÓN
-      </span>
-      <span
-        class="mt-2.5 block text-[0.65rem] font-light uppercase tracking-[0.28em]"
-        style={menuSubStyle}
-      >
-        MAPA · CONTACTO · REDES
-      </span>
-    </button>
-
-    {/* Gadgets opcionales — mismo lenguaje tipográfico, sin hairlines */}
-    {
-      extras.map((item) => {
-        if (item.kind === 'boutique') {
-          return (
-            <button type="button" data-open-boutique class={rowClass}>
-              <span
-                class="block font-medium uppercase leading-none tracking-[0.2em]"
-                style={menuTitleStyle}
+            return (
+              <button
+                type="button"
+                data-tab-trigger={item.id}
+                data-open-section={item.id}
+                data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
+                class={linkClass}
               >
-                {item.label}
-              </span>
-              <span
-                class="mt-2 block text-[0.6rem] font-light uppercase tracking-[0.24em]"
-                style={menuSubStyle}
-              >
-                {item.subtitle}
-              </span>
-            </button>
-          );
+                {inner}
+              </button>
+            );
+          })
         }
+      </nav>
+    ) : null
+  }
 
-        return (
-          <button
-            type="button"
-            data-open-section={item.id}
-            data-requires-mesa={item.requiresMesa ? 'true' : undefined}
-            aria-disabled={item.requiresMesa ? 'true' : undefined}
-            class:list={[
-              rowClass,
-              item.requiresMesa && 'carrd-nav-link--mesa-gated is-mesa-locked',
-            ]}
-          >
-            <span
-              class="block font-medium uppercase leading-none tracking-[0.2em]"
-              style={menuTitleStyle}
-            >
-              {item.label}
-            </span>
-            <span
-              class="mt-2 block text-[0.6rem] font-light uppercase tracking-[0.24em]"
-              style={menuSubStyle}
-              data-carrd-subtitle
-            >
-              {item.subtitle}
-            </span>
-            {item.requiresMesa ? (
-              <span
-                class="carrd-mesa-lock mt-2 block text-[9px] font-medium uppercase tracking-[0.18em] opacity-60"
-                style={menuSubStyle}
-                data-mesa-lock-hint
-                hidden
-              >
-                Escanea el QR de tu mesa
-              </span>
-            ) : null}
-          </button>
-        );
-      })
-    }
-    </nav>
-    </div>
-  </div>
+  {/* ── Estado en vivo ── */}
+  {
+    !immersiveLogoOnly ? (
+      <footer class="flex shrink-0 flex-col items-center pt-2">
+        <div class="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-black/40 px-4 py-2 font-mono text-xs tracking-widest text-emerald-400 shadow-2xl backdrop-blur-xl">
+          <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
+          <span>ABIERTO HOY</span>
+        </div>
+      </footer>
     ) : null
   }
 </div>
 
 <style>
-  .editorial-block {
-    isolation: isolate;
-    contain: layout style;
-  }
-  .editorial-block--logo,
-  .editorial-block--branding,
-  .editorial-block--nav {
-    flex-shrink: 0;
-    width: 100%;
-  }
-  .editorial-block--logo img,
-  .editorial-block--logo [data-home-logo-fallback] {
-    flex-shrink: 0;
-  }
-  .home-editorial--michelin > header {
-    pointer-events: none;
-  }
-
-  .editorial-row,
-  .editorial-cta {
+  .editorial-link {
     -webkit-tap-highlight-color: transparent;
+    background: transparent;
+    border: none;
   }
 
-  /* Overlay Puro: sombra tipográfica, sin filtro sobre media */
-  .home-editorial--overlay-puro img[data-home-logo] {
-    filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55))
-      drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  /* Hover desktop: glow tipográfico */
+  @media (hover: hover) and (pointer: fine) {
+    .editorial-link:hover .editorial-title {
+      text-shadow:
+        0 0 24px rgba(255, 255, 255, 0.28),
+        0 2px 12px rgba(0, 0, 0, 0.35);
+    }
   }
-  .home-editorial--overlay-puro [data-editorial-enter='titulo'],
-  .home-editorial--overlay-puro [data-editorial-enter='eslogan'],
-  .home-editorial--overlay-puro [data-editorial-enter='botones'] .editorial-row span,
-  .home-editorial--overlay-puro [data-editorial-enter='botones'] .editorial-cta span {
+
+  /* Feedback táctil: brillo inmediato en título + línea (equiv. group-active) */
+  .editorial-link:active .editorial-title {
+    color: #fff;
+  }
+  .editorial-link:active .editorial-rule {
+    width: 4rem;
+    background-color: #34d399;
+  }
+
+  .home-editorial--overlay-puro img[data-home-logo] {
+    filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+  }
+  .home-editorial--overlay-puro [data-home-eslogan],
+  .home-editorial--overlay-puro .editorial-title {
     text-shadow:
-      0 2px 18px rgba(0, 0, 0, 0.55),
+      0 2px 20px rgba(0, 0, 0, 0.55),
       0 1px 3px rgba(0, 0, 0, 0.45);
   }
 
-  .carrd-nav-link--mesa-gated.is-mesa-locked {
-    opacity: 0.35;
-    pointer-events: none;
-    cursor: not-allowed;
-  }
-
-  .carrd-nav-link--mesa-gated.is-mesa-locked [data-mesa-lock-hint] {
-    display: block !important;
-  }
-
-  .carrd-nav-link--mesa-gated.is-mesa-locked [data-carrd-subtitle] {
-    display: none;
-  }
-
-  .carrd-nav-link--mesa-gated:not(.is-mesa-locked) [data-mesa-lock-hint] {
-    display: none !important;
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .editorial-row,
-    .editorial-cta {
+    .editorial-link,
+    .editorial-link span {
       transition: none !important;
+      transform: none !important;
+    }
+    footer .animate-pulse {
+      animation: none !important;
     }
   }
 </style>
-

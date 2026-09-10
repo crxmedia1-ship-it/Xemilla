@@ -2,12 +2,12 @@
  * Plantillas de estructura (Layout Themes) para Home, Nosotros y Ubicación.
  */
 
+/** 4 temas canónicos del Home (2026-09-09). */
 export const HOME_THEME_IDS = /** @type {const} */ ([
-  'editorial',
-  'bento',
-  'hamburguesa',
-  'hero',
-  'minimal',
+  'editorial', // Grand Editorial
+  'sheet',     // Bottom Glass Sheet
+  'split',     // Split Architecture
+  'cards',     // Showcase Cards
 ]);
 export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
   'editorial',
@@ -20,40 +20,73 @@ export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
 export const UBICACION_THEME_IDS = /** @type {const} */ (['modal', 'split', 'minimal']);
 
 /** Fallback cuando Supabase no trae home_theme. */
-export const DEFAULT_HOME_THEME = 'bento';
+export const DEFAULT_HOME_THEME = 'editorial';
 export const DEFAULT_NOSOTROS_THEME = 'editorial';
 export const DEFAULT_UBICACION_THEME = 'modal';
 
 /**
- * Slugify / match flexible de home_theme (Admin labels + slugs DB).
+ * Normaliza home_theme DB/Admin → 4 IDs canónicos.
+ * Aliases: cinematic/minimal → sheet · bento/hero → cards · split-stage → split.
  * @param {unknown} theme
- * @returns {'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal'}
+ * @returns {'editorial' | 'sheet' | 'split' | 'cards'}
  */
 export function normalizeTheme(theme) {
-  const clean = String(theme || '').toLowerCase();
+  const clean = String(theme || '').toLowerCase().trim();
+
   if (
-    clean.includes('full-cinematic') ||
+    clean === 'sheet' ||
+    clean === 'bottom-glass-sheet' ||
+    clean === 'cinematic' ||
+    clean === 'hamburguesa' ||
+    clean === 'minimal' ||
+    clean === 'bottom-showcase' ||
+    clean === 'full-cinematic' ||
+    clean.includes('sheet') ||
     clean.includes('cinematic') ||
     clean.includes('hamburguesa') ||
     clean.includes('burger') ||
-    clean.includes('hambur')
+    clean.includes('alchemist') ||
+    clean.includes('minimal') ||
+    (clean.includes('bottom') && !clean.includes('bento'))
   ) {
-    return 'hamburguesa';
+    return 'sheet';
   }
+
   if (
-    clean.includes('hero-editorial') ||
+    clean === 'editorial' ||
+    clean === 'grand-editorial' ||
     clean.includes('editorial') ||
     clean.includes('boutique')
   ) {
     return 'editorial';
   }
-  if (clean.includes('split-stage') || clean.includes('split')) return 'hero';
-  if (clean.includes('bento-spatial') || clean.includes('bento') || clean.includes('spatial')) {
-    return 'bento';
+
+  if (
+    clean === 'split' ||
+    clean === 'split-architecture' ||
+    clean === 'split-stage' ||
+    clean.includes('split-architecture') ||
+    (clean.includes('split') && !clean.includes('bento'))
+  ) {
+    return 'split';
   }
-  if (clean.includes('hero') || clean.includes('cards')) return 'hero';
-  if (clean.includes('minimal')) return 'minimal';
-  return 'bento';
+
+  if (
+    clean === 'cards' ||
+    clean === 'showcase-cards' ||
+    clean === 'bento' ||
+    clean === 'bento-spatial' ||
+    clean === 'hero' ||
+    clean.includes('cards') ||
+    clean.includes('showcase') ||
+    clean.includes('bento') ||
+    clean.includes('spatial') ||
+    clean.includes('hero')
+  ) {
+    return 'cards';
+  }
+
+  return 'editorial';
 }
 
 /** @param {unknown} raw */
@@ -61,138 +94,152 @@ export function sanitizeTheme(raw) {
   return normalizeTheme(raw);
 }
 
-/** Aliases compatibles con Admin / API */
-export function getNormalizedTheme(rawTheme) {
-  return normalizeTheme(rawTheme);
-}
-
+/** Alias Admin / API */
 export function normalizeHomeTheme(value) {
   return normalizeTheme(value);
 }
 
 export const HOME_THEME_MAP = Object.freeze({
   editorial: 'editorial',
-  bento: 'bento',
-  hamburguesa: 'hamburguesa',
-  hero: 'hero',
-  minimal: 'minimal',
+  sheet: 'sheet',
+  split: 'split',
+  cards: 'cards',
+  cinematic: 'sheet',
+  hamburguesa: 'sheet',
+  minimal: 'sheet',
+  bento: 'cards',
+  hero: 'cards',
 });
 
 /** Layouts del Studio Home/Core (UI) → theme canónico. */
 export const HOME_LAYOUT_OPTIONS = Object.freeze([
   {
-    id: 'bento-spatial',
-    theme: 'bento',
-    label: 'Bento Spatial',
-    hint: 'Cuadrícula modular con nav frontal',
-  },
-  {
-    id: 'hero-editorial',
+    id: 'grand-editorial',
     theme: 'editorial',
-    label: 'Hero Editorial',
-    hint: 'Tipografía protagonista y lista central',
+    label: 'Grand Editorial',
+    hint: 'Tipografía pura Michelin / Monocle',
+    navBadge: '≡ Índice',
   },
   {
-    id: 'split-stage',
-    theme: 'hero',
-    label: 'Split Stage',
-    hint: 'Escenario dividido con tarjetas hero',
+    id: 'bottom-glass-sheet',
+    theme: 'sheet',
+    label: 'Bottom Glass Sheet',
+    hint: 'Atmósfera libre + bandeja de cristal inferior',
+    navBadge: '↓ Sheet',
   },
   {
-    id: 'full-cinematic',
-    theme: 'hamburguesa',
-    label: 'Full Cinematic',
-    hint: 'Inmersivo: logo + menú hamburguesa',
+    id: 'split-architecture',
+    theme: 'split',
+    label: 'Split Architecture',
+    hint: 'Identidad arriba + bloques de impacto abajo',
+    navBadge: '⇅ Split',
+  },
+  {
+    id: 'showcase-cards',
+    theme: 'cards',
+    label: 'Showcase Cards',
+    hint: 'Bento gastronómico con cards de cristal',
+    navBadge: '⊞ Cards',
   },
 ]);
 
 /**
  * @param {unknown} value
- * @returns {'bento-spatial' | 'hero-editorial' | 'split-stage' | 'full-cinematic'}
+ * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards'}
  */
 export function normalizeHomeLayout(value) {
   const clean = String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/[_]+/g, '-');
-  if (clean === 'bento-spatial' || clean === 'bento' || clean.includes('spatial')) {
-    return 'bento-spatial';
+    .replace(/[_\s]+/g, '-');
+
+  if (clean === 'grand-editorial' || clean === 'hero-editorial' || clean.includes('editorial')) {
+    return 'grand-editorial';
   }
   if (
-    clean === 'hero-editorial' ||
-    clean === 'editorial' ||
-    clean.includes('editorial')
-  ) {
-    return 'hero-editorial';
-  }
-  if (
-    clean === 'split-stage' ||
-    clean === 'hero' ||
-    clean.includes('split') ||
-    clean.includes('stage')
-  ) {
-    return 'split-stage';
-  }
-  if (
+    clean === 'bottom-glass-sheet' ||
+    clean === 'sheet' ||
     clean === 'full-cinematic' ||
+    clean === 'bottom-showcase' ||
     clean === 'hamburguesa' ||
+    clean === 'cinematic' ||
     clean === 'minimal' ||
+    clean.includes('sheet') ||
     clean.includes('cinematic') ||
-    clean.includes('hamburguesa')
+    clean.includes('minimal') ||
+    (clean.includes('showcase') && !clean.includes('cards'))
   ) {
-    return 'full-cinematic';
+    return 'bottom-glass-sheet';
   }
-  return 'bento-spatial';
+  if (
+    clean === 'split-architecture' ||
+    clean === 'split' ||
+    clean === 'split-stage' ||
+    clean.includes('split')
+  ) {
+    return 'split-architecture';
+  }
+  if (
+    clean === 'showcase-cards' ||
+    clean === 'cards' ||
+    clean === 'bento-spatial' ||
+    clean === 'bento' ||
+    clean === 'hero' ||
+    clean.includes('cards') ||
+    clean.includes('bento') ||
+    clean.includes('spatial')
+  ) {
+    return 'showcase-cards';
+  }
+  return 'grand-editorial';
 }
 
 /**
  * @param {unknown} layoutOrTheme
- * @returns {'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal'}
+ * @returns {'editorial' | 'sheet' | 'split' | 'cards'}
  */
 export function homeLayoutToTheme(layoutOrTheme) {
   const layout = normalizeHomeLayout(layoutOrTheme);
-  const hit = HOME_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
-  return /** @type {'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal'} */ (
-    hit?.theme || normalizeTheme(layoutOrTheme)
-  );
+  if (layout === 'grand-editorial') return 'editorial';
+  if (layout === 'bottom-glass-sheet') return 'sheet';
+  if (layout === 'split-architecture') return 'split';
+  if (layout === 'showcase-cards') return 'cards';
+  return /** @type {'editorial' | 'sheet' | 'split' | 'cards'} */ (normalizeTheme(layoutOrTheme));
 }
 
 /**
  * @param {unknown} theme
- * @returns {'bento-spatial' | 'hero-editorial' | 'split-stage' | 'full-cinematic'}
+ * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards'}
  */
 export function homeThemeToLayout(theme) {
   const t = normalizeTheme(theme);
-  if (t === 'editorial') return 'hero-editorial';
-  if (t === 'hero') return 'split-stage';
-  if (t === 'hamburguesa' || t === 'minimal') return 'full-cinematic';
-  return 'bento-spatial';
+  if (t === 'sheet') return 'bottom-glass-sheet';
+  if (t === 'split') return 'split-architecture';
+  if (t === 'cards') return 'showcase-cards';
+  return 'grand-editorial';
 }
 
 /**
- * Plantilla Home + navegación (estilo nav unificado en plantilla/layout).
+ * Plantilla Home + navegación (desacoplados).
  * @param {unknown} homeThemeRaw
  * @param {unknown} estiloNavRaw
  * @returns {{
- *   homeTheme: 'editorial' | 'bento' | 'hamburguesa' | 'hero' | 'minimal',
- *   layout: 'bento-spatial' | 'hero-editorial' | 'split-stage' | 'full-cinematic',
+ *   homeTheme: 'editorial' | 'sheet' | 'split' | 'cards',
+ *   layout: 'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards',
  *   estiloNavegacion: 'frontal' | 'hamburguesa' | 'app_tabs',
  * }}
  */
 export function resolveHomeThemeAndNav(homeThemeRaw, estiloNavRaw) {
-  let homeTheme = homeLayoutToTheme(homeThemeRaw);
+  const homeTheme = homeLayoutToTheme(homeThemeRaw);
+
   const navLegacy = String(estiloNavRaw || '')
     .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  if (homeTheme !== 'hamburguesa' && (navLegacy === 'hamburguesa' || navLegacy === 'oculto')) {
-    homeTheme = 'hamburguesa';
-  }
-
   const estiloNavegacion =
-    homeTheme === 'hamburguesa'
+    navLegacy === 'hamburguesa' || navLegacy === 'oculto'
       ? 'hamburguesa'
       : navLegacy === 'app_tabs' || navLegacy === 'tabs'
         ? 'app_tabs'

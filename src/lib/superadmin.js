@@ -29,58 +29,14 @@ export async function requireSuperAdmin(ctx) {
  */
 export async function listAllRestaurantes(supabase, user = null) {
   const client = user ? getSuperAdminWriteClient(supabase, user) : supabase;
-  // ui_estilo siempre incluido: ahí persistimos cover/logo_bg si faltan columnas Hub
-  const selectSafe =
-    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, logo_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at';
-  const selectMid =
-    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at, activo';
-  const selectFull =
-    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, hub_logo_bg, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at, activo';
+  // Columnas reales del esquema (hub cover/bg viven en ui_estilo.hub).
+  const selectCols =
+    'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at, activo';
 
-  let { data, error } = await client
+  const { data, error } = await client
     .from('restaurantes')
-    .select(selectFull)
+    .select(selectCols)
     .order('nombre_comercial', { ascending: true });
-
-  if (error && /hub_logo_bg|hub_cover_url|coordenadas_maps|activo|column|does not exist|schema cache/i.test(error.message || '')) {
-    console.warn(
-      '[superadmin] listAllRestaurantes: columna Hub/activo ausente; SELECT fallback.',
-      error.message,
-    );
-    const mid = await client
-      .from('restaurantes')
-      .select(selectMid)
-      .order('nombre_comercial', { ascending: true });
-    if (!mid.error) {
-      data = mid.data;
-      error = null;
-    } else if (/activo|column|does not exist|schema cache/i.test(mid.error.message || '')) {
-      const midNoActivo = await client
-        .from('restaurantes')
-        .select(
-          'id, nombre_comercial, slug, user_id, whatsapp_num, whatsapp_url, direccion, coordenadas_maps, logo_url, hub_cover_url, ui_estilo, imagen_fondo, share_image_url, gadget_wifi, created_at',
-        )
-        .order('nombre_comercial', { ascending: true });
-      if (!midNoActivo.error) {
-        data = midNoActivo.data;
-        error = null;
-      } else {
-        const fallback = await client
-          .from('restaurantes')
-          .select(selectSafe)
-          .order('nombre_comercial', { ascending: true });
-        data = fallback.data;
-        error = fallback.error;
-      }
-    } else {
-      const fallback = await client
-        .from('restaurantes')
-        .select(selectSafe)
-        .order('nombre_comercial', { ascending: true });
-      data = fallback.data;
-      error = fallback.error;
-    }
-  }
 
   if (error) {
     console.error('[superadmin] listAllRestaurantes:', error.message);

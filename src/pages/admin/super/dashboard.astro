@@ -2,7 +2,6 @@
 export const prerender = false;
 
 import Layout from '../../../layouts/Layout.astro';
-import AdminThemeSwitcher from '../../../components/admin/AdminThemeSwitcher.astro';
 import {
   requireSuperAdmin,
   listAllRestaurantes,
@@ -334,7 +333,6 @@ function resolveMapsEmbed(direccion) {
         </nav>
 
         <div class="super-until-hero__actions">
-          <AdminThemeSwitcher class="super-until-hero__theme" />
           <button
             type="button"
             class="super-until-hero__cta"
@@ -1446,23 +1444,13 @@ function resolveMapsEmbed(direccion) {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03) !important;
   }
 
-  html.admin-panel.dark .super-net-card,
-  html.admin-panel[data-theme='dark'] .super-net-card,
-  html.admin-panel[data-theme='onyx'] .super-net-card {
-    background-color: #09090b !important;
-    border-color: rgba(39, 39, 42, 0.8) !important;
-    box-shadow: none !important;
-  }
+  
 
   html.admin-panel .super-net .super-net-kpi-value {
     color: #18181b !important;
   }
 
-  html.admin-panel.dark .super-net .super-net-kpi-value,
-  html.admin-panel[data-theme='dark'] .super-net .super-net-kpi-value,
-  html.admin-panel[data-theme='onyx'] .super-net .super-net-kpi-value {
-    color: #ffffff !important;
-  }
+  
 
   html.admin-panel .super-net-btn-studio {
     background-color: #18181b !important;
@@ -1474,19 +1462,9 @@ function resolveMapsEmbed(direccion) {
     color: #ffffff !important;
   }
 
-  html.admin-panel.dark .super-net-btn-studio,
-  html.admin-panel[data-theme='dark'] .super-net-btn-studio,
-  html.admin-panel[data-theme='onyx'] .super-net-btn-studio {
-    background-color: #27272a !important;
-    color: #e4e4e7 !important;
-  }
+  
 
-  html.admin-panel.dark .super-net-btn-studio:hover,
-  html.admin-panel[data-theme='dark'] .super-net-btn-studio:hover,
-  html.admin-panel[data-theme='onyx'] .super-net-btn-studio:hover {
-    background-color: #3f3f46 !important;
-    color: #e4e4e7 !important;
-  }
+  
 
   html.admin-panel .super-net-btn-web {
     background-color: #f4f4f5 !important;
@@ -1499,42 +1477,22 @@ function resolveMapsEmbed(direccion) {
     color: #3f3f46 !important;
   }
 
-  html.admin-panel.dark .super-net-btn-web,
-  html.admin-panel[data-theme='dark'] .super-net-btn-web,
-  html.admin-panel[data-theme='onyx'] .super-net-btn-web {
-    background-color: #18181b !important;
-    color: #d4d4d8 !important;
-    border-color: #27272a !important;
-  }
+  
 
-  html.admin-panel.dark .super-net-btn-web:hover,
-  html.admin-panel[data-theme='dark'] .super-net-btn-web:hover,
-  html.admin-panel[data-theme='onyx'] .super-net-btn-web:hover {
-    background-color: #27272a !important;
-    color: #d4d4d8 !important;
-  }
+  
 
   html.admin-panel .super-net-empty {
     color: #d4d4d8 !important;
   }
 
-  html.admin-panel.dark .super-net-empty,
-  html.admin-panel[data-theme='dark'] .super-net-empty,
-  html.admin-panel[data-theme='onyx'] .super-net-empty {
-    color: #3f3f46 !important;
-  }
+  
 
   html.admin-panel .super-net .text-sm.font-semibold,
   html.admin-panel .super-net header.text-sm.font-semibold {
     color: #18181b !important;
   }
 
-  html.admin-panel.dark .super-net .text-sm.font-semibold,
-  html.admin-panel.dark .super-net header.text-sm.font-semibold,
-  html.admin-panel[data-theme='dark'] .super-net .text-sm.font-semibold,
-  html.admin-panel[data-theme='onyx'] .super-net .text-sm.font-semibold {
-    color: #ffffff !important;
-  }
+  
 
   /* Nuevo Restaurante modal — escape admin remaps */
   html.admin-panel .nuevo-rest-modal__card {
@@ -1543,34 +1501,20 @@ function resolveMapsEmbed(direccion) {
     border-color: rgba(228, 228, 231, 0.9) !important;
   }
 
-  html.admin-panel.dark .nuevo-rest-modal__card,
-  html.admin-panel[data-theme='dark'] .nuevo-rest-modal__card,
-  html.admin-panel[data-theme='onyx'] .nuevo-rest-modal__card {
-    background-color: #09090b !important;
-    border-color: rgba(39, 39, 42, 0.8) !important;
-  }
+  
 
   html.admin-panel .nuevo-rest-modal__title {
     color: #18181b !important;
   }
 
-  html.admin-panel.dark .nuevo-rest-modal__title,
-  html.admin-panel[data-theme='dark'] .nuevo-rest-modal__title,
-  html.admin-panel[data-theme='onyx'] .nuevo-rest-modal__title {
-    color: #ffffff !important;
-  }
+  
 
   html.admin-panel .nuevo-rest-field {
     background-color: #fafafa !important;
     color: #18181b !important;
   }
 
-  html.admin-panel.dark .nuevo-rest-field,
-  html.admin-panel[data-theme='dark'] .nuevo-rest-field,
-  html.admin-panel[data-theme='onyx'] .nuevo-rest-field {
-    background-color: rgba(24, 24, 27, 0.6) !important;
-    color: #ffffff !important;
-  }
+  
 
   html.admin-panel .nuevo-rest-submit {
     background-color: #18181b !important;
@@ -1582,19 +1526,9 @@ function resolveMapsEmbed(direccion) {
     color: #ffffff !important;
   }
 
-  html.admin-panel.dark .nuevo-rest-submit,
-  html.admin-panel[data-theme='dark'] .nuevo-rest-submit,
-  html.admin-panel[data-theme='onyx'] .nuevo-rest-submit {
-    background-color: #ffffff !important;
-    color: #09090b !important;
-  }
+  
 
-  html.admin-panel.dark .nuevo-rest-submit:hover:not(:disabled),
-  html.admin-panel[data-theme='dark'] .nuevo-rest-submit:hover:not(:disabled),
-  html.admin-panel[data-theme='onyx'] .nuevo-rest-submit:hover:not(:disabled) {
-    background-color: #e4e4e7 !important;
-    color: #09090b !important;
-  }
+  
 
   html.admin-panel .nuevo-rest-modal[hidden] {
     display: none !important;
@@ -1606,24 +1540,14 @@ function resolveMapsEmbed(direccion) {
     border-color: rgba(228, 228, 231, 0.8) !important;
   }
 
-  html.admin-panel.dark .super-tf-bar,
-  html.admin-panel[data-theme='dark'] .super-tf-bar,
-  html.admin-panel[data-theme='onyx'] .super-tf-bar {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
-  }
+  
 
   html.admin-panel .super-tf-on {
     background-color: #ffffff !important;
     color: #18181b !important;
   }
 
-  html.admin-panel.dark .super-tf-on,
-  html.admin-panel[data-theme='dark'] .super-tf-on,
-  html.admin-panel[data-theme='onyx'] .super-tf-on {
-    background-color: #27272a !important;
-    color: #ffffff !important;
-  }
+  
 </style>
 
 <script>

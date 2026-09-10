@@ -4,7 +4,6 @@ export const prerender = false;
 import Layout from '../../layouts/Layout.astro';
 import AdminXemillaMark from '../../components/admin/AdminXemillaMark.astro';
 import AdminMetricsPanel from '../../components/admin/AdminMetricsPanel.astro';
-import AdminThemeSwitcher from '../../components/admin/AdminThemeSwitcher.astro';
 import PerfilLocalCard from '../../components/admin/PerfilLocalCard.astro';
 import WelcomePopupCard from '../../components/admin/WelcomePopupCard.astro';
 import { getAdminDashboardData } from '../../lib/admin.js';
@@ -771,7 +770,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         ) : null
       }
 
-      <AdminThemeSwitcher />
       <form method="POST" action="/api/admin-logout" class="hidden sm:block">
         <button type="submit" class="admin-studio-header__link" title="Cerrar sesión">
           Salir
@@ -1697,7 +1695,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                       : 'bg-zinc-200/60 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
                                   ]}
                                 >
-                                  {opt.theme === 'hamburguesa' ? '☰ Nav' : 'Frontal'}
+                                  {opt.navBadge ?? 'Frontal'}
                                 </span>
                               </label>
                             );
@@ -1705,6 +1703,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         }
                       </div>
                       <input type="hidden" id="marca-home-theme" name="home_theme" value={marca.home_theme} data-home-theme-input />
+                      <input type="hidden" id="marca-home-nav" name="estilo_navegacion" value={resolvedHomeMarca.estiloNavegacion} />
                     </section>
 
                     {/* Columna izquierda — Identidad & Textos */}
@@ -3811,19 +3810,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     </div>
 
     <div
-      id="mesa-alertas-stack"
-      class="pointer-events-none fixed right-4 top-20 z-[90] flex w-[min(92vw,22rem)] flex-col gap-3"
-      aria-live="assertive"
-      aria-relevant="additions"
-    ></div>
-
-    <audio
-      id="mesa-alerta-chime"
-      preload="auto"
-      src="https://actions.google.com/sounds/v1/alarms/dinner_bell_triangle.ogg"
-    ></audio>
-
-    <div
       id="ops-autosave-toast"
       class="pointer-events-none fixed right-6 bottom-20 sm:bottom-6 z-[90] px-3 py-1.5 rounded-full bg-zinc-900/90 dark:bg-white/90 text-white dark:text-zinc-900 text-xs font-mono font-medium shadow-lg backdrop-blur-md opacity-0 transition-opacity duration-300"
       data-open="false"
@@ -5489,32 +5475,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
   .cat-filter-pill.drag-over {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
-  }
-
-  .mesa-alerta-card {
-    pointer-events: auto;
-    border: 1px solid rgba(16, 185, 129, 0.45);
-    background: color-mix(in srgb, #10b981 18%, var(--bg-card, #161618));
-    box-shadow: 0 12px 40px rgba(16, 185, 129, 0.18);
-    animation: mesa-alerta-pulse 1.4s ease-in-out infinite;
-  }
-
-  @keyframes mesa-alerta-pulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35);
-      border-color: rgba(16, 185, 129, 0.45);
-    }
-    50% {
-      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
-      border-color: rgba(52, 211, 153, 0.75);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .mesa-alerta-card {
-      animation: none;
-    }
   }
 
   /* ── Bottom dock + FAB (app shell) ── */
@@ -7256,8 +7216,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   /** @type {AbortController | null} */
   let __dashboardAc = null;
-  /** @type {(() => void) | null} */
-  let __alertasCleanup = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let modalCloseTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
@@ -7280,8 +7238,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   function teardownAdminDashboard() {
     __dashboardAc?.abort();
     __dashboardAc = null;
-    __alertasCleanup?.();
-    __alertasCleanup = null;
     if (modalCloseTimer) {
       clearTimeout(modalCloseTimer);
       modalCloseTimer = null;
@@ -12365,70 +12321,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     clamp();
   });
 
-  // Profile menu (avatar → glass dropdown) — supports mobile + desktop instances
-  (function wireAdminProfileMenu() {
-    const roots = document.querySelectorAll('[data-admin-profile]');
-    if (!roots.length) return;
-
-    /**
-     * @param {HTMLElement} root
-     */
-    function bindRoot(root) {
-      const trigger = root.querySelector('[data-admin-profile-trigger], .admin-profile-trigger');
-      const menu = root.querySelector('[data-admin-profile-menu]');
-      if (!(trigger instanceof HTMLButtonElement)) return;
-      if (!(menu instanceof HTMLElement)) return;
-
-      const setOpen = (open) => {
-        menu.hidden = !open;
-        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-      };
-
-      trigger.addEventListener(
-        'click',
-        (event) => {
-          event.stopPropagation();
-          // Close other open profile menus first
-          roots.forEach((other) => {
-            if (!(other instanceof HTMLElement) || other === root) return;
-            const otherMenu = other.querySelector('[data-admin-profile-menu]');
-            const otherTrigger = other.querySelector('[data-admin-profile-trigger], .admin-profile-trigger');
-            if (otherMenu instanceof HTMLElement) otherMenu.hidden = true;
-            if (otherTrigger instanceof HTMLElement) otherTrigger.setAttribute('aria-expanded', 'false');
-          });
-          setOpen(menu.hidden);
-        },
-        { signal },
-      );
-
-      document.addEventListener(
-        'click',
-        (event) => {
-          if (menu.hidden) return;
-          const target = event.target;
-          if (target instanceof Node && root.contains(target)) return;
-          setOpen(false);
-        },
-        { signal },
-      );
-
-      document.addEventListener(
-        'keydown',
-        (event) => {
-          if (event.key === 'Escape' && !menu.hidden) {
-            setOpen(false);
-            trigger.focus();
-          }
-        },
-        { signal },
-      );
-    }
-
-    roots.forEach((root) => {
-      if (root instanceof HTMLElement) bindRoot(root);
-    });
-  })();
-
   // Sub-tabs Identidad de Marca
   const marcaSubtabs = document.querySelectorAll('[data-marca-subtab]');
   const marcaPanels = document.querySelectorAll('[data-marca-panel]');
@@ -13279,14 +13171,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         : 'editorial';
     const nosotrosThemePayload = val('marca-nosotros-theme') || 'editorial';
 
-    console.info('[identidad] GUARDAR', {
-      restauranteId,
-      nosotros_layout: nosotrosLayoutPayload,
-      nosotros_theme: nosotrosThemePayload,
-      bloques: nosotrosBloquesPayload.length,
-      media: nosotrosBloquesPayload.map((b) => (b.media || []).length),
-    });
-
     saveBtn.disabled = true;
     saveBtn.textContent = 'Guardando…';
     showToast('Guardando identidad…', 'ok');
@@ -13340,17 +13224,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           home_layout:
             document.querySelector('[data-home-layout-option]:checked')?.value ||
             val('marca-home-theme') ||
-            'bento-spatial',
-          home_estilo_navegacion:
-            val('marca-home-theme') === 'hamburguesa' ? 'hamburguesa' : 'frontal',
+            'grand-editorial',
+          home_estilo_navegacion: document.getElementById('marca-home-nav')?.value || 'frontal',
           home_efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
           home_gadget_servicios_estilo:
             val('marca-home-gadget-servicios-estilo') || 'drawer',
           overlay_opacity: Number(val('marca-home-overlay-opacity')) || 40,
           overlay_estilo: val('marca-home-overlay-estilo') || 'oscuro',
           fondo_animacion: val('marca-home-fondo-animacion') || 'in',
-          estilo_navegacion:
-            val('marca-home-theme') === 'hamburguesa' ? 'hamburguesa' : 'frontal',
+          estilo_navegacion: document.getElementById('marca-home-nav')?.value || 'frontal',
           efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
           gadget_servicios_estilo:
             val('marca-home-gadget-servicios-estilo') || 'drawer',
@@ -13479,11 +13361,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           boutique_titulo: val('marca-boutique-titulo') || 'Boutique',
           boutique_catalogo_url: val('marca-boutique-catalogo-url'),
           boutique_productos: collectBoutiqueProductos(),
-          home_theme: val('marca-home-theme') || 'bento',
+          home_theme: val('marca-home-theme') || 'editorial',
         }),
       });
       const json = await res.json().catch(() => ({}));
-      console.info('[identidad] respuesta update-marca', res.status, json);
       if (!res.ok) throw new Error(json.error || `No se pudo guardar (${res.status})`);
 
       if (root instanceof HTMLElement) {
@@ -13532,12 +13413,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       setMarcaSaveState(saveBtn.dataset.saveState || 'idle', saveBtn);
     }
   }
-
-  console.info('[identidad] listeners', {
-    form: Boolean(marcaForm),
-    saveBtn: Boolean(marcaSave),
-    restauranteId,
-  });
 
   marcaSave?.addEventListener(
     'click',
@@ -13917,214 +13792,4 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   // Carga inicial (antes del primer astro:page-load)
   try { initQrPanel(); } catch (err) { console.error('[qrPanel] boot error:', err); }
   // ── /QR Panel standalone ─────────────────────────────────────────
-</script>
-
-<script>
-  import { createSupabaseBrowserClient } from '../../lib/supabase/browser.js';
-
-  /** @type {AbortController | null} */
-  let __alertasPageAc = null;
-  /** @type {(() => void) | null} */
-  let __alertasChannelCleanup = null;
-
-  function teardownMesaAlertas() {
-    __alertasPageAc?.abort();
-    __alertasPageAc = null;
-    __alertasChannelCleanup?.();
-    __alertasChannelCleanup = null;
-  }
-
-  function initMesaAlertas() {
-    teardownMesaAlertas();
-
-    const dashRoot = document.getElementById('dashboard-root');
-    const restId = String(dashRoot?.dataset.restauranteId || '').trim();
-    const stack = document.getElementById('mesa-alertas-stack');
-    const chimeEl = document.getElementById('mesa-alerta-chime');
-
-    if (!restId || !(stack instanceof HTMLElement)) return;
-
-    const ac = new AbortController();
-    __alertasPageAc = ac;
-    const { signal } = ac;
-
-    const supabase = createSupabaseBrowserClient();
-
-    /**
-     * @param {string} mesa
-     * @param {string} tipo
-     */
-    function alertaCopy(mesa, tipo) {
-      if (tipo === 'cuenta') return `Mesa ${mesa} solicita la cuenta`;
-      return `Mesa ${mesa} llama al mesero`;
-    }
-
-    let chimeCtx = null;
-
-    function playChime() {
-      if (chimeEl instanceof HTMLAudioElement) {
-        chimeEl.currentTime = 0;
-        void chimeEl.play().catch(() => {
-          try {
-            const AC = window.AudioContext || /** @type {any} */ (window).webkitAudioContext;
-            if (!AC) return;
-            if (!chimeCtx || chimeCtx.state === 'closed') {
-              chimeCtx = new AC();
-            }
-            const ctx = chimeCtx;
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.type = 'sine';
-            o.frequency.setValueAtTime(880, ctx.currentTime);
-            o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.35);
-            g.gain.setValueAtTime(0.0001, ctx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
-            o.connect(g);
-            g.connect(ctx.destination);
-            o.start();
-            o.stop(ctx.currentTime + 0.6);
-          } catch {
-            /* ignore */
-          }
-        });
-      }
-    }
-
-    /**
-     * @param {{ id: string, mesa: string, tipo: string }} alerta
-     */
-    function showAlertaCard(alerta) {
-      const card = document.createElement('article');
-      card.className =
-        'mesa-alerta-card rounded-2xl border px-4 py-3.5 text-left shadow-lg backdrop-blur-md';
-      card.dataset.alertaId = alerta.id;
-
-      const label = document.createElement('p');
-      label.className =
-        'text-[0.55rem] font-semibold uppercase tracking-[0.22em] text-emerald-300/90';
-      label.textContent = 'Nueva solicitud';
-
-      const msg = document.createElement('p');
-      msg.className = 'mt-1.5 text-sm font-medium tracking-tight text-zinc-100';
-      msg.textContent = alertaCopy(alerta.mesa, alerta.tipo);
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className =
-        'mt-3 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-3.5 py-2 text-[0.55rem] font-semibold uppercase tracking-[0.16em] text-white transition hover:opacity-90 active:scale-95';
-      btn.textContent = 'Marcar como atendido';
-
-      btn.addEventListener(
-        'click',
-        async () => {
-          btn.disabled = true;
-          btn.textContent = '…';
-          try {
-            const res = await fetch('/api/alerta-atendida', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ alerta_id: alerta.id }),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(json.error || 'Error');
-            card.style.opacity = '0';
-            card.style.transform = 'translateX(12px)';
-            setTimeout(() => card.remove(), 280);
-          } catch {
-            btn.disabled = false;
-            btn.textContent = 'Reintentar';
-          }
-        },
-        { signal },
-      );
-
-      card.append(label, msg, btn);
-      stack.prepend(card);
-      playChime();
-    }
-
-    // Alertas pendientes al cargar
-    void supabase
-      .from('alertas_mesas')
-      .select('id, mesa, tipo, atendida, created_at')
-      .eq('restaurante_id', restId)
-      .eq('atendida', false)
-      .order('created_at', { ascending: false })
-      .limit(8)
-      .then(({ data, error }) => {
-        if (signal.aborted) return;
-        if (error) {
-          console.warn('[alertas_mesas]', error.message);
-          return;
-        }
-        (data || []).forEach((row) => {
-          showAlertaCard({
-            id: row.id,
-            mesa: row.mesa,
-            tipo: row.tipo,
-          });
-        });
-      });
-
-    const channel = supabase
-      .channel(`alertas-mesas-${restId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'alertas_mesas',
-          filter: `restaurante_id=eq.${restId}`,
-        },
-        (payload) => {
-          const row = payload.new;
-          if (!row || row.atendida) return;
-          showAlertaCard({
-            id: row.id,
-            mesa: row.mesa,
-            tipo: row.tipo,
-          });
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'alertas_mesas',
-          filter: `restaurante_id=eq.${restId}`,
-        },
-        (payload) => {
-          const row = payload.new;
-          if (!row?.atendida || !row.id) return;
-          const card = stack.querySelector(`[data-alerta-id="${row.id}"]`);
-          card?.remove();
-        },
-      )
-      .subscribe();
-
-    let alertasTornDown = false;
-    function teardownAlertasRealtime() {
-      if (alertasTornDown) return;
-      alertasTornDown = true;
-      void supabase.removeChannel(channel);
-      if (chimeCtx && chimeCtx.state !== 'closed') {
-        void chimeCtx.close().catch(() => {});
-        chimeCtx = null;
-      }
-    }
-    __alertasChannelCleanup = teardownAlertasRealtime;
-    window.addEventListener('pagehide', teardownAlertasRealtime, { signal });
-    window.addEventListener('beforeunload', teardownAlertasRealtime, { signal });
-  }
-
-  document.addEventListener('astro:page-load', () => {
-    try {
-      initMesaAlertas();
-    } catch (err) {
-      console.error('Error en menú:', err);
-    }
-  });
-  document.addEventListener('astro:before-preparation', teardownMesaAlertas);
 </script>

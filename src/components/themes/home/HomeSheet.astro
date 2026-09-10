@@ -1,0 +1,177 @@
+---
+/**
+ * HomeSheet — Bottom Glass Sheet.
+ * 50% atmósfera libre + bandeja de cristal anclada.
+ */
+import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
+import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
+
+interface Props {
+  nombre?: string;
+  logoText?: string;
+  logoLetter?: string;
+  logoUrl?: string | null;
+  logo_url?: string | null;
+  tagline?: string;
+  eslogan?: string;
+  taglineSuperior?: string;
+  tagline_superior?: string;
+  reservasCta?: { label: string; href: string } | null;
+  reservas_link?: string;
+  homeUi?: Record<string, unknown>;
+  restaurante?: Record<string, unknown>;
+}
+
+const props = Astro.props as Record<string, unknown>;
+const r =
+  props?.restaurante && typeof props.restaurante === 'object'
+    ? (props.restaurante as Record<string, unknown>)
+    : props;
+
+const { nombre, logoText, logoLetter, logoUrl, tagline, reservasCta, homeUi } =
+  resolveSafeHomeProps(props);
+
+const { estiloNavegacion, efectoEntrada } = resolveHomePxSizes(homeUi || props?.homeUi);
+
+const navFrontal = estiloNavegacion === 'frontal';
+const navAppTabs = estiloNavegacion === 'app_tabs';
+const hasEntrance =
+  efectoEntrada === 'rise' ||
+  efectoEntrada === 'blur' ||
+  efectoEntrada === 'zoom' ||
+  efectoEntrada === 'tracking';
+
+const brandName = String(nombre || logoText || 'Restaurante').trim();
+const taglineDisplay = String(tagline || props?.eslogan || r?.eslogan || '').trim();
+const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
+const reservasIsExternal = reservasLink !== '#';
+
+const dockClass =
+  'sheet-dock truncate cursor-pointer rounded-xl border border-white/15 bg-black/40 px-2 py-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-200 backdrop-blur-xl transition-all hover:border-white/30 hover:bg-black/60 hover:text-white active:scale-[0.97] focus:outline-none sm:text-[11px]';
+---
+
+<div
+  class:list={[
+    'home-sheet linktree-home relative z-10 flex min-h-[100dvh] w-full select-none flex-col bg-transparent font-[family-name:var(--font-body,var(--fuente-principal))]',
+    navAppTabs && 'pb-24',
+  ]}
+  data-linktree-home
+  data-home-theme="sheet"
+  data-estilo-navegacion={estiloNavegacion}
+>
+  {/* 50% superior — atmósfera libre */}
+  <div class="flex min-h-0 flex-1 flex-col" aria-hidden="true" />
+
+  {/* 50% inferior — glass sheet */}
+  {
+    navFrontal ? (
+      <div
+        class:list={[
+          'mx-auto w-full max-w-lg',
+          hasEntrance && 'home-enter home-enter--botones',
+        ]}
+        data-home-menu
+      >
+        <div class="flex w-full flex-col gap-4 rounded-t-[2.5rem] border-t border-white/20 bg-zinc-950/75 p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl sm:rounded-3xl sm:border sm:p-8">
+          {/* Header interno */}
+          <div class="flex items-center gap-3" data-home-header>
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 sm:h-12 sm:w-12"
+              data-home-logo
+            >
+              {
+                logoUrl ? (
+                  <img src={logoUrl} alt={brandName} class="h-full w-full object-contain p-1" data-home-logo />
+                ) : (
+                  <span class="text-xs font-semibold tracking-widest text-white/80" data-home-logo-fallback>
+                    {logoLetter || brandName.slice(0, 1)}
+                  </span>
+                )
+              }
+            </div>
+            <div class="min-w-0 flex-1">
+              <p
+                class="truncate font-serif text-sm font-medium uppercase tracking-[0.18em] text-white sm:text-base"
+                data-home-titulo
+              >
+                {brandName}
+              </p>
+              {
+                taglineDisplay ? (
+                  <p class="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400" data-home-eslogan>
+                    {taglineDisplay}
+                  </p>
+                ) : null
+              }
+            </div>
+            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-[10px] text-emerald-400">
+              <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
+              ABIERTO
+            </span>
+          </div>
+
+          {/* CTA Menú */}
+          <button
+            type="button"
+            data-tab-trigger="menu"
+            data-open-section="menu"
+            class="sheet-cta flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/25 bg-white/10 px-6 py-4 font-serif text-sm uppercase tracking-[0.2em] text-white shadow-lg transition-all hover:bg-white/20 focus:outline-none active:scale-[0.97] active:bg-white/25"
+          >
+            <span>EL MENÚ</span>
+            <span aria-hidden="true">↗</span>
+          </button>
+
+          {/* Dock 3 */}
+          <div class="grid grid-cols-3 gap-2">
+            {
+              reservasIsExternal ? (
+                <a
+                  href={reservasLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-tab-trigger="reservas"
+                  data-reservas-home-cta
+                  class={dockClass}
+                >
+                  RESERVAS
+                </a>
+              ) : (
+                <button type="button" data-tab-trigger="reservas" data-reservas-home-cta class={dockClass}>
+                  RESERVAS
+                </button>
+              )
+            }
+            <button type="button" data-tab-trigger="nosotros" data-open-section="nosotros" class={dockClass}>
+              NOSOTROS
+            </button>
+            <button
+              type="button"
+              data-tab-trigger="ubicacion"
+              data-open-section="ubicacion"
+              data-open-ubicacion="true"
+              class={dockClass}
+            >
+              CONTACTO
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div class="pb-[max(1.5rem,env(safe-area-inset-bottom))]" aria-hidden="true" />
+    )
+  }
+</div>
+
+<style>
+  .sheet-cta,
+  .sheet-dock {
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-cta,
+    .sheet-dock {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+</style>

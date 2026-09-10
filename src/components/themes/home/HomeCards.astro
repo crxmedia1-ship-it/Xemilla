@@ -1,0 +1,204 @@
+---
+/**
+ * HomeCards — Showcase Cards.
+ * Bento gastronómico: hero carta + grid reservas/ubicación.
+ */
+import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
+import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
+
+interface Props {
+  nombre?: string;
+  logoText?: string;
+  logoLetter?: string;
+  logoUrl?: string | null;
+  logo_url?: string | null;
+  tagline?: string;
+  eslogan?: string;
+  reservasCta?: { label: string; href: string } | null;
+  reservas_link?: string;
+  homeUi?: Record<string, unknown>;
+  restaurante?: Record<string, unknown>;
+}
+
+const props = Astro.props as Record<string, unknown>;
+const r =
+  props?.restaurante && typeof props.restaurante === 'object'
+    ? (props.restaurante as Record<string, unknown>)
+    : props;
+
+const { nombre, logoText, logoLetter, logoUrl, tagline, reservasCta, homeUi } =
+  resolveSafeHomeProps(props);
+
+const { estiloNavegacion, efectoEntrada } = resolveHomePxSizes(homeUi || props?.homeUi);
+
+const navFrontal = estiloNavegacion === 'frontal';
+const immersiveLogoOnly = estiloNavegacion === 'hamburguesa';
+const navAppTabs = estiloNavegacion === 'app_tabs';
+const hasEntrance =
+  efectoEntrada === 'rise' ||
+  efectoEntrada === 'blur' ||
+  efectoEntrada === 'zoom' ||
+  efectoEntrada === 'tracking';
+
+const brandName = String(nombre || logoText || 'Restaurante').trim();
+const taglineDisplay = String(tagline || props?.eslogan || r?.eslogan || '').trim();
+const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
+const reservasIsExternal = reservasLink !== '#';
+
+const miniCard =
+  'cards-mini flex min-h-[110px] cursor-pointer flex-col justify-between rounded-2xl border border-white/15 bg-zinc-950/60 p-4 text-left backdrop-blur-xl transition-all hover:border-white/30 hover:bg-zinc-900/80 focus:outline-none active:scale-[0.97]';
+---
+
+<div
+  class:list={[
+    'home-cards linktree-home relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-lg select-none flex-col justify-between bg-transparent p-4 sm:p-6 font-[family-name:var(--font-body,var(--fuente-principal))]',
+    navAppTabs && 'pb-24',
+  ]}
+  data-linktree-home
+  data-home-theme="cards"
+  data-estilo-navegacion={estiloNavegacion}
+>
+  {/* Header */}
+  <header
+    class:list={[
+      'flex w-full items-center justify-between gap-3 pt-[max(0.5rem,env(safe-area-inset-top))]',
+      hasEntrance && 'home-enter home-enter--logo',
+    ]}
+    data-home-header
+  >
+    <div class="flex min-w-0 items-center gap-3">
+      <div
+        class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5"
+        data-home-logo
+      >
+        {
+          logoUrl ? (
+            <img src={logoUrl} alt={brandName} class="h-full w-full object-contain p-1" data-home-logo />
+          ) : (
+            <span class="text-xs font-semibold tracking-widest text-white/80" data-home-logo-fallback>
+              {logoLetter || brandName.slice(0, 1)}
+            </span>
+          )
+        }
+      </div>
+      {
+        !immersiveLogoOnly ? (
+          <div class="min-w-0">
+            <p class="truncate font-serif text-sm uppercase tracking-[0.16em] text-white" data-home-titulo>
+              {brandName}
+            </p>
+            {
+              taglineDisplay ? (
+                <p class="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-400" data-home-eslogan>
+                  {taglineDisplay}
+                </p>
+              ) : null
+            }
+          </div>
+        ) : null
+      }
+    </div>
+    {
+      !immersiveLogoOnly ? (
+        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-mono text-[10px] text-emerald-400">
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
+          ABIERTO HOY
+        </span>
+      ) : null
+    }
+  </header>
+
+  {/* Showcase */}
+  {
+    navFrontal ? (
+      <div
+        class:list={[
+          'flex flex-1 flex-col justify-end gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6',
+          hasEntrance && 'home-enter home-enter--botones',
+        ]}
+        data-home-menu
+      >
+        {/* Hero card — Menú */}
+        <button
+          type="button"
+          data-tab-trigger="menu"
+          data-open-section="menu"
+          class="cards-hero group relative flex min-h-[160px] w-full cursor-pointer flex-col justify-between overflow-hidden rounded-3xl border border-white/20 bg-zinc-950/70 p-6 text-left shadow-2xl backdrop-blur-2xl transition-all hover:border-white/35 focus:outline-none active:scale-[0.97]"
+        >
+          <span class="inline-flex w-fit rounded-full bg-white/10 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-white/60">
+            Carta completa
+          </span>
+          <div>
+            <span class="block font-serif text-xl font-medium uppercase tracking-[0.14em] text-white sm:text-2xl">
+              VER LA CARTA &amp; EL MENÚ ↗
+            </span>
+            <span class="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400 sm:text-xs">
+              Especialidades del chef &amp; maridaje
+            </span>
+          </div>
+        </button>
+
+        {/* Grid 2 cols */}
+        <div class="grid grid-cols-2 gap-3">
+          {
+            reservasIsExternal ? (
+              <a
+                href={reservasLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-tab-trigger="reservas"
+                data-reservas-home-cta
+                class={miniCard}
+              >
+                <span class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-400">Acceso</span>
+                <span class="font-mono text-xs font-medium uppercase tracking-[0.14em] text-white sm:text-sm">
+                  RESERVAR MESA
+                </span>
+              </a>
+            ) : (
+              <button type="button" data-tab-trigger="reservas" data-reservas-home-cta class={miniCard}>
+                <span class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-400">Acceso</span>
+                <span class="font-mono text-xs font-medium uppercase tracking-[0.14em] text-white sm:text-sm">
+                  RESERVAR MESA
+                </span>
+              </button>
+            )
+          }
+
+          <button
+            type="button"
+            data-tab-trigger="ubicacion"
+            data-open-section="ubicacion"
+            data-open-ubicacion="true"
+            class={miniCard}
+          >
+            <span class="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-400">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0 1 15 0z" />
+              </svg>
+              Mapa
+            </span>
+            <span class="font-mono text-xs font-medium uppercase tracking-[0.14em] text-white sm:text-sm">
+              UBICACIÓN &amp; MAPA
+            </span>
+          </button>
+        </div>
+      </div>
+    ) : null
+  }
+</div>
+
+<style>
+  .cards-hero,
+  .cards-mini {
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cards-hero,
+    .cards-mini {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+</style>
