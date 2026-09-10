@@ -123,6 +123,7 @@ export function resolveSafeHomeProps(props = {}) {
         r?.logoUrl ||
         r?.logo ||
         '',
+      'logo',
     );
   } catch (e) {
     console.error('Error resolviendo logo Home:', e);

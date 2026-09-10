@@ -178,6 +178,7 @@ let logoUrl = null;
 try {
   logoUrl = resolveMediaUrl(
     restaurante?.logo_url || restaurante?.logo || restaurante?.logoUrl || '',
+    'logo',
   );
 } catch (e) {
   console.error('Error renderizando tema:', e);

@@ -1,6 +1,11 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
-import { optimizedPublicUrl, parseCloudinaryUrl } from '../../lib/cloudinary.js';
+import {
+  optimizedPublicUrl,
+  parseCloudinaryUrl,
+  buildRestaurantMediaFolder,
+  normalizeCloudinaryAssetType,
+} from '../../lib/cloudinary.js';
 
 export const prerender = false;
 
@@ -18,7 +23,8 @@ const ALLOWED = new Set([
 
 /**
  * Sube archivo binario a Cloudinary (auth requerida).
- * multipart/form-data: campo `file`
+ * multipart/form-data: `file`, `restaurante_slug` (o `slug`), `asset_type`
+ * (`identity` | `categories` | `dishes`). Opcional: `restaurante_id` para resolver el slug.
  */
 export async function POST({ request, cookies }) {
   const supabase = createSupabaseServerClient({ request, cookies });
@@ -78,6 +84,28 @@ export async function POST({ request, cookies }) {
     return json({ error: `Tipo no permitido: ${file.type}` }, 400);
   }
 
+  let slug = String(form.get('restaurante_slug') || form.get('slug') || '').trim();
+  const restauranteId = String(form.get('restaurante_id') || '').trim();
+  if (!slug && restauranteId) {
+    const { data: restRow } = await supabase
+      .from('restaurantes')
+      .select('slug')
+      .eq('id', restauranteId)
+      .maybeSingle();
+    slug = String(restRow?.slug || '').trim();
+  }
+
+  const rawAssetType = String(form.get('asset_type') || '').trim();
+  const legacyFolder = String(form.get('folder') || '');
+  const inferredType = rawAssetType
+    ? rawAssetType
+    : /platos|dishes|dish/i.test(legacyFolder)
+      ? 'dishes'
+      : /categor|fondo|menu/i.test(legacyFolder)
+        ? 'categories'
+        : 'identity';
+  const folder = buildRestaurantMediaFolder(slug, normalizeCloudinaryAssetType(inferredType));
+
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -85,7 +113,7 @@ export async function POST({ request, cookies }) {
       const stream = cloudinary.uploader.upload_stream(
         {
           resource_type: 'auto',
-          folder: 'xemilla',
+          folder,
           overwrite: false,
           unique_filename: true,
           use_filename: true,
@@ -102,6 +130,7 @@ export async function POST({ request, cookies }) {
       ok: true,
       url: optimizedPublicUrl(result),
       public_id: result.public_id,
+      folder,
       resource_type: result.resource_type,
       bytes: result.bytes,
       format: result.format,

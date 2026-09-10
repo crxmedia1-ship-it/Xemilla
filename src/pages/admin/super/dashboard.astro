@@ -648,7 +648,7 @@ function resolveMapsEmbed(direccion) {
                     <p class="hub-modal__hint">
                       Cover a pantalla completa · logo PNG sin fondo: la placa toma un color del cover automáticamente.
                     </p>
-                    <form class="space-y-3.5" data-ficha-form data-restaurante-id={r.id} novalidate>
+                    <form class="space-y-3.5" data-ficha-form data-restaurante-id={r.id} data-slug={r.slug || ''} novalidate>
                       <div class="hub-ficha-preview">
                         <div>
                           <div class="hub-ficha-slot hub-ficha-slot--cover" data-ficha-cover-preview>
@@ -1725,10 +1725,13 @@ function resolveMapsEmbed(direccion) {
 
   /**
    * @param {File} file
+   * @param {string} [slug]
    */
-  async function uploadCardMedia(file) {
+  async function uploadCardMedia(file, slug) {
     const body = new FormData();
     body.append('file', file);
+    if (slug) body.append('restaurante_slug', slug);
+    body.append('asset_type', 'identity');
     const res = await fetch('/api/upload', { method: 'POST', body });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.url) {
@@ -2085,6 +2088,7 @@ function resolveMapsEmbed(direccion) {
       form.dataset.bound = 'true';
 
       const restauranteId = form.dataset.restauranteId || '';
+      const restauranteSlug = form.dataset.slug || '';
       const logoFile = form.querySelector('[data-ficha-logo-file]');
       const coverFile = form.querySelector('[data-ficha-cover-file]');
       const logoHidden = form.querySelector('[data-ficha-logo-url]');
@@ -2148,7 +2152,7 @@ function resolveMapsEmbed(direccion) {
               feedback.classList.add('text-zinc-400');
             }
             try {
-              const url = await uploadCardMedia(croppedFile);
+              const url = await uploadCardMedia(croppedFile, restauranteSlug);
               if (hidden instanceof HTMLInputElement) hidden.value = url;
 
               const preview =
@@ -2656,8 +2660,12 @@ function resolveMapsEmbed(direccion) {
      * @returns {Promise<{ url: string }>}
      */
     async function uploadToCloudinary(file) {
+      const slugValue =
+        slugInput instanceof HTMLInputElement ? slugInput.value.trim() : '';
       const body = new FormData();
       body.append('file', file);
+      if (slugValue) body.append('restaurante_slug', slugValue);
+      body.append('asset_type', 'identity');
       const res = await fetch('/api/upload', { method: 'POST', body });
       /** @type {{ ok?: boolean, url?: string, secure_url?: string, error?: string }} */
       const data = await res.json().catch(() => ({}));

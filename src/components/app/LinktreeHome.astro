@@ -50,7 +50,7 @@ const {
   homeUi = {},
 } = Astro.props;
 
-const resolved = resolveMediaUrl(logoUrlProp);
+const resolved = resolveMediaUrl(logoUrlProp, 'logo');
 const logoUrl =
   resolved && /^https?:\/\//i.test(resolved) ? resolved : null;
 

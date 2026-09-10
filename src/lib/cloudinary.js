@@ -72,6 +72,60 @@ export function initCloudinary(connectionUrl) {
   return cloudinary;
 }
 
+/** Carpetas de Asset Management: identity | categories | dishes */
+export const CLOUDINARY_ASSET_TYPES = new Set(['identity', 'categories', 'dishes']);
+
+/**
+ * Transformaciones de entrega (0 créditos extra: f_auto / q_auto).
+ * @type {Record<'logo' | 'cover' | 'dish', string>}
+ */
+export const CLOUDINARY_MEDIA_TRANSFORMS = {
+  logo: 'c_fit,w_400,h_200,f_auto,q_auto',
+  cover: 'c_fill,g_auto,w_1200,f_auto,q_auto:eco',
+  dish: 'c_fill,g_auto,w_800,h_600,f_auto,q_auto:eco',
+};
+
+const DEFAULT_MEDIA_TRANSFORM = 'f_auto,q_auto';
+
+/**
+ * @param {unknown} value
+ * @param {string} [fallback]
+ */
+export function sanitizeMediaFolderSegment(value, fallback = 'general') {
+  const cleaned = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return cleaned || fallback;
+}
+
+/**
+ * @param {unknown} value
+ * @param {'identity' | 'categories' | 'dishes'} [fallback]
+ * @returns {'identity' | 'categories' | 'dishes'}
+ */
+export function normalizeCloudinaryAssetType(value, fallback = 'identity') {
+  const key = String(value ?? '').trim().toLowerCase();
+  if (CLOUDINARY_ASSET_TYPES.has(key)) return /** @type {'identity' | 'categories' | 'dishes'} */ (key);
+  if (key === 'logo' || key === 'cover' || key === 'portada' || key === 'popup') {
+    return 'identity';
+  }
+  if (key === 'category' || key === 'fondo' || key === 'menu') return 'categories';
+  if (key === 'dish' || key === 'plato' || key === 'platos') return 'dishes';
+  return fallback;
+}
+
+/**
+ * `xemilla/restaurants/${slug}/${asset_type}`
+ * @param {unknown} slug
+ * @param {unknown} assetType
+ */
+export function buildRestaurantMediaFolder(slug, assetType) {
+  return `xemilla/restaurants/${sanitizeMediaFolderSegment(slug, 'general')}/${normalizeCloudinaryAssetType(assetType)}`;
+}
+
 /**
  * URL pública optimizada (f_auto,q_auto) para imágenes/GIF.
  * @param {{ secure_url?: string, resource_type?: string }} result
@@ -80,10 +134,7 @@ export function optimizedPublicUrl(result) {
   const secure = result?.secure_url || '';
   if (!secure) return '';
   if (result.resource_type === 'video') return secure;
-  if (secure.includes('/upload/')) {
-    return secure.replace('/upload/', '/upload/f_auto,q_auto/');
-  }
-  return secure;
+  return applyCloudinaryDeliveryTransform(secure) || secure;
 }
 
 /**
@@ -96,47 +147,108 @@ export function getCloudinaryCloudName() {
 }
 
 /**
- * Normaliza URLs de media (logo, OG, etc.).
+ * @param {unknown} url
+ */
+function isCloudinaryDeliveryUrl(url) {
+  return /(?:^https?:\/\/)?(?:res\.cloudinary\.com|[\w.-]+\.cloudinary\.com)\//i.test(
+    String(url || ''),
+  );
+}
+
+/**
+ * Inserta transformaciones de entrega después de `/upload/` (sin tocar videos ni URLs ajenas).
+ * @param {string} url
+ * @param {string} [type]
+ * @returns {string}
+ */
+export function applyCloudinaryDeliveryTransform(url, type) {
+  const raw = String(url || '').trim();
+  if (!raw || !isCloudinaryDeliveryUrl(raw) || /\/video\/upload\//i.test(raw)) {
+    return raw;
+  }
+
+  const marker = '/upload/';
+  const at = raw.indexOf(marker);
+  if (at === -1) return raw;
+
+  const key = String(type || '').trim().toLowerCase();
+  const tx =
+    key && key in CLOUDINARY_MEDIA_TRANSFORMS
+      ? CLOUDINARY_MEDIA_TRANSFORMS[/** @type {'logo' | 'cover' | 'dish'} */ (key)]
+      : DEFAULT_MEDIA_TRANSFORM;
+
+  let rest = raw.slice(at + marker.length);
+  if (rest === tx || rest.startsWith(`${tx}/`)) {
+    return raw;
+  }
+
+  const known = [...Object.values(CLOUDINARY_MEDIA_TRANSFORMS), DEFAULT_MEDIA_TRANSFORM];
+  for (const prefix of known) {
+    if (rest.startsWith(`${prefix}/`)) {
+      rest = rest.slice(prefix.length + 1);
+      break;
+    }
+  }
+  rest = rest.replace(/^f_auto,q_auto(?::\w+)?\//, '');
+
+  return `${raw.slice(0, at + marker.length)}${tx}/${rest}`;
+}
+
+/**
+ * Normaliza URLs de media (logo, OG, etc.) e inyecta transformaciones Cloudinary.
  * - Vacío → `null`
- * - `http(s)://…` → se deja igual
- * - `//…` o dominio Cloudinary sin protocolo → antepone `https:`
- * - Rutas parciales (`ge/upload/…`, `upload/…`, public_id) → base Cloudinary
+ * - URLs externas / locales (no Cloudinary) → intactas
+ * - `type`: `logo` | `cover` | `dish` | omitido (`f_auto,q_auto`)
  *
  * @param {unknown} pathOrUrl
+ * @param {string} [type]
  * @returns {string | null}
  */
-export function resolveMediaUrl(pathOrUrl) {
+export function resolveMediaUrl(pathOrUrl, type) {
   const raw = String(pathOrUrl ?? '').trim();
   if (!raw || raw === 'null' || raw === 'undefined') return null;
 
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith('//')) return `https:${raw}`;
+  if (/^(data:|blob:)/i.test(raw)) return raw;
+  if (/^\.\.?\//.test(raw)) return raw;
 
-  // Dominio Cloudinary / CDN sin protocolo
-  if (
+  /** @type {string} */
+  let absolute = raw;
+  if (raw.startsWith('//')) {
+    absolute = `https:${raw}`;
+  } else if (
     /^(res\.cloudinary\.com\/|[\w.-]+\.cloudinary\.com\/)/i.test(raw) ||
     /^[\w.-]+\.(cloudfront\.net|amazonaws\.com)\//i.test(raw)
   ) {
-    return `https://${raw}`;
+    absolute = `https://${raw}`;
+  }
+
+  if (/^https?:\/\//i.test(absolute)) {
+    if (!isCloudinaryDeliveryUrl(absolute)) return absolute;
+    return applyCloudinaryDeliveryTransform(absolute, type);
+  }
+
+  // Ruta local del sitio, no public_id de Cloudinary
+  if (raw.startsWith('/') && !/\/upload\//i.test(raw) && !/cloudinary\.com/i.test(raw)) {
+    return raw;
   }
 
   const cloud = getCloudinaryCloudName();
-  const base = `https://res.cloudinary.com/${cloud}/image/upload/`;
   let path = raw.replace(/^\//, '');
+  /** @type {string} */
+  let resolved;
 
-  if (/^image\/upload\//i.test(path)) {
-    return `https://res.cloudinary.com/${cloud}/${path}`;
-  }
-  if (/^upload\//i.test(path)) {
-    return `https://res.cloudinary.com/${cloud}/image/${path}`;
+  if (/^(image|video|raw)\/upload\//i.test(path)) {
+    resolved = `https://res.cloudinary.com/${cloud}/${path}`;
+  } else if (/^upload\//i.test(path)) {
+    resolved = `https://res.cloudinary.com/${cloud}/image/${path}`;
+  } else {
+    const uploadIdx = path.toLowerCase().indexOf('upload/');
+    if (uploadIdx >= 0) {
+      path = path.slice(uploadIdx + 'upload/'.length);
+    }
+    if (!path) return null;
+    resolved = `https://res.cloudinary.com/${cloud}/image/upload/${path}`;
   }
 
-  // Prefijo truncado tipo "ge/upload/..." → tomar desde "upload/"
-  const uploadIdx = path.toLowerCase().indexOf('upload/');
-  if (uploadIdx >= 0) {
-    path = path.slice(uploadIdx + 'upload/'.length);
-  }
-
-  if (!path) return null;
-  return `${base}${path}`;
+  return applyCloudinaryDeliveryTransform(resolved, type);
 }

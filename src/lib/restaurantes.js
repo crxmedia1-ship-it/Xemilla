@@ -23,7 +23,6 @@ import {
   normalizeUbicacionTheme,
 } from './layout-themes.js';
 import { resolveMediaUrl } from './cloudinary.js';
-import { platoFillUrl } from './plato-media-url.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
 import { normalizeAlergias } from '../config/nutricion.js';
 
@@ -668,7 +667,7 @@ async function loadRestauranteBySlug(slug) {
     if (!platosByCategoria.has(key)) platosByCategoria.set(key, []);
     const imagenUrl =
       typeof plato.imagen_url === 'string' && plato.imagen_url.trim()
-        ? platoFillUrl(plato.imagen_url.trim(), { w: 1200, h: 900 })
+        ? resolveMediaUrl(plato.imagen_url.trim(), 'dish')
         : null;
 
     const mapped = {
@@ -744,9 +743,9 @@ async function loadRestauranteBySlug(slug) {
     asText(identity.wifi?.password) ||
     '';
 
-  const logoUrl = resolveMediaUrl(row.logo_url) || '';
-  const shareImageUrl = resolveMediaUrl(row.share_image_url) || logoUrl;
-  const appIconUrl = resolveMediaUrl(row.app_icon_url) || logoUrl;
+  const logoUrl = resolveMediaUrl(row.logo_url, 'logo') || '';
+  const shareImageUrl = resolveMediaUrl(row.share_image_url, 'cover') || logoUrl;
+  const appIconUrl = resolveMediaUrl(row.app_icon_url, 'logo') || logoUrl;
   const eslogan =
     asText(row.eslogan) || asText(identity.tagline) || '';
   const taglineSuperior = String(
@@ -765,14 +764,14 @@ async function loadRestauranteBySlug(slug) {
   if (fondoHomeRaw.tipo === 'image' || fondoHomeRaw.tipo === 'video') {
     fondoHome = {
       ...fondoHomeRaw,
-      valor: resolveMediaUrl(fondoHomeRaw.valor) || fondoHomeRaw.valor,
+      valor: resolveMediaUrl(fondoHomeRaw.valor, 'cover') || fondoHomeRaw.valor,
     };
   } else if (fondoHomeRaw.tipo === 'carrusel') {
     const urls = String(fondoHomeRaw.valor || '')
       .split(/[\n,;]+/)
       .map((u) => u.trim())
       .filter(Boolean)
-      .map((u) => resolveMediaUrl(u) || u);
+      .map((u) => resolveMediaUrl(u, 'cover') || u);
     fondoHome = {
       ...fondoHomeRaw,
       valor: urls.join('\n'),

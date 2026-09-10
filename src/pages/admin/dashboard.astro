@@ -169,7 +169,7 @@ const horarioHoy = previewHorarioHoy(horarioSemana);
 const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
 const hubLogoTrimUrl = cloudinaryTrimUrl(hubLogoUrl);
-const footLogoUrl = cloudinaryTrimUrl(resolveMediaUrl(hubLogoUrl) || hubLogoUrl);
+const footLogoUrl = cloudinaryTrimUrl(resolveMediaUrl(hubLogoUrl, 'logo') || hubLogoUrl);
 const xemillaWordmark =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337620/Photoroom_20260810_004814_islrgw.png';
 const hubLogoBg = resolveHubLogoBg(restaurante || {});
@@ -7329,6 +7329,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   const root = document.getElementById('dashboard-root');
   const restauranteId = String(root?.dataset.restauranteId || '').trim();
+  const restauranteSlug = String(root?.dataset.slug || '').trim();
 
   // Clear stale context warning
   document.getElementById('menu-context-warning')?.remove();
@@ -9063,7 +9064,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     async function uploadPopupImage(file) {
       const bodyFd = new FormData();
       bodyFd.append('file', file);
-      bodyFd.append('folder', `xemilla/popup/${restauranteId || 'general'}`);
+      bodyFd.append('restaurante_slug', restauranteSlug);
+      bodyFd.append('asset_type', 'identity');
+      if (restauranteId) bodyFd.append('restaurante_id', restauranteId);
       const res = await fetch('/api/upload', { method: 'POST', body: bodyFd });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.url) {
@@ -9286,10 +9289,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   /**
    * @param {File} file
+   * @param {'identity' | 'categories' | 'dishes'} [assetType]
    */
-  async function uploadHubMedia(file) {
+  async function uploadHubMedia(file, assetType = 'identity') {
     const body = new FormData();
     body.append('file', file);
+    body.append('restaurante_slug', restauranteSlug);
+    body.append('asset_type', assetType);
+    if (restauranteId) body.append('restaurante_id', restauranteId);
     const res = await fetch('/api/upload', { method: 'POST', body });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.url) {
@@ -9318,7 +9325,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
          */
         async function runUpload(ready) {
           try {
-            const url = await uploadHubMedia(ready);
+            const url = await uploadHubMedia(ready, 'identity');
             if (hiddenInput instanceof HTMLInputElement) hiddenInput.value = url;
             if (preview) {
               preview.innerHTML = '';
@@ -9769,7 +9776,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         modalReplaceBusy?.classList.add('flex');
       }
 
-      const url = await uploadPlatoMediaFile(ready, restauranteId);
+      const url = await uploadPlatoMediaFile(ready, restauranteId, restauranteSlug);
       await updatePlato(id, { imagen_url: url });
       setRowMediaUrl(row, url);
       renderPreviewMedia(url, row.dataset.nombre || 'Plato');
@@ -9811,7 +9818,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       const cropped = await cropPlatoImage(url);
       modalReplaceBusy?.classList.remove('hidden');
       modalReplaceBusy?.classList.add('flex');
-      const nextUrl = await uploadPlatoMediaFile(cropped, restauranteId);
+      const nextUrl = await uploadPlatoMediaFile(cropped, restauranteId, restauranteSlug);
       await updatePlato(id, { imagen_url: nextUrl });
       setRowMediaUrl(row, nextUrl);
       renderPreviewMedia(nextUrl, row.dataset.nombre || 'Plato');
@@ -10518,7 +10525,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             throw err;
           }
         }
-        const uploadedUrl = await uploadPlatoMediaFile(ready, restauranteId);
+        const uploadedUrl = await uploadPlatoMediaFile(ready, restauranteId, restauranteSlug);
         const json = await updatePlato(id, { imagen_url: uploadedUrl });
         imagenUrl = json.plato?.imagen_url || uploadedUrl;
       } else if (url) {
@@ -10945,7 +10952,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           nuevoSubmit.textContent = 'Subiendo media…';
           const uploadFd = new FormData();
           uploadFd.set('file', file);
-          uploadFd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
+          uploadFd.set('restaurante_slug', restauranteSlug);
+          uploadFd.set('asset_type', 'dishes');
+          if (restauranteId) uploadFd.set('restaurante_id', restauranteId);
           const uploadRes = await fetch('/api/upload', {
             method: 'POST',
             body: uploadFd,
@@ -11102,7 +11111,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         }
       }
       if (label) label.textContent = '…';
-      const url = await uploadPlatoMediaFile(ready, restauranteId);
+      const url = await uploadPlatoMediaFile(ready, restauranteId, restauranteSlug);
       await updatePlato(id, { imagen_url: url });
       setRowMediaUrl(row, url);
     } catch (err) {
@@ -11623,10 +11632,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       try {
         const url =
           typeof uploadHubMedia === 'function'
-            ? await uploadHubMedia(file)
+            ? await uploadHubMedia(file, 'identity')
             : await (async () => {
                 const body = new FormData();
                 body.append('file', file);
+                body.append('restaurante_slug', restauranteSlug);
+                body.append('asset_type', 'identity');
+                if (restauranteId) body.append('restaurante_id', restauranteId);
                 const res = await fetch('/api/upload', { method: 'POST', body });
                 const json = await res.json().catch(() => ({}));
                 if (!res.ok || !json.url) throw new Error(json.error || 'No se pudo subir el logo');
@@ -11845,10 +11857,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       try {
         const url =
           typeof uploadHubMedia === 'function'
-            ? await uploadHubMedia(file)
+            ? await uploadHubMedia(file, 'categories')
             : await (async () => {
                 const body = new FormData();
                 body.append('file', file);
+                body.append('restaurante_slug', restauranteSlug);
+                body.append('asset_type', 'categories');
+                if (restauranteId) body.append('restaurante_id', restauranteId);
                 const res = await fetch('/api/upload', { method: 'POST', body });
                 const json = await res.json().catch(() => ({}));
                 if (!res.ok || !json.url) throw new Error(json.error || 'No se pudo subir');
@@ -12916,10 +12931,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         try {
           const url =
             typeof uploadHubMedia === 'function'
-              ? await uploadHubMedia(file)
+              ? await uploadHubMedia(file, 'categories')
               : await (async () => {
                   const body = new FormData();
                   body.append('file', file);
+                  body.append('restaurante_slug', restauranteSlug);
+                  body.append('asset_type', 'categories');
+                  if (restauranteId) body.append('restaurante_id', restauranteId);
                   const res = await fetch('/api/upload', { method: 'POST', body });
                   const json = await res.json().catch(() => ({}));
                   if (!res.ok || !json.url) throw new Error(json.error || 'No se pudo subir');
@@ -13072,10 +13090,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     try {
       const url =
         typeof uploadHubMedia === 'function'
-          ? await uploadHubMedia(file)
+          ? await uploadHubMedia(file, 'identity')
           : await (async () => {
               const body = new FormData();
               body.append('file', file);
+              body.append('restaurante_slug', restauranteSlug);
+              body.append('asset_type', 'identity');
+              if (restauranteId) body.append('restaurante_id', restauranteId);
               const res = await fetch('/api/upload', { method: 'POST', body });
               const json = await res.json().catch(() => ({}));
               if (!res.ok || !json.url) throw new Error(json.error || 'No se pudo subir');

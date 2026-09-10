@@ -21,7 +21,7 @@ interface Props {
 const { restauranteId = '', slug = '', popupBanner = {} } = Astro.props;
 
 const enabled = popupBannerIsRenderable(popupBanner);
-const imageUrl = resolveMediaUrl(String(popupBanner.image_url || '').trim()) || '';
+const imageUrl = resolveMediaUrl(String(popupBanner.image_url || '').trim(), 'cover') || '';
 ---
 
 {

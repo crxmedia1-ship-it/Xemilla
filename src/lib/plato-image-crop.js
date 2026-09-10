@@ -59,11 +59,14 @@ export function cropPlatoImage(source) {
 /**
  * @param {File} file
  * @param {string} restauranteId
+ * @param {string} [restauranteSlug]
  */
-export async function uploadPlatoMediaFile(file, restauranteId) {
+export async function uploadPlatoMediaFile(file, restauranteId, restauranteSlug) {
   const fd = new FormData();
   fd.set('file', file);
-  fd.set('folder', `xemilla/platos/${restauranteId || 'general'}`);
+  if (restauranteId) fd.set('restaurante_id', restauranteId);
+  if (restauranteSlug) fd.set('restaurante_slug', restauranteSlug);
+  fd.set('asset_type', 'dishes');
   const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
   const uploadJson = await uploadRes.json().catch(() => ({}));
   if (!uploadRes.ok) throw new Error(uploadJson.error || 'No se pudo subir a Cloudinary');
