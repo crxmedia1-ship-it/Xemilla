@@ -468,8 +468,9 @@ function hubCardStyle(
                         alt=""
                         data-reveal-media
                         class="size-full object-cover"
-                        loading="lazy"
+                        loading={idx === 0 ? 'eager' : 'lazy'}
                         decoding="async"
+                        sizes="(max-width: 767px) 88vw, 220px"
                       />
                     )
                   ) : (
@@ -1317,31 +1318,78 @@ function hubCardStyle(
   }
 
   @media (max-width: 767px) {
-    [data-destacados-estilo='scroll'] [data-destacados-track] {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.55rem;
+    /* Teléfono: carrusel 1×1 lento (Sugerencias del Chef) */
+    [data-destacados-estilo='scroll'] [data-destacados-track],
+    [data-destacados-estilo='carrusel'] [data-destacados-track] {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     }
 
-    [data-destacados-estilo='scroll'] .menu-featured {
-      padding: 0.48rem;
+    [data-destacados-estilo='scroll'] [data-destacados-track]::-webkit-scrollbar,
+    [data-destacados-estilo='carrusel'] [data-destacados-track]::-webkit-scrollbar {
+      display: none;
     }
 
-    [data-destacados-estilo='scroll'] .menu-featured:only-child {
-      grid-column: span 1;
-      max-width: 100%;
+    [data-destacados-estilo='scroll'] .menu-featured,
+    [data-destacados-estilo='carrusel'] .menu-featured {
+      width: min(88vw, 22rem);
+      flex-shrink: 0;
+      scroll-snap-align: center;
+      padding: 0.55rem;
     }
 
-    [data-destacados-estilo='scroll'] .menu-featured__media {
-      max-height: 5.5rem;
-      margin-bottom: 0.4rem;
+    [data-destacados-estilo='scroll'] .menu-featured:only-child,
+    [data-destacados-estilo='carrusel'] .menu-featured:only-child {
+      max-width: min(88vw, 22rem);
+      width: min(88vw, 22rem);
+      justify-self: unset;
+      margin-inline: auto;
     }
 
-    [data-destacados-estilo='scroll'] .menu-featured__title {
-      font-size: 0.72rem !important;
+    [data-destacados-estilo='scroll'] .menu-featured__media,
+    [data-destacados-estilo='carrusel'] .menu-featured__media,
+    [data-destacados-estilo='fade'] .menu-featured__media {
+      aspect-ratio: 1 / 1;
+      max-height: none;
+      width: 100%;
+      margin-bottom: 0.55rem;
+      border-radius: 0.85rem;
     }
 
-    [data-destacados-estilo='scroll'] .menu-featured__price {
-      font-size: 0.72rem !important;
+    [data-destacados-estilo='scroll'] .menu-featured__media img,
+    [data-destacados-estilo='carrusel'] .menu-featured__media img,
+    [data-destacados-estilo='fade'] .menu-featured__media img {
+      object-fit: cover;
+      object-position: center center;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__title,
+    [data-destacados-estilo='carrusel'] .menu-featured__title {
+      font-size: 0.88rem !important;
+      line-height: 1.25;
+    }
+
+    [data-destacados-estilo='scroll'] .menu-featured__price,
+    [data-destacados-estilo='carrusel'] .menu-featured__price {
+      font-size: 0.88rem !important;
+      margin-top: 0.25rem !important;
+    }
+
+    [data-destacados-estilo='fade'] .destacados-fade-stage {
+      max-width: none;
+      padding-inline: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    }
+
+    [data-destacados-estilo='fade'] .menu-featured {
+      max-width: min(88vw, 22rem);
     }
   }
 
@@ -2562,13 +2610,17 @@ function hubCardStyle(
   const CHIP_BASE =
     'menu-chip border px-4 py-2 text-[0.62rem] font-semibold tracking-[0.2em] uppercase active:scale-95';
 
-  const AUTOPLAY_MS = 5500;
-  const FADE_MS = 5500;
+  const AUTOPLAY_MS = 7200;
+  const FADE_MS = 7200;
   const HIGHLIGHT_MS = 1100;
 
   const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const isPhoneMenu = () =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
 
   /**
    * @param {HTMLElement} track
@@ -3045,8 +3097,12 @@ function hubCardStyle(
           (destacados instanceof HTMLElement && destacados.dataset.destacadosEstilo) ||
           panel.dataset.destacadosEstilo ||
           'scroll';
-        if (mode === 'carrusel') initDestacadosAutoplay(track);
-        else if (mode === 'fade') initDestacadosFade(track);
+        // Móvil: vitrina (scroll) también rota 1×1 como carrusel lento
+        if (mode === 'carrusel' || (mode === 'scroll' && isPhoneMenu())) {
+          initDestacadosAutoplay(track);
+        } else if (mode === 'fade') {
+          initDestacadosFade(track);
+        }
       }
     });
   }
