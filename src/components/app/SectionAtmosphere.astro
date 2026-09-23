@@ -591,7 +591,7 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
   ) : null
 }
 
-{/* Home video: full-bleed + soft loop (1 sola descarga) */}
+{/* Home video: full-bleed cover (loop nativo — estable en Safari iOS) */}
 <style is:global>
   [data-section-atmosphere][data-atmosphere-fixed='true'] video[data-video-sharp='true'] {
     object-fit: cover;
@@ -599,76 +599,4 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
     width: 100%;
     height: 100%;
   }
-
-  video[data-soft-loop='true'] {
-    transition: opacity 0.2s ease;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    video[data-soft-loop='true'] {
-      transition: none;
-    }
-  }
 </style>
-
-{
-  true ? (
-    <script is:inline>
-      (() => {
-        const LEAD = 0.32;
-        const FADE_MS = 160;
-
-        function bindSoftLoop(video) {
-          if (!(video instanceof HTMLVideoElement)) return;
-          if (video.dataset.softLoopBound === '1') return;
-          video.dataset.softLoopBound = '1';
-
-          let locking = false;
-          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-          const restart = () => {
-            if (locking) return;
-            if (!Number.isFinite(video.duration) || video.duration < 1) return;
-            if (video.duration - video.currentTime > LEAD) return;
-            locking = true;
-            if (!reduce) video.style.opacity = '0.2';
-            try {
-              video.currentTime = 0.04;
-            } catch (_) {}
-            const p = video.play();
-            if (p && typeof p.catch === 'function') p.catch(() => {});
-            window.setTimeout(() => {
-              video.style.opacity = '1';
-              locking = false;
-            }, FADE_MS);
-          };
-
-          video.addEventListener('timeupdate', restart, { passive: true });
-          video.addEventListener(
-            'ended',
-            () => {
-              try {
-                video.currentTime = 0.04;
-              } catch (_) {}
-              const p = video.play();
-              if (p && typeof p.catch === 'function') p.catch(() => {});
-            },
-            { passive: true },
-          );
-        }
-
-        const boot = () => {
-          document
-            .querySelectorAll('video[data-soft-loop="true"]')
-            .forEach((el) => bindSoftLoop(el));
-        };
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', boot, { once: true });
-        } else {
-          boot();
-        }
-        document.addEventListener('astro:page-load', boot);
-      })();
-    </script>
-  ) : null
-}
