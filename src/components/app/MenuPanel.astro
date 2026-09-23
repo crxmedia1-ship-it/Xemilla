@@ -483,12 +483,31 @@ function hubCardStyle(
                     {catName}
                   </span>
                 </div>
-                <h4 class="menu-featured__title line-clamp-2 text-[0.78rem] font-semibold leading-snug font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-titulo-color,var(--menu-texto-color,inherit))] sm:text-[0.92rem]">
-                  {plato.nombre}
-                </h4>
-                <p class="menu-featured__price mt-0.5 text-[0.78rem] font-semibold tabular-nums text-[color:var(--menu-precio-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] sm:mt-1 sm:text-[0.92rem]">
-                  <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
-                </p>
+                <div class="menu-featured__foot">
+                  <div class="menu-featured__copy">
+                    <h4 class="menu-featured__title line-clamp-2 text-[0.78rem] font-semibold leading-snug font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] text-[color:var(--menu-titulo-color,var(--menu-texto-color,inherit))] sm:text-[0.92rem]">
+                      {plato.nombre}
+                    </h4>
+                    <p class="menu-featured__price mt-0.5 text-[0.78rem] font-semibold tabular-nums text-[color:var(--menu-precio-color,var(--menu-texto-color,var(--color-texto)))] font-[family-name:var(--menu-font-heading,var(--fuente-menu,var(--fuente-display)))] sm:mt-1 sm:text-[0.92rem]">
+                      <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
+                    </p>
+                  </div>
+                  <span class="menu-featured__sign" aria-hidden="true">
+                    <svg viewBox="0 0 132 48" fill="none">
+                      <text
+                        x="2"
+                        y="30"
+                        fill="currentColor"
+                        font-family="Snell Roundhand, Segoe Script, Apple Chancery, Bradley Hand, cursive"
+                        font-size="30">Chef</text>
+                      <path
+                        d="M6 36c24 7 62 9 118-6"
+                        stroke="currentColor"
+                        stroke-width="1.15"
+                        stroke-linecap="round"></path>
+                    </svg>
+                  </span>
+                </div>
               </button>
             );
           })}
@@ -1322,6 +1341,36 @@ function hubCardStyle(
     transition: transform var(--motion-spring, 220ms ease);
   }
 
+  .menu-featured__foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.45rem;
+  }
+
+  .menu-featured__copy {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .menu-featured__sign {
+    flex: 0 0 auto;
+    width: 4.35rem;
+    height: 1.7rem;
+    margin-bottom: 0.05rem;
+    color: color-mix(in srgb, var(--menu-texto-color, var(--color-texto, #fff)) 58%, transparent);
+    background: transparent;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .menu-featured__sign svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
   /* —— Sugerencias del Chef: grid compacto —— */
   [data-destacados-estilo='scroll'] [data-destacados-track] {
     display: grid;
@@ -1431,6 +1480,11 @@ function hubCardStyle(
       font-size: 1.08rem !important;
       font-weight: 700;
       margin-top: 0.25rem !important;
+    }
+
+    .menu-featured__sign {
+      width: 5.6rem;
+      height: 2.15rem;
     }
 
     [data-destacados-estilo='fade'] .destacados-fade-stage {
