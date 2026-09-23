@@ -741,13 +741,13 @@ export function buildHomeNavSequence(opts = {}) {
   const primary = [
     {
       id: 'menu',
-      label: compact ? 'EL MENÚ' : 'EL MENÚ',
+      label: 'MENÚ',
       subtitle: homeNavSubtitle('menu', tagline, wifi),
       kind: 'section',
     },
     {
       id: 'nosotros',
-      label: compact ? 'NOSOTROS' : 'NOSOTROS',
+      label: 'NOSOTROS',
       subtitle: homeNavSubtitle('nosotros', tagline, wifi),
       kind: 'section',
     },
