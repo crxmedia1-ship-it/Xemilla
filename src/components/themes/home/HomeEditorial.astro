@@ -1,7 +1,7 @@
 ---
 /**
  * HomeEditorial — Grand Editorial (ultra-lujo).
- * Tipografía pura Michelin/Monocle. Cero subtextos, cero cajas en nav.
+ * Nav frontal: cilindro vertical tipo slot (scroll-snap + scale al centro).
  */
 import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
 import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
@@ -43,6 +43,7 @@ const {
   logoLetter,
   logoUrl,
   tagline,
+  taglineSuperior,
   reservasCta,
   homeUi,
 } = resolveSafeHomeProps(props);
@@ -72,30 +73,66 @@ const logoFallbackStyle = `max-height: var(--home-logo-size, ${logoPx}px); heigh
 const eslogan = tagline || String(props?.eslogan || r?.eslogan || '').trim();
 const taglineDisplay = (tagline || eslogan || 'EXPERIENCIA GASTRONÓMICA').toUpperCase();
 
+const menuSubtitle = String(
+  props?.menu_subtitle ||
+    props?.menuSubtitle ||
+    r?.menu_subtitle ||
+    taglineSuperior ||
+    props?.taglineSuperior ||
+    props?.tagline_superior ||
+    'CARTA DE AUTOR',
+)
+  .trim()
+  .toUpperCase() || 'CARTA DE AUTOR';
+
+const subtituloReservas = String(
+  props?.reservas_subtitulo ||
+    r?.reservas_subtitulo ||
+    reservasCta?.subtitulo ||
+    'EXPERIENCIA PREMIUM',
+)
+  .trim()
+  .toUpperCase() || 'EXPERIENCIA PREMIUM';
+
 const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
 const reservasIsExternal = reservasLink !== '#';
 
 type NavItem = {
   id: string;
   label: string;
+  subtitle: string;
   kind: 'section' | 'reservas';
 };
 
-/** Labels cortos y simétricos — no wrap en 360–390px */
 const navItems: NavItem[] = [
-  { id: 'menu', label: 'EL MENÚ', kind: 'section' },
-  { id: 'reservas', label: 'RESERVAS & PEDIDOS', kind: 'reservas' },
-  { id: 'nosotros', label: 'NOSOTROS', kind: 'section' },
-  { id: 'ubicacion', label: 'CONTACTO & VISITA', kind: 'section' },
+  { id: 'menu', label: 'MENÚ', subtitle: menuSubtitle, kind: 'section' },
+  {
+    id: 'reservas',
+    label: 'RESERVAS & PEDIDOS',
+    subtitle: subtituloReservas,
+    kind: 'reservas',
+  },
+  {
+    id: 'nosotros',
+    label: 'NOSOTROS',
+    subtitle: 'NUESTRA FILOSOFÍA',
+    kind: 'section',
+  },
+  {
+    id: 'ubicacion',
+    label: 'CONTACTO & VISITA',
+    subtitle: 'MAPA · CONTACTO · REDES',
+    kind: 'section',
+  },
 ];
 
 const linkClass =
-  'editorial-link group relative flex w-full max-w-xs cursor-pointer select-none flex-col items-center justify-center px-4 py-1.5 transition-transform duration-300 active:scale-[0.97] focus:outline-none sm:max-w-md md:py-3.5 md:hover:scale-105';
+  'editorial-link relative flex h-full w-full cursor-pointer select-none flex-col items-center justify-center px-3 focus:outline-none sm:px-4';
 ---
 
 <div
   class:list={[
-    'home-editorial linktree-home relative z-10 flex h-[100svh] max-h-[100svh] min-h-0 w-full select-none flex-col items-center justify-between overflow-hidden bg-transparent px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] font-[family-name:var(--font-body,var(--fuente-principal))] md:h-auto md:max-h-none md:min-h-[100dvh] md:overflow-visible md:py-16',
+    'home-editorial linktree-home relative z-10 flex h-[100svh] max-h-[100svh] min-h-0 w-full select-none flex-col items-center overflow-hidden bg-transparent px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] font-[family-name:var(--font-body,var(--fuente-principal))] md:h-auto md:max-h-none md:min-h-[100dvh] md:overflow-visible md:px-6 md:py-16',
     textShadowPuro && 'home-editorial--overlay-puro',
     animRise && 'home-anim-rise',
     animBlur && 'home-anim-blur',
@@ -114,7 +151,7 @@ const linkClass =
   {/* ── Branding ── */}
   <header
     class:list={[
-      'mx-auto flex max-w-xl flex-col items-center gap-3 text-center',
+      'home-editorial__brand mx-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-2 text-center md:gap-3',
       hasEntrance && 'home-enter home-enter--logo',
       immersiveLogoOnly && 'my-auto',
     ]}
@@ -126,7 +163,7 @@ const linkClass =
           <img
             src={logoUrl}
             alt={nombre || 'Logo'}
-            class="h-[min(var(--home-logo-size,130px),18svh)] max-h-[18svh] w-auto max-w-[70vw] object-contain drop-shadow-[0_4px_20px_rgba(255,255,255,0.08)] md:h-[var(--home-logo-size,200px)] md:max-h-[var(--home-logo-size,200px)] md:max-w-[85vw]"
+            class="h-[min(var(--home-logo-size,130px),14svh)] max-h-[14svh] w-auto max-w-[68vw] object-contain drop-shadow-[0_4px_20px_rgba(255,255,255,0.08)] md:h-[var(--home-logo-size,200px)] md:max-h-[var(--home-logo-size,200px)] md:max-w-[85vw]"
             data-home-logo
           />
         ) : (
@@ -158,68 +195,94 @@ const linkClass =
     }
   </header>
 
-  {/* ── Navegación Editorial Pura (solo frontal) ── */}
+  {/* ── Cilindro vertical (slot) — flota sobre el video, sin caja ── */}
   {
     navFrontal ? (
       <nav
         class:list={[
-          'mx-auto my-auto flex min-h-0 w-full max-w-xl flex-col items-center justify-center space-y-1 py-1 md:space-y-8 md:py-4',
+          'editorial-reel relative mx-auto w-full max-w-xl',
           hasEntrance && 'home-enter home-enter--botones',
         ]}
         aria-label={`Navegación ${nombre || 'restaurante'}`}
         data-editorial-nav
+        data-editorial-reel
         data-home-menu
         data-home-block="nav"
       >
-        {
-          navItems.map((item) => {
-            const inner = (
-              <>
-                <span class="editorial-title whitespace-nowrap text-center font-serif text-[0.95rem] uppercase leading-none tracking-[0.2em] text-white/85 drop-shadow-sm transition-all duration-300 group-hover:text-white min-[390px]:text-base min-[390px]:tracking-[0.22em] md:text-3xl md:tracking-[0.35em] lg:text-4xl">
-                  {item.label}
-                </span>
-                <span
-                  class="editorial-rule mt-1.5 h-px w-6 bg-white/20 transition-all duration-300 ease-out group-hover:w-16 group-hover:bg-emerald-400 md:mt-3.5"
-                  aria-hidden="true"
-                />
-              </>
-            );
+        <div class="editorial-reel__viewport" data-editorial-reel-viewport>
+          <div class="editorial-reel__spacer" aria-hidden="true" />
+          {
+            navItems.map((item, index) => {
+              const inner = (
+                <>
+                  <span class="editorial-title text-center font-serif uppercase leading-none tracking-[0.14em]">
+                    {item.label}
+                  </span>
+                  <span class="editorial-subtitle mt-2 block text-center font-light uppercase">
+                    {item.subtitle}
+                  </span>
+                  <span class="editorial-rule" aria-hidden="true" />
+                </>
+              );
 
-            if (item.kind === 'reservas') {
-              if (reservasIsExternal) {
+              const slideAttrs = {
+                class: 'editorial-reel__slide',
+                'data-editorial-slide': '',
+                'data-slide-index': String(index),
+                style: '--reel-scale: 0.78; --reel-opacity: 0.4; --reel-blur: 1.5px;',
+              };
+
+              if (item.kind === 'reservas') {
+                if (reservasIsExternal) {
+                  return (
+                    <div {...slideAttrs}>
+                      <a
+                        href={reservasLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-tab-trigger="reservas"
+                        data-reservas-home-cta
+                        data-editorial-pick
+                        class={linkClass}
+                      >
+                        {inner}
+                      </a>
+                    </div>
+                  );
+                }
                 return (
-                  <a
-                    href={reservasLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-tab-trigger="reservas"
-                    data-reservas-home-cta
+                  <div {...slideAttrs}>
+                    <button
+                      type="button"
+                      data-tab-trigger="reservas"
+                      data-reservas-home-cta
+                      data-editorial-pick
+                      class={linkClass}
+                    >
+                      {inner}
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div {...slideAttrs}>
+                  <button
+                    type="button"
+                    data-tab-trigger={item.id}
+                    data-open-section={item.id}
+                    data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
+                    data-editorial-pick
                     class={linkClass}
                   >
                     {inner}
-                  </a>
-                );
-              }
-              return (
-                <button type="button" data-tab-trigger="reservas" data-reservas-home-cta class={linkClass}>
-                  {inner}
-                </button>
+                  </button>
+                </div>
               );
-            }
-
-            return (
-              <button
-                type="button"
-                data-tab-trigger={item.id}
-                data-open-section={item.id}
-                data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
-                class={linkClass}
-              >
-                {inner}
-              </button>
-            );
-          })
-        }
+            })
+          }
+          <div class="editorial-reel__spacer" aria-hidden="true" />
+        </div>
       </nav>
     ) : null
   }
@@ -227,9 +290,9 @@ const linkClass =
   {/* ── Estado en vivo ── */}
   {
     !immersiveLogoOnly ? (
-      <footer class="flex shrink-0 flex-col items-center pt-2">
-        <div class="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-black/40 px-4 py-2 font-mono text-xs tracking-widest text-emerald-400 shadow-2xl backdrop-blur-xl">
-          <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
+      <footer class="home-editorial__foot flex shrink-0 flex-col items-center">
+        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 font-mono text-[0.65rem] tracking-[0.18em] text-emerald-300/95 backdrop-blur-md md:px-4 md:py-2 md:text-xs md:tracking-widest">
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
           <span>ABIERTO HOY</span>
         </div>
       </footer>
@@ -237,8 +300,118 @@ const linkClass =
   }
 </div>
 
+<script>
+  function initEditorialReel(root = document) {
+    root.querySelectorAll('[data-editorial-reel]').forEach((nav) => {
+      if (nav instanceof HTMLElement) delete nav.dataset.reelReady;
+    });
+    const reels = root.querySelectorAll('[data-editorial-reel]');
+    reels.forEach((nav) => {
+      if (!(nav instanceof HTMLElement)) return;
+      if (nav.dataset.reelReady === '1') return;
+      const viewport = nav.querySelector('[data-editorial-reel-viewport]');
+      if (!(viewport instanceof HTMLElement)) return;
+      nav.dataset.reelReady = '1';
+
+      const slides = () =>
+        Array.from(viewport.querySelectorAll('[data-editorial-slide]')).filter(
+          (el) => el instanceof HTMLElement,
+        );
+
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let ticking = false;
+      let activeIndex = -1;
+
+      const updateCylinder = () => {
+        ticking = false;
+        const list = slides();
+        if (!list.length) return;
+        const rect = viewport.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        const half = Math.max(rect.height / 2, 1);
+        let best = 0;
+        let bestDist = Infinity;
+
+        list.forEach((slide, i) => {
+          const sRect = slide.getBoundingClientRect();
+          const mid = sRect.top + sRect.height / 2;
+          const dist = mid - centerY;
+          const t = Math.min(1, Math.abs(dist) / half);
+          // Curva tipo cara del cilindro: centro grande, bordes chicos
+          const scale = reduceMotion ? 1 - t * 0.22 : 1 - t * 0.42;
+          const opacity = reduceMotion ? 1 - t * 0.4 : 1 - t * 0.72;
+          const blur = reduceMotion ? 0 : t * 3.2;
+          slide.style.setProperty('--reel-scale', String(Math.max(0.58, scale)));
+          slide.style.setProperty('--reel-opacity', String(Math.max(0.22, opacity)));
+          slide.style.setProperty('--reel-blur', `${blur.toFixed(2)}px`);
+          if (Math.abs(dist) < bestDist) {
+            bestDist = Math.abs(dist);
+            best = i;
+          }
+        });
+
+        list.forEach((slide, i) => {
+          const on = i === best;
+          slide.toggleAttribute('data-active', on);
+          const pick = slide.querySelector('[data-editorial-pick]');
+          if (pick instanceof HTMLElement) {
+            if (on) pick.setAttribute('aria-current', 'true');
+            else pick.removeAttribute('aria-current');
+          }
+        });
+        activeIndex = best;
+      };
+
+      const onScroll = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(updateCylinder);
+      };
+
+      viewport.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll, { passive: true });
+
+      // Primer tap centra; si ya está activo, deja pasar el open nativo
+      viewport.addEventListener(
+        'click',
+        (event) => {
+          const pick =
+            event.target instanceof Element ? event.target.closest('[data-editorial-pick]') : null;
+          if (!(pick instanceof HTMLElement)) return;
+          const slide = pick.closest('[data-editorial-slide]');
+          if (!(slide instanceof HTMLElement)) return;
+          if (slide.hasAttribute('data-active')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          slide.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+          requestAnimationFrame(updateCylinder);
+        },
+        true,
+      );
+
+      const syncPad = () => {
+        // Spacers CSS se encargan del centrado; solo refrescar cilindro
+      };
+
+      syncPad();
+      updateCylinder();
+      requestAnimationFrame(() => {
+        syncPad();
+        const first = slides()[0];
+        if (first instanceof HTMLElement) {
+          first.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+        requestAnimationFrame(updateCylinder);
+      });
+    });
+  }
+
+  initEditorialReel();
+  document.addEventListener('astro:page-load', () => initEditorialReel());
+</script>
+
 <style is:global>
-  /* Teléfono: el home editorial cabe en la pantalla visible y no deja scroll. */
+  /* Teléfono: home a pantalla completa, sin scroll de página; video se ve de borde a borde */
   @media (max-width: 767px) {
     html:has(.home-editorial),
     body:has(.home-editorial) {
@@ -246,15 +419,29 @@ const linkClass =
       max-height: 100svh;
       overflow: hidden;
       overscroll-behavior: none;
+      background: transparent;
+    }
+
+    html:has([data-fondo-home-tipo='video'] .home-editorial),
+    body:has([data-fondo-home-tipo='video'] .home-editorial) {
+      background: #000;
     }
 
     .restaurant-app:has(.home-editorial),
-    [data-home-shell]:has(.home-editorial),
+    [data-home-shell]:has(.home-editorial) {
+      height: 100svh;
+      max-height: 100svh;
+      min-height: 0;
+      overflow: hidden;
+      background: transparent !important;
+    }
+
     [data-home-shell]:has(.home-editorial) > .relative {
       height: 100svh;
       max-height: 100svh;
       min-height: 0;
       overflow: hidden;
+      background: transparent !important;
     }
   }
 </style>
@@ -266,22 +453,181 @@ const linkClass =
     border: none;
   }
 
-  /* Hover desktop: glow tipográfico */
-  @media (hover: hover) and (pointer: fine) {
-    .editorial-link:hover .editorial-title {
-      text-shadow:
-        0 0 24px rgba(255, 255, 255, 0.28),
-        0 2px 12px rgba(0, 0, 0, 0.35);
+  /* Distribución vertical móvil: marca arriba, cilindro al centro, estado abajo */
+  @media (max-width: 767px) {
+    .home-editorial {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      align-items: center;
+      justify-items: center;
+      row-gap: 0.35rem;
+      background: transparent !important;
+    }
+
+    .home-editorial__brand {
+      padding-top: 0.35rem;
+    }
+
+    .home-editorial__foot {
+      padding-bottom: 0.25rem;
+    }
+
+    .editorial-reel {
+      align-self: stretch;
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      min-height: 0;
+      background: transparent;
     }
   }
 
-  /* Feedback táctil: brillo inmediato en título + línea (equiv. group-active) */
+  @media (min-width: 768px) {
+    .home-editorial {
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .editorial-reel {
+      height: min(44vh, 24rem);
+      max-height: 44vh;
+      flex: 1 1 auto;
+    }
+  }
+
+  .editorial-reel__viewport {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: transparent;
+    /* Fade suave solo en tipografía, sin capa negra encima del video */
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+  }
+
+  .editorial-reel__viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .editorial-reel__spacer {
+    flex-shrink: 0;
+    height: calc(50% - 3.85rem);
+    min-height: 3.25rem;
+    pointer-events: none;
+  }
+
+  .editorial-reel__slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    height: 7.7rem;
+    flex-shrink: 0;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    transform: scale(var(--reel-scale, 0.72));
+    opacity: var(--reel-opacity, 0.35);
+    filter: blur(var(--reel-blur, 2px));
+    transition:
+      transform 0.1s linear,
+      opacity 0.1s linear,
+      filter 0.1s linear;
+    will-change: transform, opacity, filter;
+    background: transparent;
+  }
+
+  .editorial-reel__slide[data-active] {
+    z-index: 2;
+  }
+
+  .editorial-title {
+    font-size: clamp(1.55rem, 7.2vw, 2.35rem);
+    letter-spacing: 0.14em;
+    color: rgba(255, 255, 255, 0.94);
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+    max-width: 92vw;
+  }
+
+  .editorial-subtitle {
+    font-size: clamp(0.58rem, 2.6vw, 0.72rem);
+    letter-spacing: 0.22em;
+    line-height: 1.35;
+    color: color-mix(
+      in srgb,
+      var(--home-subtexto-color, var(--color-primario, #9f1239)) 88%,
+      #fff 12%
+    );
+    opacity: 0.72;
+    max-width: min(18rem, 88vw);
+    transition: opacity 0.2s ease, color 0.2s ease;
+  }
+
+  @media (min-width: 768px) {
+    .editorial-reel__slide {
+      height: 8.5rem;
+    }
+    .editorial-title {
+      font-size: clamp(2.35rem, 4.2vw, 3.6rem);
+      letter-spacing: 0.22em;
+    }
+    .editorial-subtitle {
+      font-size: 0.78rem;
+      letter-spacing: 0.28em;
+      margin-top: 0.65rem;
+    }
+  }
+
+  .editorial-reel__slide[data-active] .editorial-title {
+    color: #fff;
+    text-shadow:
+      0 0 28px rgba(255, 255, 255, 0.22),
+      0 4px 18px rgba(0, 0, 0, 0.45);
+  }
+
+  .editorial-reel__slide[data-active] .editorial-subtitle {
+    opacity: 1;
+    color: color-mix(
+      in srgb,
+      var(--home-subtexto-color, var(--color-primario, #c9a84c)) 70%,
+      #fff 30%
+    );
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  }
+
+  .editorial-rule {
+    margin-top: 0.55rem;
+    height: 1px;
+    width: 0.9rem;
+    background: rgba(255, 255, 255, 0.22);
+    transition:
+      width 0.28s ease,
+      background-color 0.28s ease;
+  }
+
+  .editorial-reel__slide[data-active] .editorial-rule {
+    width: 3.5rem;
+    background: #34d399;
+  }
+
   .editorial-link:active .editorial-title {
     color: #fff;
-  }
-  .editorial-link:active .editorial-rule {
-    width: 4rem;
-    background-color: #34d399;
   }
 
   .home-editorial--overlay-puro img[data-home-logo] {
@@ -294,7 +640,6 @@ const linkClass =
       0 1px 3px rgba(0, 0, 0, 0.45);
   }
 
-  /* Video de fondo: tipografía y logo con halo oscuro para no perderse en el movimiento */
   :global([data-fondo-home-tipo='video']) .home-editorial img[data-home-logo] {
     filter:
       drop-shadow(0 8px 28px rgba(0, 0, 0, 0.72))
@@ -311,30 +656,29 @@ const linkClass =
   }
 
   :global([data-fondo-home-tipo='video']) .home-editorial .editorial-title {
-    color: rgba(255, 255, 255, 0.94);
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.9),
       0 6px 24px rgba(0, 0, 0, 0.75),
       0 0 40px rgba(0, 0, 0, 0.5);
   }
 
+  :global([data-fondo-home-tipo='video']) .home-editorial .editorial-subtitle {
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.85),
+      0 3px 12px rgba(0, 0, 0, 0.65);
+  }
+
   :global([data-fondo-home-tipo='video']) .home-editorial .editorial-rule {
-    background-color: rgba(255, 255, 255, 0.42);
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.55);
   }
 
-  :global([data-fondo-home-tipo='video']) .home-editorial footer .inline-flex {
-    background: rgba(0, 0, 0, 0.62);
-    border-color: rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .editorial-link,
-    .editorial-link span {
+    .editorial-reel__slide {
       transition: none !important;
-      transform: none !important;
+      filter: none !important;
+    }
+    .editorial-reel__viewport {
+      scroll-behavior: auto;
     }
     footer .animate-pulse {
       animation: none !important;
