@@ -16,6 +16,7 @@ import {
   normalizeFondoAnimacion,
   fondoAnimacionClass,
 } from '../../lib/secciones-ui.js';
+import { homeVideoPosterUrl } from '../../lib/cloudinary.js';
 
 interface CategoryBg {
   tipo?: string;
@@ -96,6 +97,7 @@ const opacityPct = normalizeOverlayOpacity(overlayOpacity, 40);
 
 const isWebm = /\.webm(\?|$)/i.test(value);
 const videoType = isWebm ? 'video/webm' : 'video/mp4';
+const videoPoster = isVideo && fixed ? homeVideoPosterUrl(value) : '';
 
 function safeBgUrl(url: string) {
   return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -256,42 +258,25 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
           {isVideo && (
             <div
               class="absolute inset-0 overflow-hidden bg-black"
-              data-video-loop-root={fixed ? 'true' : undefined}
             >
               <video
                 autoplay
                 loop={!fixed}
                 muted
                 playsinline
-                preload="auto"
+                preload="metadata"
+                poster={videoPoster || undefined}
                 class:list={[
-                  'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center will-change-transform',
+                  'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center',
                   fixed ? '' : kenBurnsClass,
-                  fixed && 'atmosphere-video-layer is-on',
                 ]}
                 data-atmosphere-media
                 data-fondo-animacion={fixed ? 'ninguna' : fondoAnimacion}
                 data-video-sharp={fixed ? 'true' : undefined}
-                data-loop-layer={fixed ? 'a' : undefined}
+                data-soft-loop={fixed ? 'true' : undefined}
               >
                 <source src={value} type={videoType} />
               </video>
-              {
-                /* Segunda capa solo en Home: crossfade para loop sin corte visible */
-                fixed ? (
-                  <video
-                    muted
-                    playsinline
-                    preload="auto"
-                    class="atmosphere-video-layer pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center will-change-transform"
-                    data-video-sharp="true"
-                    data-loop-layer="b"
-                    aria-hidden="true"
-                  >
-                    <source src={value} type={videoType} />
-                  </video>
-                ) : null
-              }
             </div>
           )}
         </>
@@ -609,98 +594,76 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
   ) : null
 }
 
-{/* Home video: full-bleed cover + loop seamless */}
+{/* Home video: full-bleed + soft loop (1 sola descarga) */}
 <style is:global>
-  [data-section-atmosphere][data-atmosphere-fixed='true'] video[data-video-sharp='true'],
-  [data-section-atmosphere][data-atmosphere-fixed='true'] .atmosphere-video-layer {
+  [data-section-atmosphere][data-atmosphere-fixed='true'] video[data-video-sharp='true'] {
     object-fit: cover;
     object-position: center center;
     width: 100%;
     height: 100%;
   }
 
-  .atmosphere-video-layer {
-    opacity: 0;
-    transition: opacity 0.55s ease-in-out;
-  }
-
-  .atmosphere-video-layer.is-on {
-    opacity: 1;
+  video[data-soft-loop='true'] {
+    transition: opacity 0.2s ease;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .atmosphere-video-layer {
+    video[data-soft-loop='true'] {
       transition: none;
     }
   }
 </style>
 
 {
-  /* Loop infinito con crossfade (Home video fixed) */
   true ? (
     <script is:inline>
       (() => {
-        const FADE_MS = 550;
-        const LEAD_S = 0.65;
+        const LEAD = 0.32;
+        const FADE_MS = 160;
 
-        function bindSeamlessLoop(root) {
-          if (!(root instanceof HTMLElement)) return;
-          if (root.dataset.loopBound === '1') return;
-          const a = root.querySelector('[data-loop-layer="a"]');
-          const b = root.querySelector('[data-loop-layer="b"]');
-          if (!(a instanceof HTMLVideoElement) || !(b instanceof HTMLVideoElement)) {
-            return;
-          }
-          root.dataset.loopBound = '1';
+        function bindSoftLoop(video) {
+          if (!(video instanceof HTMLVideoElement)) return;
+          if (video.dataset.softLoopBound === '1') return;
+          video.dataset.softLoopBound = '1';
 
-          let active = a;
-          let standby = b;
-          let swapping = false;
+          let locking = false;
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-          const playSafe = (v) => {
-            const p = v.play();
-            if (p && typeof p.catch === 'function') p.catch(() => {});
-          };
-
-          const watch = () => {
-            if (swapping) return;
-            if (!Number.isFinite(active.duration) || active.duration < 1.2) return;
-            if (active.duration - active.currentTime > LEAD_S) return;
-            swapping = true;
+          const restart = () => {
+            if (locking) return;
+            if (!Number.isFinite(video.duration) || video.duration < 1) return;
+            if (video.duration - video.currentTime > LEAD) return;
+            locking = true;
+            if (!reduce) video.style.opacity = '0.2';
             try {
-              standby.currentTime = 0;
+              video.currentTime = 0.04;
             } catch (_) {}
-            playSafe(standby);
-            standby.classList.add('is-on');
-            active.classList.remove('is-on');
+            const p = video.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
             window.setTimeout(() => {
-              try {
-                active.pause();
-                active.currentTime = 0;
-              } catch (_) {}
-              const tmp = active;
-              active = standby;
-              standby = tmp;
-              swapping = false;
+              video.style.opacity = '1';
+              locking = false;
             }, FADE_MS);
           };
 
-          const onReady = () => {
-            a.classList.add('is-on');
-            b.classList.remove('is-on');
-            playSafe(a);
-            a.addEventListener('timeupdate', watch);
-            b.addEventListener('timeupdate', watch);
-          };
-
-          if (a.readyState >= 1) onReady();
-          else a.addEventListener('loadedmetadata', onReady, { once: true });
+          video.addEventListener('timeupdate', restart, { passive: true });
+          video.addEventListener(
+            'ended',
+            () => {
+              try {
+                video.currentTime = 0.04;
+              } catch (_) {}
+              const p = video.play();
+              if (p && typeof p.catch === 'function') p.catch(() => {});
+            },
+            { passive: true },
+          );
         }
 
         const boot = () => {
           document
-            .querySelectorAll('[data-video-loop-root="true"]')
-            .forEach((el) => bindSeamlessLoop(el));
+            .querySelectorAll('video[data-soft-loop="true"]')
+            .forEach((el) => bindSoftLoop(el));
         };
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', boot, { once: true });

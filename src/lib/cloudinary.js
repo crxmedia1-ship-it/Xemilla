@@ -301,6 +301,75 @@ export function sharpenCloudinaryVideoUrl(url) {
   return `${raw.slice(0, at + marker.length)}${rest}`;
 }
 
+/** Entrega Home: tope de ancho + calidad buena (evita bajar UHD 4K entero al móvil). */
+const HOME_VIDEO_TX = 'c_limit,w_1600,q_auto:good,vc_auto';
+
+/**
+ * URL de video Home lista para web: limpia grades agresivos y aplica tope 1600px.
+ * @param {unknown} url
+ * @returns {string}
+ */
+export function optimizeHomeVideoUrl(url) {
+  const cleaned = sharpenCloudinaryVideoUrl(url);
+  if (!cleaned || !isCloudinaryDeliveryUrl(cleaned) || !/\/video\/upload\//i.test(cleaned)) {
+    return cleaned;
+  }
+  if (cleaned.includes(HOME_VIDEO_TX)) return cleaned;
+
+  const marker = '/upload/';
+  const at = cleaned.indexOf(marker);
+  if (at === -1) return cleaned;
+
+  let rest = cleaned.slice(at + marker.length);
+  // Quitar transforms previos de entrega para dejar solo el optimizado
+  while (rest) {
+    const slash = rest.indexOf('/');
+    const seg = slash === -1 ? rest : rest.slice(0, slash);
+    if (!seg) break;
+    const isVersion = /^v\d+$/i.test(seg);
+    const looksLikeTx =
+      !isVersion &&
+      (seg.includes(',') ||
+        /^(f_auto|q_auto|q_\d+|c_|w_|h_|g_|e_|fl_|dpr_|ar_|b_|t_|vc_|so_)/i.test(seg));
+    if (!looksLikeTx) break;
+    rest = slash === -1 ? '' : rest.slice(slash + 1);
+  }
+  if (!rest) return cleaned;
+  return `${cleaned.slice(0, at + marker.length)}${HOME_VIDEO_TX}/${rest}`;
+}
+
+/**
+ * Poster JPG ligero desde el mismo video Cloudinary (LCP / primer paint).
+ * @param {unknown} url
+ * @returns {string}
+ */
+export function homeVideoPosterUrl(url) {
+  const cleaned = sharpenCloudinaryVideoUrl(url);
+  if (!cleaned || !isCloudinaryDeliveryUrl(cleaned) || !/\/video\/upload\//i.test(cleaned)) {
+    return '';
+  }
+  const marker = '/upload/';
+  const at = cleaned.indexOf(marker);
+  if (at === -1) return '';
+
+  let rest = cleaned.slice(at + marker.length);
+  while (rest) {
+    const slash = rest.indexOf('/');
+    const seg = slash === -1 ? rest : rest.slice(0, slash);
+    if (!seg) break;
+    const isVersion = /^v\d+$/i.test(seg);
+    const looksLikeTx =
+      !isVersion &&
+      (seg.includes(',') ||
+        /^(f_auto|q_auto|q_\d+|c_|w_|h_|g_|e_|fl_|dpr_|ar_|b_|t_|vc_|so_)/i.test(seg));
+    if (!looksLikeTx) break;
+    rest = slash === -1 ? '' : rest.slice(slash + 1);
+  }
+  if (!rest) return '';
+  const still = rest.replace(/\.mp4(\?|$)/i, '.jpg$1');
+  return `${cleaned.slice(0, at + marker.length)}so_0.8,w_900,c_limit,f_jpg,q_auto/${still}`;
+}
+
 /**
  * Normaliza URLs de media (logo, OG, etc.) e inyecta transformaciones Cloudinary.
  * - Vacío → `null`

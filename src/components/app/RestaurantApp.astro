@@ -21,7 +21,7 @@ import {
   normalizeNosotrosTheme,
   DEFAULT_NOSOTROS_THEME,
 } from '../../lib/layout-themes.js';
-import { resolveMediaUrl, sharpenCloudinaryVideoUrl } from '../../lib/cloudinary.js';
+import { resolveMediaUrl, optimizeHomeVideoUrl } from '../../lib/cloudinary.js';
 import { resolveSafeHomeProps } from '../../lib/home-safe-props.js';
 import { fetchTasasCambio } from '../../lib/tasas-cambio.js';
 import {
@@ -108,7 +108,7 @@ const atmosphereTipo = String(fondoHome?.valor || '').trim()
 const atmosphereValorRaw = String(fondoHome?.valor || '').trim() || theme.colorFondo;
 const atmosphereValor =
   atmosphereTipo === 'video'
-    ? sharpenCloudinaryVideoUrl(atmosphereValorRaw)
+    ? optimizeHomeVideoUrl(atmosphereValorRaw)
     : atmosphereValorRaw;
 
 /** Overlay Home: estilo cinemático + opacidad (solo filtro oscuro / cinematico) */

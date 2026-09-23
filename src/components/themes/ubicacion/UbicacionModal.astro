@@ -233,39 +233,10 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
     transform: translateY(100%);
     transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     background: color-mix(in srgb, var(--color-fondo) 94%, transparent);
-    /* Safari: svh = viewport con barras visibles; + safe-area home indicator */
-    max-height: min(
-      calc(100svh - env(safe-area-inset-top, 0px) - 0.75rem),
-      48rem
-    );
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
   }
 
   .ubicacion-drawer-root.is-open .ubicacion-drawer {
     transform: translateY(0);
-  }
-
-  .ubicacion-modal {
-    padding-bottom: max(1.75rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
-  }
-
-  /* iOS Safari toolbar dinámico: cuando crece el chrome, re-clamp */
-  @supports (height: 100dvh) {
-    .ubicacion-drawer {
-      max-height: min(
-        calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.5rem),
-        48rem
-      );
-    }
-  }
-
-  @supports (height: 100svh) {
-    .ubicacion-drawer {
-      max-height: min(
-        calc(100svh - env(safe-area-inset-top, 0px) - 0.75rem),
-        48rem
-      );
-    }
   }
 
   .ubicacion-pin {
