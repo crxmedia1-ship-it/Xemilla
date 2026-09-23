@@ -253,8 +253,22 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Safari colorea la barra con el canvas. Sin esto, html transparente = chrome blanco. */
+  html[data-theme='blacksushi'],
+  html[data-theme='crx'] {
+    background-color: #09090b;
+    color-scheme: dark;
+  }
+
+  html[data-theme='sanza'] {
+    background-color: #f3eee6;
+    color-scheme: light;
+  }
+
   body {
     overscroll-behavior: none;
+    background-color: inherit;
+    color-scheme: inherit;
   }
 }
 

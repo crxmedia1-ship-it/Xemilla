@@ -90,12 +90,12 @@ const navItems: NavItem[] = [
 ];
 
 const linkClass =
-  'editorial-link group relative flex w-full max-w-xs cursor-pointer select-none flex-col items-center justify-center px-4 py-2.5 transition-transform duration-300 active:scale-[0.97] focus:outline-none sm:max-w-md sm:py-3.5 md:hover:scale-105';
+  'editorial-link group relative flex w-full max-w-xs cursor-pointer select-none flex-col items-center justify-center px-4 py-1.5 transition-transform duration-300 active:scale-[0.97] focus:outline-none sm:max-w-md md:py-3.5 md:hover:scale-105';
 ---
 
 <div
   class:list={[
-    'home-editorial linktree-home relative z-10 flex min-h-[100dvh] w-full select-none flex-col items-center justify-between bg-transparent px-6 py-10 sm:py-14 md:py-16 font-[family-name:var(--font-body,var(--fuente-principal))]',
+    'home-editorial linktree-home relative z-10 flex h-[100svh] max-h-[100svh] min-h-0 w-full select-none flex-col items-center justify-between overflow-hidden bg-transparent px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] font-[family-name:var(--font-body,var(--fuente-principal))] md:h-auto md:max-h-none md:min-h-[100dvh] md:overflow-visible md:py-16',
     textShadowPuro && 'home-editorial--overlay-puro',
     animRise && 'home-anim-rise',
     animBlur && 'home-anim-blur',
@@ -126,7 +126,7 @@ const linkClass =
           <img
             src={logoUrl}
             alt={nombre || 'Logo'}
-            class="max-h-[var(--home-logo-size,130px)] h-[var(--home-logo-size,130px)] w-auto max-w-[85vw] object-contain drop-shadow-[0_4px_20px_rgba(255,255,255,0.08)] sm:h-[var(--home-logo-size,170px)] sm:max-h-[var(--home-logo-size,170px)] md:h-[var(--home-logo-size,200px)] md:max-h-[var(--home-logo-size,200px)]"
+            class="h-[min(var(--home-logo-size,130px),18svh)] max-h-[18svh] w-auto max-w-[70vw] object-contain drop-shadow-[0_4px_20px_rgba(255,255,255,0.08)] md:h-[var(--home-logo-size,200px)] md:max-h-[var(--home-logo-size,200px)] md:max-w-[85vw]"
             data-home-logo
           />
         ) : (
@@ -146,7 +146,7 @@ const linkClass =
       !immersiveLogoOnly ? (
         <p
           class:list={[
-            'font-mono text-[10px] uppercase tracking-[0.3em] text-white/60 min-[390px]:text-xs',
+            'font-mono text-[10px] uppercase leading-relaxed tracking-[0.22em] text-white/60 min-[390px]:text-xs md:tracking-[0.3em]',
             hasEntrance && 'home-enter home-enter--eslogan',
           ]}
           data-home-eslogan
@@ -163,7 +163,7 @@ const linkClass =
     navFrontal ? (
       <nav
         class:list={[
-          'mx-auto my-auto flex w-full max-w-xl flex-col items-center justify-center space-y-4 py-2 sm:space-y-6 sm:py-4 md:space-y-8',
+          'mx-auto my-auto flex min-h-0 w-full max-w-xl flex-col items-center justify-center space-y-1 py-1 md:space-y-8 md:py-4',
           hasEntrance && 'home-enter home-enter--botones',
         ]}
         aria-label={`Navegación ${nombre || 'restaurante'}`}
@@ -175,11 +175,11 @@ const linkClass =
           navItems.map((item) => {
             const inner = (
               <>
-                <span class="editorial-title whitespace-nowrap text-center font-serif text-base uppercase leading-none tracking-[0.24em] text-white/85 drop-shadow-sm transition-all duration-300 group-hover:text-white min-[390px]:text-lg min-[390px]:tracking-[0.28em] sm:text-2xl sm:tracking-[0.35em] md:text-3xl lg:text-4xl">
+                <span class="editorial-title whitespace-nowrap text-center font-serif text-[0.95rem] uppercase leading-none tracking-[0.2em] text-white/85 drop-shadow-sm transition-all duration-300 group-hover:text-white min-[390px]:text-base min-[390px]:tracking-[0.22em] md:text-3xl md:tracking-[0.35em] lg:text-4xl">
                   {item.label}
                 </span>
                 <span
-                  class="editorial-rule mt-2.5 h-px w-6 bg-white/20 transition-all duration-300 ease-out group-hover:w-16 group-hover:bg-emerald-400 sm:mt-3.5"
+                  class="editorial-rule mt-1.5 h-px w-6 bg-white/20 transition-all duration-300 ease-out group-hover:w-16 group-hover:bg-emerald-400 md:mt-3.5"
                   aria-hidden="true"
                 />
               </>
@@ -236,6 +236,28 @@ const linkClass =
     ) : null
   }
 </div>
+
+<style is:global>
+  /* Teléfono: el home editorial cabe en la pantalla visible y no deja scroll. */
+  @media (max-width: 767px) {
+    html:has(.home-editorial),
+    body:has(.home-editorial) {
+      height: 100svh;
+      max-height: 100svh;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    .restaurant-app:has(.home-editorial),
+    [data-home-shell]:has(.home-editorial),
+    [data-home-shell]:has(.home-editorial) > .relative {
+      height: 100svh;
+      max-height: 100svh;
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+</style>
 
 <style>
   .editorial-link {

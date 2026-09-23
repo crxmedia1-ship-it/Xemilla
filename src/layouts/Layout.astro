@@ -52,12 +52,27 @@ const iconHref =
   'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
 const shareImage = ogImage?.trim() || '';
 const initialThemeColor = adminPanel ? '#f8fafc' : themeColor;
+
+/** Safari toma el chrome del canvas (html/body), no de una capa interna. */
+function chromeIsLight(color: string) {
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (!hex) return false;
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.62;
+}
+
+const chromeScheme = adminPanel || chromeIsLight(initialThemeColor) ? 'light' : 'dark';
+const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chromeScheme}`;
 ---
 
 <!doctype html>
 <html
   lang="es"
   data-theme={adminPanel ? 'light' : theme}
+  style={chromeStyle}
   class:list={[
     adminPanel && 'admin-panel light transition-colors duration-500 ease-in-out',
   ]}
@@ -80,7 +95,18 @@ const initialThemeColor = adminPanel ? '#f8fafc' : themeColor;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href={fontHref} rel="stylesheet" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content={initialThemeColor} id="meta-theme-color" />
+    <meta name="color-scheme" content={chromeScheme} id="meta-color-scheme" />
+    <meta
+      name="theme-color"
+      content={initialThemeColor}
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content={initialThemeColor}
+      media="(prefers-color-scheme: dark)"
+      id="meta-theme-color"
+    />
     {
       adminPanel ? (
         <>
@@ -114,8 +140,17 @@ const initialThemeColor = adminPanel ? '#f8fafc' : themeColor;
               root.classList.add('admin-panel', 'light');
               root.classList.remove('dark');
               root.setAttribute('data-theme', 'light');
-              var meta = document.getElementById('meta-theme-color');
-              if (meta) meta.setAttribute('content', '#f8fafc');
+              document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
+                meta.setAttribute('content', '#f8fafc');
+              });
+              var scheme = document.getElementById('meta-color-scheme');
+              if (scheme) scheme.setAttribute('content', 'light');
+              root.style.backgroundColor = '#f8fafc';
+              root.style.colorScheme = 'light';
+              if (document.body) {
+                document.body.style.backgroundColor = '#f8fafc';
+                document.body.style.colorScheme = 'light';
+              }
               try {
                 localStorage.setItem(KEY, 'light');
               } catch (e) {}
@@ -127,6 +162,7 @@ const initialThemeColor = adminPanel ? '#f8fafc' : themeColor;
     {safeCustomCss ? <style set:html={safeCustomCss} /> : null}
   </head>
   <body
+    style={chromeStyle}
     class:list={[
       'relative min-h-dvh antialiased theme-body',
       `theme-${theme}`,
