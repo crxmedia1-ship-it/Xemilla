@@ -295,15 +295,12 @@ function itemIcon(id) {
       visibility 220ms ease;
   }
 
-  /* Solo visible en home: ocultar al abrir menú, Wi‑Fi, boutique, etc. */
-  .restaurant-app:has([data-section][data-open='true']) .gadget-floating-root,
-  .restaurant-app:has([data-ubicacion-drawer].is-open) .gadget-floating-root,
-  .restaurant-app:has([data-boutique-modal].is-open) .gadget-floating-root,
-  .restaurant-app:has([data-detalle-modal][aria-hidden='false']) .gadget-floating-root,
-  .restaurant-app:has([data-app-nav-overlay].is-open) .gadget-floating-root {
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden;
+  /* Solo home: ocultar FAB al salir (data-surface lo controla RestaurantApp) */
+  .gadget-floating-root.is-away-from-home,
+  :global(.restaurant-app:not([data-surface='home'])) .gadget-floating-root {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
     transform: translateY(0.45rem) scale(0.94);
   }
 

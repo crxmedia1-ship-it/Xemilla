@@ -312,6 +312,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   class="restaurant-app relative z-10 mx-auto min-h-dvh w-full bg-transparent text-[color:var(--color-text,var(--color-texto))] font-[family-name:var(--font-body,var(--fuente-principal))]"
   data-restaurant-app
   data-preview-live="true"
+  data-surface="home"
   data-restaurante-id={restaurante?.id || ''}
   data-design={theme?.designDnaId || 'elegant'}
   data-home-theme={homeTheme}
@@ -1155,6 +1156,34 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     panel.classList.add(...(open ? OPEN_CLASSES : CLOSED_CLASSES));
   }
 
+  /** Superficie activa: el FAB Wi‑Fi/servicios solo vive en home. */
+  function syncAppSurface(app: HTMLElement) {
+    let surface = 'home';
+    if (app.querySelector('[data-boutique-modal].is-open')) {
+      surface = 'boutique';
+    } else if (app.querySelector('[data-ubicacion-drawer].is-open')) {
+      surface = 'ubicacion';
+    } else if (app.querySelector('[data-app-nav-overlay].is-open')) {
+      surface = 'nav';
+    } else if (app.querySelector('[data-detalle-modal].is-open, [data-detalle-modal][aria-hidden="false"]')) {
+      surface = 'detalle';
+    } else {
+      const openPanel = app.querySelector('[data-section][data-open="true"]');
+      if (openPanel instanceof HTMLElement) {
+        surface = openPanel.dataset.section || 'section';
+      }
+    }
+    app.dataset.surface = surface;
+
+    const floating = app.querySelector('[data-gadget-floating]');
+    if (floating instanceof HTMLElement) {
+      const onHome = surface === 'home';
+      floating.hidden = !onHome;
+      floating.setAttribute('aria-hidden', onHome ? 'false' : 'true');
+      floating.classList.toggle('is-away-from-home', !onHome);
+    }
+  }
+
   function openUbicacionDrawer(app: HTMLElement) {
     const drawer = app.querySelector('[data-ubicacion-drawer]');
     if (!(drawer instanceof HTMLElement)) return;
@@ -1176,6 +1205,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     const panel = drawer.querySelector('[data-ubicacion-panel]');
     if (panel instanceof HTMLElement) refreshUbicacionLiveStatus(panel);
     document.documentElement.style.overflow = 'hidden';
+    syncAppSurface(app);
   }
 
   function closeUbicacionDrawer(app: HTMLElement) {
@@ -1191,6 +1221,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     drawer.setAttribute('aria-hidden', 'true');
     app.classList.remove('has-drawer-open');
     document.documentElement.classList.remove('drawer-open');
+    syncAppSurface(app);
   }
 
   function setAppTabsActive(app: HTMLElement, id: string | null) {
@@ -1298,6 +1329,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     home?.classList.add('scale-[0.98]', 'opacity-40');
     document.documentElement.style.overflow = 'hidden';
     setAppTabsActive(app, id === 'menu' || id === 'nosotros' || id === 'ubicacion' ? id : null);
+    syncAppSurface(app);
 
     if (id === 'wifi') {
       document.dispatchEvent(new CustomEvent('xemilla:wifi-open'));
@@ -1340,6 +1372,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     home?.classList.remove('scale-[0.98]', 'opacity-40');
     document.documentElement.style.overflow = '';
     setAppTabsActive(app, null);
+    syncAppSurface(app);
   }
 
   const ALERGENO_META: Record<string, { label: string; emoji: string }> = {
@@ -1450,6 +1483,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     if (!anySectionOpen && !drawerOpen && !boutiqueOpen) {
       document.documentElement.style.overflow = '';
     }
+    syncAppSurface(app);
   }
 
   function openBoutique(app: HTMLElement) {
@@ -1460,6 +1494,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
     document.documentElement.style.overflow = 'hidden';
+    syncAppSurface(app);
   }
 
   function closeBoutique(app: HTMLElement) {
@@ -1474,6 +1509,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     if (!anySectionOpen && !drawerOpen) {
       document.documentElement.style.overflow = '';
     }
+    syncAppSurface(app);
   }
 
   function macroText(val) {
@@ -1833,6 +1869,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             }
           }
           document.documentElement.classList.remove('overflow-hidden');
+          syncAppSurface(root);
         };
         burger.addEventListener('click', (e) => {
           e.preventDefault();
@@ -1966,6 +2003,8 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           closeBoutique(root);
         }
       });
+
+      syncAppSurface(root);
     });
   }
 
