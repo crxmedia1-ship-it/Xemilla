@@ -255,39 +255,9 @@ const ubicacionProps = {
   estilos: homeProps.estilos,
 };
 
-const nosotrosData = restaurante?.nosotros ?? {};
-const nosotrosBloque0 =
-  Array.isArray(nosotrosData?.bloques) && nosotrosData.bloques[0]
-    ? nosotrosData.bloques[0]
-    : null;
-const nosotrosNavSubtitle = String(
-  nosotrosBloque0?.subtitulo ||
-    nosotrosBloque0?.titulo ||
-    (Array.isArray(nosotrosData?.highlights) && nosotrosData.highlights[0]) ||
-    'NUESTRA FILOSOFÍA',
-)
-  .trim()
-  .toUpperCase();
-const ubicacionNavSubtitle = String(
-  ubicacion?.direccion ||
-    ubicacion?.titulo ||
-    'MAPA · CONTACTO · REDES',
-)
-  .trim()
-  .toUpperCase()
-  .slice(0, 42);
-
 homeProps = {
   ...homeProps,
   horariosRows: Array.isArray(ubicacion?.horariosRows) ? ubicacion.horariosRows : [],
-  navNosotrosSubtitle: nosotrosNavSubtitle,
-  navUbicacionLabel: String(ubicacion?.titulo || 'CONTACTO & VISITA')
-    .trim()
-    .toUpperCase(),
-  navUbicacionSubtitle: ubicacionNavSubtitle || 'MAPA · CONTACTO · REDES',
-  navNosotrosLabel: String(nosotrosData?.titulo || 'NOSOTROS')
-    .trim()
-    .toUpperCase(),
 };
 
 /** Si falla la resolución del tema, loguear y caer a bento solo por error real */
@@ -1189,9 +1159,16 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     app.querySelectorAll('[data-section]').forEach((el) => {
       if (el instanceof HTMLElement) setPanelOpen(el, false);
     });
+    const sheet = drawer.querySelector('.ubicacion-drawer');
+    if (sheet instanceof HTMLElement) {
+      sheet.style.transform = '';
+      sheet.style.transition = '';
+    }
     drawer.classList.add('is-open');
     drawer.dataset.open = 'true';
     drawer.setAttribute('aria-hidden', 'false');
+    app.classList.add('has-drawer-open');
+    document.documentElement.classList.add('drawer-open');
     const panel = drawer.querySelector('[data-ubicacion-panel]');
     if (panel instanceof HTMLElement) refreshUbicacionLiveStatus(panel);
     document.documentElement.style.overflow = 'hidden';
@@ -1200,9 +1177,16 @@ const cssAvanzadoScoped = scopeCssAvanzado(
   function closeUbicacionDrawer(app: HTMLElement) {
     const drawer = app.querySelector('[data-ubicacion-drawer]');
     if (!(drawer instanceof HTMLElement)) return;
+    const sheet = drawer.querySelector('.ubicacion-drawer');
+    if (sheet instanceof HTMLElement) {
+      sheet.style.transform = '';
+      sheet.style.transition = '';
+    }
     drawer.classList.remove('is-open');
     drawer.dataset.open = 'false';
     drawer.setAttribute('aria-hidden', 'true');
+    app.classList.remove('has-drawer-open');
+    document.documentElement.classList.remove('drawer-open');
   }
 
   function setAppTabsActive(app: HTMLElement, id: string | null) {

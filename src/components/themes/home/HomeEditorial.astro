@@ -88,7 +88,6 @@ const taglineDisplay = (
 const menuSubtitle = String(
   props?.menu_subtitle ||
     props?.menuSubtitle ||
-    (taglineSuperiorResolved && eslogan ? eslogan : '') ||
     'CARTA DE AUTOR',
 )
   .trim()
@@ -98,37 +97,28 @@ const subtituloReservas = String(
   props?.reservas_subtitulo ||
     r?.reservas_subtitulo ||
     reservasCta?.subtitulo ||
-    'EXPERIENCIA PREMIUM',
+    'MESA · PEDIDOS · TAKEAWAY',
 )
   .trim()
-  .toUpperCase() || 'EXPERIENCIA PREMIUM';
+  .toUpperCase() || 'MESA · PEDIDOS · TAKEAWAY';
 
 const reservasLabel = String(
   props?.reservas_texto ||
     r?.reservas_texto ||
     reservasCta?.label ||
-    'RESERVAS & PEDIDOS',
+    'RESERVAS',
 )
   .trim()
-  .toUpperCase() || 'RESERVAS & PEDIDOS';
+  .toUpperCase() || 'RESERVAS';
 
 const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
 const reservasIsExternal = reservasLink !== '#';
 
-const navNosotrosLabel = String(props?.navNosotrosLabel || 'NOSOTROS')
-  .trim()
-  .toUpperCase() || 'NOSOTROS';
-const navNosotrosSubtitle = String(props?.navNosotrosSubtitle || 'NUESTRA FILOSOFÍA')
-  .trim()
-  .toUpperCase() || 'NUESTRA FILOSOFÍA';
-const navUbicacionLabel = String(props?.navUbicacionLabel || 'CONTACTO & VISITA')
-  .trim()
-  .toUpperCase() || 'CONTACTO & VISITA';
-const navUbicacionSubtitle = String(
-  props?.navUbicacionSubtitle || 'MAPA · CONTACTO · REDES',
-)
-  .trim()
-  .toUpperCase() || 'MAPA · CONTACTO · REDES';
+/** Subtítulos universales — sirven a cualquier restaurante (no contenido de bloque/dirección). */
+const navNosotrosLabel = 'NOSOTROS';
+const navNosotrosSubtitle = 'NUESTRA HISTORIA';
+const navUbicacionLabel = 'HORARIOS Y UBICACIÓN';
+const navUbicacionSubtitle = 'HORARIO · MAPA · REDES';
 
 const horariosRows = Array.isArray(props?.horariosRows)
   ? props.horariosRows
@@ -490,19 +480,22 @@ const reelCopies = [0, 1, 2] as const;
         const rect = viewport.getBoundingClientRect();
         const centerY = rect.top + rect.height / 2;
         const half = Math.max(rect.height / 2, 1);
-        const scaleEase = reduceMotion ? 0.18 : isCoarse ? 0.3 : 0.38;
-        const opacityEase = reduceMotion ? 0.35 : isCoarse ? 0.55 : 0.68;
+        // Más contraste: inactivo más chico; activo crece un poco por encima de 1
+        const scaleEase = reduceMotion ? 0.2 : isCoarse ? 0.38 : 0.44;
+        const opacityEase = reduceMotion ? 0.35 : isCoarse ? 0.58 : 0.7;
+        const activeBoost = reduceMotion ? 1 : 1.08;
 
-        list.forEach((slide) => {
+        list.forEach((slide, i) => {
           const face = slide.querySelector('.editorial-reel__face');
           const sRect = slide.getBoundingClientRect();
           const mid = sRect.top + sRect.height / 2;
           const t = Math.min(1, Math.abs(mid - centerY) / half);
-          const scale = 1 - t * scaleEase;
-          const opacity = 1 - t * opacityEase;
+          const on = i === best;
+          const scale = on ? activeBoost : Math.max(0.58, 1 - t * scaleEase);
+          const opacity = on ? 1 : Math.max(0.28, 1 - t * opacityEase);
           if (face instanceof HTMLElement) {
-            face.style.setProperty('--reel-scale', String(Math.max(0.64, scale)));
-            face.style.setProperty('--reel-opacity', String(Math.max(0.3, opacity)));
+            face.style.setProperty('--reel-scale', String(scale));
+            face.style.setProperty('--reel-opacity', String(opacity));
           }
         });
 
@@ -553,16 +546,37 @@ const reelCopies = [0, 1, 2] as const;
           if (!(pick instanceof HTMLElement)) return;
           const slide = pick.closest('[data-editorial-slide]');
           if (!(slide instanceof HTMLElement)) return;
-          if (slide.hasAttribute('data-active')) return;
-          event.preventDefault();
-          event.stopPropagation();
+
           const list = slides();
           const abs = list.indexOf(slide);
           if (abs < 0) return;
           const logical = abs % count;
           const midAbs = count + logical;
-          // Ir directo a la copia del medio (sin pelear con snap)
-          jumpToAbs(midAbs);
+
+          // Inactivo: centrar y luego abrir (un solo tap abre el drawer/panel)
+          if (!slide.hasAttribute('data-active')) {
+            event.preventDefault();
+            event.stopPropagation();
+            jumpToAbs(midAbs);
+            window.setTimeout(() => {
+              const mid = slides()[midAbs];
+              const midPick = mid?.querySelector('[data-editorial-pick]');
+              if (!(midPick instanceof HTMLElement)) return;
+              if (midPick instanceof HTMLAnchorElement) {
+                const href = midPick.getAttribute('href') || '';
+                if (href && href !== '#') {
+                  if (midPick.target === '_blank') {
+                    window.open(href, '_blank', 'noopener,noreferrer');
+                  } else {
+                    window.location.href = href;
+                  }
+                  return;
+                }
+              }
+              midPick.click();
+            }, isCoarse ? 70 : 40);
+            return;
+          }
         },
         true,
       );
@@ -593,10 +607,11 @@ const reelCopies = [0, 1, 2] as const;
 </script>
 
 <style is:global>
-  /* Teléfono: home a pantalla completa, sin scroll de página; video se ve de borde a borde */
+  /* Teléfono: home a pantalla completa; overflow solo en el shell del home
+     (no en .restaurant-app) para que el drawer fixed no quede clipado. */
   @media (max-width: 767px) {
-    html:has(.home-editorial),
-    body:has(.home-editorial) {
+    html:has(.home-editorial):not(.drawer-open),
+    body:has(.home-editorial):not(:has(.has-drawer-open)) {
       height: 100svh;
       max-height: 100svh;
       overflow: hidden;
@@ -609,7 +624,18 @@ const reelCopies = [0, 1, 2] as const;
       background: #000;
     }
 
-    .restaurant-app:has(.home-editorial),
+    .restaurant-app:has(.home-editorial) {
+      height: 100svh;
+      max-height: 100svh;
+      min-height: 0;
+      overflow: visible;
+      background: transparent !important;
+    }
+
+    .restaurant-app.has-drawer-open {
+      overflow: visible !important;
+    }
+
     [data-home-shell]:has(.home-editorial) {
       height: 100svh;
       max-height: 100svh;
@@ -624,6 +650,13 @@ const reelCopies = [0, 1, 2] as const;
       min-height: 0;
       overflow: hidden;
       background: transparent !important;
+    }
+
+    /* Drawer por encima del shell con overflow */
+    .restaurant-app [data-ubicacion-drawer] {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
     }
   }
 </style>
@@ -748,17 +781,11 @@ const reelCopies = [0, 1, 2] as const;
     transform: scale(var(--reel-scale, 0.72));
     opacity: var(--reel-opacity, 0.35);
     transform-origin: center center;
-    transition: none;
+    transition:
+      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.28s ease;
     backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .editorial-reel__face {
-      transition:
-        transform 0.12s ease-out,
-        opacity 0.12s ease-out;
-    }
   }
 
   .editorial-reel__slide[data-active] {
@@ -766,11 +793,15 @@ const reelCopies = [0, 1, 2] as const;
   }
 
   .editorial-title {
-    font-size: clamp(1.95rem, 9vw, 2.95rem);
+    font-size: clamp(1.7rem, 7.8vw, 2.55rem);
     letter-spacing: 0.12em;
     font-weight: 500;
     color: #fff;
-    transition: color 0.2s ease, text-shadow 0.2s ease;
+    transition:
+      font-size 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      letter-spacing 0.35s ease,
+      color 0.2s ease,
+      text-shadow 0.2s ease;
     max-width: 94vw;
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.95),
@@ -779,13 +810,17 @@ const reelCopies = [0, 1, 2] as const;
   }
 
   .editorial-subtitle {
-    font-size: clamp(0.72rem, 3.2vw, 0.88rem);
-    letter-spacing: 0.18em;
+    font-size: clamp(0.68rem, 2.9vw, 0.82rem);
+    letter-spacing: 0.2em;
     line-height: 1.35;
-    color: rgba(255, 255, 255, 0.78);
-    opacity: 0.9;
+    color: rgba(255, 255, 255, 0.72);
+    opacity: 0.85;
     max-width: min(20rem, 90vw);
-    transition: opacity 0.2s ease, color 0.2s ease;
+    transition:
+      opacity 0.28s ease,
+      color 0.28s ease,
+      font-size 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      letter-spacing 0.32s ease;
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
   }
 
@@ -797,32 +832,46 @@ const reelCopies = [0, 1, 2] as const;
       height: 10.2rem;
     }
     .editorial-title {
-      font-size: clamp(2.75rem, 5vw, 4.1rem);
+      font-size: clamp(2.35rem, 4.4vw, 3.5rem);
       letter-spacing: 0.18em;
     }
     .editorial-subtitle {
-      font-size: 0.92rem;
+      font-size: 0.86rem;
       letter-spacing: 0.24em;
       margin-top: 0.7rem;
     }
   }
 
   .editorial-reel__slide[data-active] .editorial-title {
+    font-size: clamp(2.25rem, 10.2vw, 3.35rem);
+    letter-spacing: 0.1em;
     color: #fff;
     text-shadow:
-      0 0 32px rgba(255, 255, 255, 0.35),
+      0 0 36px rgba(255, 255, 255, 0.4),
       0 2px 4px rgba(0, 0, 0, 0.9),
       0 8px 28px rgba(0, 0, 0, 0.75);
   }
 
   .editorial-reel__slide[data-active] .editorial-subtitle {
     opacity: 1;
+    font-size: clamp(0.74rem, 3.3vw, 0.92rem);
+    letter-spacing: 0.22em;
     color: color-mix(
       in srgb,
       var(--home-subtexto-color, var(--color-primario, #c9a84c)) 55%,
       #fff 45%
     );
     text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
+  }
+
+  @media (min-width: 768px) {
+    .editorial-reel__slide[data-active] .editorial-title {
+      font-size: clamp(3rem, 5.4vw, 4.4rem);
+      letter-spacing: 0.14em;
+    }
+    .editorial-reel__slide[data-active] .editorial-subtitle {
+      font-size: 0.96rem;
+    }
   }
 
   .editorial-rule {
