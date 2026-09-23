@@ -62,6 +62,7 @@ import {
   normalizePlatosLayout,
   normalizeEstiloTarjetas,
   normalizeDestacadosEstilo,
+  normalizeDestacadosEfecto,
   normalizeMenuNavegacion,
   normalizeGadgetServiciosEstilo,
   MENU_LAYOUT_OPTIONS,
@@ -533,6 +534,7 @@ const marca = {
   menu_platos_layout: normalizePlatosLayout(uiEstiloRaw?.menu?.platos_layout),
   menu_estilo_tarjetas: normalizeEstiloTarjetas(uiEstiloRaw?.menu?.estilo_tarjetas),
   menu_destacados_estilo: normalizeDestacadosEstilo(uiEstiloRaw?.menu?.destacados_estilo),
+  menu_destacados_efecto: normalizeDestacadosEfecto(uiEstiloRaw?.menu?.destacados_efecto),
   menu_navegacion: normalizeMenuNavegacion(
     uiEstiloRaw?.menu?.navegacion ?? uiEstiloRaw?.menu?.layout,
   ),
@@ -2456,12 +2458,26 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       </label>
 
                       <label class="block space-y-1.5">
-                        <span class={labelClass}>Sugerencias del Chef</span>
-                        <select id="marca-menu-destacados-estilo" name="menu_destacados_estilo" class={fieldClass}>
-                          <option value="scroll" selected={marca.menu_destacados_estilo === 'scroll'}>Estilo de vitrina</option>
-                          <option value="fade" selected={marca.menu_destacados_estilo === 'fade'}>Halo Dorado</option>
-                          <option value="carrusel" selected={marca.menu_destacados_estilo === 'carrusel'}>Carrusel</option>
+                        <span class={labelClass}>Sugerencias del Chef — Presentación</span>
+                        <select id="marca-menu-destacados-estilo" name="menu_destacados_estilo" class={fieldClass} data-destacados-estilo-select>
+                          <option value="scroll" selected={marca.menu_destacados_estilo === 'scroll'}>Vitrina (carril)</option>
+                          <option value="fade" selected={marca.menu_destacados_estilo === 'fade'}>Halo Dorado (fade)</option>
+                          <option value="carrusel" selected={marca.menu_destacados_estilo === 'carrusel'}>Carrusel 1×1</option>
                         </select>
+                      </label>
+
+                      <label
+                        class="block space-y-1.5"
+                        data-destacados-efecto-wrap
+                        hidden={marca.menu_destacados_estilo === 'fade'}
+                      >
+                        <span class={labelClass}>Sugerencias del Chef — Movimiento</span>
+                        <select id="marca-menu-destacados-efecto" name="menu_destacados_efecto" class={fieldClass}>
+                          <option value="marquee" selected={marca.menu_destacados_efecto === 'marquee'}>Continuo lento (recomendado)</option>
+                          <option value="snap" selected={marca.menu_destacados_efecto === 'snap'}>Salto a la siguiente</option>
+                          <option value="estatico" selected={marca.menu_destacados_efecto === 'estatico'}>Estático (manual)</option>
+                        </select>
+                        <span class="block text-[10px] leading-snug text-zinc-500">En móvil, al arrastrar el carrusel sube la velocidad un momento y luego vuelve al ritmo lento.</span>
                       </label>
 
                       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -11845,6 +11861,20 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   menuFondoTipo?.addEventListener('change', syncMenuFondoUi, { signal });
   menuFondoColorVal?.addEventListener('input', syncMenuFondoHidden, { signal });
+
+  const destacadosEstiloSelect = document.getElementById('marca-menu-destacados-estilo');
+  const destacadosEfectoWrap = document.querySelector('[data-destacados-efecto-wrap]');
+  const syncDestacadosEfectoUi = () => {
+    if (!(destacadosEfectoWrap instanceof HTMLElement)) return;
+    const estilo =
+      destacadosEstiloSelect instanceof HTMLSelectElement
+        ? destacadosEstiloSelect.value
+        : 'scroll';
+    destacadosEfectoWrap.hidden = estilo === 'fade';
+  };
+  destacadosEstiloSelect?.addEventListener('change', syncDestacadosEfectoUi, { signal });
+  syncDestacadosEfectoUi();
+
   menuFondoUrlVal?.addEventListener('input', () => {
     syncMenuFondoHidden();
   }, { signal });
@@ -13432,6 +13462,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           menu_platos_layout: val('marca-menu-platos-layout') || 'grid',
           menu_estilo_tarjetas: val('marca-menu-estilo-tarjetas') || 'cristal',
           menu_destacados_estilo: val('marca-menu-destacados-estilo') || 'scroll',
+          menu_destacados_efecto: val('marca-menu-destacados-efecto') || 'marquee',
           menu_layout:
             document.querySelector('[data-menu-layout-option]:checked') instanceof HTMLInputElement
               ? /** @type {HTMLInputElement} */ (

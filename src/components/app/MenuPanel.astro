@@ -7,7 +7,7 @@ import {
   resolveNosotrosFuenteCuerpo,
   buildNosotrosFontsHref,
 } from '../../config/nosotros-typography.js';
-import { normalizeChipsLayout, normalizeChipsEstilo, normalizePlatosLayout, normalizeEstiloTarjetas, normalizeDestacadosEstilo, normalizeMenuNavegacion, expandMenuMasterTokens } from '../../lib/secciones-ui.js';
+import { normalizeChipsLayout, normalizeChipsEstilo, normalizePlatosLayout, normalizeEstiloTarjetas, normalizeDestacadosEstilo, normalizeDestacadosEfecto, normalizeMenuNavegacion, expandMenuMasterTokens } from '../../lib/secciones-ui.js';
 
 interface Plato {
   id?: number;
@@ -59,6 +59,7 @@ interface Props {
     platos_layout?: string;
     estilo_tarjetas?: string;
     destacados_estilo?: string;
+    destacados_efecto?: string;
     navegacion?: string;
     fuente_titulo?: string;
     fuente_cuerpo?: string;
@@ -137,13 +138,21 @@ function shouldShowDetalleBtn(plato: Plato, mediaUrl: string) {
   return hasMedia(mediaUrl) || showNutricion || (showAr && Boolean(plato.modelo3dUrl?.trim()));
 }
 const destacadosEstilo = normalizeDestacadosEstilo(menuUi.destacados_estilo);
+const destacadosEfecto = normalizeDestacadosEfecto(menuUi.destacados_efecto);
 const menuNavegacion = normalizeMenuNavegacion(menuUi.navegacion);
 const isHubMode = menuNavegacion === 'hub_categories';
+const useMarquee =
+  destacadosEstilo !== 'fade' && destacadosEfecto === 'marquee';
 const destacadosTrackClass =
   destacadosEstilo === 'fade'
     ? 'destacados-fade-stage relative mx-auto w-full max-w-[12.5rem] px-5'
     : destacadosEstilo === 'carrusel'
-      ? 'flex gap-3 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory scroll-smooth [-webkit-overflow-scrolling:touch] destacados-carrusel-track'
+      ? [
+          'flex gap-3 overflow-x-auto pb-1 scrollbar-none destacados-carrusel-track',
+          useMarquee
+            ? '[-webkit-overflow-scrolling:touch]'
+            : 'snap-x snap-mandatory scroll-smooth [-webkit-overflow-scrolling:touch]',
+        ].join(' ')
       : 'destacados-scroll-track pb-1';
 const menuTokens = expandMenuMasterTokens(menuUi);
 const accentColor = menuUi.color_acento || menuTokens.color_chip_activo || '';
@@ -259,6 +268,7 @@ function hubCardStyle(
   data-platos-layout={platosLayout}
   data-estilo-tarjetas={estiloTarjetas}
   data-destacados-estilo={destacadosEstilo}
+  data-destacados-efecto={destacadosEfecto}
   data-menu-navegacion={menuNavegacion}
   data-hub-view={isHubMode ? 'home' : undefined}
   style={menuPanelStyle || undefined}
@@ -425,6 +435,7 @@ function hubCardStyle(
         class="border-b border-white/8 pb-3 pt-3 sm:pb-4 sm:pt-4"
         data-destacados
         data-destacados-estilo={destacadosEstilo}
+        data-destacados-efecto={destacadosEfecto}
         aria-label="Sugerencias del Chef"
       >
         <h3 class="menu-gutter-x mb-2 font-[family-name:var(--menu-font-heading,var(--fuente-display))] text-[0.62rem] font-semibold tracking-[0.2em] uppercase text-[color:var(--menu-titulo-color,color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_70%,transparent))] sm:mb-3 sm:text-[0.72rem]">
@@ -2547,6 +2558,37 @@ function hubCardStyle(
     padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
+  /* Movimiento continuo: sin snap (evita el “salto” a tarjeta) */
+  [data-destacados-efecto='marquee'] [data-destacados-track] {
+    scroll-snap-type: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-destacados-efecto='marquee'] .menu-featured {
+    scroll-snap-align: none !important;
+  }
+
+  [data-destacados-efecto='marquee'] [data-destacados-track] {
+    display: flex !important;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  [data-destacados-efecto='marquee'] [data-destacados-track]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-destacados-efecto='marquee'] .menu-featured {
+    flex-shrink: 0;
+  }
+
+  [data-destacados-efecto='marquee'] .menu-featured[data-marquee-clone] {
+    pointer-events: auto;
+  }
+
   /* Móvil: márgenes seguros + sticky estable (viewport, no depende de @container) */
   @media (max-width: 767px), (pointer: coarse) {
     .menu-panel {
@@ -2613,6 +2655,9 @@ function hubCardStyle(
   const AUTOPLAY_MS = 7200;
   const FADE_MS = 7200;
   const HIGHLIGHT_MS = 1100;
+  /** px/s — ritmo lento de vitrina */
+  const MARQUEE_BASE_PX_PER_SEC = 22;
+  const MARQUEE_BOOST_MAX = 5.2;
 
   const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
@@ -2621,6 +2666,182 @@ function hubCardStyle(
   const isPhoneMenu = () =>
     typeof window !== 'undefined' &&
     window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
+
+  /**
+   * Carrusel continuo (marquee): avanza sin saltos; al arrastrar en móvil
+   * sube la velocidad y luego vuelve al ritmo base.
+   * @param {HTMLElement} track
+   */
+  function initDestacadosMarquee(track) {
+    if (track.dataset.marqueeReady === 'true') return;
+    if (prefersReducedMotion()) return;
+
+    const seed = Array.from(track.children).filter(
+      (el): el is HTMLElement =>
+        el instanceof HTMLElement &&
+        el.classList.contains('menu-featured') &&
+        !el.dataset.marqueeClone,
+    );
+    if (seed.length < 2) return;
+    track.dataset.marqueeReady = 'true';
+
+    seed.forEach((card) => {
+      const clone = /** @type {HTMLElement} */ (card.cloneNode(true));
+      clone.dataset.marqueeClone = '1';
+      clone.setAttribute('aria-hidden', 'true');
+      clone.tabIndex = -1;
+      track.appendChild(clone);
+    });
+
+    track.style.scrollSnapType = 'none';
+    track.style.scrollBehavior = 'auto';
+
+    let halfWidth = 0;
+    let boostMul = 1;
+    let pointerDown = false;
+    let lastTs = 0;
+    let raf = 0;
+    let lastPointerX = 0;
+    let lastPointerT = 0;
+    let flickPxPerSec = 0;
+
+    const measure = () => {
+      const first = seed[0];
+      const firstClone = track.querySelector<HTMLElement>('.menu-featured[data-marquee-clone]');
+      if (first && firstClone) {
+        halfWidth = Math.max(0, firstClone.offsetLeft - first.offsetLeft);
+      } else {
+        halfWidth = track.scrollWidth / 2;
+      }
+    };
+
+    const wrapScroll = () => {
+      if (halfWidth <= 0) return;
+      if (track.scrollLeft >= halfWidth - 0.5) {
+        track.scrollLeft -= halfWidth;
+      } else if (track.scrollLeft < 0) {
+        track.scrollLeft += halfWidth;
+      }
+    };
+
+    const tick = (ts: number) => {
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+
+      if (!document.hidden && !pointerDown && halfWidth > 0) {
+        track.scrollLeft += MARQUEE_BASE_PX_PER_SEC * boostMul * dt;
+        wrapScroll();
+        // Decaimiento suave hacia ×1
+        if (boostMul > 1.02) {
+          boostMul = 1 + (boostMul - 1) * Math.exp(-dt * 1.35);
+        } else {
+          boostMul = 1;
+        }
+      }
+
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      pointerDown = true;
+      lastPointerX = e.clientX;
+      lastPointerT = performance.now();
+      flickPxPerSec = 0;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!pointerDown) return;
+      const now = performance.now();
+      const dt = Math.max(8, now - lastPointerT);
+      const dx = e.clientX - lastPointerX;
+      // Contenido se mueve al contrario del dedo
+      flickPxPerSec = (-dx / dt) * 1000;
+      lastPointerX = e.clientX;
+      lastPointerT = now;
+      // Boost en vivo mientras arrastra (móvil)
+      const live = Math.abs(flickPxPerSec) / MARQUEE_BASE_PX_PER_SEC;
+      if (live > 1.15) {
+        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, live * 0.85));
+      }
+    };
+
+    const onPointerUp = () => {
+      if (!pointerDown) return;
+      pointerDown = false;
+      const fromFlick = Math.abs(flickPxPerSec) / MARQUEE_BASE_PX_PER_SEC;
+      if (fromFlick > 1.1) {
+        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, fromFlick));
+      } else {
+        // Toque sin flick: un empujón suave
+        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, 2.1));
+      }
+      measure();
+      wrapScroll();
+    };
+
+    track.addEventListener('pointerdown', onPointerDown);
+    track.addEventListener('pointermove', onPointerMove, { passive: true });
+    track.addEventListener('pointerup', onPointerUp);
+    track.addEventListener('pointercancel', onPointerUp);
+    track.addEventListener('pointerleave', () => {
+      if (pointerDown) onPointerUp();
+    });
+
+    track.addEventListener(
+      'wheel',
+      (e) => {
+        const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        if (Math.abs(delta) < 1) return;
+        boostMul = Math.min(
+          MARQUEE_BOOST_MAX,
+          boostMul + Math.min(2.2, Math.abs(delta) * 0.045),
+        );
+      },
+      { passive: true },
+    );
+
+    track.addEventListener('scroll', () => {
+      if (pointerDown) wrapScroll();
+    }, { passive: true });
+
+    const onFilterSync = () => {
+      // Clones: copiar visibilidad alergia del original por plato id
+      const byId = new Map();
+      seed.forEach((card) => {
+        byId.set(card.dataset.gotoPlato || '', card.classList.contains('is-alergia-hidden'));
+      });
+      track.querySelectorAll<HTMLElement>('.menu-featured[data-marquee-clone]').forEach((clone) => {
+        const hide = byId.get(clone.dataset.gotoPlato || '') === true;
+        clone.classList.toggle('is-alergia-hidden', hide);
+      });
+      window.requestAnimationFrame(() => {
+        measure();
+        wrapScroll();
+      });
+    };
+    track.addEventListener('destacados:filter', onFilterSync);
+
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            measure();
+            wrapScroll();
+          })
+        : null;
+    ro?.observe(track);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        lastTs = 0;
+        measure();
+      }
+    });
+
+    measure();
+    raf = window.requestAnimationFrame(tick);
+  }
 
   /**
    * @param {HTMLElement} track
@@ -3086,6 +3307,18 @@ function hubCardStyle(
         });
       });
 
+      // Delegación: cubre clones del marquee
+      panel.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+        const card = t.closest('[data-goto-plato]');
+        if (!(card instanceof HTMLElement) || !panel.contains(card)) return;
+        // Evitar doble fire si ya hay listener directo en originales
+        if (!card.dataset.marqueeClone) return;
+        e.preventDefault();
+        goToPlato(card.dataset.gotoPlato || '', card.dataset.gotoCat || '');
+      });
+
       if (!isHubNav) {
         initScrollReveal(panel, scrollRoot);
       } else if (hubSection) {
@@ -3097,11 +3330,22 @@ function hubCardStyle(
           (destacados instanceof HTMLElement && destacados.dataset.destacadosEstilo) ||
           panel.dataset.destacadosEstilo ||
           'scroll';
-        // Móvil: vitrina (scroll) también rota 1×1 como carrusel lento
-        if (mode === 'carrusel' || (mode === 'scroll' && isPhoneMenu())) {
-          initDestacadosAutoplay(track);
-        } else if (mode === 'fade') {
+        const efecto =
+          (destacados instanceof HTMLElement && destacados.dataset.destacadosEfecto) ||
+          panel.dataset.destacadosEfecto ||
+          'marquee';
+
+        if (mode === 'fade') {
           initDestacadosFade(track);
+        } else if (efecto === 'estatico') {
+          /* manual only */
+        } else if (efecto === 'snap') {
+          if (mode === 'carrusel' || (mode === 'scroll' && isPhoneMenu())) {
+            initDestacadosAutoplay(track);
+          }
+        } else if (mode === 'carrusel' || mode === 'scroll') {
+          // marquee (default): continuo
+          initDestacadosMarquee(track);
         }
       }
     });
@@ -3396,6 +3640,9 @@ function hubCardStyle(
           featuredItems.length > 0 &&
           Array.from(featuredItems).every((it) => it.classList.contains('is-alergia-hidden'));
         featuredSection.classList.toggle('is-alergia-empty', allHidden);
+        featuredSection
+          .querySelector('[data-destacados-track]')
+          ?.dispatchEvent(new Event('destacados:filter'));
       }
 
       if (emptyEl) {

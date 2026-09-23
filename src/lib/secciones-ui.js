@@ -1022,6 +1022,42 @@ export function normalizeDestacadosEstilo(value) {
   return 'scroll';
 }
 
+/**
+ * Efecto de movimiento del carrusel de Sugerencias del Chef.
+ * marquee = continuo lento (default) | snap = salto a tarjeta | estatico = sin auto
+ * @param {unknown} value
+ */
+export function normalizeDestacadosEfecto(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (
+    v === 'snap' ||
+    v === 'salto' ||
+    v === 'slide' ||
+    v === 'step' ||
+    v === 'autoplay_snap'
+  ) {
+    return 'snap';
+  }
+  if (
+    v === 'estatico' ||
+    v === 'static' ||
+    v === 'none' ||
+    v === 'ninguno' ||
+    v === 'off' ||
+    v === 'manual'
+  ) {
+    return 'estatico';
+  }
+  // continuo | marquee | loop | lento | vacío → marquee
+  return 'marquee';
+}
+
+export const DESTACADOS_EFECTOS = Object.freeze(['marquee', 'snap', 'estatico']);
+
 /** @param {unknown} value */
 export function normalizeEstiloTarjetas(value) {
   const v = String(value || '')
@@ -1198,6 +1234,9 @@ export function normalizeMenuUi(menu = {}, extras = {}) {
     ),
     destacados_estilo: normalizeDestacadosEstilo(
       m.destacados_estilo || m.destacadosEstilo || x.destacados_estilo,
+    ),
+    destacados_efecto: normalizeDestacadosEfecto(
+      m.destacados_efecto || m.destacadosEfecto || x.destacados_efecto,
     ),
     navegacion: normalizeMenuNavegacion(m.navegacion || m.menu_navegacion || m.layout || x.navegacion),
     layout: normalizeMenuLayout(m.layout || m.navegacion || m.menu_navegacion || x.navegacion),
@@ -1594,6 +1633,7 @@ export function buildUiEstiloFromBody(raw) {
         platos_layout: raw.menu_platos_layout,
         estilo_tarjetas: raw.menu_estilo_tarjetas ?? raw.estilo_tarjetas,
         destacados_estilo: raw.menu_destacados_estilo,
+        destacados_efecto: raw.menu_destacados_efecto,
         navegacion: menuLayoutToNavegacion(raw.menu_layout || raw.menu_navegacion),
         layout: normalizeMenuLayout(raw.menu_layout || raw.menu_navegacion),
         fuente_titulo: raw.menu_fuente_titulo || raw.menu_font,
@@ -1833,6 +1873,9 @@ export function uiEstiloToCssVars(ui, fallbackPrimario = '#9f1239') {
     ui?.menu?.estilo_tarjetas ? `--menu-estilo-tarjetas: ${ui.menu.estilo_tarjetas}` : '',
     ui?.menu?.destacados_estilo
       ? `--menu-destacados-estilo: ${ui.menu.destacados_estilo}`
+      : '',
+    ui?.menu?.destacados_efecto
+      ? `--menu-destacados-efecto: ${ui.menu.destacados_efecto}`
       : '',
     ui?.menu?.navegacion ? `--menu-navegacion: ${ui.menu.navegacion}` : '',
     ui?.menu?.fuente_titulo
