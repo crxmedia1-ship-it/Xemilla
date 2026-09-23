@@ -6,7 +6,6 @@ import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
 import GadgetFloatingButton from './GadgetFloatingButton.astro';
-import InstallAppButton from './InstallAppButton.astro';
 import WelcomePopup from './WelcomePopup.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
 import HomeSheet from '../themes/home/HomeSheet.astro';
@@ -637,8 +636,6 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         />
       ) : null
     }
-
-    <InstallAppButton />
 
     <WelcomePopup
       restauranteId={restaurante?.id || ''}

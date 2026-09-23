@@ -128,6 +128,11 @@ const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chrome
           <link rel="manifest" href={manifestHref} />
           {appName ? <meta name="apple-mobile-web-app-title" content={appName} /> : null}
           {appName ? <meta name="application-name" content={appName} /> : null}
+          <script is:inline>
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/sw.js').catch(function () {});
+            }
+          </script>
         </>
       ) : null
     }
