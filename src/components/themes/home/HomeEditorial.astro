@@ -660,6 +660,19 @@ const reelCopies = [0, 1, 2] as const;
       overflow: visible !important;
     }
 
+    html.drawer-open,
+    html.drawer-open body {
+      overflow: hidden !important;
+      height: 100svh;
+      max-height: 100svh;
+    }
+
+    /* Con drawer abierto, el shell no debe clipar el sheet fixed */
+    .restaurant-app.has-drawer-open [data-home-shell],
+    .restaurant-app.has-drawer-open [data-home-shell] > .relative {
+      overflow: visible !important;
+    }
+
     [data-home-shell]:has(.home-editorial) {
       height: 100svh;
       max-height: 100svh;
@@ -681,6 +694,10 @@ const reelCopies = [0, 1, 2] as const;
       position: fixed;
       inset: 0;
       z-index: 80;
+    }
+
+    .restaurant-app [data-ubicacion-drawer].is-open {
+      z-index: 90;
     }
   }
 </style>
@@ -797,8 +814,6 @@ const reelCopies = [0, 1, 2] as const;
   }
 
   .editorial-reel__face {
-    position: relative;
-    isolation: isolate;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -814,39 +829,8 @@ const reelCopies = [0, 1, 2] as const;
     text-rendering: geometricPrecision;
   }
 
-  /* Scrim local detrás del copy del reel — no oscurece el video entero */
-  .editorial-reel__face::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    z-index: -1;
-    width: min(92%, 22rem);
-    height: 7.2rem;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(0, 0, 0, 0.62) 0%,
-      rgba(0, 0, 0, 0.28) 48%,
-      transparent 74%
-    );
-    pointer-events: none;
-  }
-
   .editorial-reel__slide[data-active] {
     z-index: 2;
-  }
-
-  .editorial-reel__slide[data-active] .editorial-reel__face::before {
-    width: min(96%, 26rem);
-    height: 8.4rem;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(0, 0, 0, 0.72) 0%,
-      rgba(0, 0, 0, 0.36) 52%,
-      transparent 76%
-    );
   }
 
   /* Tipografía fija: el “agrandar” es solo scale del face (sin reflow de letras) */
@@ -941,34 +925,13 @@ const reelCopies = [0, 1, 2] as const;
         );
   }
 
-  /* Logo + slogan: presencia fuerte sobre video nítido (scrim local, no filtro global) */
+  /* Logo + slogan: presencia con sombras, sin óvalo de fondo */
   .home-editorial__brand {
     position: relative;
-    isolation: isolate;
-  }
-
-  .home-editorial__brand::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 42%;
-    z-index: -1;
-    width: min(120%, 28rem);
-    height: min(14rem, 28svh);
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(0, 0, 0, 0.58) 0%,
-      rgba(0, 0, 0, 0.22) 55%,
-      transparent 78%
-    );
-    pointer-events: none;
   }
 
   .home-editorial__logo-wrap {
     position: relative;
-    isolation: isolate;
   }
 
   .home-editorial__logo-img {

@@ -83,14 +83,14 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
   ></button>
 
   <div
-    class="ubicacion-drawer relative z-10 max-h-[min(90dvh,42rem)] w-full overflow-hidden rounded-t-[1.85rem] border border-white/12 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+    class="ubicacion-drawer relative z-10 flex w-full flex-col overflow-hidden rounded-t-[1.85rem] border border-white/12 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
     style={drawerBgStyle}
     role="dialog"
     aria-modal="true"
     aria-labelledby="ubicacion-drawer-title"
   >
     <div
-      class="ubicacion-drawer-handle flex justify-center pb-1 pt-3.5"
+      class="ubicacion-drawer-handle flex shrink-0 justify-center pb-1 pt-3.5"
       data-ubicacion-drawer-handle
       aria-label="Deslizar hacia abajo para cerrar"
     >
@@ -98,7 +98,7 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
     </div>
 
     <div
-      class="ubicacion-modal overflow-y-auto overscroll-contain px-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2"
+      class="ubicacion-modal min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2"
       data-ubicacion-panel
       data-ubicacion-theme="modal"
       data-horarios={horariosJson}
@@ -200,7 +200,7 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
         </ul>
       </div>
 
-      <div class="mt-5">
+      <div class="mt-5 pb-1">
         <p
           class={`mb-3 text-[0.55rem] font-semibold uppercase tracking-[0.2em] ${estilos.softColor}`}
           style={bodyStyle}
@@ -210,7 +210,7 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
         <UbicacionActionPills
           mapsHref={mapsHref}
           redesActivas={redesActivas}
-          layout="scroll"
+          layout="grid"
         />
       </div>
     </div>
@@ -233,10 +233,39 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
     transform: translateY(100%);
     transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     background: color-mix(in srgb, var(--color-fondo) 94%, transparent);
+    /* Safari: svh = viewport con barras visibles; + safe-area home indicator */
+    max-height: min(
+      calc(100svh - env(safe-area-inset-top, 0px) - 0.75rem),
+      48rem
+    );
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
   }
 
   .ubicacion-drawer-root.is-open .ubicacion-drawer {
     transform: translateY(0);
+  }
+
+  .ubicacion-modal {
+    padding-bottom: max(1.75rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
+  }
+
+  /* iOS Safari toolbar dinámico: cuando crece el chrome, re-clamp */
+  @supports (height: 100dvh) {
+    .ubicacion-drawer {
+      max-height: min(
+        calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.5rem),
+        48rem
+      );
+    }
+  }
+
+  @supports (height: 100svh) {
+    .ubicacion-drawer {
+      max-height: min(
+        calc(100svh - env(safe-area-inset-top, 0px) - 0.75rem),
+        48rem
+      );
+    }
   }
 
   .ubicacion-pin {

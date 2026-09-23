@@ -8,7 +8,7 @@ interface Props {
   layout?: 'scroll' | 'grid';
 }
 
-const { mapsHref, redesActivas, layout = 'scroll' } = Astro.props;
+const { mapsHref, redesActivas, layout = 'grid' } = Astro.props;
 const actions = buildContactActions(mapsHref, redesActivas);
 ---
 
@@ -34,7 +34,10 @@ const actions = buildContactActions(mapsHref, redesActivas);
             aria-label={action.label}
             title={action.label}
           >
-            <UbicacionSocialIcon id={action.icon} uid={action.id} />
+            <span class="ubicacion-social-btn__icon" aria-hidden="true">
+              <UbicacionSocialIcon id={action.icon} uid={action.id} />
+            </span>
+            <span class="ubicacion-social-btn__label">{action.label}</span>
           </a>
         ))
       }

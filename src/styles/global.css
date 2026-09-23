@@ -613,6 +613,7 @@
   overflow-x: auto;
   padding-bottom: 0.15rem;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .restaurant-app .ubicacion-socials--scroll::-webkit-scrollbar {
@@ -620,74 +621,160 @@
 }
 
 .restaurant-app .ubicacion-socials--grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem 0.35rem;
+  width: 100%;
 }
 
-@media (min-width: 640px) {
+@media (max-width: 340px) {
   .restaurant-app .ubicacion-socials--grid {
-    justify-content: center;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 .restaurant-app .ubicacion-social-btn {
   display: inline-flex;
+  flex-direction: column;
   flex-shrink: 0;
   align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, white 12%, transparent);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  overflow: hidden;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
+  padding: 0.15rem 0.1rem 0.2rem;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+  overflow: visible;
+}
+
+.restaurant-app .ubicacion-socials--scroll .ubicacion-social-btn {
+  width: auto;
 }
 
 .restaurant-app .ubicacion-social-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
+}
+
+.restaurant-app .ubicacion-social-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, white 14%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.restaurant-app .ubicacion-social-btn__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-texto, #fff) 78%, transparent);
+  line-height: 1.2;
+  text-align: center;
 }
 
 .restaurant-app .ubicacion-social-icon__svg {
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.45rem;
+  height: 1.45rem;
   display: block;
 }
 
-.restaurant-app .ubicacion-social-btn--maps {
+.restaurant-app .ubicacion-social-btn--maps .ubicacion-social-btn__icon {
   background: #ffffff;
 }
 
-.restaurant-app .ubicacion-social-btn--telefono {
+.restaurant-app .ubicacion-social-btn--telefono .ubicacion-social-btn__icon {
   background: #22c55e;
 }
 
-.restaurant-app .ubicacion-social-btn--whatsapp {
+.restaurant-app .ubicacion-social-btn--whatsapp .ubicacion-social-btn__icon {
   background: #25d366;
 }
 
-.restaurant-app .ubicacion-social-btn--instagram {
+.restaurant-app .ubicacion-social-btn--instagram .ubicacion-social-btn__icon {
   background: transparent;
   padding: 0;
+  border: none;
 }
 
 .restaurant-app .ubicacion-social-btn--instagram .ubicacion-social-icon__svg {
-  width: 3rem;
-  height: 3rem;
+  width: 2.85rem;
+  height: 2.85rem;
 }
 
-.restaurant-app .ubicacion-social-btn--facebook {
+.restaurant-app .ubicacion-social-btn--facebook .ubicacion-social-btn__icon {
   background: #1877f2;
 }
 
-.restaurant-app .ubicacion-social-btn--tiktok {
+.restaurant-app .ubicacion-social-btn--tiktok .ubicacion-social-btn__icon {
   background: #010101;
 }
 
-.restaurant-app .ubicacion-social-btn--tripadvisor {
+.restaurant-app .ubicacion-social-btn--tripadvisor .ubicacion-social-btn__icon {
   background: #34e0a1;
+}
+
+/* Drawer sheet: columna flex + altura Safari-safe (barras + home indicator) */
+.restaurant-app [data-ubicacion-drawer] {
+  height: 100%;
+  height: 100dvh;
+  height: 100svh;
+  max-height: 100svh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+
+.restaurant-app [data-ubicacion-drawer] .ubicacion-drawer {
+  display: flex;
+  flex-direction: column;
+  max-height: min(
+    calc(100svh - env(safe-area-inset-top, 0px) - 0.75rem),
+    48rem
+  );
+  overflow: hidden;
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+}
+
+@supports (height: 100dvh) {
+  .restaurant-app [data-ubicacion-drawer] .ubicacion-drawer {
+    max-height: min(
+      calc(
+        100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) -
+          0.5rem
+      ),
+      48rem
+    );
+  }
+}
+
+@supports (height: 100svh) {
+  .restaurant-app [data-ubicacion-drawer] .ubicacion-drawer {
+    max-height: min(
+      calc(100svh - env(safe-area-inset-top, 0px) - 0.75rem),
+      48rem
+    );
+  }
+}
+
+.restaurant-app [data-ubicacion-drawer] .ubicacion-modal {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: max(1.75rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
 }
 
 /* Botón flotante de servicios operativos */
