@@ -26,6 +26,8 @@ interface Props {
     color_fondo?: string;
     color_titulo?: string;
     color_cuerpo?: string;
+    color_acento?: string;
+    color_boton?: string;
   };
   estilos: {
     mutedColor: string;
@@ -53,11 +55,18 @@ const {
 const secFondo = (sectionColors.color_fondo || '').trim();
 const titleColor = (sectionColors.color_titulo || '').trim();
 const bodyColor = (sectionColors.color_cuerpo || '').trim();
+const accentColor = (sectionColors.color_acento || sectionColors.color_boton || '').trim();
 const titleStyle = titleColor ? `color:${titleColor}` : undefined;
 const bodyStyle = bodyColor ? `color:${bodyColor}` : undefined;
 const drawerBgStyle = secFondo
   ? `background: color-mix(in srgb, ${secFondo} 94%, transparent)`
   : undefined;
+const drawerVars = [
+  accentColor ? `--ubi-acento:${accentColor}` : '',
+  accentColor ? `--ubi-boton:${accentColor}` : '',
+]
+  .filter(Boolean)
+  .join(';');
 
 const mapsQuery = [direccion, ciudad].filter(Boolean).join(', ');
 const addressLine = mapsQuery || 'Nuestro local';
@@ -84,7 +93,7 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
 
   <div
     class="ubicacion-drawer relative z-10 flex w-full flex-col overflow-hidden rounded-t-[1.85rem] border border-white/12 shadow-[0_-20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
-    style={drawerBgStyle}
+    style={[drawerBgStyle, drawerVars].filter(Boolean).join(';') || undefined}
     role="dialog"
     aria-modal="true"
     aria-labelledby="ubicacion-drawer-title"
@@ -242,7 +251,9 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
   .ubicacion-pin {
     width: 0.85rem;
     height: 0.85rem;
-    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23a1a1aa' stroke-width='1.8' viewBox='0 0 24 24'><path d='M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z'/><circle cx='12' cy='10' r='2.5'/></svg>") center/contain no-repeat;
+    background-color: var(--ubi-acento, var(--sec-ubicacion-acento, #a1a1aa));
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='black' stroke-width='1.8' viewBox='0 0 24 24'><path d='M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z'/><circle cx='12' cy='10' r='2.5'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='black' stroke-width='1.8' viewBox='0 0 24 24'><path d='M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z'/><circle cx='12' cy='10' r='2.5'/></svg>") center/contain no-repeat;
   }
 
   .live-badge.is-open [data-live-dot] {
@@ -258,12 +269,17 @@ const cerradoTemporal = isHorarioCerradoTemporal(horarios, horariosRows);
   }
 
   [data-horario-row].is-today {
-    background: color-mix(in srgb, white 7%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--ubi-acento, var(--sec-ubicacion-acento, white)) 24%,
+      transparent
+    );
     font-weight: 600;
   }
 
-  [data-horario-row].is-today span:first-child {
-    color: var(--color-texto, #fff);
+  [data-horario-row].is-today span:first-child,
+  [data-horario-row].is-today span:last-child {
+    color: var(--ubi-acento, var(--sec-ubicacion-acento, var(--color-texto, #fff)));
   }
 
   .ubicacion-drawer-handle {

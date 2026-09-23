@@ -244,8 +244,8 @@ const rootStyle = [
   }
 
   .ubicacion-tab.is-active {
-    background: var(--ubi-acento, var(--ubi-boton, color-mix(in srgb, var(--color-primario) 28%, transparent)));
-    color: var(--ubi-boton-texto, var(--color-texto));
+    background: var(--ubi-acento, var(--sec-ubicacion-acento, color-mix(in srgb, white 16%, transparent)));
+    color: var(--ubi-boton-texto, #fff);
   }
 
   .split-icon {
@@ -262,12 +262,13 @@ const rootStyle = [
   }
 
   [data-horario-row].is-today {
-    background: color-mix(in srgb, var(--ubi-acento, var(--color-primario, #9f1239)) 22%, transparent);
+    background: color-mix(in srgb, var(--ubi-acento, var(--sec-ubicacion-acento, white)) 22%, transparent);
     font-weight: 600;
   }
 
-  [data-horario-row].is-today span:first-child {
-    color: var(--color-texto, #fff);
+  [data-horario-row].is-today span:first-child,
+  [data-horario-row].is-today span:last-child {
+    color: var(--ubi-acento, var(--sec-ubicacion-acento, var(--color-texto, #fff)));
   }
 </style>
 

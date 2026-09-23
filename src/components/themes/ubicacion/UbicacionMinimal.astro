@@ -207,15 +207,20 @@ const cardClass = 'rounded-2xl p-4 sm:p-5';
   }
 
   [data-horario-row].is-today {
-    background: color-mix(in srgb, white 7%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--ubi-acento, var(--sec-ubicacion-acento, white)) 22%,
+      transparent
+    );
     margin-inline: -0.35rem;
     padding-inline: 0.35rem;
     border-radius: 0.65rem;
     font-weight: 600;
   }
 
-  [data-horario-row].is-today span:first-child {
-    color: var(--color-texto, #fff);
+  [data-horario-row].is-today span:first-child,
+  [data-horario-row].is-today span:last-child {
+    color: var(--ubi-acento, var(--sec-ubicacion-acento, var(--color-texto, #fff)));
   }
 </style>
 

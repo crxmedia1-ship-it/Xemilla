@@ -213,10 +213,12 @@ export function ubicacionCardStyle(estilo, color = '') {
 }
 
 /**
- * Colores de Ubicación. El acento NO hereda del Home.
+ * Colores de Ubicación.
+ * El acento es solo el de esta sección. No hereda el primario de marca
+ * (si no, un rojo de Identidad se pinta dorado en la WebApp).
  * @param {Record<string, unknown>} ubicacion
  * @param {Record<string, unknown>} home
- * @param {{ fondoColor?: string, primario?: string }} [extras]
+ * @param {{ fondoColor?: string }} [extras]
  */
 export function resolveUbicacionSectionColors(ubicacion = {}, home = {}, extras = {}) {
   const fondo = String(ubicacion.color_fondo || extras.fondoColor || '').trim();
@@ -226,9 +228,7 @@ export function resolveUbicacionSectionColors(ubicacion = {}, home = {}, extras 
   const cuerpo = String(
     ubicacion.color_cuerpo || home.eslogan_color || home.esloganColor || '',
   ).trim();
-  const acento = String(
-    ubicacion.color_acento || ubicacion.color_boton || extras.primario || '',
-  ).trim();
+  const acento = String(ubicacion.color_acento || ubicacion.color_boton || '').trim();
   const grid = normalizeUbicacionGridEstilo(ubicacion.grid_estilo);
 
   return {
