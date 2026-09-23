@@ -316,27 +316,17 @@ function hubCardStyle(
             type="button"
             class="currency-compact__trigger"
             data-currency-trigger
+            data-currency-face="usd"
             aria-label="Cambiar divisa de precios"
             aria-haspopup="listbox"
             aria-expanded="false"
           >
-            <span class="currency-compact__trigger-icon" aria-hidden="true">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="8" cy="8" r="6"></circle>
-                <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
-                <path d="M7 6h1v4"></path>
-                <path d="m16.71 13.88.7.71-2.82 2.82"></path>
-              </svg>
+            <span class="currency-bill">
+              <span class="currency-bill__corner" aria-hidden="true">1</span>
+              <span class="currency-bill__seal" data-currency-trigger-label>$</span>
+              <span class="currency-bill__word" data-currency-trigger-word>USD</span>
+              <span class="currency-bill__corner currency-bill__corner--end" aria-hidden="true">1</span>
             </span>
-            <span class="currency-compact__trigger-label" data-currency-trigger-label>$</span>
           </button>
           <div class="currency-compact__menu" data-currency-menu hidden role="listbox" aria-label="Divisa de visualización">
             <button type="button" class="currency-compact__option is-active" data-currency-btn="USD" aria-pressed="true">USD</button>
@@ -2331,74 +2321,116 @@ function hubCardStyle(
 
   .currency-compact__trigger {
     display: inline-flex;
-    min-width: 3.15rem;
-    height: 2.15rem;
     align-items: center;
     justify-content: center;
-    gap: 0.32rem;
-    border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--currency-green-light) 68%, #d4e8c8);
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--currency-green-light) 78%, #c8dcc0) 0%,
-        color-mix(in srgb, var(--currency-green-dark) 94%, #000) 100%
-      );
-    padding: 0 0.62rem 0 0.52rem;
-    color: #e8f5e0;
+    padding: 0;
+    border: 0;
+    background: transparent;
     cursor: pointer;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .currency-bill {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    width: 4.15rem;
+    height: 2.05rem;
+    padding: 0.18rem 0.28rem;
+    border-radius: 0.28rem;
+    color: #e7f6d8;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), transparent 46%),
+      repeating-linear-gradient(
+        115deg,
+        rgba(255, 255, 255, 0.07) 0 1px,
+        transparent 1px 5px
+      ),
+      linear-gradient(165deg, #3d8f52 0%, #1b6b34 42%, #0e4d24 100%);
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent),
-      0 4px 14px var(--currency-green-glow),
-      0 0 0 1px color-mix(in srgb, var(--currency-green-dark) 35%, transparent);
-    transition:
-      background 180ms ease,
-      border-color 180ms ease,
-      box-shadow 180ms ease,
-      transform 160ms ease;
+      inset 0 0 0 1px rgba(232, 245, 214, 0.55),
+      inset 0 0 0 3px rgba(8, 48, 22, 0.55),
+      0 4px 12px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
   }
 
-  .currency-compact__trigger-icon {
-    display: inline-flex;
-    width: 0.92rem;
-    height: 0.92rem;
-    flex-shrink: 0;
-    opacity: 0.95;
+  .currency-bill::before {
+    content: '';
+    position: absolute;
+    inset: 0.28rem;
+    border-radius: 0.12rem;
+    border: 1px solid rgba(232, 245, 214, 0.28);
+    pointer-events: none;
   }
 
-  .currency-compact__trigger-icon svg {
-    display: block;
-    width: 100%;
-    height: 100%;
+  .currency-compact__trigger[data-currency-face='eur'] .currency-bill {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.14), transparent 46%),
+      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 5px),
+      linear-gradient(165deg, #3d6ea8 0%, #1d4e86 42%, #12345e 100%);
+    color: #e7f0ff;
   }
 
-  .currency-compact__trigger-label {
-    font-size: 0.6rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+  .currency-compact__trigger[data-currency-face='bs'] .currency-bill__seal {
+    font-family: inherit;
+    font-size: 0.58rem;
+    letter-spacing: -0.03em;
+  }
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.14), transparent 46%),
+      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 5px),
+      linear-gradient(165deg, #c45c2a 0%, #8d3414 48%, #5c210c 100%);
+    color: #fff4ea;
+  }
+
+  .currency-bill__seal {
+    grid-column: 2;
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    width: 1.28rem;
+    height: 1.28rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: radial-gradient(circle at 40% 35%, rgba(255, 255, 255, 0.22), rgba(0, 0, 0, 0.18));
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .currency-bill__word {
+    position: absolute;
+    left: 50%;
+    bottom: 0.16rem;
+    transform: translateX(-50%);
+    font-size: 0.38rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    opacity: 0.8;
     line-height: 1;
   }
 
-  .currency-compact__trigger:hover {
-    border-color: color-mix(in srgb, var(--currency-green-light) 78%, #e8f5e0);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent),
-      0 6px 18px color-mix(in srgb, var(--currency-green) 48%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--currency-green-dark) 42%, transparent);
+  .currency-bill__corner {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 0.48rem;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0.9;
+    align-self: start;
   }
 
-  .currency-compact__trigger:active {
-    transform: scale(0.96);
+  .currency-bill__corner--end {
+    justify-self: end;
+    align-self: end;
   }
 
-  .currency-compact.is-open .currency-compact__trigger {
-    border-color: color-mix(in srgb, var(--currency-green-light) 82%, #e8f5e0);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 32%, transparent),
-      0 8px 22px color-mix(in srgb, var(--currency-green) 52%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--currency-green-light) 35%, transparent);
+  .currency-compact__trigger:active .currency-bill {
+    transform: scale(0.97);
   }
 
   .currency-compact__menu {
@@ -2698,9 +2730,9 @@ function hubCardStyle(
   const AUTOPLAY_MS = 7200;
   const FADE_MS = 7200;
   const HIGHLIGHT_MS = 1100;
-  /** px/s — ritmo lento pero visible en móvil */
-  const MARQUEE_BASE_PX_PER_SEC = 28;
-  const MARQUEE_BOOST_MAX = 6;
+  /** px/s — crucero lento */
+  const MARQUEE_BASE_PX_PER_SEC = 26;
+  const MARQUEE_VEL_MAX = 920;
 
   const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
@@ -2736,6 +2768,7 @@ function hubCardStyle(
     rail.style.alignItems = 'stretch';
     rail.style.gap = '0.75rem';
     rail.style.width = 'max-content';
+    rail.style.willChange = 'transform';
     while (track.firstChild) {
       rail.appendChild(track.firstChild);
     }
@@ -2758,19 +2791,19 @@ function hubCardStyle(
 
     let loopWidth = 0;
     let offset = 0;
-    let boostMul = 1;
+    /** px/s. Positivo = avanza a la izquierda (crucero). */
+    let velocity = MARQUEE_BASE_PX_PER_SEC;
     let pointerDown = false;
+    let axisLocked = false;
     let visible = true;
     let lastTs = 0;
     let lastPointerX = 0;
+    let lastPointerY = 0;
     let lastPointerT = 0;
-    let flickPxPerSec = 0;
-    let dragStartX = 0;
-    let dragStartOffset = 0;
     let moved = false;
 
     const apply = () => {
-      rail.style.transform = `translate3d(${-offset}px, 0, 0)`;
+      rail.style.transform = `translate3d(${(-offset).toFixed(2)}px, 0, 0)`;
     };
 
     const measure = () => {
@@ -2781,32 +2814,31 @@ function hubCardStyle(
       } else {
         loopWidth = Math.max(0, rail.scrollWidth / 2);
       }
-      if (loopWidth > 0 && offset >= loopWidth) {
-        offset = offset % loopWidth;
-        apply();
-      }
     };
 
     const wrapOffset = () => {
       if (loopWidth <= 0) return;
-      while (offset >= loopWidth) offset -= loopWidth;
-      while (offset < 0) offset += loopWidth;
+      offset = ((offset % loopWidth) + loopWidth) % loopWidth;
+    };
+
+    const easeVelocity = (dt: number) => {
+      const k = 1 - Math.exp(-dt * 1.35);
+      velocity += (MARQUEE_BASE_PX_PER_SEC - velocity) * k;
+      if (Math.abs(velocity - MARQUEE_BASE_PX_PER_SEC) < 0.4) {
+        velocity = MARQUEE_BASE_PX_PER_SEC;
+      }
     };
 
     const tick = (ts: number) => {
       if (!lastTs) lastTs = ts;
-      const dt = Math.min(0.064, (ts - lastTs) / 1000);
+      const dt = Math.min(0.032, (ts - lastTs) / 1000);
       lastTs = ts;
 
       if (!document.hidden && visible && !pointerDown && loopWidth > 0) {
-        offset += MARQUEE_BASE_PX_PER_SEC * boostMul * dt;
+        offset += velocity * dt;
         wrapOffset();
         apply();
-        if (boostMul > 1.02) {
-          boostMul = 1 + (boostMul - 1) * Math.exp(-dt * 1.25);
-        } else {
-          boostMul = 1;
-        }
+        easeVelocity(dt);
       }
 
       window.requestAnimationFrame(tick);
@@ -2815,41 +2847,49 @@ function hubCardStyle(
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       pointerDown = true;
+      axisLocked = false;
       moved = false;
-      track.classList.add('is-dragging');
       lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
       lastPointerT = performance.now();
-      dragStartX = e.clientX;
-      dragStartOffset = offset;
-      flickPxPerSec = 0;
-      try {
-        track.setPointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
     };
 
     const onPointerMove = (e: PointerEvent) => {
       if (!pointerDown) return;
       const now = performance.now();
-      const dt = Math.max(8, now - lastPointerT);
       const dx = e.clientX - lastPointerX;
-      if (Math.abs(e.clientX - dragStartX) > 6) moved = true;
-      // Dedo a la derecha → contenido a la derecha (offset baja)
-      offset = dragStartOffset - (e.clientX - dragStartX);
+      const dy = e.clientY - lastPointerY;
+      const dt = Math.max(8, now - lastPointerT) / 1000;
+
+      if (!axisLocked) {
+        if (Math.abs(dx) < 7 && Math.abs(dy) < 7) return;
+        if (Math.abs(dy) > Math.abs(dx)) {
+          pointerDown = false;
+          return;
+        }
+        axisLocked = true;
+        moved = true;
+        track.classList.add('is-dragging');
+        try {
+          track.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      offset -= dx;
       wrapOffset();
       apply();
-      flickPxPerSec = (-dx / dt) * 1000;
+      const inst = -dx / dt;
+      velocity = velocity * 0.35 + inst * 0.65;
+      velocity = Math.max(-MARQUEE_VEL_MAX, Math.min(MARQUEE_VEL_MAX, velocity));
       lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
       lastPointerT = now;
-      const live = Math.abs(flickPxPerSec) / MARQUEE_BASE_PX_PER_SEC;
-      if (live > 1.1) {
-        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, live * 0.9));
-      }
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      if (!pointerDown) return;
+      if (!pointerDown && !axisLocked) return;
       pointerDown = false;
       track.classList.remove('is-dragging');
       try {
@@ -2857,12 +2897,8 @@ function hubCardStyle(
       } catch {
         /* ignore */
       }
-      const fromFlick = Math.abs(flickPxPerSec) / MARQUEE_BASE_PX_PER_SEC;
-      if (fromFlick > 1.05) {
-        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, fromFlick));
-      } else if (moved) {
-        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, 2.4));
-      }
+      if (!axisLocked) velocity = MARQUEE_BASE_PX_PER_SEC;
+      axisLocked = false;
       measure();
     };
 
@@ -2891,10 +2927,8 @@ function hubCardStyle(
         offset += delta;
         wrapOffset();
         apply();
-        boostMul = Math.min(
-          MARQUEE_BOOST_MAX,
-          boostMul + Math.min(2.4, Math.abs(delta) * 0.05),
-        );
+        const kick = Math.max(-MARQUEE_VEL_MAX, Math.min(MARQUEE_VEL_MAX, delta * 18));
+        velocity = Math.max(-MARQUEE_VEL_MAX, Math.min(MARQUEE_VEL_MAX, velocity * 0.5 + kick));
       },
       { passive: true },
     );
@@ -3546,13 +3580,19 @@ function hubCardStyle(
     const rateEl = switcher.querySelector<HTMLElement>('[data-currency-rate]');
     const trigger = switcher.querySelector<HTMLButtonElement>('[data-currency-trigger]');
     const triggerLabel = switcher.querySelector<HTMLElement>('[data-currency-trigger-label]');
+    const triggerWord = switcher.querySelector<HTMLElement>('[data-currency-trigger-word]');
     const menu = switcher.querySelector<HTMLElement>('[data-currency-menu]');
     let current = 'USD';
 
     const syncTriggerLabel = (currency: string) => {
-      if (!(triggerLabel instanceof HTMLElement)) return;
-      triggerLabel.textContent =
-        currency === 'BS' ? 'Bs' : currency === 'EUR' ? '€' : '$';
+      const face = currency === 'BS' ? 'bs' : currency === 'EUR' ? 'eur' : 'usd';
+      if (trigger instanceof HTMLButtonElement) trigger.dataset.currencyFace = face;
+      if (triggerLabel instanceof HTMLElement) {
+        triggerLabel.textContent = currency === 'BS' ? 'Bs' : currency === 'EUR' ? '€' : '$';
+      }
+      if (triggerWord instanceof HTMLElement) {
+        triggerWord.textContent = currency === 'BS' ? 'VES' : currency === 'EUR' ? 'EUR' : 'USD';
+      }
     };
 
     const setMenuOpen = (open: boolean) => {
