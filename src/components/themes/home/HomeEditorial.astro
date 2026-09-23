@@ -716,12 +716,36 @@ const reelCopies = [0, 1, 2] as const;
       grid-template-rows: auto minmax(0, 1fr) auto;
       align-items: center;
       justify-items: center;
-      row-gap: 0.35rem;
+      row-gap: 1.15rem;
       background: transparent !important;
     }
 
     .home-editorial__brand {
       padding-top: 0.35rem;
+      padding-bottom: 0.35rem;
+    }
+
+    .home-editorial__tagline {
+      margin-bottom: 0.15rem;
+    }
+
+    .editorial-reel__viewport {
+      mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        transparent 10%,
+        #000 24%,
+        #000 86%,
+        transparent 100%
+      );
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        transparent 10%,
+        #000 24%,
+        #000 86%,
+        transparent 100%
+      );
     }
 
     .home-editorial__foot {
@@ -758,6 +782,7 @@ const reelCopies = [0, 1, 2] as const;
       height: 100%;
       max-height: none;
       min-height: 0;
+      padding-top: 0.35rem;
       background: transparent;
     }
   }

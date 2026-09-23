@@ -226,7 +226,8 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
             <div class="absolute inset-0 overflow-hidden">
               <div
                 class:list={[
-                  'absolute inset-0 bg-cover bg-center will-change-transform',
+                  /* inset negativo: room para zoom Ken Burns sin bordes vacíos */
+                  'absolute inset-[-14%] bg-cover bg-center will-change-transform',
                   kenBurnsClass,
                 ]}
                 data-atmosphere-media
@@ -244,7 +245,7 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
               {carruselUrls.map((url, i) => (
                 <div
                   class:list={[
-                    'absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out will-change-transform',
+                    'absolute inset-[-14%] bg-cover bg-center transition-opacity duration-1000 ease-in-out will-change-transform',
                     kenBurnsClass,
                   ]}
                   data-carrusel-slide

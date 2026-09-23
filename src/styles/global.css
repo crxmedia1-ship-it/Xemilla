@@ -20,8 +20,8 @@
   --font-sanza: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-sanza-display: "Cormorant Garamond", ui-serif, Georgia, serif;
 
-  --animate-ken-burns: ken-burns 40s ease-in-out infinite alternate;
-  --animate-ken-burns-out: ken-burns-out 40s ease-in-out infinite alternate;
+  --animate-ken-burns: ken-burns 28s ease-in-out infinite alternate;
+  --animate-ken-burns-out: ken-burns-out 28s ease-in-out infinite alternate;
   --animate-pan-horizontal: pan-horizontal 30s ease-in-out infinite alternate;
   --animate-float-vertical: float-vertical 30s ease-in-out infinite alternate;
   --animate-pulse-glow: pulse-glow 30s ease-in-out infinite alternate;
@@ -35,19 +35,20 @@
 /* ─── Fondo (Ken Burns / pan / float / glow) ─── */
 @keyframes ken-burns {
   from {
-    transform: scale(1);
+    transform: scale(1) translate3d(0, 1.5%, 0);
   }
   to {
-    transform: scale(1.08);
+    /* ~18% zoom + leve drift hacia la fachada (más legible que 8%) */
+    transform: scale(1.18) translate3d(0, -2.5%, 0);
   }
 }
 
 @keyframes ken-burns-out {
   from {
-    transform: scale(1.08);
+    transform: scale(1.18) translate3d(0, -2.5%, 0);
   }
   to {
-    transform: scale(1);
+    transform: scale(1) translate3d(0, 1.5%, 0);
   }
 }
 
@@ -222,7 +223,10 @@
   }
 
   .animate-ken-burns,
-  .animate-ken-burns-out,
+  .animate-ken-burns-out {
+    animation-duration: 36s;
+  }
+
   .animate-pan-horizontal,
   .animate-float-vertical,
   .animate-pulse-glow {
