@@ -1090,64 +1090,66 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               id="platos-toolbar"
               class:list={['platos-toolbar mb-4 w-full space-y-2 sm:mb-5', platos.length === 0 && 'hidden']}
             >
-              {/* Status chips — tab-bar */}
-              <div
-                id="status-scroll"
-                class="studio-status-bento inline-flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-100/80 p-1 dark:border-zinc-800 dark:bg-zinc-900/80"
-                role="toolbar"
-                aria-label="Filtrar por estado"
-              >
-                <button type="button" data-status-filter="todas" aria-pressed="true" class="status-filter-pill is-on rounded-xl border border-zinc-200/70 bg-white px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm transition-all dark:border-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-sm">
-                  Todos
-                </button>
-                <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill status-filter-pill--live rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm">
-                  En carta
-                </button>
-                <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill status-filter-pill--off rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm">
-                  Agotados
-                </button>
-                <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill status-filter-pill--star rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm">
-                  Destacados
-                </button>
-              </div>
-
-              {/* Nivel 1: Macrocategorías */}
-              <div
-                id="macro-scroll"
-                class="studio-macro-row scrollbar-hide inline-flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-100/80 p-1 dark:border-zinc-800 dark:bg-zinc-900/80"
-                role="toolbar"
-                aria-label="Filtrar por macrocategoría"
-              >
-                <button
-                  type="button"
-                  data-macro-filter="todas"
-                  aria-pressed="true"
-                  class="macro-filter-pill is-on rounded-xl border border-zinc-200/70 bg-white px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm transition-all dark:border-zinc-700 dark:bg-zinc-800 dark:text-white sm:text-sm"
+              <div class="menu-filter-block">
+                <span class="menu-filter-block__kicker">Estado</span>
+                <div
+                  id="status-scroll"
+                  class="studio-status-bento"
+                  role="toolbar"
+                  aria-label="Filtrar por estado"
                 >
-                  Menú completo
-                </button>
-                {
-                  presentMacros.map((macro) => (
-                    <button
-                      type="button"
-                      data-macro-filter={macro.id}
-                      aria-pressed="false"
-                      class="macro-filter-pill rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100 sm:text-sm"
-                    >
-                      {macro.label}
-                    </button>
-                  ))
-                }
+                  <button type="button" data-status-filter="todas" aria-pressed="true" class="status-filter-pill is-on">
+                    Todos
+                  </button>
+                  <button type="button" data-status-filter="disponibles" aria-pressed="false" class="status-filter-pill status-filter-pill--live">
+                    En carta
+                  </button>
+                  <button type="button" data-status-filter="agotados" aria-pressed="false" class="status-filter-pill status-filter-pill--off">
+                    Agotados
+                  </button>
+                  <button type="button" data-status-filter="destacados" aria-pressed="false" class="status-filter-pill status-filter-pill--star">
+                    Destacados
+                  </button>
+                </div>
               </div>
 
-              {/* Nivel 2: Subcategorías (condicional) */}
-              <div
-                id="subcat-scroll"
-                class="studio-subcat-row scrollbar-hide inline-flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200/80 bg-zinc-100/80 p-1 is-empty dark:border-zinc-800 dark:bg-zinc-900/80"
-                role="toolbar"
-                aria-label="Filtrar por subcategoría"
-                hidden
-              ></div>
+              <div class="menu-filter-block">
+                <span class="menu-filter-block__kicker">Sección</span>
+                <div
+                  id="macro-scroll"
+                  class="studio-macro-row scrollbar-hide"
+                  role="toolbar"
+                  aria-label="Filtrar por macrocategoría"
+                >
+                  <button
+                    type="button"
+                    data-macro-filter="todas"
+                    aria-pressed="true"
+                    class="macro-filter-pill is-on"
+                  >
+                    Menú completo
+                  </button>
+                  {
+                    presentMacros.map((macro) => (
+                      <button
+                        type="button"
+                        data-macro-filter={macro.id}
+                        aria-pressed="false"
+                        class="macro-filter-pill"
+                      >
+                        {macro.label}
+                      </button>
+                    ))
+                  }
+                </div>
+                <div
+                  id="subcat-scroll"
+                  class="studio-subcat-row scrollbar-hide is-empty"
+                  role="toolbar"
+                  aria-label="Filtrar por subcategoría"
+                  hidden
+                ></div>
+              </div>
 
               {/* Orden canónico de categorías (DnD / sync) — oculto, lo gestiona JS */}
               <div id="category-scroll" class="sr-only" aria-hidden="true"></div>
@@ -5077,9 +5079,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   #nut-alergias label:has(input:checked),
   [data-np-nutricion] label:has(input[name='alergias']:checked),
   .nut-chip:has(input:checked) {
-    border-color: color-mix(in srgb, var(--gadget-accent, #10b981) 45%, transparent);
-    background: color-mix(in srgb, var(--gadget-accent, #10b981) 14%, transparent);
-    color: #fafafa;
+    border-color: #6ee7b7;
+    background: #d1fae5;
+    color: #065f46;
+    font-weight: 650;
+  }
+
+  .nut-chip:has(input:checked)::before {
+    content: '';
+    width: 0.42rem;
+    height: 0.24rem;
+    margin-right: 0.38rem;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg) translateY(-0.05rem);
+    flex-shrink: 0;
   }
 
   .nut-metric {
@@ -5119,12 +5133,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     align-items: center;
     cursor: pointer;
     border-radius: 9999px;
-    border: 1px solid color-mix(in srgb, var(--text-primary, #fafafa) 12%, transparent);
-    background: color-mix(in srgb, var(--text-primary, #fafafa) 4%, transparent);
+    border: 1px solid #e4e4e7;
+    background: #f4f4f5;
     padding: 0.42rem 0.75rem;
-    font-size: 0.72rem;
-    font-weight: 550;
-    color: var(--text-muted, #a1a1aa);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #3f3f46;
     transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
   }
 
@@ -7329,10 +7344,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   const categoryFilters = document.getElementById('category-scroll');
   const macroFilters = document.getElementById('macro-scroll');
   const subcatFilters = document.getElementById('subcat-scroll');
-  const PILL_ON =
-    'is-on rounded-xl border border-zinc-200/70 bg-white px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm transition-all sm:text-sm dark:bg-zinc-800 dark:text-white dark:border-zinc-700';
-  const PILL_OFF =
-    'rounded-xl border border-transparent px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/50 hover:text-zinc-900 sm:text-sm dark:text-zinc-400 hover:dark:bg-zinc-800/50 hover:dark:text-zinc-100';
+  const PILL_ON = 'is-on';
+  const PILL_OFF = '';
   const CAT_PILL_ACTIVE = `cat-filter-pill ${PILL_ON}`;
   const CAT_PILL_INACTIVE = `cat-filter-pill ${PILL_OFF}`;
   const MACRO_PILL_ACTIVE = `macro-filter-pill ${PILL_ON}`;
