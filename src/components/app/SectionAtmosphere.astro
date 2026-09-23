@@ -256,12 +256,10 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
           )}
 
           {isVideo && (
-            <div
-              class="absolute inset-0 overflow-hidden bg-black"
-            >
+            <div class="absolute inset-0 overflow-hidden bg-black">
               <video
                 autoplay
-                loop={!fixed}
+                loop
                 muted
                 playsinline
                 preload="metadata"
@@ -273,7 +271,6 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
                 data-atmosphere-media
                 data-fondo-animacion={fixed ? 'ninguna' : fondoAnimacion}
                 data-video-sharp={fixed ? 'true' : undefined}
-                data-soft-loop={fixed ? 'true' : undefined}
               >
                 <source src={value} type={videoType} />
               </video>

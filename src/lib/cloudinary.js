@@ -301,11 +301,11 @@ export function sharpenCloudinaryVideoUrl(url) {
   return `${raw.slice(0, at + marker.length)}${rest}`;
 }
 
-/** Entrega Home: tope de ancho + calidad buena (evita bajar UHD 4K entero al móvil). */
-const HOME_VIDEO_TX = 'c_limit,w_1600,q_auto:good,vc_auto';
+/** Entrega Home: tope móvil-friendly (Safari iOS crashea con UHD/seek agresivo). */
+const HOME_VIDEO_TX = 'c_limit,w_960,q_auto:eco,vc_auto';
 
 /**
- * URL de video Home lista para web: limpia grades agresivos y aplica tope 1600px.
+ * URL de video Home lista para web: limpia grades agresivos y aplica tope 960px.
  * @param {unknown} url
  * @returns {string}
  */
