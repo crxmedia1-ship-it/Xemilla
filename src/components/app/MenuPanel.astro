@@ -2558,7 +2558,8 @@ function hubCardStyle(
     padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
-  /* Movimiento continuo: rail con transform (fiable en iOS; scrollLeft falla) */
+  /* Movimiento continuo: rail con transform (fiable en iOS; scrollLeft falla).
+     :global porque el rail se crea en JS y el scope de Astro no lo alcanza. */
   [data-destacados-efecto='marquee'] [data-destacados-track] {
     display: block !important;
     overflow: hidden !important;
@@ -2577,21 +2578,29 @@ function hubCardStyle(
     display: none;
   }
 
-  [data-destacados-efecto='marquee'] [data-destacados-rail] {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+  :global([data-destacados-rail]) {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
     align-items: stretch;
     gap: 0.75rem;
     width: max-content;
     will-change: transform;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
   }
 
+  [data-destacados-efecto='marquee'] :global([data-destacados-rail]) .menu-featured,
   [data-destacados-efecto='marquee'] .menu-featured {
-    flex-shrink: 0;
+    flex: 0 0 auto !important;
+    width: min(16rem, 34vw) !important;
+    max-width: none !important;
     scroll-snap-align: none !important;
+  }
+
+  @media (max-width: 767px) {
+    [data-destacados-efecto='marquee'] :global([data-destacados-rail]) .menu-featured,
+    [data-destacados-efecto='marquee'] .menu-featured {
+      width: min(82vw, 20rem) !important;
+    }
   }
 
   [data-destacados-efecto='marquee'] .menu-featured[data-marquee-clone] {
@@ -2700,14 +2709,28 @@ function hubCardStyle(
 
     const rail = document.createElement('div');
     rail.dataset.destacadosRail = '';
+    rail.style.display = 'flex';
+    rail.style.flexDirection = 'row';
+    rail.style.flexWrap = 'nowrap';
+    rail.style.alignItems = 'stretch';
+    rail.style.gap = '0.75rem';
+    rail.style.width = 'max-content';
     while (track.firstChild) {
       rail.appendChild(track.firstChild);
     }
+    const phone = isPhoneMenu();
+    const lockCard = (card: HTMLElement) => {
+      card.style.flex = '0 0 auto';
+      card.style.width = phone ? 'min(82vw, 20rem)' : 'min(16rem, 34vw)';
+      card.style.maxWidth = 'none';
+    };
+    seed.forEach(lockCard);
     seed.forEach((card) => {
       const clone = /** @type {HTMLElement} */ (card.cloneNode(true));
       clone.dataset.marqueeClone = '1';
       clone.setAttribute('aria-hidden', 'true');
       clone.tabIndex = -1;
+      lockCard(clone);
       rail.appendChild(clone);
     });
     track.appendChild(rail);
