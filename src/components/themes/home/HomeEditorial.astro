@@ -67,7 +67,9 @@ const animZoom = efectoEntrada === 'zoom';
 const animTracking = efectoEntrada === 'tracking';
 const hasEntrance = animRise || animBlur || animZoom || animTracking;
 
-const logoPx = logoSizePx || 130;
+const logoPxRaw = logoSizePx || 160;
+/** Editorial: el logo es el héroe — no dejarlo enanas por un slider bajo (ej. 60px). */
+const logoPx = Math.max(logoPxRaw, 168);
 const logoFallbackStyle = `max-height: var(--home-logo-size, ${logoPx}px); height: var(--home-logo-size, ${logoPx}px); width: var(--home-logo-size, ${logoPx}px); font-size: calc(var(--home-logo-size, ${logoPx}px) * 0.28);`;
 
 const eslogan = tagline || String(props?.eslogan || r?.eslogan || '').trim();
@@ -78,16 +80,22 @@ const taglineSuperiorResolved = String(
     r?.taglineSuperior ||
     '',
 ).trim();
-/** Texto Superior (Identidad) bajo el logo; Slogan como fallback. */
-const taglineDisplay = (
-  taglineSuperiorResolved ||
-  eslogan ||
-  'EXPERIENCIA GASTRONÓMICA'
-).toUpperCase();
+
+/**
+ * Identidad → WebApp:
+ * - Texto Superior = eyebrow corto ENCIMA del logo (opcional)
+ * - Slogan = frase DEBAJO del logo
+ */
+const sloganDisplay = (eslogan || 'EXPERIENCIA GASTRONÓMICA').toUpperCase();
+const eyebrowDisplay = taglineSuperiorResolved.toUpperCase();
+const showEyebrow =
+  Boolean(eyebrowDisplay) &&
+  eyebrowDisplay.replace(/\W+/g, '') !== sloganDisplay.replace(/\W+/g, '');
 
 const menuSubtitle = String(
   props?.menu_subtitle ||
     props?.menuSubtitle ||
+    (showEyebrow ? '' : taglineSuperiorResolved) ||
     'CARTA DE AUTOR',
 )
   .trim()
@@ -184,19 +192,34 @@ const reelCopies = [0, 1, 2] as const;
   {/* ── Branding ── */}
   <header
     class:list={[
-      'home-editorial__brand mx-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-2 text-center md:gap-3',
+      'home-editorial__brand mx-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-2.5 text-center md:gap-3.5',
       hasEntrance && 'home-enter home-enter--logo',
       immersiveLogoOnly && 'my-auto',
     ]}
     data-home-header
+    style={`--home-logo-size: ${logoPx}px;`}
   >
-    <div class="flex items-center justify-center" data-home-logo>
+    {
+      !immersiveLogoOnly && showEyebrow ? (
+        <p
+          class:list={[
+            'home-editorial__eyebrow font-mono text-[9px] uppercase leading-relaxed tracking-[0.28em] text-white/70 min-[390px]:text-[10px] md:tracking-[0.34em]',
+            hasEntrance && 'home-enter home-enter--eslogan',
+          ]}
+          data-home-tagline-superior
+        >
+          {eyebrowDisplay}
+        </p>
+      ) : null
+    }
+
+    <div class="home-editorial__logo-wrap flex items-center justify-center" data-home-logo>
       {
         logoUrl ? (
           <img
             src={logoUrl}
             alt={nombre || 'Logo'}
-            class="home-editorial__logo-img h-[min(var(--home-logo-size,145px),16svh)] max-h-[16svh] w-auto max-w-[72vw] object-contain md:h-[var(--home-logo-size,210px)] md:max-h-[var(--home-logo-size,210px)] md:max-w-[88vw]"
+            class="home-editorial__logo-img h-[min(var(--home-logo-size,180px),22svh)] max-h-[22svh] w-auto max-w-[78vw] object-contain md:h-[var(--home-logo-size,220px)] md:max-h-[min(var(--home-logo-size,220px),28vh)] md:max-w-[88vw]"
             data-home-logo
           />
         ) : (
@@ -216,13 +239,12 @@ const reelCopies = [0, 1, 2] as const;
       !immersiveLogoOnly ? (
         <p
           class:list={[
-            'home-editorial__tagline font-mono text-[10px] uppercase leading-relaxed tracking-[0.24em] text-white/80 min-[390px]:text-xs md:tracking-[0.32em]',
+            'home-editorial__tagline font-mono text-[11px] uppercase leading-relaxed tracking-[0.26em] text-white/90 min-[390px]:text-xs md:text-[0.8rem] md:tracking-[0.34em]',
             hasEntrance && 'home-enter home-enter--eslogan',
           ]}
           data-home-eslogan
-          data-home-tagline-superior
         >
-          {taglineDisplay}
+          {sloganDisplay}
         </p>
       ) : null
     }
@@ -480,22 +502,24 @@ const reelCopies = [0, 1, 2] as const;
         const rect = viewport.getBoundingClientRect();
         const centerY = rect.top + rect.height / 2;
         const half = Math.max(rect.height / 2, 1);
-        // Más contraste: inactivo más chico; activo crece un poco por encima de 1
-        const scaleEase = reduceMotion ? 0.2 : isCoarse ? 0.38 : 0.44;
-        const opacityEase = reduceMotion ? 0.35 : isCoarse ? 0.58 : 0.7;
-        const activeBoost = reduceMotion ? 1 : 1.08;
+        // Nunca > 1: crecer por encima pelea con snap y causa “pop”
+        const peak = 1;
+        const floor = reduceMotion ? 0.88 : isCoarse ? 0.78 : 0.74;
 
-        list.forEach((slide, i) => {
+        list.forEach((slide) => {
           const face = slide.querySelector('.editorial-reel__face');
           const sRect = slide.getBoundingClientRect();
           const mid = sRect.top + sRect.height / 2;
           const t = Math.min(1, Math.abs(mid - centerY) / half);
-          const on = i === best;
-          const scale = on ? activeBoost : Math.max(0.58, 1 - t * scaleEase);
-          const opacity = on ? 1 : Math.max(0.28, 1 - t * opacityEase);
+          // Suave cerca del centro (casi plano), solo reduce al alejarse
+          const falloff = t * t;
+          const scale = peak - falloff * (peak - floor);
+          const opacity = reduceMotion
+            ? 1 - falloff * 0.28
+            : 1 - falloff * (isCoarse ? 0.42 : 0.48);
           if (face instanceof HTMLElement) {
-            face.style.setProperty('--reel-scale', String(scale));
-            face.style.setProperty('--reel-opacity', String(opacity));
+            face.style.setProperty('--reel-scale', scale.toFixed(4));
+            face.style.setProperty('--reel-opacity', Math.max(0.38, opacity).toFixed(4));
           }
         });
 
@@ -768,40 +792,70 @@ const reelCopies = [0, 1, 2] as const;
     height: 9.2rem;
     flex-shrink: 0;
     scroll-snap-align: center;
-    scroll-snap-stop: always;
+    scroll-snap-stop: normal;
     background: transparent;
   }
 
   .editorial-reel__face {
+    position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 100%;
-    transform: scale(var(--reel-scale, 0.72));
+    /* Solo transform — sin transition CSS (el scroll actualiza cada frame; transition = lag/temblor) */
+    transform: translate3d(0, 0, 0) scale(var(--reel-scale, 0.72));
     opacity: var(--reel-opacity, 0.35);
     transform-origin: center center;
-    transition:
-      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.28s ease;
+    transition: none;
     backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  /* Scrim local detrás del copy del reel — no oscurece el video entero */
+  .editorial-reel__face::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: -1;
+    width: min(92%, 22rem);
+    height: 7.2rem;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.62) 0%,
+      rgba(0, 0, 0, 0.28) 48%,
+      transparent 74%
+    );
+    pointer-events: none;
   }
 
   .editorial-reel__slide[data-active] {
     z-index: 2;
   }
 
+  .editorial-reel__slide[data-active] .editorial-reel__face::before {
+    width: min(96%, 26rem);
+    height: 8.4rem;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.72) 0%,
+      rgba(0, 0, 0, 0.36) 52%,
+      transparent 76%
+    );
+  }
+
+  /* Tipografía fija: el “agrandar” es solo scale del face (sin reflow de letras) */
   .editorial-title {
-    font-size: clamp(1.7rem, 7.8vw, 2.55rem);
+    font-size: clamp(2rem, 9vw, 2.95rem);
     letter-spacing: 0.12em;
     font-weight: 500;
-    color: #fff;
-    transition:
-      font-size 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-      letter-spacing 0.35s ease,
-      color 0.2s ease,
-      text-shadow 0.2s ease;
+    color: rgba(255, 255, 255, 0.92);
+    transition: color 0.45s ease;
     max-width: 94vw;
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.95),
@@ -810,17 +864,13 @@ const reelCopies = [0, 1, 2] as const;
   }
 
   .editorial-subtitle {
-    font-size: clamp(0.68rem, 2.9vw, 0.82rem);
+    font-size: clamp(0.7rem, 3vw, 0.84rem);
     letter-spacing: 0.2em;
     line-height: 1.35;
-    color: rgba(255, 255, 255, 0.72);
-    opacity: 0.85;
+    color: rgba(255, 255, 255, 0.62);
+    opacity: 1;
     max-width: min(20rem, 90vw);
-    transition:
-      opacity 0.28s ease,
-      color 0.28s ease,
-      font-size 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      letter-spacing 0.32s ease;
+    transition: color 0.45s ease;
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
   }
 
@@ -832,82 +882,114 @@ const reelCopies = [0, 1, 2] as const;
       height: 10.2rem;
     }
     .editorial-title {
-      font-size: clamp(2.35rem, 4.4vw, 3.5rem);
-      letter-spacing: 0.18em;
+      font-size: clamp(2.6rem, 4.8vw, 3.9rem);
+      letter-spacing: 0.16em;
     }
     .editorial-subtitle {
-      font-size: 0.86rem;
+      font-size: 0.88rem;
       letter-spacing: 0.24em;
       margin-top: 0.7rem;
     }
   }
 
   .editorial-reel__slide[data-active] .editorial-title {
-    font-size: clamp(2.25rem, 10.2vw, 3.35rem);
-    letter-spacing: 0.1em;
     color: #fff;
-    text-shadow:
-      0 0 36px rgba(255, 255, 255, 0.4),
-      0 2px 4px rgba(0, 0, 0, 0.9),
-      0 8px 28px rgba(0, 0, 0, 0.75);
   }
 
   .editorial-reel__slide[data-active] .editorial-subtitle {
-    opacity: 1;
-    font-size: clamp(0.74rem, 3.3vw, 0.92rem);
-    letter-spacing: 0.22em;
     color: color-mix(
       in srgb,
       var(--home-subtexto-color, var(--color-primario, #c9a84c)) 55%,
       #fff 45%
     );
-    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
-  }
-
-  @media (min-width: 768px) {
-    .editorial-reel__slide[data-active] .editorial-title {
-      font-size: clamp(3rem, 5.4vw, 4.4rem);
-      letter-spacing: 0.14em;
-    }
-    .editorial-reel__slide[data-active] .editorial-subtitle {
-      font-size: 0.96rem;
-    }
   }
 
   .editorial-rule {
     margin-top: 0.7rem;
     height: 2px;
-    width: 1.1rem;
+    width: 4.5rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.28);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.45);
+    transform: scaleX(0.28);
+    transform-origin: center center;
     transition:
-      width 0.28s ease,
-      background-color 0.28s ease,
-      box-shadow 0.28s ease;
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.35s ease,
+      box-shadow 0.35s ease;
+    will-change: transform;
   }
 
   .editorial-reel__slide[data-active] .editorial-rule {
-    width: 4.5rem;
-    height: 2px;
-    background: #34d399;
+    transform: scaleX(1);
+    background: var(
+      --color-primario,
+      var(--home-borde-destacado, var(--borde-destacado, #9f1239))
+    );
     box-shadow:
-      0 0 12px rgba(52, 211, 153, 0.75),
-      0 0 24px rgba(52, 211, 153, 0.35);
+      0 0 12px
+        color-mix(
+          in srgb,
+          var(--color-primario, var(--home-borde-destacado, #9f1239)) 75%,
+          transparent
+        ),
+      0 0 24px
+        color-mix(
+          in srgb,
+          var(--color-primario, var(--home-borde-destacado, #9f1239)) 40%,
+          transparent
+        );
   }
 
-  /* Logo + tagline: más presencia sobre video oscuro */
+  /* Logo + slogan: presencia fuerte sobre video nítido (scrim local, no filtro global) */
+  .home-editorial__brand {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .home-editorial__brand::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    z-index: -1;
+    width: min(120%, 28rem);
+    height: min(14rem, 28svh);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.58) 0%,
+      rgba(0, 0, 0, 0.22) 55%,
+      transparent 78%
+    );
+    pointer-events: none;
+  }
+
+  .home-editorial__logo-wrap {
+    position: relative;
+    isolation: isolate;
+  }
+
   .home-editorial__logo-img {
     filter:
-      drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9))
-      drop-shadow(0 10px 28px rgba(0, 0, 0, 0.75))
-      drop-shadow(0 0 40px rgba(255, 255, 255, 0.12));
+      drop-shadow(0 2px 6px rgba(0, 0, 0, 0.95))
+      drop-shadow(0 12px 36px rgba(0, 0, 0, 0.85))
+      drop-shadow(0 0 48px rgba(255, 255, 255, 0.18))
+      drop-shadow(0 0 72px color-mix(in srgb, var(--color-primario, #9f1239) 35%, transparent));
+  }
+
+  .home-editorial__eyebrow {
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.95),
+      0 2px 10px rgba(0, 0, 0, 0.7);
   }
 
   .home-editorial__tagline {
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.95),
-      0 4px 14px rgba(0, 0, 0, 0.7);
+      0 4px 16px rgba(0, 0, 0, 0.75),
+      0 0 28px rgba(0, 0, 0, 0.45);
   }
 
   [data-home-logo-fallback] {
@@ -933,15 +1015,17 @@ const reelCopies = [0, 1, 2] as const;
   :global([data-fondo-home-tipo='video']) .home-editorial img[data-home-logo],
   :global([data-fondo-home-tipo='video']) .home-editorial .home-editorial__logo-img {
     filter:
-      drop-shadow(0 2px 6px rgba(0, 0, 0, 0.95))
-      drop-shadow(0 12px 36px rgba(0, 0, 0, 0.8))
-      drop-shadow(0 0 48px rgba(255, 255, 255, 0.14));
+      drop-shadow(0 2px 8px rgba(0, 0, 0, 0.98))
+      drop-shadow(0 14px 40px rgba(0, 0, 0, 0.88))
+      drop-shadow(0 0 56px rgba(255, 255, 255, 0.2))
+      drop-shadow(0 0 80px color-mix(in srgb, var(--color-primario, #9f1239) 40%, transparent));
   }
 
   :global([data-fondo-home-tipo='video']) .home-editorial [data-home-eslogan],
   :global([data-fondo-home-tipo='video']) .home-editorial [data-home-tagline-superior],
-  :global([data-fondo-home-tipo='video']) .home-editorial .home-editorial__tagline {
-    color: rgba(255, 255, 255, 0.9);
+  :global([data-fondo-home-tipo='video']) .home-editorial .home-editorial__tagline,
+  :global([data-fondo-home-tipo='video']) .home-editorial .home-editorial__eyebrow {
+    color: rgba(255, 255, 255, 0.92);
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.95),
       0 4px 18px rgba(0, 0, 0, 0.75),
@@ -949,16 +1033,20 @@ const reelCopies = [0, 1, 2] as const;
   }
 
   :global([data-fondo-home-tipo='video']) .home-editorial .editorial-title {
+    color: #fff;
     text-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.95),
-      0 8px 28px rgba(0, 0, 0, 0.8),
-      0 0 42px rgba(0, 0, 0, 0.55);
+      0 1px 2px rgba(0, 0, 0, 1),
+      0 2px 8px rgba(0, 0, 0, 0.95),
+      0 10px 32px rgba(0, 0, 0, 0.85),
+      0 0 48px rgba(0, 0, 0, 0.55);
   }
 
   :global([data-fondo-home-tipo='video']) .home-editorial .editorial-subtitle {
+    color: rgba(255, 255, 255, 0.88);
     text-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.9),
-      0 4px 14px rgba(0, 0, 0, 0.7);
+      0 1px 2px rgba(0, 0, 0, 0.95),
+      0 4px 16px rgba(0, 0, 0, 0.8),
+      0 0 24px rgba(0, 0, 0, 0.5);
   }
 
   :global([data-fondo-home-tipo='video']) .home-editorial .editorial-rule {
@@ -970,8 +1058,18 @@ const reelCopies = [0, 1, 2] as const;
     .editorial-reel__slide[data-active]
     .editorial-rule {
     box-shadow:
-      0 0 14px rgba(52, 211, 153, 0.85),
-      0 0 28px rgba(52, 211, 153, 0.4);
+      0 0 14px
+        color-mix(
+          in srgb,
+          var(--color-primario, var(--home-borde-destacado, #9f1239)) 85%,
+          transparent
+        ),
+      0 0 28px
+        color-mix(
+          in srgb,
+          var(--color-primario, var(--home-borde-destacado, #9f1239)) 45%,
+          transparent
+        );
   }
 
   @media (prefers-reduced-motion: reduce) {

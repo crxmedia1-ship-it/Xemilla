@@ -21,7 +21,7 @@ import {
   normalizeNosotrosTheme,
   DEFAULT_NOSOTROS_THEME,
 } from '../../lib/layout-themes.js';
-import { resolveMediaUrl } from '../../lib/cloudinary.js';
+import { resolveMediaUrl, sharpenCloudinaryVideoUrl } from '../../lib/cloudinary.js';
 import { resolveSafeHomeProps } from '../../lib/home-safe-props.js';
 import { fetchTasasCambio } from '../../lib/tasas-cambio.js';
 import {
@@ -105,7 +105,11 @@ const fondoUbicacion = fondos?.ubicacion ?? { tipo: 'color', valor: '' };
 const atmosphereTipo = String(fondoHome?.valor || '').trim()
   ? String(fondoHome?.tipo || 'color')
   : 'color';
-const atmosphereValor = String(fondoHome?.valor || '').trim() || theme.colorFondo;
+const atmosphereValorRaw = String(fondoHome?.valor || '').trim() || theme.colorFondo;
+const atmosphereValor =
+  atmosphereTipo === 'video'
+    ? sharpenCloudinaryVideoUrl(atmosphereValorRaw)
+    : atmosphereValorRaw;
 
 /** Overlay Home: estilo cinemático + opacidad (solo filtro oscuro / cinematico) */
 const homeOverlayOpacity =

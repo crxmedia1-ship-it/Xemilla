@@ -254,6 +254,26 @@ export function applyCloudinaryDeliveryTransform(url, type) {
 }
 
 /**
+ * Entrega de video Home más nítida (Cloudinary): q_auto:best + vc_auto.
+ * No toca URLs ajenas ni las que ya traen calidad explícita.
+ * @param {unknown} url
+ * @returns {string}
+ */
+export function sharpenCloudinaryVideoUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw || !isCloudinaryDeliveryUrl(raw) || !/\/video\/upload\//i.test(raw)) {
+    return raw;
+  }
+  if (/\/upload\/[^/]*(?:q_auto(?::\w+)?|q_\d+)/i.test(raw)) {
+    return raw;
+  }
+  return raw.replace(
+    /\/video\/upload\//i,
+    '/video/upload/q_auto:best,vc_auto/',
+  );
+}
+
+/**
  * Normaliza URLs de media (logo, OG, etc.) e inyecta transformaciones Cloudinary.
  * - Vacío → `null`
  * - URLs externas / locales (no Cloudinary) → intactas
