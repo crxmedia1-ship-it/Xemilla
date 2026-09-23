@@ -125,13 +125,33 @@ const isHero = variant === 'hero';
   }
 
   .nosotros-media__cell {
+    position: relative;
     min-width: 0;
     overflow: hidden;
     border-radius: 0.85rem;
-    background: color-mix(in srgb, var(--color-primario) 8%, transparent);
+    background: color-mix(in srgb, var(--color-primario) 14%, #140807);
+  }
+
+  /* Asanoha: solo se ve donde la foto no cubre el marco. */
+  .nosotros-media__cell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: var(--color-primario, #ff2600);
+    opacity: 0.42;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 86 100'%3E%3Cg fill='none' stroke='%23000' stroke-width='2.15' stroke-linejoin='miter'%3E%3Cpath d='M43 6 L76 25 L76 63 L43 82 L10 63 L10 25 Z'/%3E%3Cpath d='M43 6 V82 M10 25 L76 63 M76 25 L10 63 M43 44 L10 25 M43 44 L76 25 M43 44 L10 63 M43 44 L76 63'/%3E%3C/g%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 86 100'%3E%3Cg fill='none' stroke='%23000' stroke-width='2.15' stroke-linejoin='miter'%3E%3Cpath d='M43 6 L76 25 L76 63 L43 82 L10 63 L10 25 Z'/%3E%3Cpath d='M43 6 V82 M10 25 L76 63 M76 25 L10 63 M43 44 L10 25 M43 44 L76 25 M43 44 L10 63 M43 44 L76 63'/%3E%3C/g%3E%3C/svg%3E");
+    -webkit-mask-size: 54px 63px;
+    mask-size: 54px 63px;
+    -webkit-mask-repeat: repeat;
+    mask-repeat: repeat;
   }
 
   .nosotros-media__asset {
+    position: relative;
+    z-index: 1;
     display: block;
     width: 100%;
     height: auto;
