@@ -255,8 +255,8 @@ export function applyCloudinaryDeliveryTransform(url, type) {
 
 /**
  * Entrega de video Home más nítida (Cloudinary).
- * Quita grade/re-encode agresivo (e_brightness|saturation|contrast|gamma + q_auto)
- * que deja el clip ~6× más chico y distinto al master, y aplica q_auto:best.
+ * Si la URL trae grade/re-encode agresivo (e_brightness|saturation|contrast|gamma
+ * o q_auto genérico), lo quita y deja el master. URLs ya limpias no se tocan.
  * @param {unknown} url
  * @returns {string}
  */
@@ -288,17 +288,17 @@ export function sharpenCloudinaryVideoUrl(url) {
     rest = slash === -1 ? '' : rest.slice(slash + 1);
   }
 
+  if (!rest) return raw;
+
   const joined = segments.join(',');
   const hadCrushingGrade =
     /e_brightness|e_saturation|e_contrast|e_gamma/i.test(joined) ||
     /(?:^|,)q_auto(?!:best)(?:,|$)/i.test(joined);
 
-  if (!hadCrushingGrade && /(?:^|,)q_auto:best(?:,|$)/i.test(joined)) {
-    return raw;
-  }
+  // Master limpio o ya en best → no re-encodear
+  if (!hadCrushingGrade) return raw;
 
-  if (!rest) return raw;
-  return `${raw.slice(0, at + marker.length)}q_auto:best,vc_auto/${rest}`;
+  return `${raw.slice(0, at + marker.length)}${rest}`;
 }
 
 /**
