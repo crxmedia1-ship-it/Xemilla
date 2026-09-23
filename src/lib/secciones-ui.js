@@ -174,6 +174,9 @@ export function parseReservasConfig(config) {
   const label = String(
     c.label || c.boton_texto || c.titulo || 'Reservar Mesa',
   ).trim();
+  const subtitulo = String(
+    c.subtitulo || c.subtitle || c.subtexto || '',
+  ).trim();
 
   const botonUbicacionRaw = String(c.boton_ubicacion || c.ubicacion_boton || '')
     .trim()
@@ -249,6 +252,8 @@ export function parseReservasConfig(config) {
 
   return {
     label: label || 'Reservar Mesa',
+    subtitulo,
+    subtitle: subtitulo,
     layout,
     destinoTipo,
     destino_tipo: destinoTipo,

@@ -328,6 +328,10 @@ async function handleUpdateMarca({ request, cookies }) {
 
   patch.config_reservas = {
     label: reservasLabel,
+    subtitulo:
+      normalizeText(raw.reservas_subtitulo) ||
+      normalizeText(raw.reservas_subtitle) ||
+      '',
     layout: reservasLayout,
     destino_tipo: destinoTipo,
     destino_valor: destinoValor,

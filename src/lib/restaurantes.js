@@ -398,7 +398,7 @@ function buildUbicacion(row, brand) {
       redesPublicas.find((r) => r.red === 'telefono')?.url || '';
 
     return {
-      titulo: 'UBICACIÓN Y HORARIOS',
+      titulo: 'HORARIOS Y UBICACIÓN',
       direccion: asText(row.direccion),
       ciudad: '',
       mapaLabel: 'Abrir Google Maps',

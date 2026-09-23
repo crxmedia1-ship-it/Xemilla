@@ -71,15 +71,24 @@ const logoPx = logoSizePx || 130;
 const logoFallbackStyle = `max-height: var(--home-logo-size, ${logoPx}px); height: var(--home-logo-size, ${logoPx}px); width: var(--home-logo-size, ${logoPx}px); font-size: calc(var(--home-logo-size, ${logoPx}px) * 0.28);`;
 
 const eslogan = tagline || String(props?.eslogan || r?.eslogan || '').trim();
-const taglineDisplay = (tagline || eslogan || 'EXPERIENCIA GASTRONÓMICA').toUpperCase();
+const taglineSuperiorResolved = String(
+  taglineSuperior ||
+    props?.tagline_superior ||
+    props?.taglineSuperior ||
+    r?.taglineSuperior ||
+    '',
+).trim();
+/** Texto Superior (Identidad) bajo el logo; Slogan como fallback. */
+const taglineDisplay = (
+  taglineSuperiorResolved ||
+  eslogan ||
+  'EXPERIENCIA GASTRONÓMICA'
+).toUpperCase();
 
 const menuSubtitle = String(
   props?.menu_subtitle ||
     props?.menuSubtitle ||
-    r?.menu_subtitle ||
-    taglineSuperior ||
-    props?.taglineSuperior ||
-    props?.tagline_superior ||
+    (taglineSuperiorResolved && eslogan ? eslogan : '') ||
     'CARTA DE AUTOR',
 )
   .trim()
@@ -94,8 +103,39 @@ const subtituloReservas = String(
   .trim()
   .toUpperCase() || 'EXPERIENCIA PREMIUM';
 
+const reservasLabel = String(
+  props?.reservas_texto ||
+    r?.reservas_texto ||
+    reservasCta?.label ||
+    'RESERVAS & PEDIDOS',
+)
+  .trim()
+  .toUpperCase() || 'RESERVAS & PEDIDOS';
+
 const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
 const reservasIsExternal = reservasLink !== '#';
+
+const navNosotrosLabel = String(props?.navNosotrosLabel || 'NOSOTROS')
+  .trim()
+  .toUpperCase() || 'NOSOTROS';
+const navNosotrosSubtitle = String(props?.navNosotrosSubtitle || 'NUESTRA FILOSOFÍA')
+  .trim()
+  .toUpperCase() || 'NUESTRA FILOSOFÍA';
+const navUbicacionLabel = String(props?.navUbicacionLabel || 'CONTACTO & VISITA')
+  .trim()
+  .toUpperCase() || 'CONTACTO & VISITA';
+const navUbicacionSubtitle = String(
+  props?.navUbicacionSubtitle || 'MAPA · CONTACTO · REDES',
+)
+  .trim()
+  .toUpperCase() || 'MAPA · CONTACTO · REDES';
+
+const horariosRows = Array.isArray(props?.horariosRows)
+  ? props.horariosRows
+  : Array.isArray(r?.horariosRows)
+    ? r.horariosRows
+    : [];
+const horariosJson = JSON.stringify(horariosRows);
 
 type NavItem = {
   id: string;
@@ -108,26 +148,29 @@ const navItems: NavItem[] = [
   { id: 'menu', label: 'MENÚ', subtitle: menuSubtitle, kind: 'section' },
   {
     id: 'reservas',
-    label: 'RESERVAS & PEDIDOS',
+    label: reservasLabel,
     subtitle: subtituloReservas,
     kind: 'reservas',
   },
   {
     id: 'nosotros',
-    label: 'NOSOTROS',
-    subtitle: 'NUESTRA FILOSOFÍA',
+    label: navNosotrosLabel,
+    subtitle: navNosotrosSubtitle,
     kind: 'section',
   },
   {
     id: 'ubicacion',
-    label: 'CONTACTO & VISITA',
-    subtitle: 'MAPA · CONTACTO · REDES',
+    label: navUbicacionLabel,
+    subtitle: navUbicacionSubtitle,
     kind: 'section',
   },
 ];
 
 const linkClass =
   'editorial-link relative flex h-full w-full cursor-pointer select-none flex-col items-center justify-center px-3 focus:outline-none sm:px-4';
+
+/** Tres copias del carrusel para loop infinito (prev | real | next). */
+const reelCopies = [0, 1, 2] as const;
 ---
 
 <div
@@ -209,77 +252,95 @@ const linkClass =
         data-home-menu
         data-home-block="nav"
       >
-        <div class="editorial-reel__viewport" data-editorial-reel-viewport>
+        <div
+          class="editorial-reel__viewport"
+          data-editorial-reel-viewport
+          data-reel-count={String(navItems.length)}
+        >
           <div class="editorial-reel__spacer" aria-hidden="true" />
           {
-            navItems.map((item, index) => {
-              const inner = (
-                <>
-                  <span class="editorial-title text-center font-serif uppercase leading-none tracking-[0.14em]">
-                    {item.label}
-                  </span>
-                  <span class="editorial-subtitle mt-2 block text-center font-light uppercase">
-                    {item.subtitle}
-                  </span>
-                  <span class="editorial-rule" aria-hidden="true" />
-                </>
-              );
+            reelCopies.flatMap((copy) =>
+              navItems.map((item, index) => {
+                const inner = (
+                  <div
+                    class="editorial-reel__face"
+                    style="--reel-scale: 0.72; --reel-opacity: 0.38;"
+                  >
+                    <span class="editorial-title text-center font-serif uppercase leading-none tracking-[0.12em]">
+                      {item.label}
+                    </span>
+                    <span class="editorial-subtitle mt-2.5 block text-center font-light uppercase">
+                      {item.subtitle}
+                    </span>
+                    <span class="editorial-rule" aria-hidden="true" />
+                  </div>
+                );
 
-              const slideAttrs = {
-                class: 'editorial-reel__slide',
-                'data-editorial-slide': '',
-                'data-slide-index': String(index),
-                style: '--reel-scale: 0.78; --reel-opacity: 0.4; --reel-blur: 1.5px;',
-              };
+                const slideAttrs = {
+                  class: 'editorial-reel__slide',
+                  'data-editorial-slide': '',
+                  'data-slide-index': String(index),
+                  'data-slide-copy': String(copy),
+                  'aria-hidden': copy !== 1 ? 'true' : undefined,
+                };
 
-              if (item.kind === 'reservas') {
-                if (reservasIsExternal) {
+                const pickExtras =
+                  copy !== 1
+                    ? ({ tabindex: -1, 'aria-hidden': 'true' } as const)
+                    : ({} as const);
+
+                if (item.kind === 'reservas') {
+                  if (reservasIsExternal) {
+                    return (
+                      <div {...slideAttrs}>
+                        <a
+                          href={reservasLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-tab-trigger="reservas"
+                          data-reservas-home-cta
+                          data-editorial-pick
+                          class={linkClass}
+                          {...pickExtras}
+                        >
+                          {inner}
+                        </a>
+                      </div>
+                    );
+                  }
                   return (
                     <div {...slideAttrs}>
-                      <a
-                        href={reservasLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
                         data-tab-trigger="reservas"
                         data-reservas-home-cta
                         data-editorial-pick
                         class={linkClass}
+                        {...pickExtras}
                       >
                         {inner}
-                      </a>
+                      </button>
                     </div>
                   );
                 }
+
                 return (
                   <div {...slideAttrs}>
                     <button
                       type="button"
-                      data-tab-trigger="reservas"
-                      data-reservas-home-cta
+                      data-tab-trigger={item.id}
+                      data-open-section={item.id}
+                      data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
                       data-editorial-pick
                       class={linkClass}
+                      {...pickExtras}
                     >
                       {inner}
                     </button>
                   </div>
                 );
-              }
-
-              return (
-                <div {...slideAttrs}>
-                  <button
-                    type="button"
-                    data-tab-trigger={item.id}
-                    data-open-section={item.id}
-                    data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
-                    data-editorial-pick
-                    class={linkClass}
-                  >
-                    {inner}
-                  </button>
-                </div>
-              );
-            })
+              }),
+            )
           }
           <div class="editorial-reel__spacer" aria-hidden="true" />
         </div>
@@ -287,18 +348,56 @@ const linkClass =
     ) : null
   }
 
-  {/* ── Estado en vivo ── */}
+  {/* ── Estado en vivo (desde horarios de Identidad) ── */}
   {
     !immersiveLogoOnly ? (
-      <footer class="home-editorial__foot flex shrink-0 flex-col items-center">
+      <footer
+        class="home-editorial__foot flex shrink-0 flex-col items-center"
+        data-home-live-status
+        data-ubicacion-panel
+        data-horarios={horariosJson}
+        data-live-badge
+      >
         <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 font-mono text-[0.65rem] tracking-[0.18em] text-emerald-300/95 backdrop-blur-md md:px-4 md:py-2 md:text-xs md:tracking-widest">
-          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
-          <span>ABIERTO HOY</span>
+          <span
+            class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"
+            data-live-dot
+            aria-hidden="true"
+          />
+          <span data-live-label>HORARIO</span>
         </div>
       </footer>
     ) : null
   }
 </div>
+
+<script>
+  import { refreshUbicacionLiveStatus } from '../../../lib/ubicacion-live-client.js';
+
+  function initHomeLiveStatus(root = document) {
+    root.querySelectorAll('[data-home-live-status]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      refreshUbicacionLiveStatus(el);
+      const label = el.querySelector('[data-live-label]');
+      if (label instanceof HTMLElement) {
+        if (label.textContent === 'ABIERTO') label.textContent = 'ABIERTO HOY';
+        if (label.textContent === 'Horario no disponible') label.textContent = 'HORARIO';
+      }
+      if (el.dataset.liveInterval === '1') return;
+      el.dataset.liveInterval = '1';
+      window.setInterval(() => {
+        refreshUbicacionLiveStatus(el);
+        const lb = el.querySelector('[data-live-label]');
+        if (lb instanceof HTMLElement && lb.textContent === 'ABIERTO') {
+          lb.textContent = 'ABIERTO HOY';
+        }
+      }, 60_000);
+    });
+  }
+
+  initHomeLiveStatus();
+  document.addEventListener('astro:page-load', () => initHomeLiveStatus());
+</script>
 
 <script>
   function initEditorialReel(root = document) {
@@ -313,43 +412,102 @@ const linkClass =
       if (!(viewport instanceof HTMLElement)) return;
       nav.dataset.reelReady = '1';
 
+      const count = Math.max(1, Number(viewport.dataset.reelCount || 0) || 1);
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+
+      /** @returns {HTMLElement[]} */
       const slides = () =>
         Array.from(viewport.querySelectorAll('[data-editorial-slide]')).filter(
           (el) => el instanceof HTMLElement,
         );
 
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       let ticking = false;
-      let activeIndex = -1;
+      let wrapping = false;
+      let activeAbs = -1;
+      let settleTimer = 0;
 
-      const updateCylinder = () => {
-        ticking = false;
+      const centerScrollTop = (slide) => {
+        const slideMid = slide.offsetTop + slide.offsetHeight / 2;
+        return Math.max(0, slideMid - viewport.clientHeight / 2);
+      };
+
+      const findBestIndex = () => {
         const list = slides();
+        if (!list.length) return { list, best: 0 };
+        const rect = viewport.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        list.forEach((slide, i) => {
+          const sRect = slide.getBoundingClientRect();
+          const mid = sRect.top + sRect.height / 2;
+          const dist = Math.abs(mid - centerY);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = i;
+          }
+        });
+        return { list, best };
+      };
+
+      const jumpToAbs = (absIndex) => {
+        const list = slides();
+        const target = list[absIndex];
+        if (!(target instanceof HTMLElement)) return;
+        wrapping = true;
+        viewport.style.scrollSnapType = 'none';
+        viewport.style.scrollBehavior = 'auto';
+        viewport.scrollTop = centerScrollTop(target);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            viewport.style.scrollSnapType = '';
+            viewport.style.scrollBehavior = '';
+            wrapping = false;
+            paintCylinder(true);
+          });
+        });
+      };
+
+      /** Tras inercia: si estás en copia prev/next, salta a la del medio. */
+      const normalizeLoop = () => {
+        if (wrapping) return;
+        const { best } = findBestIndex();
+        if (best < count) {
+          jumpToAbs(best + count);
+          return;
+        }
+        if (best >= count * 2) {
+          jumpToAbs(best - count);
+        }
+      };
+
+      const paintCylinder = (force = false) => {
+        ticking = false;
+        if (wrapping && !force) return;
+        const { list, best } = findBestIndex();
         if (!list.length) return;
         const rect = viewport.getBoundingClientRect();
         const centerY = rect.top + rect.height / 2;
         const half = Math.max(rect.height / 2, 1);
-        let best = 0;
-        let bestDist = Infinity;
+        const scaleEase = reduceMotion ? 0.18 : isCoarse ? 0.3 : 0.38;
+        const opacityEase = reduceMotion ? 0.35 : isCoarse ? 0.55 : 0.68;
 
-        list.forEach((slide, i) => {
+        list.forEach((slide) => {
+          const face = slide.querySelector('.editorial-reel__face');
           const sRect = slide.getBoundingClientRect();
           const mid = sRect.top + sRect.height / 2;
-          const dist = mid - centerY;
-          const t = Math.min(1, Math.abs(dist) / half);
-          // Curva tipo cara del cilindro: centro grande, bordes chicos
-          const scale = reduceMotion ? 1 - t * 0.22 : 1 - t * 0.42;
-          const opacity = reduceMotion ? 1 - t * 0.4 : 1 - t * 0.72;
-          const blur = reduceMotion ? 0 : t * 3.2;
-          slide.style.setProperty('--reel-scale', String(Math.max(0.58, scale)));
-          slide.style.setProperty('--reel-opacity', String(Math.max(0.22, opacity)));
-          slide.style.setProperty('--reel-blur', `${blur.toFixed(2)}px`);
-          if (Math.abs(dist) < bestDist) {
-            bestDist = Math.abs(dist);
-            best = i;
+          const t = Math.min(1, Math.abs(mid - centerY) / half);
+          const scale = 1 - t * scaleEase;
+          const opacity = 1 - t * opacityEase;
+          if (face instanceof HTMLElement) {
+            face.style.setProperty('--reel-scale', String(Math.max(0.64, scale)));
+            face.style.setProperty('--reel-opacity', String(Math.max(0.3, opacity)));
           }
         });
 
+        if (best === activeAbs && !force) return;
+        activeAbs = best;
         list.forEach((slide, i) => {
           const on = i === best;
           slide.toggleAttribute('data-active', on);
@@ -359,19 +517,34 @@ const linkClass =
             else pick.removeAttribute('aria-current');
           }
         });
-        activeIndex = best;
       };
 
       const onScroll = () => {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(updateCylinder);
+        if (wrapping) return;
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(() => paintCylinder(false));
+        }
+        // Fallback si no hay scrollend (Safari viejo)
+        window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => {
+          normalizeLoop();
+          paintCylinder(true);
+        }, isCoarse ? 90 : 120);
       };
 
       viewport.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onScroll, { passive: true });
+      viewport.addEventListener(
+        'scrollend',
+        () => {
+          window.clearTimeout(settleTimer);
+          normalizeLoop();
+          paintCylinder(true);
+        },
+        { passive: true },
+      );
 
-      // Primer tap centra; si ya está activo, deja pasar el open nativo
       viewport.addEventListener(
         'click',
         (event) => {
@@ -383,25 +556,34 @@ const linkClass =
           if (slide.hasAttribute('data-active')) return;
           event.preventDefault();
           event.stopPropagation();
-          slide.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
-          requestAnimationFrame(updateCylinder);
+          const list = slides();
+          const abs = list.indexOf(slide);
+          if (abs < 0) return;
+          const logical = abs % count;
+          const midAbs = count + logical;
+          // Ir directo a la copia del medio (sin pelear con snap)
+          jumpToAbs(midAbs);
         },
         true,
       );
 
-      const syncPad = () => {
-        // Spacers CSS se encargan del centrado; solo refrescar cilindro
-      };
-
-      syncPad();
-      updateCylinder();
       requestAnimationFrame(() => {
-        syncPad();
-        const first = slides()[0];
-        if (first instanceof HTMLElement) {
-          first.scrollIntoView({ block: 'center', behavior: 'auto' });
+        const list = slides();
+        const start = list[count];
+        if (start instanceof HTMLElement) {
+          wrapping = true;
+          viewport.style.scrollSnapType = 'none';
+          viewport.style.scrollBehavior = 'auto';
+          viewport.scrollTop = centerScrollTop(start);
+          requestAnimationFrame(() => {
+            viewport.style.scrollSnapType = '';
+            viewport.style.scrollBehavior = '';
+            wrapping = false;
+            paintCylinder(true);
+          });
+        } else {
+          paintCylinder(true);
         }
-        requestAnimationFrame(updateCylinder);
       });
     });
   }
@@ -472,6 +654,17 @@ const linkClass =
       padding-bottom: 0.25rem;
     }
 
+    .home-editorial__foot[data-open='false'] .inline-flex,
+    .home-editorial__foot.is-closed .inline-flex {
+      color: rgba(251, 113, 133, 0.95);
+    }
+
+    .home-editorial__foot[data-open='false'] [data-live-dot],
+    .home-editorial__foot.is-closed [data-live-dot] {
+      background: #fb7185;
+      animation: none;
+    }
+
     .editorial-reel {
       align-self: stretch;
       width: 100%;
@@ -489,8 +682,8 @@ const linkClass =
     }
 
     .editorial-reel {
-      height: min(44vh, 24rem);
-      max-height: 44vh;
+      height: min(52vh, 28rem);
+      max-height: 52vh;
       flex: 1 1 auto;
     }
   }
@@ -500,24 +693,24 @@ const linkClass =
     overflow-y: auto;
     overflow-x: hidden;
     scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-    overscroll-behavior: contain;
+    scroll-behavior: auto;
+    overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     background: transparent;
-    /* Fade suave solo en tipografía, sin capa negra encima del video */
+    touch-action: pan-y;
     mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      #000 12%,
-      #000 88%,
+      #000 14%,
+      #000 86%,
       transparent 100%
     );
     -webkit-mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      #000 12%,
-      #000 88%,
+      #000 14%,
+      #000 86%,
       transparent 100%
     );
   }
@@ -528,29 +721,44 @@ const linkClass =
 
   .editorial-reel__spacer {
     flex-shrink: 0;
-    height: calc(50% - 3.85rem);
-    min-height: 3.25rem;
+    height: calc(50% - 4.6rem);
+    min-height: 3.5rem;
     pointer-events: none;
   }
 
+  /* Caja fija para snap estable; el scale vive en .face (evita temblor) */
   .editorial-reel__slide {
     display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    height: 7.7rem;
+    height: 9.2rem;
     flex-shrink: 0;
     scroll-snap-align: center;
     scroll-snap-stop: always;
+    background: transparent;
+  }
+
+  .editorial-reel__face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
     transform: scale(var(--reel-scale, 0.72));
     opacity: var(--reel-opacity, 0.35);
-    filter: blur(var(--reel-blur, 2px));
-    transition:
-      transform 0.1s linear,
-      opacity 0.1s linear,
-      filter 0.1s linear;
-    will-change: transform, opacity, filter;
-    background: transparent;
+    transform-origin: center center;
+    transition: none;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .editorial-reel__face {
+      transition:
+        transform 0.12s ease-out,
+        opacity 0.12s ease-out;
+    }
   }
 
   .editorial-reel__slide[data-active] {
@@ -558,12 +766,12 @@ const linkClass =
   }
 
   .editorial-title {
-    font-size: clamp(1.65rem, 7.6vw, 2.5rem);
-    letter-spacing: 0.15em;
+    font-size: clamp(1.95rem, 9vw, 2.95rem);
+    letter-spacing: 0.12em;
     font-weight: 500;
     color: #fff;
     transition: color 0.2s ease, text-shadow 0.2s ease;
-    max-width: 92vw;
+    max-width: 94vw;
     text-shadow:
       0 1px 2px rgba(0, 0, 0, 0.95),
       0 4px 16px rgba(0, 0, 0, 0.7),
@@ -571,28 +779,31 @@ const linkClass =
   }
 
   .editorial-subtitle {
-    font-size: clamp(0.6rem, 2.7vw, 0.74rem);
-    letter-spacing: 0.2em;
+    font-size: clamp(0.72rem, 3.2vw, 0.88rem);
+    letter-spacing: 0.18em;
     line-height: 1.35;
     color: rgba(255, 255, 255, 0.78);
-    opacity: 0.85;
-    max-width: min(18rem, 88vw);
+    opacity: 0.9;
+    max-width: min(20rem, 90vw);
     transition: opacity 0.2s ease, color 0.2s ease;
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
   }
 
   @media (min-width: 768px) {
+    .editorial-reel__spacer {
+      height: calc(50% - 5.1rem);
+    }
     .editorial-reel__slide {
-      height: 8.5rem;
+      height: 10.2rem;
     }
     .editorial-title {
-      font-size: clamp(2.45rem, 4.4vw, 3.75rem);
-      letter-spacing: 0.22em;
+      font-size: clamp(2.75rem, 5vw, 4.1rem);
+      letter-spacing: 0.18em;
     }
     .editorial-subtitle {
-      font-size: 0.8rem;
-      letter-spacing: 0.26em;
-      margin-top: 0.65rem;
+      font-size: 0.92rem;
+      letter-spacing: 0.24em;
+      margin-top: 0.7rem;
     }
   }
 
@@ -615,7 +826,7 @@ const linkClass =
   }
 
   .editorial-rule {
-    margin-top: 0.65rem;
+    margin-top: 0.7rem;
     height: 2px;
     width: 1.1rem;
     border-radius: 999px;
@@ -628,7 +839,7 @@ const linkClass =
   }
 
   .editorial-reel__slide[data-active] .editorial-rule {
-    width: 4.25rem;
+    width: 4.5rem;
     height: 2px;
     background: #34d399;
     box-shadow:
@@ -715,9 +926,8 @@ const linkClass =
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .editorial-reel__slide {
+    .editorial-reel__face {
       transition: none !important;
-      filter: none !important;
     }
     .editorial-reel__viewport {
       scroll-behavior: auto;

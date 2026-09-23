@@ -255,6 +255,41 @@ const ubicacionProps = {
   estilos: homeProps.estilos,
 };
 
+const nosotrosData = restaurante?.nosotros ?? {};
+const nosotrosBloque0 =
+  Array.isArray(nosotrosData?.bloques) && nosotrosData.bloques[0]
+    ? nosotrosData.bloques[0]
+    : null;
+const nosotrosNavSubtitle = String(
+  nosotrosBloque0?.subtitulo ||
+    nosotrosBloque0?.titulo ||
+    (Array.isArray(nosotrosData?.highlights) && nosotrosData.highlights[0]) ||
+    'NUESTRA FILOSOFÍA',
+)
+  .trim()
+  .toUpperCase();
+const ubicacionNavSubtitle = String(
+  ubicacion?.direccion ||
+    ubicacion?.titulo ||
+    'MAPA · CONTACTO · REDES',
+)
+  .trim()
+  .toUpperCase()
+  .slice(0, 42);
+
+homeProps = {
+  ...homeProps,
+  horariosRows: Array.isArray(ubicacion?.horariosRows) ? ubicacion.horariosRows : [],
+  navNosotrosSubtitle: nosotrosNavSubtitle,
+  navUbicacionLabel: String(ubicacion?.titulo || 'CONTACTO & VISITA')
+    .trim()
+    .toUpperCase(),
+  navUbicacionSubtitle: ubicacionNavSubtitle || 'MAPA · CONTACTO · REDES',
+  navNosotrosLabel: String(nosotrosData?.titulo || 'NOSOTROS')
+    .trim()
+    .toUpperCase(),
+};
+
 /** Si falla la resolución del tema, loguear y caer a bento solo por error real */
 try {
   if (!homeProps?.nombre) {

@@ -606,6 +606,7 @@ const marca = {
     );
   })(),
   reservas_label: configReservas.label || 'Reservar Mesa',
+  reservas_subtitulo: configReservas.subtitulo || configReservas.subtitle || '',
   reservas_layout: configReservas.layout || 'whatsapp_concierge',
   reservas_destino_tipo: configReservas.destinoTipo || 'whatsapp',
   reservas_destino_valor: configReservas.destinoValor || '',
@@ -3271,6 +3272,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             name="reservas_label"
                             value={marca.reservas_label}
                             placeholder="Reservar Mesa"
+                            class={fieldClass}
+                          />
+                        </label>
+
+                        <label class="block space-y-1.5">
+                          <span class={labelClass}>Subtítulo en Home</span>
+                          <input
+                            type="text"
+                            id="marca-reservas-subtitulo"
+                            name="reservas_subtitulo"
+                            value={marca.reservas_subtitulo}
+                            placeholder="EXPERIENCIA PREMIUM"
                             class={fieldClass}
                           />
                         </label>
@@ -8674,12 +8687,42 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   }
 
+  function copyDireccion(fromScope, toScope) {
+    const from = localOps(fromScope);
+    const to = localOps(toScope);
+    if (!(from instanceof HTMLElement) || !(to instanceof HTMLElement) || from === to) return;
+    const src = from.querySelector('[data-direccion-input]');
+    const dest = to.querySelector('[data-direccion-input]');
+    if (
+      (src instanceof HTMLInputElement || src instanceof HTMLTextAreaElement) &&
+      (dest instanceof HTMLInputElement || dest instanceof HTMLTextAreaElement)
+    ) {
+      dest.value = src.value;
+    }
+  }
+
   function syncLocalOps(fromScope) {
     const other = fromScope === 'perfil' ? 'marca' : 'perfil';
     if (!localOps(other)) return;
     copyHoursWeek(fromScope, other);
     copySocials(fromScope, other);
     copyMaps(fromScope, other);
+    copyDireccion(fromScope, other);
+  }
+
+  /**
+   * Identidad (marca) es fuente de verdad al editar ahí.
+   * No disparar Ops autosave con snapshot de perfil (pisa cambios de Identidad).
+   */
+  function persistLocalOpsChange(scope) {
+    const s = scope === 'marca' ? 'marca' : 'perfil';
+    syncLocalOps(s);
+    if (s === 'marca') {
+      setMarcaSaveState('dirty');
+      scheduleMarcaAutosave();
+      return;
+    }
+    autoSaveOperacion();
   }
 
   document.querySelectorAll('[data-hours-week]').forEach((week) => {
@@ -8692,14 +8735,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         const row = btn.closest('[data-day]');
         if (!(row instanceof HTMLElement)) return;
         setDayClosed(row, row.dataset.closed !== 'true');
-        syncHorarioHidden(week.getAttribute('data-hours-week') || '');
-        autoSaveOperacion();
+        const scope = week.getAttribute('data-hours-week') || 'perfil';
+        syncHorarioHidden(scope);
+        persistLocalOpsChange(scope);
       },
       { signal },
     );
     week.addEventListener(
       'change',
-      () => syncHorarioHidden(week.getAttribute('data-hours-week') || ''),
+      (event) => {
+        const scope = week.getAttribute('data-hours-week') || '';
+        syncHorarioHidden(scope);
+        if (scope === 'marca' || scope === 'perfil') {
+          persistLocalOpsChange(scope);
+        }
+      },
       { signal },
     );
   });
@@ -8756,15 +8806,25 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (!(row instanceof HTMLElement)) return;
       event.preventDefault();
       setSocialOn(row, row.dataset.on !== 'true');
-      autoSaveOperacion();
+      const scopeRoot = t.closest('[data-local-ops]');
+      const scope =
+        scopeRoot instanceof HTMLElement ? scopeRoot.getAttribute('data-local-ops') || 'perfil' : 'perfil';
+      persistLocalOpsChange(scope);
     },
     { signal },
   );
 
   document.addEventListener(
     'ops-social-change',
-    () => {
-      autoSaveOperacion();
+    (event) => {
+      const t = event.target;
+      const scopeRoot =
+        t instanceof Element ? t.closest('[data-local-ops]') : null;
+      const scope =
+        scopeRoot instanceof HTMLElement
+          ? scopeRoot.getAttribute('data-local-ops') || 'perfil'
+          : 'perfil';
+      persistLocalOpsChange(scope);
     },
     { signal },
   );
@@ -8773,13 +8833,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     'ops-hours-change',
     (event) => {
       const t = event.target;
+      let scope = 'perfil';
       if (t instanceof Element) {
         const week = t.closest('[data-hours-week]') || t.querySelector?.('[data-hours-week]');
-        const scope =
-          week instanceof HTMLElement ? week.getAttribute('data-hours-week') || '' : '';
+        scope =
+          week instanceof HTMLElement ? week.getAttribute('data-hours-week') || 'perfil' : 'perfil';
         syncHorarioHidden(scope);
       }
-      autoSaveOperacion();
+      persistLocalOpsChange(scope);
     },
     { signal },
   );
@@ -13248,10 +13309,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (typeof syncNosotrosFondoHidden === 'function') syncNosotrosFondoHidden();
     if (typeof syncUbicacionFondoHidden === 'function') syncUbicacionFondoHidden();
     if (typeof syncMenuLegacyFields === 'function') syncMenuLegacyFields();
-    if (localOps('perfil') && localOps('marca')) {
-      copySocials('perfil', 'marca');
-      copyMaps('perfil', 'marca');
-    }
+    // Marca es la fuente al guardar Identidad — no pisar con perfil.
+    // Tras éxito syncLocalOps('marca') alinea Ops.
 
     const nosotrosBloquesPayload = collectNosotrosBloques();
     const nosotrosLayoutEl = document.querySelector('[data-nosotros-layout-option]:checked');
@@ -13400,6 +13459,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           nosotros_bloques: nosotrosBloquesPayload,
           nosotros_layout: nosotrosLayoutPayload,
           nosotros_theme: nosotrosThemePayload,
+          direccion: val('marca-direccion'),
           coordenadas_maps: normalizeMapsStorage(val('marca-coordenadas')),
           redes_instagram: socialField('marca', 'instagram'),
           redes_facebook: socialField('marca', 'facebook'),
@@ -13421,6 +13481,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           categorias_fondos: collectCategoriasFondos(),
           gadget_reservas: checked('marca-gadget-reservas'),
           reservas_label: val('marca-reservas-label'),
+          reservas_subtitulo: val('marca-reservas-subtitulo'),
           reservas_layout:
             document.querySelector('[data-reservas-layout-option]:checked') instanceof HTMLInputElement
               ? /** @type {HTMLInputElement} */ (
