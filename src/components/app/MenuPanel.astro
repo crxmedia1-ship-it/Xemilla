@@ -2558,35 +2558,48 @@ function hubCardStyle(
     padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
   }
 
-  /* Movimiento continuo: sin snap (evita el “salto” a tarjeta) */
+  /* Movimiento continuo: rail con transform (fiable en iOS; scrollLeft falla) */
   [data-destacados-efecto='marquee'] [data-destacados-track] {
+    display: block !important;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
     scroll-snap-type: none !important;
     scroll-behavior: auto !important;
-  }
-
-  [data-destacados-efecto='marquee'] .menu-featured {
-    scroll-snap-align: none !important;
-  }
-
-  [data-destacados-efecto='marquee'] [data-destacados-track] {
-    display: flex !important;
-    gap: 0.75rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: auto;
+    touch-action: pan-y pinch-zoom;
+    cursor: grab;
     scrollbar-width: none;
+    padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
+    padding-right: 0;
   }
 
   [data-destacados-efecto='marquee'] [data-destacados-track]::-webkit-scrollbar {
     display: none;
   }
 
+  [data-destacados-efecto='marquee'] [data-destacados-rail] {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.75rem;
+    width: max-content;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
   [data-destacados-efecto='marquee'] .menu-featured {
     flex-shrink: 0;
+    scroll-snap-align: none !important;
   }
 
   [data-destacados-efecto='marquee'] .menu-featured[data-marquee-clone] {
     pointer-events: auto;
+  }
+
+  [data-destacados-efecto='marquee'] [data-destacados-track].is-dragging {
+    cursor: grabbing;
   }
 
   /* Móvil: márgenes seguros + sticky estable (viewport, no depende de @container) */
@@ -2655,9 +2668,9 @@ function hubCardStyle(
   const AUTOPLAY_MS = 7200;
   const FADE_MS = 7200;
   const HIGHLIGHT_MS = 1100;
-  /** px/s — ritmo lento de vitrina */
-  const MARQUEE_BASE_PX_PER_SEC = 22;
-  const MARQUEE_BOOST_MAX = 5.2;
+  /** px/s — ritmo lento pero visible en móvil */
+  const MARQUEE_BASE_PX_PER_SEC = 28;
+  const MARQUEE_BOOST_MAX = 6;
 
   const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
@@ -2668,8 +2681,8 @@ function hubCardStyle(
     window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
 
   /**
-   * Carrusel continuo (marquee): avanza sin saltos; al arrastrar en móvil
-   * sube la velocidad y luego vuelve al ritmo base.
+   * Carrusel continuo vía transform (no scrollLeft — Safari iOS lo ignora
+   * dentro de paneles). Arrastra en móvil = boost de velocidad.
    * @param {HTMLElement} track
    */
   function initDestacadosMarquee(track) {
@@ -2685,70 +2698,91 @@ function hubCardStyle(
     if (seed.length < 2) return;
     track.dataset.marqueeReady = 'true';
 
+    const rail = document.createElement('div');
+    rail.dataset.destacadosRail = '';
+    while (track.firstChild) {
+      rail.appendChild(track.firstChild);
+    }
     seed.forEach((card) => {
       const clone = /** @type {HTMLElement} */ (card.cloneNode(true));
       clone.dataset.marqueeClone = '1';
       clone.setAttribute('aria-hidden', 'true');
       clone.tabIndex = -1;
-      track.appendChild(clone);
+      rail.appendChild(clone);
     });
+    track.appendChild(rail);
 
-    track.style.scrollSnapType = 'none';
-    track.style.scrollBehavior = 'auto';
-
-    let halfWidth = 0;
+    let loopWidth = 0;
+    let offset = 0;
     let boostMul = 1;
     let pointerDown = false;
+    let visible = true;
     let lastTs = 0;
-    let raf = 0;
     let lastPointerX = 0;
     let lastPointerT = 0;
     let flickPxPerSec = 0;
+    let dragStartX = 0;
+    let dragStartOffset = 0;
+    let moved = false;
+
+    const apply = () => {
+      rail.style.transform = `translate3d(${-offset}px, 0, 0)`;
+    };
 
     const measure = () => {
       const first = seed[0];
-      const firstClone = track.querySelector<HTMLElement>('.menu-featured[data-marquee-clone]');
+      const firstClone = rail.querySelector<HTMLElement>('.menu-featured[data-marquee-clone]');
       if (first && firstClone) {
-        halfWidth = Math.max(0, firstClone.offsetLeft - first.offsetLeft);
+        loopWidth = Math.max(0, firstClone.offsetLeft - first.offsetLeft);
       } else {
-        halfWidth = track.scrollWidth / 2;
+        loopWidth = Math.max(0, rail.scrollWidth / 2);
+      }
+      if (loopWidth > 0 && offset >= loopWidth) {
+        offset = offset % loopWidth;
+        apply();
       }
     };
 
-    const wrapScroll = () => {
-      if (halfWidth <= 0) return;
-      if (track.scrollLeft >= halfWidth - 0.5) {
-        track.scrollLeft -= halfWidth;
-      } else if (track.scrollLeft < 0) {
-        track.scrollLeft += halfWidth;
-      }
+    const wrapOffset = () => {
+      if (loopWidth <= 0) return;
+      while (offset >= loopWidth) offset -= loopWidth;
+      while (offset < 0) offset += loopWidth;
     };
 
     const tick = (ts: number) => {
       if (!lastTs) lastTs = ts;
-      const dt = Math.min(0.05, (ts - lastTs) / 1000);
+      const dt = Math.min(0.064, (ts - lastTs) / 1000);
       lastTs = ts;
 
-      if (!document.hidden && !pointerDown && halfWidth > 0) {
-        track.scrollLeft += MARQUEE_BASE_PX_PER_SEC * boostMul * dt;
-        wrapScroll();
-        // Decaimiento suave hacia ×1
+      if (!document.hidden && visible && !pointerDown && loopWidth > 0) {
+        offset += MARQUEE_BASE_PX_PER_SEC * boostMul * dt;
+        wrapOffset();
+        apply();
         if (boostMul > 1.02) {
-          boostMul = 1 + (boostMul - 1) * Math.exp(-dt * 1.35);
+          boostMul = 1 + (boostMul - 1) * Math.exp(-dt * 1.25);
         } else {
           boostMul = 1;
         }
       }
 
-      raf = window.requestAnimationFrame(tick);
+      window.requestAnimationFrame(tick);
     };
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       pointerDown = true;
+      moved = false;
+      track.classList.add('is-dragging');
       lastPointerX = e.clientX;
       lastPointerT = performance.now();
+      dragStartX = e.clientX;
+      dragStartOffset = offset;
       flickPxPerSec = 0;
+      try {
+        track.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -2756,69 +2790,84 @@ function hubCardStyle(
       const now = performance.now();
       const dt = Math.max(8, now - lastPointerT);
       const dx = e.clientX - lastPointerX;
-      // Contenido se mueve al contrario del dedo
+      if (Math.abs(e.clientX - dragStartX) > 6) moved = true;
+      // Dedo a la derecha → contenido a la derecha (offset baja)
+      offset = dragStartOffset - (e.clientX - dragStartX);
+      wrapOffset();
+      apply();
       flickPxPerSec = (-dx / dt) * 1000;
       lastPointerX = e.clientX;
       lastPointerT = now;
-      // Boost en vivo mientras arrastra (móvil)
       const live = Math.abs(flickPxPerSec) / MARQUEE_BASE_PX_PER_SEC;
-      if (live > 1.15) {
-        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, live * 0.85));
+      if (live > 1.1) {
+        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, live * 0.9));
       }
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (e: PointerEvent) => {
       if (!pointerDown) return;
       pointerDown = false;
+      track.classList.remove('is-dragging');
+      try {
+        track.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
       const fromFlick = Math.abs(flickPxPerSec) / MARQUEE_BASE_PX_PER_SEC;
-      if (fromFlick > 1.1) {
+      if (fromFlick > 1.05) {
         boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, fromFlick));
-      } else {
-        // Toque sin flick: un empujón suave
-        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, 2.1));
+      } else if (moved) {
+        boostMul = Math.min(MARQUEE_BOOST_MAX, Math.max(boostMul, 2.4));
       }
       measure();
-      wrapScroll();
     };
 
     track.addEventListener('pointerdown', onPointerDown);
     track.addEventListener('pointermove', onPointerMove, { passive: true });
     track.addEventListener('pointerup', onPointerUp);
     track.addEventListener('pointercancel', onPointerUp);
-    track.addEventListener('pointerleave', () => {
-      if (pointerDown) onPointerUp();
-    });
+
+    // Evitar click accidental tras drag
+    track.addEventListener(
+      'click',
+      (e) => {
+        if (!moved) return;
+        e.preventDefault();
+        e.stopPropagation();
+        moved = false;
+      },
+      true,
+    );
 
     track.addEventListener(
       'wheel',
       (e) => {
         const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
         if (Math.abs(delta) < 1) return;
+        offset += delta;
+        wrapOffset();
+        apply();
         boostMul = Math.min(
           MARQUEE_BOOST_MAX,
-          boostMul + Math.min(2.2, Math.abs(delta) * 0.045),
+          boostMul + Math.min(2.4, Math.abs(delta) * 0.05),
         );
       },
       { passive: true },
     );
 
-    track.addEventListener('scroll', () => {
-      if (pointerDown) wrapScroll();
-    }, { passive: true });
-
     const onFilterSync = () => {
-      // Clones: copiar visibilidad alergia del original por plato id
       const byId = new Map();
       seed.forEach((card) => {
         byId.set(card.dataset.gotoPlato || '', card.classList.contains('is-alergia-hidden'));
       });
-      track.querySelectorAll<HTMLElement>('.menu-featured[data-marquee-clone]').forEach((clone) => {
+      rail.querySelectorAll<HTMLElement>('.menu-featured[data-marquee-clone]').forEach((clone) => {
         const hide = byId.get(clone.dataset.gotoPlato || '') === true;
         clone.classList.toggle('is-alergia-hidden', hide);
       });
       window.requestAnimationFrame(() => {
         measure();
-        wrapScroll();
+        wrapOffset();
+        apply();
       });
     };
     track.addEventListener('destacados:filter', onFilterSync);
@@ -2827,10 +2876,53 @@ function hubCardStyle(
       typeof ResizeObserver !== 'undefined'
         ? new ResizeObserver(() => {
             measure();
-            wrapScroll();
+            wrapOffset();
+            apply();
           })
         : null;
     ro?.observe(track);
+    ro?.observe(rail);
+
+    // Remedir al abrir el panel (init suele correr con menú cerrado)
+    const section = track.closest('[data-section], [data-destacados]');
+    const panelHost = track.closest('[data-section]') || track.closest('.menu-panel');
+    if (panelHost && typeof MutationObserver !== 'undefined') {
+      const mo = new MutationObserver(() => {
+        const open =
+          panelHost instanceof HTMLElement &&
+          (panelHost.dataset.open === 'true' ||
+            panelHost.closest('[data-section]')?.getAttribute('data-open') === 'true');
+        if (open) {
+          visible = true;
+          lastTs = 0;
+          window.requestAnimationFrame(() => {
+            measure();
+            apply();
+          });
+        }
+      });
+      const observed =
+        track.closest('[data-section]') || panelHost;
+      if (observed) {
+        mo.observe(observed, { attributes: true, attributeFilter: ['data-open', 'class', 'aria-hidden'] });
+      }
+    }
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      const io = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          visible = Boolean(entry?.isIntersecting);
+          if (visible) {
+            lastTs = 0;
+            measure();
+            apply();
+          }
+        },
+        { threshold: 0.05 },
+      );
+      io.observe(section instanceof HTMLElement ? section : track);
+    }
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
@@ -2839,8 +2931,15 @@ function hubCardStyle(
       }
     });
 
-    measure();
-    raf = window.requestAnimationFrame(tick);
+    // Doble rAF: layout estable tras abrir/hidratar
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        measure();
+        apply();
+        lastTs = 0;
+        window.requestAnimationFrame(tick);
+      });
+    });
   }
 
   /**
