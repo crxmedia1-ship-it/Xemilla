@@ -254,8 +254,9 @@ export function applyCloudinaryDeliveryTransform(url, type) {
 }
 
 /**
- * Entrega de video Home más nítida (Cloudinary): q_auto:best + vc_auto.
- * No toca URLs ajenas ni las que ya traen calidad explícita.
+ * Entrega de video Home más nítida (Cloudinary).
+ * Quita grade/re-encode agresivo (e_brightness|saturation|contrast|gamma + q_auto)
+ * que deja el clip ~6× más chico y distinto al master, y aplica q_auto:best.
  * @param {unknown} url
  * @returns {string}
  */
@@ -264,13 +265,40 @@ export function sharpenCloudinaryVideoUrl(url) {
   if (!raw || !isCloudinaryDeliveryUrl(raw) || !/\/video\/upload\//i.test(raw)) {
     return raw;
   }
-  if (/\/upload\/[^/]*(?:q_auto(?::\w+)?|q_\d+)/i.test(raw)) {
+
+  const marker = '/upload/';
+  const at = raw.indexOf(marker);
+  if (at === -1) return raw;
+
+  let rest = raw.slice(at + marker.length);
+
+  // Peel delivery transform segments until version (v123) or public_id path
+  const segments = [];
+  while (rest) {
+    const slash = rest.indexOf('/');
+    const seg = slash === -1 ? rest : rest.slice(0, slash);
+    if (!seg) break;
+    const isVersion = /^v\d+$/i.test(seg);
+    const looksLikeTx =
+      !isVersion &&
+      (seg.includes(',') ||
+        /^(f_auto|q_auto|q_\d+|c_|w_|h_|g_|e_|fl_|dpr_|ar_|b_|t_|vc_|so_)/i.test(seg));
+    if (!looksLikeTx) break;
+    segments.push(seg);
+    rest = slash === -1 ? '' : rest.slice(slash + 1);
+  }
+
+  const joined = segments.join(',');
+  const hadCrushingGrade =
+    /e_brightness|e_saturation|e_contrast|e_gamma/i.test(joined) ||
+    /(?:^|,)q_auto(?!:best)(?:,|$)/i.test(joined);
+
+  if (!hadCrushingGrade && /(?:^|,)q_auto:best(?:,|$)/i.test(joined)) {
     return raw;
   }
-  return raw.replace(
-    /\/video\/upload\//i,
-    '/video/upload/q_auto:best,vc_auto/',
-  );
+
+  if (!rest) return raw;
+  return `${raw.slice(0, at + marker.length)}q_auto:best,vc_auto/${rest}`;
 }
 
 /**
