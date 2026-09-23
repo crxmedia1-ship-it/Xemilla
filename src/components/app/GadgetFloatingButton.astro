@@ -26,13 +26,13 @@ const isRadial = style === 'radial';
 const isSolo = items.length === 1;
 const soloItem = isSolo ? items[0] : null;
 
-const iconWifi = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674a13.217 13.217 0 0118.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>`;
-const iconBoutique = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>`;
-const iconServices = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="size-6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>`;
+const iconWifi = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-4.5 h-[1.1rem] w-[1.1rem]" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674a13.217 13.217 0 0118.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>`;
+const iconBoutique = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-4.5 h-[1.1rem] w-[1.1rem]" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>`;
+const iconServices = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-4.5 h-[1.1rem] w-[1.1rem]" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>`;
 
 const fabVisualClass =
-  'gadget-fab flex size-14 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-2xl backdrop-blur-xl transition-all hover:scale-105 active:scale-95';
-const fabFixedClass = `${fabVisualClass} fixed z-[55] bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))]`;
+  'gadget-fab flex size-10 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white/55 shadow-[0_6px_18px_rgba(0,0,0,0.28)] backdrop-blur-md transition-all hover:bg-black/45 hover:text-white/80 active:scale-95';
+const fabFixedClass = `${fabVisualClass} fixed z-[55] bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]`;
 
 /** @param {string} id */
 function itemIcon(id) {
@@ -73,7 +73,7 @@ function itemIcon(id) {
             items.map((item, index) => (
               <button
                 type="button"
-                class="gadget-radial__satellite pointer-events-none absolute flex size-12 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white opacity-0 shadow-xl backdrop-blur-xl transition-all duration-300"
+                class="gadget-radial__satellite pointer-events-none absolute flex size-10 items-center justify-center rounded-full border border-white/12 bg-black/45 text-white/70 opacity-0 shadow-lg backdrop-blur-md transition-all duration-300"
                 data-gadget-radial-item
                 data-gadget-index={String(index)}
                 {...item.kind === 'boutique'
@@ -308,10 +308,15 @@ function itemIcon(id) {
   }
 
   .gadget-floating-root--wifi .gadget-fab--direct {
-    border-color: color-mix(in srgb, var(--color-primario, #e11d48) 45%, white 10%);
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.45),
-      0 0 0 1px color-mix(in srgb, var(--color-primario, #e11d48) 22%, transparent);
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.28);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+    opacity: 0.72;
+  }
+
+  .gadget-floating-root--wifi .gadget-fab--direct:hover,
+  .gadget-floating-root--wifi .gadget-fab--direct:focus-visible {
+    opacity: 1;
   }
 
   .gadget-radial.is-open .gadget-fab {

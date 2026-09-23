@@ -204,4 +204,34 @@ const bodyStyle = [bodyColor ? `color:${bodyColor}` : ''].filter(Boolean).join('
   .panel-sheet[data-section='menu'] > header {
     display: none;
   }
+
+  /* Wi‑Fi: una sola pantalla en móvil — sin scroll cortado */
+  @media (max-width: 767px) {
+    .panel-sheet[data-section='wifi'] {
+      height: 100svh;
+      max-height: 100svh;
+    }
+
+    .panel-sheet[data-section='wifi'] > header {
+      padding-top: max(0.65rem, env(safe-area-inset-top));
+      padding-bottom: 0.65rem;
+    }
+
+    .panel-sheet[data-section='wifi'] .panel-scroll-root {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow: hidden;
+      overscroll-behavior: none;
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    .panel-sheet[data-section='wifi'] .wifi-overlay-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+  }
 </style>

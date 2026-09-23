@@ -370,9 +370,9 @@ const reelCopies = [0, 1, 2] as const;
         data-horarios={horariosJson}
         data-live-badge
       >
-        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 font-mono text-[0.65rem] tracking-[0.18em] text-emerald-300/95 backdrop-blur-md md:px-4 md:py-2 md:text-xs md:tracking-widest">
+        <div class="home-editorial__live inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-black/20 px-2.5 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-white/50 backdrop-blur-sm md:px-3 md:py-1.5 md:text-[0.6rem] md:tracking-[0.18em]">
           <span
-            class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"
+            class="h-1 w-1 rounded-full bg-emerald-400/70"
             data-live-dot
             aria-hidden="true"
           />
@@ -728,14 +728,27 @@ const reelCopies = [0, 1, 2] as const;
       padding-bottom: 0.25rem;
     }
 
-    .home-editorial__foot[data-open='false'] .inline-flex,
-    .home-editorial__foot.is-closed .inline-flex {
-      color: rgba(251, 113, 133, 0.95);
+    .home-editorial__foot[data-open='true'] .home-editorial__live,
+    .home-editorial__foot.is-open .home-editorial__live {
+      color: rgba(255, 255, 255, 0.48);
+    }
+
+    .home-editorial__foot[data-open='true'] [data-live-dot],
+    .home-editorial__foot.is-open [data-live-dot] {
+      background: rgba(52, 211, 153, 0.65);
+      box-shadow: none;
+      animation: none;
+    }
+
+    .home-editorial__foot[data-open='false'] .home-editorial__live,
+    .home-editorial__foot.is-closed .home-editorial__live {
+      color: rgba(255, 255, 255, 0.42);
+      border-color: rgba(255, 255, 255, 0.05);
     }
 
     .home-editorial__foot[data-open='false'] [data-live-dot],
     .home-editorial__foot.is-closed [data-live-dot] {
-      background: #fb7185;
+      background: rgba(251, 113, 133, 0.55);
       animation: none;
     }
 
