@@ -120,6 +120,81 @@ function precioUsd(precio: string): string {
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 }
 
+/** Trazos distintos para que cada sugerencia lleve otra firma. */
+const CHEF_SIGNS: Array<{ rotate: number; paths: string[] }> = [
+  {
+    rotate: -8,
+    paths: [
+      'M10 30c8-16 16-14 14 2-1 8-8 10-4 14',
+      'M28 26c12-10 22-2 16 10 10-16 22-8 20 6',
+      'M8 40c36 8 78 6 120-10',
+    ],
+  },
+  {
+    rotate: 6,
+    paths: [
+      'M14 36c0-18 8-20 10 2 1 12 8 6 6-8 4-14 14-10 12 8',
+      'M52 28c10-12 22-4 14 10 8-14 18-6 16 6',
+      'M16 42c28 2 60-2 96-12',
+    ],
+  },
+  {
+    rotate: -4,
+    paths: [
+      'M18 24c-8 10-6 20 6 16 10-4 8-18-2-16',
+      'M36 22c6 14 18 16 24-2 4 16 16 12 22-4',
+      'M12 38c22 10 48 8 70 2 18-4 32-8 46-6',
+    ],
+  },
+  {
+    rotate: 9,
+    paths: [
+      'M16 18c2 16 4 22 2 26',
+      'M18 30c14-16 26-8 18 8',
+      'M40 20c2 18 6 22 4 24',
+      'M44 32c16-12 28-2 22 8',
+      'M12 44c40 2 78-4 108-14',
+    ],
+  },
+  {
+    rotate: -11,
+    paths: [
+      'M22 34c-6-14 4-20 12-6 6 10 2 16-4 12',
+      'M40 26c8-8 20 0 14 12 8-10 22-4 18 8',
+      'M70 30c6-12 16-6 12 8',
+      'M20 40c24 6 58 4 90-8',
+    ],
+  },
+  {
+    rotate: 3,
+    paths: [
+      'M12 28c18-18 28-6 16 8-8 10 6 14 18 2 10-10 22-4 16 8',
+      'M78 24c8 8 6 16-2 14 12-2 20 6 14 12',
+      'M14 42h108',
+    ],
+  },
+  {
+    rotate: -6,
+    paths: [
+      'M24 16c-2 14 2 22-2 28',
+      'M22 32c20-6 32 4 28 12-6 6 10 4 22-8 8-8 18-2 16 8',
+      'M18 44c30-2 62 4 100-8',
+    ],
+  },
+  {
+    rotate: 7,
+    paths: [
+      'M10 32c10-6 14-16 8-8-8 10 4 18 16 8 8-8 18-2 14 8',
+      'M62 22c4 12 2 18 10 14 6-4 4-14 12-8 6 6 4 16-2 18',
+      'M16 40c34 10 72 4 108-12',
+    ],
+  },
+];
+
+function chefSignFor(index: number) {
+  return CHEF_SIGNS[index % CHEF_SIGNS.length];
+}
+
 const CHIP_BASE =
   'menu-chip border font-semibold uppercase active:scale-[0.98]';
 
@@ -441,6 +516,7 @@ function hubCardStyle(
             const video = hasMedia(mediaUrl) && isVideoUrl(mediaUrl);
             const catId = plato.categoriaId || '';
             const catName = plato.categoriaNombre || 'Menú';
+            const sign = chefSignFor(idx);
             return (
               <button
                 type="button"
@@ -492,19 +568,17 @@ function hubCardStyle(
                       <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                     </p>
                   </div>
-                  <span class="menu-featured__sign" aria-hidden="true">
-                    <svg viewBox="0 0 132 48" fill="none">
-                      <text
-                        x="2"
-                        y="30"
-                        fill="currentColor"
-                        font-family="Snell Roundhand, Segoe Script, Apple Chancery, Bradley Hand, cursive"
-                        font-size="30">Chef</text>
-                      <path
-                        d="M6 36c24 7 62 9 118-6"
-                        stroke="currentColor"
-                        stroke-width="1.15"
-                        stroke-linecap="round"></path>
+                  <span class="menu-featured__sign" style={`transform: rotate(${sign.rotate}deg)`} aria-hidden="true">
+                    <svg viewBox="0 0 140 52" fill="none">
+                      {sign.paths.map((d) => (
+                        <path
+                          d={d}
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      ))}
                     </svg>
                   </span>
                 </div>
