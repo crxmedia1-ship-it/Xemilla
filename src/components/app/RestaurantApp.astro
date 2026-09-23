@@ -1723,6 +1723,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
     document.documentElement.style.overflow = 'hidden';
+    syncAppSurface(app);
 
     // Analytics en background — no await, no bloquea UX
     const restauranteId = app.dataset.restauranteId || '';
