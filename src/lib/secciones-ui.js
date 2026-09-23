@@ -104,7 +104,7 @@ export function buildSeccionesFondoFromBody(raw) {
 }
 
 /**
- * Resuelve fondo efectivo (nuevo JSON → legacy imagen_fondo / color_fondo).
+ * Resuelve fondo efectivo (nuevo JSON → legacy imagen_fondo / color_fondo / home_bg_*).
  * @param {Record<string, { tipo: string, valor: string }>} secciones
  * @param {string} key
  * @param {{ tipo?: string, valor?: string }} [legacy]
@@ -114,13 +114,33 @@ export function resolveSectionFondo(secciones, key, legacy = {}) {
   let tipo = entry.tipo || 'color';
   let valor = entry.valor || '';
 
-  if (!valor && key === 'home') {
-    if (legacy.valor && (legacy.tipo === 'image' || /^https?:\/\//i.test(legacy.valor))) {
-      tipo = 'image';
-      valor = legacy.valor;
-    } else if (legacy.valor) {
-      tipo = 'color';
-      valor = legacy.valor;
+  if (key === 'home') {
+    const legacyTipo = String(legacy.tipo || '').trim();
+    const legacyValor = String(legacy.valor || '').trim();
+    const looksVideoUrl = (v) => /\.(mp4|webm|mov)(\?|$)/i.test(String(v || ''));
+
+    // Columnas canónicas home_bg_* ganan si hay video (evita overwrite de imagen stale)
+    if (legacyTipo === 'video' && legacyValor) {
+      tipo = 'video';
+      valor = legacyValor;
+    } else if (!valor) {
+      if (legacyValor && (legacyTipo === 'image' || legacyTipo === 'video' || /^https?:\/\//i.test(legacyValor))) {
+        tipo = looksVideoUrl(legacyValor) || legacyTipo === 'video' ? 'video' : 'image';
+        valor = legacyValor;
+      } else if (legacyValor) {
+        tipo = 'color';
+        valor = legacyValor;
+      }
+    } else if (tipo === 'image' && looksVideoUrl(valor)) {
+      tipo = 'video';
+    } else if (
+      (legacyTipo === 'image' || legacyTipo === 'carrusel') &&
+      legacyValor &&
+      tipo === 'color' &&
+      !valor
+    ) {
+      tipo = legacyTipo;
+      valor = legacyValor;
     }
   }
 

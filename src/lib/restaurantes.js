@@ -652,8 +652,18 @@ async function loadRestauranteBySlug(slug) {
     'RESTAURANTE';
 
   const fondoHomeRaw = resolveSectionFondo(seccionesFondo, 'home', {
-    tipo: asText(row.imagen_fondo) ? 'image' : 'color',
-    valor: asText(row.imagen_fondo) || asText(row.color_fondo) || theme.colorFondo,
+    tipo:
+      asText(row.home_bg_type) ||
+      (asText(row.imagen_fondo)
+        ? /\.(mp4|webm|mov)(\?|$)/i.test(asText(row.imagen_fondo))
+          ? 'video'
+          : 'image'
+        : 'color'),
+    valor:
+      asText(row.home_bg_value) ||
+      asText(row.imagen_fondo) ||
+      asText(row.color_fondo) ||
+      theme.colorFondo,
   });
   let fondoHome = fondoHomeRaw;
   if (fondoHomeRaw.tipo === 'image' || fondoHomeRaw.tipo === 'video') {

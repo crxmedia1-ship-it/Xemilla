@@ -369,11 +369,29 @@ const opsWifiSsid = String(
   restaurante?.gadget_wifi_ssid || configWifi?.ssid || '',
 ).trim();
 
-const fondoHome = fondoSeccion(
-  'home',
-  restaurante?.imagen_fondo ? 'image' : 'color',
-  restaurante?.imagen_fondo || restaurante?.color_fondo || '#0a0a0a',
-);
+const fondoHome = (() => {
+  const bgType = String(restaurante?.home_bg_type || '').trim();
+  const bgValue = String(restaurante?.home_bg_value || '').trim();
+  const fromSecciones = fondoSeccion(
+    'home',
+    bgType || (restaurante?.imagen_fondo ? 'image' : 'color'),
+    bgValue || restaurante?.imagen_fondo || restaurante?.color_fondo || '#0a0a0a',
+  );
+  // Preferir columnas canónicas cuando hay video (secciones_fondo a veces queda en image stale)
+  if (bgType === 'video' && bgValue) {
+    return { tipo: 'video', valor: bgValue };
+  }
+  if (
+    fromSecciones.tipo === 'image' &&
+    /\.(mp4|webm|mov)(\?|$)/i.test(String(fromSecciones.valor || ''))
+  ) {
+    return { tipo: 'video', valor: fromSecciones.valor };
+  }
+  if (bgType && bgValue && ['image', 'carrusel', 'color'].includes(bgType)) {
+    return { tipo: bgType, valor: bgValue };
+  }
+  return fromSecciones;
+})();
 const fondoNosotros = fondoSeccion('nosotros', 'color', '');
 const fondoMenu = fondoSeccion('menu', 'color', '');
 const fondoUbicacion = fondoSeccion('ubicacion', 'color', '');
@@ -765,7 +783,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               <path d="M8 5v4h8V5"></path>
               <path d="M8 19v-6h8v6"></path>
             </svg>
-            <span class="hidden sm:inline">Guardar</span>
+            <span class="marca-save-label hidden sm:inline">Guardar</span>
           </button>
         ) : null
       }
@@ -12195,7 +12213,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           homeFondo,
         );
         syncUbicacionFondoUi();
-        checkMarcaDirty();
+        checkMarcaDirtyAndAutosave();
       },
       { signal },
     );
@@ -12448,7 +12466,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   function syncBloqueMediaUi(card) {
     if (!(card instanceof HTMLElement)) return;
     syncBloqueMediaPreview(card);
-    checkMarcaDirty();
+    checkMarcaDirtyAndAutosave();
   }
 
   function autoResizeTextarea(ta) {
@@ -12628,7 +12646,28 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(btn instanceof HTMLButtonElement)) return;
     btn.dataset.saveState = state;
     if (btn.disabled) return;
-    btn.textContent = state === 'saved' ? 'Guardado' : 'Guardar';
+    const label = state === 'saved' ? 'Guardado' : 'Guardar';
+    const desktop = btn.querySelector('.marca-save-label');
+    if (desktop instanceof HTMLElement) {
+      desktop.textContent = label;
+    } else {
+      // Fallback si el markup viejo ya fue aplanado
+      btn.replaceChildren();
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'size-4 sm:hidden');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '1.8');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.innerHTML =
+        '<path d="M5 5h11l3 3v11H5V5z"></path><path d="M8 5v4h8V5"></path><path d="M8 19v-6h8v6"></path>';
+      const span = document.createElement('span');
+      span.className = 'marca-save-label hidden sm:inline';
+      span.textContent = label;
+      btn.append(svg, span);
+    }
+    btn.setAttribute('aria-label', label === 'Guardado' ? 'Cambios guardados' : 'Guardar cambios');
   }
 
   function checkMarcaDirty() {
@@ -12657,8 +12696,48 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     setMarcaSaveState('idle');
   }
 
-  marcaForm?.addEventListener('input', checkMarcaDirty, { signal });
-  marcaForm?.addEventListener('change', checkMarcaDirty, { signal });
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let marcaAutosaveTimer = null;
+  let marcaAutosaveBusy = false;
+  let marcaAutosaveQueued = false;
+
+  function scheduleMarcaAutosave() {
+    if (!(marcaSave instanceof HTMLButtonElement)) return;
+    if (marcaSave.hidden) return;
+    if (marcaAutosaveTimer) clearTimeout(marcaAutosaveTimer);
+    marcaAutosaveTimer = setTimeout(() => {
+      void flushMarcaAutosave();
+    }, 1100);
+  }
+
+  async function flushMarcaAutosave() {
+    if (marcaAutosaveBusy) {
+      marcaAutosaveQueued = true;
+      return;
+    }
+    if (!(marcaSave instanceof HTMLButtonElement) || marcaSave.hidden) return;
+    if (marcaSave.dataset.saveState !== 'dirty') return;
+    marcaAutosaveBusy = true;
+    try {
+      await saveIdentidadMarca({ silent: true });
+    } finally {
+      marcaAutosaveBusy = false;
+      if (marcaAutosaveQueued) {
+        marcaAutosaveQueued = false;
+        scheduleMarcaAutosave();
+      }
+    }
+  }
+
+  function checkMarcaDirtyAndAutosave() {
+    checkMarcaDirty();
+    if (marcaSave instanceof HTMLButtonElement && marcaSave.dataset.saveState === 'dirty') {
+      scheduleMarcaAutosave();
+    }
+  }
+
+  marcaForm?.addEventListener('input', checkMarcaDirtyAndAutosave, { signal });
+  marcaForm?.addEventListener('change', checkMarcaDirtyAndAutosave, { signal });
   requestAnimationFrame(() => initMarcaSaveState());
 
   function collectCategoriasFondos() {
@@ -12915,7 +12994,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     if (!(bloquesList instanceof HTMLElement)) return;
     const n = bloquesList.querySelectorAll('[data-nosotros-bloque]').length + 1;
     bloquesList.appendChild(createBloqueEl(n));
-    checkMarcaDirty();
+    checkMarcaDirtyAndAutosave();
   }, { signal });
 
   bloquesList?.querySelectorAll('[data-nosotros-bloque]').forEach((card) => {
@@ -12950,7 +13029,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (!(card instanceof HTMLElement)) return;
       syncBloqueMediaPreview(card);
       setBloqueUrlPanel(card, false);
-      checkMarcaDirty();
+      checkMarcaDirtyAndAutosave();
       return;
     }
 
@@ -12976,12 +13055,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       if (sel instanceof HTMLSelectElement) sel.value = 'derecha';
       syncBloqueMediaPreview(card);
       setBloqueUrlPanel(card, false);
-      checkMarcaDirty();
+      checkMarcaDirtyAndAutosave();
       return;
     }
     card.remove();
     renumberBloques();
-    checkMarcaDirty();
+    checkMarcaDirtyAndAutosave();
   }, { signal });
 
   bloquesList?.addEventListener('change', async (event) => {
@@ -13014,7 +13093,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       }
       syncBloqueMediaPreview(card);
       setBloqueUrlPanel(card, false);
-      checkMarcaDirty();
+      checkMarcaDirtyAndAutosave();
       showToast('Media actualizada', 'ok');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Error al subir media', 'error');
@@ -13132,7 +13211,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   // QR Panel gestionado por bloque standalone astro:page-load (ver más abajo)
 
-  async function saveIdentidadMarca() {
+  async function saveIdentidadMarca(opts = {}) {
+    const silent = Boolean(opts?.silent);
     const saveBtn =
       document.getElementById('marca-save') instanceof HTMLButtonElement
         ? /** @type {HTMLButtonElement} */ (document.getElementById('marca-save'))
@@ -13141,12 +13221,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           : null;
 
     if (!saveBtn) {
-      showToast('Botón Guardar no disponible', 'error');
-      return;
+      if (!silent) showToast('Botón Guardar no disponible', 'error');
+      return false;
     }
     if (!restauranteId) {
-      showToast('Restaurante no disponible', 'error');
-      return;
+      if (!silent) showToast('Restaurante no disponible', 'error');
+      return false;
     }
 
     const val = (id) => {
@@ -13184,9 +13264,23 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         : 'editorial';
     const nosotrosThemePayload = val('marca-nosotros-theme') || 'editorial';
 
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Guardando…';
-    showToast('Guardando identidad…', 'ok');
+    const fondoHomeTipo = val('marca-fondo-home-tipo') || 'color';
+    const fondoHomeValor = val('marca-fondo-home-valor');
+    const colorFondoHex =
+      fondoHomeTipo === 'color'
+        ? fondoHomeValor
+        : val('marca-color-fondo') || '#0a0a0a';
+
+    if (!silent) {
+      saveBtn.disabled = true;
+      const labelEl = saveBtn.querySelector('.marca-save-label');
+      if (labelEl instanceof HTMLElement) labelEl.textContent = 'Guardando…';
+      else saveBtn.setAttribute('aria-label', 'Guardando…');
+      showToast('Guardando identidad…', 'ok');
+    } else {
+      saveBtn.dataset.saveState = 'dirty';
+      saveBtn.setAttribute('aria-label', 'Guardando…');
+    }
     if (marcaFeedback) {
       marcaFeedback.classList.add('hidden');
       marcaFeedback.textContent = '';
@@ -13206,9 +13300,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           nombre_comercial: val('marca-nombre-comercial'),
           tagline_superior: val('marca-tagline-superior'),
           eslogan: val('marca-eslogan'),
+          home_eslogan: val('marca-eslogan'),
           color_primario: val('marca-color-primario'),
           color_texto: val('marca-color-texto'),
-          color_fondo: val('marca-fondo-home-valor'),
+          color_fondo: colorFondoHex,
+          color_fondo_hint: val('marca-color-fondo'),
           estilo_adn: 'elegant',
           tipografia_combo: val('marca-tipografia-combo') || 'luxe-editorial',
           tipo_letra: val('marca-tipografia-combo') || 'luxe-editorial',
@@ -13249,8 +13345,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           efecto_entrada: val('marca-home-efecto-entrada') || 'ninguno',
           gadget_servicios_estilo:
             val('marca-home-gadget-servicios-estilo') || 'drawer',
-          fondo_tipo: val('marca-fondo-home-tipo'),
-          fondo_valor: val('marca-fondo-home-valor'),
+          fondo_tipo: fondoHomeTipo,
+          fondo_valor: fondoHomeValor,
           titulo_color: val('marca-home-titulo-color'),
           eslogan_color: val('marca-home-eslogan-color'),
           menu_color: val('marca-home-menu-color'),
@@ -13262,8 +13358,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           nosotros_contenedor_estilo: val('marca-nosotros-contenedor-estilo') || 'vidrio',
           nosotros_fuente_titulo: val('marca-nosotros-fuente-titulo') || 'cinzel',
           nosotros_fuente_cuerpo: val('marca-nosotros-fuente-cuerpo') || 'plus-jakarta',
-          fondo_home_tipo: val('marca-fondo-home-tipo'),
-          fondo_home_valor: val('marca-fondo-home-valor'),
+          fondo_home_tipo: fondoHomeTipo,
+          fondo_home_valor: fondoHomeValor,
           fondo_nosotros_tipo: val('marca-fondo-nosotros-tipo'),
           fondo_nosotros_valor: val('marca-fondo-nosotros-valor'),
           fondo_menu_tipo: val('marca-fondo-menu-tipo'),
@@ -13398,13 +13494,28 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         (n, b) => n + (Array.isArray(b.media) ? b.media.length : 0),
         0,
       );
-      showToast(
-        json.message ||
-          `Identidad guardada · Nosotros: ${themeOk} · ${bloquesOk} bloque${bloquesOk === 1 ? '' : 's'} · ${mediaOk} media`,
-        bloquesOk === 0 ? 'error' : 'ok',
-      );
+      if (!silent) {
+        showToast(
+          json.message ||
+            `Identidad guardada · Nosotros: ${themeOk} · ${bloquesOk} bloque${bloquesOk === 1 ? '' : 's'} · ${mediaOk} media`,
+          'ok',
+        );
+      } else {
+        const opsToast = document.getElementById('ops-autosave-toast');
+        if (opsToast instanceof HTMLElement) {
+          opsToast.textContent = 'Identidad guardada';
+          opsToast.dataset.state = 'ok';
+          opsToast.hidden = false;
+          window.clearTimeout(Number(opsToast.dataset.hideTimer || 0));
+          const t = window.setTimeout(() => {
+            opsToast.hidden = true;
+          }, 1600);
+          opsToast.dataset.hideTimer = String(t);
+        }
+      }
       markMarcaSaved();
       syncLocalOps('marca');
+      return true;
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'Error al guardar';
       if (
@@ -13421,6 +13532,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         marcaFeedback.classList.add('text-rose-400');
       }
       showToast(msg, 'error');
+      return false;
     } finally {
       saveBtn.disabled = false;
       setMarcaSaveState(saveBtn.dataset.saveState || 'idle', saveBtn);

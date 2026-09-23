@@ -110,13 +110,21 @@ async function handleUpdateMarca({ request, cookies }) {
   // Home / Core
   patch.logo_url = normalizeUrlOrText(raw.logo_url);
   patch.eslogan = normalizeText(raw.eslogan);
+  // Mantener columna legacy home_eslogan alineada con el eslogan canónico
+  if (Object.prototype.hasOwnProperty.call(raw, 'eslogan') || Object.prototype.hasOwnProperty.call(raw, 'home_eslogan')) {
+    patch.home_eslogan =
+      normalizeText(raw.home_eslogan) || normalizeText(raw.eslogan);
+  }
   const nombreComercial = normalizeText(raw.nombre_comercial);
   if (nombreComercial) {
     patch.nombre_comercial = nombreComercial;
   }
   patch.color_primario = normalizeColor(raw.color_primario);
+  // color_fondo solo acepta hex/rgb — nunca una URL de imagen/video
   patch.color_fondo =
-    normalizeColor(raw.color_fondo) || normalizeColor(raw.fondo_home_valor);
+    normalizeColor(raw.color_fondo) ||
+    normalizeColor(raw.color_fondo_hint) ||
+    null;
   patch.color_texto = normalizeColor(raw.color_texto);
   // css_avanzado (canónico en ui_estilo) ↔ columna legacy custom_css
   patch.custom_css =
@@ -209,9 +217,17 @@ async function handleUpdateMarca({ request, cookies }) {
   const homeFondo = seccionesFondo?.home ?? { tipo: 'color', valor: '' };
   if (homeFondo.tipo === 'image' || homeFondo.tipo === 'video') {
     patch.imagen_fondo = homeFondo.valor || null;
+    patch.home_bg_type = homeFondo.tipo;
+    patch.home_bg_value = homeFondo.valor || null;
   } else if (homeFondo.tipo === 'color' && homeFondo.valor) {
     patch.color_fondo = normalizeColor(homeFondo.valor) || patch.color_fondo;
     patch.imagen_fondo = null;
+    patch.home_bg_type = 'color';
+    patch.home_bg_value = normalizeColor(homeFondo.valor) || patch.color_fondo;
+  } else if (homeFondo.tipo === 'carrusel') {
+    patch.imagen_fondo = null;
+    patch.home_bg_type = 'carrusel';
+    patch.home_bg_value = homeFondo.valor || null;
   }
 
   // Nosotros (bloques JSONB + legacy sync del primer bloque)
@@ -484,6 +500,9 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
         'home_theme',
         'ubicacion_theme',
         'menu_font',
+        'home_bg_type',
+        'home_bg_value',
+        'home_eslogan',
       ];
       const next = optional.find((k) => Object.prototype.hasOwnProperty.call(current, k));
       if (next) {
