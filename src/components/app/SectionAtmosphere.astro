@@ -297,14 +297,15 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
           <div
             class:list={[
               'absolute inset-0 z-10',
-              isVideo && fixed
+              /* Home fixed (imagen o video): centro más abierto para leer la marca / foto */
+              fixed && (isVideo || isImage || singleCarruselAsImage)
                 ? 'bg-gradient-to-b from-black/48 via-transparent to-black/42'
                 : isVideo
                   ? 'bg-gradient-to-t from-black/55 via-black/28 to-black/45'
                   : 'bg-gradient-to-t from-black/80 via-black/40 to-black/80',
             ]}
             style={
-              isVideo
+              isVideo || (fixed && (isImage || singleCarruselAsImage))
                 ? `opacity:${
                     fixed
                       ? Math.min(0.62, Math.max(0.22, 0.18 + overlayAlpha * 0.7))
@@ -314,9 +315,9 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
             }
             data-atmosphere-overlay
             data-overlay-over-video={isVideo ? 'true' : undefined}
-            data-overlay-sharp={isVideo && fixed ? 'true' : undefined}
+            data-overlay-sharp={fixed && (isVideo || isImage || singleCarruselAsImage) ? 'true' : undefined}
           />
-          {isVideo ? (
+          {isVideo || (fixed && (isImage || singleCarruselAsImage)) ? (
             <div
               class:list={[
                 'pointer-events-none absolute inset-0 z-10',
@@ -333,8 +334,8 @@ const kenInnerClass = mappedAnimClass || 'animate-ken-burns';
               data-atmosphere-video-scrim
             />
           ) : null}
-          {/* Grain solo en stills / paneles — en Home video resta nitidez */}
-          {!(isVideo && fixed) ? (
+          {/* Grain solo en stills / paneles — en Home resta nitidez */}
+          {!(fixed && (isVideo || isImage || singleCarruselAsImage)) ? (
             <div
               class="bg-film-grain absolute inset-0 z-10"
               data-atmosphere-grain
