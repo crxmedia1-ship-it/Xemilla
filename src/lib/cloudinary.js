@@ -254,6 +254,54 @@ export function applyCloudinaryDeliveryTransform(url, type) {
 }
 
 /**
+ * Color de fondo del ícono, siempre 6 hex sin #.
+ * @param {unknown} color
+ */
+function normalizeIconBackground(color) {
+  const hex = String(color || '')
+    .trim()
+    .match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (!hex) return '09090b';
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+  return full.toLowerCase();
+}
+
+/**
+ * Ícono cuadrado y opaco para instalar la webapp.
+ * El logo queda centrado, sin recorte ni estirado, sobre el color de fondo.
+ * @param {unknown} url
+ * @param {{ size?: number, background?: string, padding?: number }} [opts]
+ * @returns {string}
+ */
+export function squareAppIconUrl(url, opts = {}) {
+  const raw = String(url ?? '').trim();
+  if (!raw) return '';
+
+  const size = Math.max(32, Math.min(1024, Number(opts.size) || 512));
+  const pad = Math.min(0.34, Math.max(0.08, Number(opts.padding) || 0.16));
+  const inner = Math.max(16, Math.round(size * (1 - pad * 2)));
+  const bg = normalizeIconBackground(opts.background);
+  const tx = `c_fit,w_${inner},h_${inner},g_center/c_pad,w_${size},h_${size},b_rgb:${bg},g_center,f_png,q_auto:best`;
+
+  if (isCloudinaryDeliveryUrl(raw) && !/\/video\/upload\//i.test(raw)) {
+    const marker = '/upload/';
+    const at = raw.indexOf(marker);
+    if (at === -1) return raw;
+    const rest = stripExistingDeliveryTransforms(raw.slice(at + marker.length));
+    if (!rest) return raw;
+    return `${raw.slice(0, at + marker.length)}${tx}/${rest}`;
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    const cloud = getCloudinaryCloudName();
+    if (!cloud) return raw;
+    return `https://res.cloudinary.com/${cloud}/image/fetch/${tx}/${encodeURIComponent(raw)}`;
+  }
+
+  return raw;
+}
+
+/**
  * Entrega de video Home más nítida (Cloudinary).
  * Si la URL trae grade/re-encode agresivo (e_brightness|saturation|contrast|gamma
  * o q_auto genérico), lo quita y deja el master. URLs ya limpias no se tocan.

@@ -1,0 +1,173 @@
+---
+interface Props {
+  slug: string;
+  name: string;
+}
+
+const { slug, name } = Astro.props;
+const label = String(name || 'el restaurante').trim() || 'el restaurante';
+---
+
+<div class="install-app" data-install-app data-install-slug={slug} hidden>
+  <button type="button" class="install-app__trigger" data-install-trigger>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v10m0 0l3.5-3.5M12 14.5L8.5 11"></path>
+      <path stroke-linecap="round" d="M5 18.5h14"></path>
+    </svg>
+    Instalar app
+  </button>
+  <div class="install-app__sheet" data-install-ios hidden>
+    <p>
+      Para instalar <strong>{label}</strong>, tocá Compartir y después <strong>Agregar a inicio</strong>.
+    </p>
+    <button type="button" data-install-dismiss>Ahora no</button>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-install-app]');
+    if (!root || root.getAttribute('data-install-bound') === '1') return;
+    root.setAttribute('data-install-bound', '1');
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
+
+    var slug = root.getAttribute('data-install-slug') || '';
+    var dismissKey = 'xemilla-pwa-dismiss:' + slug;
+    var standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    if (standalone) return;
+
+    try {
+      if (localStorage.getItem(dismissKey) === '1') return;
+    } catch (e) {}
+
+    var deferred = null;
+    var trigger = root.querySelector('[data-install-trigger]');
+    var sheet = root.querySelector('[data-install-ios]');
+    var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    function show() {
+      root.hidden = false;
+    }
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      deferred = event;
+      show();
+    });
+
+    if (isIos) show();
+
+    if (trigger) {
+      trigger.addEventListener('click', function () {
+        if (deferred) {
+          deferred.prompt();
+          var pending = deferred.userChoice;
+          deferred = null;
+          if (pending && pending.then) {
+            pending.then(function (choice) {
+              if (choice && choice.outcome === 'accepted') root.hidden = true;
+            });
+          }
+          return;
+        }
+        if (sheet) sheet.hidden = !sheet.hidden;
+      });
+    }
+
+    var dismiss = root.querySelector('[data-install-dismiss]');
+    if (dismiss) {
+      dismiss.addEventListener('click', function () {
+        root.hidden = true;
+        if (sheet) sheet.hidden = true;
+        try {
+          localStorage.setItem(dismissKey, '1');
+        } catch (e) {}
+      });
+    }
+  })();
+</script>
+
+<style>
+  .install-app[hidden],
+  .install-app__sheet[hidden] {
+    display: none !important;
+  }
+
+  .install-app {
+    position: fixed;
+    z-index: 54;
+    left: 50%;
+    bottom: max(4.85rem, calc(env(safe-area-inset-bottom) + 4.35rem));
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 0.45rem;
+    width: max-content;
+    max-width: min(18rem, calc(100vw - 2rem));
+    transform: translateX(-50%);
+  }
+
+  .install-app__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.5rem;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.38);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  }
+
+  .install-app__trigger svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .install-app__trigger:active {
+    transform: scale(0.97);
+  }
+
+  .install-app__sheet {
+    padding: 0.75rem 0.8rem 0.65rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(12, 12, 12, 0.88);
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    backdrop-filter: blur(16px);
+  }
+
+  .install-app__sheet button {
+    margin-top: 0.45rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :global(.restaurant-app:not([data-surface='home']) .install-app) {
+    display: none !important;
+  }
+
+  @media (display-mode: standalone) {
+    .install-app {
+      display: none !important;
+    }
+  }
+</style>

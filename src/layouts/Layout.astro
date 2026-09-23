@@ -17,6 +17,10 @@ interface Props {
   ogImage?: string;
   /** Favicon / PWA / apple-touch-icon */
   appIcon?: string;
+  /** Manifiesto de la webapp del restaurante */
+  manifestHref?: string;
+  /** Nombre bajo el ícono al instalar */
+  appName?: string;
   /** Absolute page URL for og:url */
   ogUrl?: string;
   /** Activa shell admin (siempre light). */
@@ -32,6 +36,8 @@ const {
   customCss = '',
   ogImage = '',
   appIcon = '',
+  manifestHref = '',
+  appName = '',
   ogUrl = '',
   adminPanel = false,
 } = Astro.props;
@@ -90,7 +96,7 @@ const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chrome
       ) : null
     }
     <link rel="icon" href={iconHref} />
-    <link rel="apple-touch-icon" href={iconHref} />
+    <link rel="apple-touch-icon" href={iconHref} sizes="180x180" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href={fontHref} rel="stylesheet" />
@@ -116,6 +122,12 @@ const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chrome
           <meta name="apple-mobile-web-app-title" content="Xemilla" />
           <meta name="mobile-web-app-capable" content="yes" />
           <meta name="application-name" content="Xemilla Studio" />
+        </>
+      ) : manifestHref ? (
+        <>
+          <link rel="manifest" href={manifestHref} />
+          {appName ? <meta name="apple-mobile-web-app-title" content={appName} /> : null}
+          {appName ? <meta name="application-name" content={appName} /> : null}
         </>
       ) : null
     }
