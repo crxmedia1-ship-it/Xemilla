@@ -344,6 +344,7 @@ async function handleUpdateMarca({ request, cookies }) {
     plataforma_externa: plataformaExterna,
     politica: normalizeText(raw.reservas_politica, { keepNewlines: true }),
     confirmacion_nativa: confirmacionNativa,
+    incluye_delivery: toBool(raw.reservas_incluye_delivery),
   };
 
   // Gadgets Studio (pasivos / valor agregado) — legacy live/mesero/cuenta se ignoran

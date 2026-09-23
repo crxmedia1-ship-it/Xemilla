@@ -609,6 +609,7 @@ const marca = {
   })(),
   reservas_label: configReservas.label || 'Reservar Mesa',
   reservas_subtitulo: configReservas.subtitulo || configReservas.subtitle || '',
+  reservas_incluye_delivery: Boolean(configReservas.incluyeDelivery),
   reservas_layout: configReservas.layout || 'whatsapp_concierge',
   reservas_destino_tipo: configReservas.destinoTipo || 'whatsapp',
   reservas_destino_valor: configReservas.destinoValor || '',
@@ -3292,6 +3293,30 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             placeholder="Reservar Mesa"
                             class={fieldClass}
                           />
+                        </label>
+
+                        <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-2.5">
+                          <span class="min-w-0">
+                            <span class="block text-sm font-medium text-zinc-200">También para delivery</span>
+                            <span class="mt-0.5 block text-[0.68rem] leading-snug text-neutral-400">En el home el botón dice Reservar y Delivery y abre el mismo destino (WhatsApp, enlace o teléfono).</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            id="marca-reservas-incluye-delivery"
+                            name="reservas_incluye_delivery"
+                            checked={marca.reservas_incluye_delivery}
+                            class="peer sr-only"
+                            role="switch"
+                            aria-checked={marca.reservas_incluye_delivery ? 'true' : 'false'}
+                          />
+                          <span
+                            class:list={['ios-toggle', 'pointer-events-none', 'shrink-0', marca.reservas_incluye_delivery && 'is-on']}
+                            data-marca-toggle-ui
+                            data-for="marca-reservas-incluye-delivery"
+                            aria-hidden="true"
+                          >
+                            <span class="ios-toggle__knob"></span>
+                          </span>
                         </label>
 
                         <label class="block space-y-1.5">
@@ -13515,6 +13540,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           gadget_reservas: checked('marca-gadget-reservas'),
           reservas_label: val('marca-reservas-label'),
           reservas_subtitulo: val('marca-reservas-subtitulo'),
+          reservas_incluye_delivery: checked('marca-reservas-incluye-delivery'),
           reservas_layout:
             document.querySelector('[data-reservas-layout-option]:checked') instanceof HTMLInputElement
               ? /** @type {HTMLInputElement} */ (

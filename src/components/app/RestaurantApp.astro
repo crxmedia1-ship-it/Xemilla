@@ -143,10 +143,13 @@ const cssVars = [
   .join('; ');
 
 const reservas = restaurante?.reservas ?? {};
+const reservasHomeLabel = reservas?.incluyeDelivery
+  ? 'RESERVAR Y DELIVERY'
+  : reservas?.label || 'PEDIR / RESERVAR';
 /** CTA visible con el switch ON (aunque falte href aún) */
 const reservasCta = showReservas
   ? {
-      label: reservas?.label || 'PEDIR / RESERVAR',
+      label: reservasHomeLabel,
       href: reservas?.href || '#',
       subtitulo: reservas?.subtitulo || reservas?.subtitle || 'EXPERIENCIA PREMIUM',
       activo: true,
@@ -223,7 +226,7 @@ let homeProps = {
   /** Reservas CTA — visibles con switch ON (no dependen de href) */
   showReservas,
   reservas_activo: showReservas,
-  reservas_texto: reservas?.label || 'PEDIR / RESERVAR',
+  reservas_texto: reservasHomeLabel,
   reservas_subtitulo:
     reservas?.subtitulo || reservas?.subtitle || 'EXPERIENCIA PREMIUM',
   reservas_link: reservas?.href || '#',

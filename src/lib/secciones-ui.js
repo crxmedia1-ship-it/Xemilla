@@ -228,6 +228,11 @@ export function parseReservasConfig(config) {
       'Hola, me gustaría reservar mesa para {comensales} el {fecha} a las {hora}.',
   ).trim();
   const politica = String(c.politica || c.politica_reserva || '').trim();
+  const incluyeDelivery =
+    c.incluye_delivery === true ||
+    c.incluyeDelivery === true ||
+    c.incluye_delivery === 'true' ||
+    c.incluye_delivery === 1;
 
   let href = '';
   if (destinoValor) {
@@ -268,6 +273,8 @@ export function parseReservasConfig(config) {
     plataformaExterna,
     plataforma_externa: plataformaExterna,
     politica,
+    incluyeDelivery,
+    incluye_delivery: incluyeDelivery,
     confirmacionNativa,
     confirmacion_nativa: confirmacionNativa,
     url: href,
