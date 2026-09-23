@@ -6188,10 +6188,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       display: none;
     }
 
-    #panel-menu > .mb-5 .hidden.sm\\:flex,
-    #panel-menu .space-y-3 > .hidden.sm\\:flex {
-      display: none !important;
-    }
+    /* Force-hide between sm–md handled via Tailwind + layout; no escaped class selectors (breaks lightningcss). */
 
     /* Extra clearance under last menu content for dock + FAB */
     #panel-menu,
