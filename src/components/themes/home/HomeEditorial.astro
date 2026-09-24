@@ -497,7 +497,7 @@ const reelCopies = [0, 1, 2] as const;
       const paintCylinder = (force = false) => {
         ticking = false;
         if (wrapping && !force) return;
-        const { list, best } = findBestIndex();
+        const { list, best: nearest } = findBestIndex();
         if (!list.length) return;
         const rect = viewport.getBoundingClientRect();
         const centerY = rect.top + rect.height / 2;
@@ -505,21 +505,38 @@ const reelCopies = [0, 1, 2] as const;
         // Nunca > 1: crecer por encima pelea con snap y causa “pop”
         const peak = 1;
         const floor = reduceMotion ? 0.88 : isCoarse ? 0.78 : 0.74;
+        // No cambiar el texto activo por un pixel: eso hace temblar la línea al asentarse
+        const holdPx = isCoarse ? 22 : 16;
+        let best = nearest;
+        if (activeAbs >= 0 && activeAbs < list.length && activeAbs !== nearest) {
+          const current = list[activeAbs];
+          const next = list[nearest];
+          if (current instanceof HTMLElement && next instanceof HTMLElement) {
+            const currentMid =
+              current.getBoundingClientRect().top + current.getBoundingClientRect().height / 2;
+            const nextMid =
+              next.getBoundingClientRect().top + next.getBoundingClientRect().height / 2;
+            if (Math.abs(nextMid - centerY) + holdPx > Math.abs(currentMid - centerY)) {
+              best = activeAbs;
+            }
+          }
+        }
 
         list.forEach((slide) => {
           const face = slide.querySelector('.editorial-reel__face');
           const sRect = slide.getBoundingClientRect();
           const mid = sRect.top + sRect.height / 2;
-          const t = Math.min(1, Math.abs(mid - centerY) / half);
-          // Suave cerca del centro (casi plano), solo reduce al alejarse
+          const dist = Math.abs(mid - centerY);
+          // Zona muerta: el texto centrado no cambia de escala con el último vaivén del snap
+          const t = dist < 12 ? 0 : Math.min(1, (dist - 12) / half);
           const falloff = t * t;
           const scale = peak - falloff * (peak - floor);
           const opacity = reduceMotion
             ? 1 - falloff * 0.28
             : 1 - falloff * (isCoarse ? 0.42 : 0.48);
           if (face instanceof HTMLElement) {
-            face.style.setProperty('--reel-scale', scale.toFixed(4));
-            face.style.setProperty('--reel-opacity', Math.max(0.38, opacity).toFixed(4));
+            face.style.setProperty('--reel-scale', scale.toFixed(3));
+            face.style.setProperty('--reel-opacity', Math.max(0.38, opacity).toFixed(3));
           }
         });
 
@@ -547,7 +564,7 @@ const reelCopies = [0, 1, 2] as const;
         settleTimer = window.setTimeout(() => {
           normalizeLoop();
           paintCylinder(true);
-        }, isCoarse ? 90 : 120);
+        }, isCoarse ? 280 : 220);
       };
 
       viewport.addEventListener('scroll', onScroll, { passive: true });
@@ -805,6 +822,7 @@ const reelCopies = [0, 1, 2] as const;
     overflow-y: auto;
     overflow-x: hidden;
     scroll-snap-type: y mandatory;
+    overflow-anchor: none;
     scroll-behavior: auto;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;

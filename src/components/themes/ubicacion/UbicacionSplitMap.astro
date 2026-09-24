@@ -266,9 +266,13 @@ const rootStyle = [
     font-weight: 600;
   }
 
-  [data-horario-row].is-today span:first-child,
-  [data-horario-row].is-today span:last-child {
+  [data-horario-row].is-today span:first-child {
     color: var(--ubi-acento, var(--sec-ubicacion-acento, var(--color-texto, #fff)));
+  }
+
+  [data-horario-row].is-today span:last-child {
+    color: #fff;
+    font-weight: 700;
   }
 </style>
 
