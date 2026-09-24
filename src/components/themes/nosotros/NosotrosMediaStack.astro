@@ -132,21 +132,19 @@ const isHero = variant === 'hero';
     background: transparent;
   }
 
-  /* Asanoha: solo las líneas, en el color de acento, donde la foto no cubre. */
-  .nosotros-media__cell::before {
-    content: '';
+  .nosotros-media[data-media-count='1']:not([data-media-variant='hero']) .nosotros-media__cell {
+    height: 100%;
+  }
+
+  .nosotros-media[data-media-count='1']:not([data-media-variant='hero']) .nosotros-media__asset {
     position: absolute;
     inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-color: var(--color-primario, #ff2600);
-    opacity: 0.85;
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 86 100'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.7' stroke-linejoin='miter'%3E%3Cpath d='M43 6 L76 25 L76 63 L43 82 L10 63 L10 25 Z'/%3E%3Cpath d='M43 6 V82 M10 25 L76 63 M76 25 L10 63 M43 44 L10 25 M43 44 L76 25 M43 44 L10 63 M43 44 L76 63'/%3E%3C/g%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 86 100'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.7' stroke-linejoin='miter'%3E%3Cpath d='M43 6 L76 25 L76 63 L43 82 L10 63 L10 25 Z'/%3E%3Cpath d='M43 6 V82 M10 25 L76 63 M76 25 L10 63 M43 44 L10 25 M43 44 L76 25 M43 44 L10 63 M43 44 L76 63'/%3E%3C/g%3E%3C/svg%3E");
-    -webkit-mask-size: 54px 63px;
-    mask-size: 54px 63px;
-    -webkit-mask-repeat: repeat;
-    mask-repeat: repeat;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: center 42%;
   }
 
   .nosotros-media__asset {

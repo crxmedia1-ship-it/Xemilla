@@ -214,17 +214,15 @@ export function ubicacionCardStyle(estilo, color = '') {
 
 /**
  * Colores de Ubicación.
- * El acento es solo el de esta sección. No hereda el primario de marca
- * (si no, un rojo de Identidad se pinta dorado en la WebApp).
+ * Texto y acento son solo los de esta sección. Si Texto está vacío en
+ * Identidad, no se hereda el título del Home (ese dorado no aparece en Ubicación).
  * @param {Record<string, unknown>} ubicacion
  * @param {Record<string, unknown>} home
  * @param {{ fondoColor?: string }} [extras]
  */
 export function resolveUbicacionSectionColors(ubicacion = {}, home = {}, extras = {}) {
   const fondo = String(ubicacion.color_fondo || extras.fondoColor || '').trim();
-  const titulo = String(
-    ubicacion.color_titulo || home.titulo_color || home.tituloColor || '',
-  ).trim();
+  const titulo = String(ubicacion.color_titulo || '').trim();
   const cuerpo = String(
     ubicacion.color_cuerpo || home.eslogan_color || home.esloganColor || '',
   ).trim();
