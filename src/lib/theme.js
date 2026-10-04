@@ -51,16 +51,6 @@ function pickColor(value, fallback) {
  * @param {unknown} value
  * @returns {string | null}
  */
-function pickCustomFont(value) {
-  const v = nonEmptyText(value)?.replace(/["']/g, '') ?? null;
-  if (!v || /[;{}]|url\(/i.test(v)) return null;
-  return v.includes(',') ? v : `${v}, ui-sans-serif, system-ui, sans-serif`;
-}
-
-/**
- * @param {unknown} value
- * @returns {string | null}
- */
 function pickImageUrl(value) {
   const v = nonEmptyText(value);
   if (!v) return null;

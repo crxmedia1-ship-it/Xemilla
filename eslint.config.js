@@ -17,10 +17,14 @@ export default [
     },
     plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-unused-vars': [
+        'warn',
+        { args: 'after-used', argsIgnorePattern: '^_', caughtErrors: 'none', ignoreRestSiblings: true },
+      ],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-constant-condition': ['error', { checkLoops: false }],
-      'no-useless-assignment': 'warn',
+      // `let raw = {}; try { raw = await request.json() } catch { return … }` es intencional.
+      'no-useless-assignment': 'off',
     },
   },
   {

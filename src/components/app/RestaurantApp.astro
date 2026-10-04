@@ -35,9 +35,10 @@ import {
 } from '../../lib/gadgets.js';
 import { resolveUbicacionSectionColors } from '../../lib/ubicacion-theme-data.js';
 import { parsePopupBanner } from '../../lib/popup-banner.js';
+import { jsonForScript } from '../../lib/safe-json.js';
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   restaurante: any;
   /** Plantilla Home forzada desde [slug].astro (SSR) — solo estructura */
   homeTheme?: string;
@@ -328,7 +329,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 >
   {
     showNutricion ? (
-      <script is:inline type="application/json" data-menu-nutricion-json set:html={JSON.stringify(menuNutricionById || {}).replace(/</g, '\\u003c')} />
+      <script is:inline type="application/json" data-menu-nutricion-json set:html={jsonForScript(menuNutricionById || {})} />
     ) : null
   }
   {/*

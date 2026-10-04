@@ -17,6 +17,7 @@ import {
   fondoAnimacionClass,
 } from '../../lib/secciones-ui.js';
 import { homeVideoPosterUrl } from '../../lib/cloudinary.js';
+import { jsonForScript } from '../../lib/safe-json.js';
 
 interface CategoryBg {
   tipo?: string;
@@ -139,7 +140,7 @@ const fallbackTipo = isImage || singleCarruselAsImage
       : 'color';
 const fallbackValor = singleCarruselAsImage ? carruselUrls[0] : value;
 
-const catMapJson = JSON.stringify(categoryBackgrounds || {}).replace(/</g, '\\u003c');
+const catMapJson = jsonForScript(categoryBackgrounds || {});
 
 /** Home: fixed detrás del theme (z-0, no z-[-1]) · Overlay panels: absolute */
 const rootPositionClass = fixed

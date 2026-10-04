@@ -14,7 +14,6 @@ import { normalizeMapsStorage } from '../../lib/maps-preview.js';
 import {
   homeLayoutToTheme,
   normalizeHomeTheme,
-  normalizeNosotrosTheme,
   normalizeUbicacionTheme,
   nosotrosLayoutToTheme,
   normalizeNosotrosLayout,

@@ -80,7 +80,7 @@ const polaroidOffsets = ['', 'translate-y-3 sm:translate-y-5', '-translate-y-2 s
       </p>
     ) : (
       <div class="flex flex-col gap-14 md:gap-16">
-        {items.map((bloque, index) => {
+        {items.map((bloque) => {
           const mediaList = Array.isArray(bloque.media) ? bloque.media.slice(0, 3) : [];
           const titleHtml = renderTitleHtml(bloque.titulo || '', bloque.tituloAcento);
           const bodyHtml = renderBodyHtml(bloque.texto || '', bloque.acentos);

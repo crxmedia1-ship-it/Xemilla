@@ -11,6 +11,8 @@
     "preview": "astro preview",
     "check": "NODE_OPTIONS=--max-old-space-size=8192 astro check",
     "lint": "eslint .",
+    "test": "vitest run",
+    "smoke": "node --env-file-if-exists=.env scripts/smoke.mjs",
     "astro": "astro"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "eslint-plugin-astro": "^1.7.0",
     "globals": "^17.13.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.0"
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
   }
 }

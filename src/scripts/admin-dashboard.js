@@ -281,7 +281,6 @@
   const modalVideo = document.getElementById('plato-modal-video');
   const modalUrl = document.getElementById('modal-url');
   const modalFile = document.getElementById('modal-file');
-  const modalAttachSave = document.getElementById('modal-attach-save');
   const modalAttachError = document.getElementById('modal-attach-error');
   const modalReplaceFile = document.getElementById('modal-replace-file');
   const modalReplaceLabel = document.getElementById('modal-replace-label');
@@ -1507,7 +1506,7 @@
     );
     week.addEventListener(
       'change',
-      (event) => {
+      () => {
         const scope = week.getAttribute('data-hours-week') || '';
         syncHorarioHidden(scope);
         if (scope === 'marca' || scope === 'perfil') {
@@ -1852,9 +1851,6 @@
    * @param {HTMLElement} root
    */
   function initWelcomePopupAdmin(root) {
-    const toggle = root.querySelector('[data-popup-enabled-toggle]');
-    const enabledHidden = root.querySelector('[data-popup-enabled]');
-    const body = root.querySelector('[data-popup-body]');
     const drop = root.querySelector('[data-popup-drop]');
     const fileInput = root.querySelector('[data-popup-file]');
     const changeBtn = root.querySelector('[data-popup-change]');
@@ -4538,7 +4534,6 @@
     });
   })();
 
-  const menuFondoGeneral = document.getElementById('menu-fondo-general');
   const menuFondoTipo = document.getElementById('marca-fondo-menu-tipo');
   const menuFondoColorWrap = document.querySelector('[data-menu-fondo-color]');
   const menuFondoMediaActions = document.querySelector('[data-menu-fondo-media-actions]');
@@ -5255,17 +5250,6 @@
     });
   }
 
-  function createMediaRow(placeholder = 'Media extra', showRemove = true) {
-    const row = document.createElement('div');
-    row.className = 'nosotros-bloque__media-row flex gap-2';
-    row.dataset.bloqueMediaRow = '';
-    row.innerHTML = `
-      <input type="url" inputmode="url" data-bloque-media placeholder="${placeholder}" class="${fieldClassJs}" />
-      <button type="button" class="rounded-lg border border-white/10 px-2 text-zinc-400" data-remove-media aria-label="Quitar media"${showRemove ? '' : ' hidden'}>×</button>
-    `;
-    return row;
-  }
-
   function setBloqueUrlPanel(card, open) {
     if (!(card instanceof HTMLElement)) return;
     const panel = card.querySelector('[data-bloque-media-url-panel]');
@@ -5297,12 +5281,6 @@
       }
     }
     if (ph instanceof HTMLElement) ph.hidden = Boolean(url);
-  }
-
-  function syncBloqueMediaUi(card) {
-    if (!(card instanceof HTMLElement)) return;
-    syncBloqueMediaPreview(card);
-    checkMarcaDirtyAndAutosave();
   }
 
   function autoResizeTextarea(ta) {

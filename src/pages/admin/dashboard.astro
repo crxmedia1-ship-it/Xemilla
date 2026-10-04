@@ -31,8 +31,6 @@ import {
   ubicacionThemeToLayout,
   normalizeUbicacionLayout,
   RESERVAS_LAYOUT_OPTIONS,
-  normalizeReservasLayout,
-  reservasLayoutToDestino,
 } from '../../lib/layout-themes.js';
 import { normalizeContenedorEstilo, normalizeBloqueAlineacion } from '../../lib/nosotros-layout.js';
 import {
@@ -42,7 +40,7 @@ import {
   resolveNosotrosFuenteCuerpo,
   buildNosotrosFontsHref,
 } from '../../config/nosotros-typography.js';
-import { macrosPresentIn, resolveMacroId } from '../../config/menu-macros.js';
+import { macrosPresentIn } from '../../config/menu-macros.js';
 import { platoFillUrl, cloudinaryTrimUrl } from '../../lib/plato-media-url.js';
 import { resolveMediaUrl } from '../../lib/cloudinary.js';
 import {
@@ -69,8 +67,6 @@ import {
   normalizeGadgetServiciosEstilo,
   MENU_LAYOUT_OPTIONS,
   normalizeMenuLayout,
-  menuLayoutToNavegacion,
-  menuNavegacionToLayout,
 } from '../../lib/secciones-ui.js';
 import { hasOperationalGadgets } from '../../lib/gadgets.js';
 import { normalizeUbicacionGridEstilo } from '../../lib/ubicacion-theme-data.js';
@@ -79,18 +75,12 @@ import {
   normalizeTypographyComboId,
   DEFAULT_TYPOGRAPHY_COMBO,
 } from '../../config/typography-combos.js';
-import {
-  resolveMenuFont,
-  MENU_FONT_GROUPS,
-  MENU_GOOGLE_FONT_OPTIONS,
-  MENU_FONTS_PREVIEW_HREF,
-} from '../../config/menu-fonts.js';
+import { resolveMenuFont } from '../../config/menu-fonts.js';
 import {
   getUserAdminRole,
   getAssignedRestauranteId,
   ADMIN_ROLE_SUPER,
 } from '../../config/superadmin.js';
-import { resolveHubCoverUrl, resolveHubLogoBg } from '../../lib/hub-media.js';
 import {
   googleMapsEmbedSrc,
   mapsOpenHref,
@@ -162,27 +152,15 @@ if (isSuperAdmin && restId) {
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
 const publicWebAppUrl = publicSlug ? `https://xemilla.app/${publicSlug}` : '';
 const categoriasJson = JSON.stringify(categorias);
-const opsTelefono = String(
-  restaurante?.whatsapp_url || restaurante?.whatsapp_num || '',
-).trim();
 const opsHorario = String(restaurante?.horarios || '').trim();
 const horarioSemana = parseHorarioSemana(opsHorario);
 const horarioHoy = previewHorarioHoy(horarioSemana);
-const hubCoverUrl = resolveHubCoverUrl(restaurante || {});
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
 const hubLogoTrimUrl = cloudinaryTrimUrl(hubLogoUrl);
 const footLogoUrl = cloudinaryTrimUrl(resolveMediaUrl(hubLogoUrl, 'logo') || hubLogoUrl);
 const xemillaWordmark =
   'https://res.cloudinary.com/wdmzaemi/image/upload/v1789022797/Photoroom_20260810_004814.png';
-const hubLogoBg = resolveHubLogoBg(restaurante || {});
 const hubNombre = String(restaurante?.nombre_comercial || nombre || '').trim();
-const brandInitials = hubNombre
-  .split(/\s+/)
-  .filter(Boolean)
-  .slice(0, 2)
-  .map((w) => w.charAt(0))
-  .join('')
-  .toUpperCase() || 'R';
 const menuCategoryNames = [
   ...new Set(
     [
@@ -368,9 +346,6 @@ const opsMapsEmbed = googleMapsEmbedSrc(opsMaps);
 const opsMapsOpen = mapsOpenHref(opsMaps);
 const opsDireccion = String(restaurante?.direccion || '').trim();
 const opsPopupBanner = parsePopupBanner(restaurante?.popup_banner);
-const opsWifiSsid = String(
-  restaurante?.gadget_wifi_ssid || configWifi?.ssid || '',
-).trim();
 
 const fondoHome = (() => {
   const bgType = String(restaurante?.home_bg_type || '').trim();
