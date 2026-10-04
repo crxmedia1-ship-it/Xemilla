@@ -28,3 +28,6 @@ pnpm-debug.log*
 
 # local MCP config (contains credentials)
 .cursor/mcp.json
+
+# database backups (contain client data)
+backups/
