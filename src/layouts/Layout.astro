@@ -1,8 +1,6 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import '../styles/global.css';
-import '../styles/admin-themes.css';
-import ImageCropHost from '../components/admin/ImageCropHost.astro';
 
 interface Props {
   title: string;
@@ -204,6 +202,5 @@ const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chrome
     <div class="relative z-10 min-h-dvh w-full min-w-full max-w-none pointer-events-auto">
       <slot />
     </div>
-    {adminPanel ? <ImageCropHost /> : null}
   </body>
 </html>

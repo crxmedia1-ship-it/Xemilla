@@ -2,6 +2,8 @@
 export const prerender = false;
 
 import Layout from '../../layouts/Layout.astro';
+import '../../styles/admin-themes.css';
+import ImageCropHost from '../../components/admin/ImageCropHost.astro';
 import AdminXemillaMark from '../../components/admin/AdminXemillaMark.astro';
 import AdminMetricsPanel from '../../components/admin/AdminMetricsPanel.astro';
 import PerfilLocalCard from '../../components/admin/PerfilLocalCard.astro';
@@ -4504,6 +4506,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   </div>
     )
   }
+  <ImageCropHost />
 </Layout>
 
 <style>
