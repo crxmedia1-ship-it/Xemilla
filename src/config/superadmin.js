@@ -1,11 +1,10 @@
 /**
  * Correo maestro del dueño del SaaS Xemilla (Carlos / CRX).
- * Preferí SUPERADMIN_EMAIL en `.env` (solo servidor).
+ * Definilo en SUPERADMIN_EMAIL (`.env` / Vercel, solo servidor).
+ * Debe coincidir con el email de `public.is_superadmin()` en Supabase.
  */
 export const SUPERADMIN_EMAIL = String(
-  import.meta.env.SUPERADMIN_EMAIL ||
-    import.meta.env.PUBLIC_SUPERADMIN_EMAIL ||
-    'carlos@crx.com',
+  import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || '',
 )
   .trim()
   .toLowerCase();
@@ -17,32 +16,31 @@ export const ADMIN_ROLE_OPERATIVO = 'admin_operativo';
 export const ADMIN_ROLE_MESONERO = 'mesonero';
 
 /**
- * Lee `role` desde app_metadata (preferido) o user_metadata.
- * @param {{ app_metadata?: Record<string, unknown>, user_metadata?: Record<string, unknown> } | null | undefined} user
+ * Lee `role` solo desde app_metadata.
+ * `user_metadata` lo puede editar el propio usuario con `auth.updateUser`,
+ * así que nunca debe decidir permisos.
+ * @param {{ app_metadata?: Record<string, unknown> } | null | undefined} user
  * @returns {string}
  */
 function readMetaRole(user) {
-  const app = user?.app_metadata?.role;
-  const um = user?.user_metadata?.role;
-  const raw = app ?? um ?? '';
-  return String(raw).trim().toLowerCase();
+  return String(user?.app_metadata?.role ?? '').trim().toLowerCase();
 }
 
 /**
- * SuperAdmin = email allowlist (dueño CRX) OR metadata `role === 'superadmin'`.
+ * SuperAdmin = email allowlist (dueño CRX) OR app_metadata `role === 'superadmin'`.
  * Admin Operativo (`role: 'admin_operativo'`) is strictly false unless allowlisted.
  *
- * @param {{ email?: string | null, app_metadata?: Record<string, unknown>, user_metadata?: Record<string, unknown> } | null | undefined} user
+ * @param {{ email?: string | null, app_metadata?: Record<string, unknown> } | null | undefined} user
  */
 export function isSuperAdminUser(user) {
   if (!user) return false;
   const email = user?.email?.trim().toLowerCase();
-  if (email && email === SUPERADMIN_EMAIL) return true;
+  if (email && SUPERADMIN_EMAIL && email === SUPERADMIN_EMAIL) return true;
   return readMetaRole(user) === ADMIN_ROLE_SUPER;
 }
 
 /**
- * Staff de mesa: `role === 'mesonero' | 'staff'` en metadata (nunca SuperAdmin).
+ * Staff de mesa: `role === 'mesonero' | 'staff'` en app_metadata (nunca SuperAdmin).
  */
 export function isMesoneroUser(user) {
   if (!user || isSuperAdminUser(user)) return false;
@@ -52,9 +50,9 @@ export function isMesoneroUser(user) {
 
 /**
  * Rol efectivo del usuario autenticado.
- * Fuente de verdad: `isSuperAdminUser` (allowlist + role metadata).
+ * Fuente de verdad: `isSuperAdminUser` (allowlist + role en app_metadata).
  *
- * @param {{ email?: string | null, app_metadata?: Record<string, unknown>, user_metadata?: Record<string, unknown> } | null | undefined} user
+ * @param {{ email?: string | null, app_metadata?: Record<string, unknown> } | null | undefined} user
  * @returns {AdminRole}
  */
 export function getUserAdminRole(user) {
@@ -65,21 +63,15 @@ export function getUserAdminRole(user) {
 }
 
 /**
- * Restaurante asignado al Admin Operativo (metadata).
- * Preferencia: app_metadata → user_metadata. Acepta `restaurante_id` o `restauranteId`.
- * No usa `??` a ciegas: un string vacío en app_metadata no debe tapar user_metadata.
+ * Restaurante asignado al Admin Operativo (solo app_metadata).
+ * Acepta `restaurante_id` o `restauranteId`.
  *
- * @param {{ app_metadata?: Record<string, unknown>, user_metadata?: Record<string, unknown> } | null | undefined} user
+ * @param {{ app_metadata?: Record<string, unknown> } | null | undefined} user
  * @returns {string | null}
  */
 export function getAssignedRestauranteId(user) {
   if (!user) return null;
-  const candidates = [
-    user.app_metadata?.restaurante_id,
-    user.app_metadata?.restauranteId,
-    user.user_metadata?.restaurante_id,
-    user.user_metadata?.restauranteId,
-  ];
+  const candidates = [user.app_metadata?.restaurante_id, user.app_metadata?.restauranteId];
   for (const raw of candidates) {
     const id = String(raw ?? '').trim();
     if (id) return id;
@@ -91,7 +83,7 @@ export function getAssignedRestauranteId(user) {
  * Destino post-login según rol.
  * Operativo: incluye `?restaurante=` del asignado (coherencia URL; SSR fuerza metadata).
  *
- * @param {{ email?: string | null, app_metadata?: Record<string, unknown>, user_metadata?: Record<string, unknown> } | null | undefined} user
+ * @param {{ email?: string | null, app_metadata?: Record<string, unknown> } | null | undefined} user
  */
 export function getAdminPostLoginPath(user) {
   if (getUserAdminRole(user) === ADMIN_ROLE_SUPER) {

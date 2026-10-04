@@ -133,14 +133,6 @@ export function resolveSectionFondo(secciones, key, legacy = {}) {
       }
     } else if (tipo === 'image' && looksVideoUrl(valor)) {
       tipo = 'video';
-    } else if (
-      (legacyTipo === 'image' || legacyTipo === 'carrusel') &&
-      legacyValor &&
-      tipo === 'color' &&
-      !valor
-    ) {
-      tipo = legacyTipo;
-      valor = legacyValor;
     }
   }
 
@@ -806,15 +798,20 @@ export function normalizeEfectoEntrada(value) {
 
 /**
  * CSS avanzado del restaurante (alias canónico de custom_css).
- * Bloquea cierre de style/script; no valida selectores.
+ * Se inyecta dentro de <style>: `<` nunca es necesario en CSS y permitiría cerrar la etiqueta.
+ * También bloquea carga de recursos externos (@import) y vectores legacy de ejecución.
+ * No valida selectores.
  * @param {unknown} value
  * @returns {string}
  */
 export function sanitizeCssAvanzado(value) {
   if (typeof value !== 'string') return '';
   return value
-    .replace(/<\/style/gi, '/* blocked */')
-    .replace(/<script/gi, '/* blocked */')
+    .replace(/</g, '')
+    .replace(/@import\b[^;]*;?/gi, '/* blocked */')
+    .replace(/javascript\s*:/gi, '/* blocked */')
+    .replace(/expression\s*\(/gi, '/* blocked */(')
+    .replace(/-moz-binding|behavior\s*:/gi, '/* blocked */')
     .trim();
 }
 

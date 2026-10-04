@@ -16,7 +16,7 @@
 | Rol                 | Cómo se determina                                                                                                       | Superficie                                                                                                                         | Responsabilidad                                                                                                                                                                                                                                        |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SuperAdmin**      | `isSuperAdminUser` / `getUserAdminRole`: email allowlist (`SUPERADMIN_EMAIL`) **o** `role === 'superadmin'` en metadata | Hub `/admin/super/`* → gestiona locales; Identidad en `/admin/dashboard`                                                           | Alta de restaurantes, métricas de red, motor de diseño, **crear credenciales operativas**                                                                                                                                                              |
-| **Admin Operativo** | `app_metadata` / `user_metadata`: `role: 'admin_operativo'` + `restaurante_id` → `isSuperAdmin === false`               | `/admin/dashboard` **Menú** + **Métricas** + **Operación & Anuncios** (SSR oculta Identidad / + Nuevo Restaurante / Guardar marca) | CRUD platos; ops (horario/contacto/mapa/flyer) **auto-save** → `POST /api/update-operativo-contacto` (`whatsapp_url` + `horarios` + `instagram_url` + `redes_sociales` + `direccion` + `coordenadas_maps` + `popup_banner`); query `?restaurante=` ajeno se ignora |
+| **Admin Operativo** | Solo `app_metadata` (nunca `user_metadata`, editable por el usuario): `role: 'admin_operativo'` + `restaurante_id` → `isSuperAdmin === false`               | `/admin/dashboard` **Menú** + **Métricas** + **Operación & Anuncios** (SSR oculta Identidad / + Nuevo Restaurante / Guardar marca) | CRUD platos; ops (horario/contacto/mapa/flyer) **auto-save** → `POST /api/update-operativo-contacto` (`whatsapp_url` + `horarios` + `instagram_url` + `redes_sociales` + `direccion` + `coordenadas_maps` + `popup_banner`); query `?restaurante=` ajeno se ignora |
 | **Cliente final**   | —                                                                                                                       | `RestaurantApp.astro` vía `[slug].astro`                                                                                           | Home temático + paneles Menú / Nosotros / Ubicación + gadgets + **flyer de bienvenida** (`WelcomePopup`)                                                                                                                                               |
 
 
@@ -48,7 +48,8 @@
 | Tipografías                        | `src/config/typography-combos.js`                                                                    |
 | Layout + VT                        | `src/layouts/Layout.astro` (`ClientRouter`)                                                          |
 | Temas admin CSS                    | `src/styles/admin-themes.css` · key `xemilla-admin-theme`                                            |
-| Schema                             | `supabase_schema.sql`                                                                                |
+| Schema                             | `supabase/schema.sql` · migraciones `supabase/migrations/` · scripts sueltos `supabase/scripts/`     |
+| JS cliente de páginas grandes      | `src/scripts/{admin-dashboard,superadmin-dashboard}.js` · `src/scripts/{menu-panel,restaurant-app}.ts` |
 
 
 ---
@@ -76,7 +77,9 @@ Normalizadas en `layout-themes.js` → enrutadas en `RestaurantApp.astro` (try/c
 
 > **Escalas only (2026-07-27):** Admin Identidad ya **no** expone controles X/Y. Solo sliders de tamaño (`logo_size`, `titulo_size`, `eslogan_size`, `menu_size`) en card **Escalas de Tipografía y Logo**. WebApp pública usa flex/grid (ignora offsets legacy). Backend puede normalizar offsets ausentes a 0; keys viejas en DB no se borran.
 
-> **Nota:** `DEFAULT_HOME_THEME` en código = `'bento'`; schema / Admin default = `'editorial'`. Unificar está en backlog.
+> **Nota:** `DEFAULT_HOME_THEME` = `'editorial'` en código, schema y Admin.
+
+> **Caché pública (2026-10-04):** el middleware sirve las páginas públicas con `Cache-Control: public, max-age=0, must-revalidate` y `Vercel-CDN-Cache-Control: s-maxage=10, stale-while-revalidate=60`. Los cambios del Admin aparecen en ~10 s; 404/500 nunca se cachean. Las rutas que fijan su propio `Cache-Control` (p. ej. el manifest) lo conservan.
 
 
 
@@ -435,7 +438,7 @@ Whitelist aislada de Identidad. Parches tipicos:
 
 
 
-### Schema (`supabase_schema.sql`) — notas
+### Schema (`supabase/schema.sql`) — notas
 
 
 | Columna                 | Notas                                                                              |
@@ -490,7 +493,8 @@ Whitelist aislada de Identidad. Parches tipicos:
 ### Pendiente
 
 - [ ] Vista expandida / transición al abrir secciones del Menú desde Home  
-- [ ] Unificar `DEFAULT_HOME_THEME` (`bento` en `layout-themes.js` vs default Admin/schema `editorial`)  
+- [ ] Reducir errores de `npm run check` (~750, casi todos JSDoc en dashboards) y avisos de `npm run lint`  
+- [ ] Dividir el markup/CSS de `admin/dashboard.astro` en componentes por sección  
 - [ ] Limpiar JS residual del avatar/`[data-admin-profile]` (markup ya removido)  
 - [ ] Tests de humo: Admin save → `ui_estilo.home` → render público (3 nav styles)  
 - [ ] Tests de humo: ops save → `popup_banner` / horarios / mapas → flyer público + vencimiento `expires_at`  

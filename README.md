@@ -1,43 +1,62 @@
-# Astro Starter Kit: Minimal
+# Xemilla
+
+SaaS multi-tenant de CRX para restaurantes: cada local tiene una WebApp pública por slug (`/<slug>`: menú digital, nosotros, ubicación, gadgets) y un panel de administración (`/admin`).
+
+Estado detallado, roles y decisiones de diseño: [`ESTADO_ACTUAL.md`](./ESTADO_ACTUAL.md).
+
+## Stack
+
+Astro 7 (SSR) · Tailwind CSS 4 · Supabase (Postgres + Auth) · Cloudinary (media) · Vercel.
+
+## Puesta en marcha
+
+Requiere Node `>=22.12.0`.
 
 ```sh
-npm create astro@latest -- --template minimal
+npm install
+npm run dev        # o: npx astro dev --background
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+### Variables de entorno (`.env`, nunca en git)
 
-## 🚀 Project Structure
+| Variable                       | Uso                                                        |
+| :----------------------------- | :--------------------------------------------------------- |
+| `PUBLIC_SUPABASE_URL`          | URL del proyecto Supabase                                  |
+| `PUBLIC_SUPABASE_ANON_KEY`     | Clave pública de Supabase                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Solo servidor; operaciones de SuperAdmin                   |
+| `SUPERADMIN_EMAIL`             | Correo del SuperAdmin (igual que en `public.is_superadmin()`) |
+| `PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloud de Cloudinary                                        |
+| `CLOUDINARY_API_KEY`           | Solo servidor; subidas                                     |
+| `CLOUDINARY_API_SECRET`        | Solo servidor; subidas                                     |
 
-Inside of your Astro project, you'll see the following folders and files:
+Las mismas variables deben estar configuradas en Vercel.
+
+## Comandos
+
+| Comando           | Acción                                          |
+| :---------------- | :---------------------------------------------- |
+| `npm run dev`     | Servidor local en `localhost:4321`              |
+| `npm run build`   | Build de producción                             |
+| `npm run preview` | Previsualiza el build                           |
+| `npm run check`   | Verificación de tipos (`astro check`)           |
+| `npm run lint`    | ESLint                                          |
+
+## Estructura
 
 ```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+src/
+  pages/            rutas: /[slug], /admin/*, /api/*
+  components/       app pública, temas (home/nosotros/ubicación), admin, gadgets
+  scripts/          JS de cliente de las páginas grandes (dashboards, menú, app)
+  lib/ config/      lógica compartida, Supabase, Cloudinary, temas
+  middleware.js     sesión del panel, guardas de SuperAdmin y caché pública
+supabase/
+  schema.sql        esquema base + RLS
+  migrations/       migraciones aplicadas en el proyecto remoto
+  scripts/          scripts SQL puntuales
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Roles y seguridad
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- El rol (`superadmin`, `admin_operativo`) y el `restaurante_id` se leen **solo de `app_metadata`**, que únicamente el servidor (service role) puede modificar. Nunca de `user_metadata`.
+- Las credenciales se leen solo de variables de entorno; no hay valores de respaldo en el código.

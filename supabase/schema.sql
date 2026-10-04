@@ -416,6 +416,12 @@ CREATE TRIGGER trg_platos_updated_at
 -- Row Level Security (RLS)
 -- - Lectura pública: menú y ficha del restaurante (experiencia /[slug]).
 -- - Escritura: solo el propietario autenticado (auth.uid() = user_id).
+--
+-- ⚠️ HISTÓRICO: las políticas vigentes en producción son las de
+--    supabase/migrations/20261004070106_enable_rls_core_tables.sql y
+--    20261004070126_move_rls_helpers_to_private_schema.sql
+--    (helpers private.is_superadmin / private.can_manage_restaurante).
+--    No apliques esta sección sobre una base ya migrada.
 -- =============================================================================
 
 ALTER TABLE public.restaurantes ENABLE ROW LEVEL SECURITY;

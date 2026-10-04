@@ -3,6 +3,14 @@ import { isSuperAdminUser } from './config/superadmin.js';
 import { createSupabaseServerClient } from './lib/supabase/server.js';
 
 /**
+ * Menús públicos: el navegador siempre revalida; el CDN de Vercel sirve una copia
+ * de hasta 10 s y la renueva en segundo plano, así los cambios del Admin
+ * aparecen en segundos sin consultar Supabase en cada visita.
+ * Errores (404 de slug nuevo, 500) nunca se cachean.
+ */
+const PUBLIC_CDN_CACHE = 's-maxage=10, stale-while-revalidate=60';
+
+/**
  * Solo refresca sesión en rutas on-demand del panel.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -12,12 +20,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (!needsAuth) {
     const response = await next();
+    if (response.headers.has('Cache-Control')) return response;
+    const cacheable = response.status === 200 && !response.headers.has('Set-Cookie');
+    response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
     response.headers.set(
-      'Cache-Control',
-      'private, no-store, no-cache, must-revalidate, max-age=0',
+      'Vercel-CDN-Cache-Control',
+      cacheable ? PUBLIC_CDN_CACHE : 'no-store',
     );
-    response.headers.set('CDN-Cache-Control', 'no-store');
-    response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
     return response;
   }
 

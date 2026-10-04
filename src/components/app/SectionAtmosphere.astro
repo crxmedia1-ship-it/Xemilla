@@ -139,7 +139,7 @@ const fallbackTipo = isImage || singleCarruselAsImage
       : 'color';
 const fallbackValor = singleCarruselAsImage ? carruselUrls[0] : value;
 
-const catMapJson = JSON.stringify(categoryBackgrounds || {});
+const catMapJson = JSON.stringify(categoryBackgrounds || {}).replace(/</g, '\\u003c');
 
 /** Home: fixed detrás del theme (z-0, no z-[-1]) · Overlay panels: absolute */
 const rootPositionClass = fixed

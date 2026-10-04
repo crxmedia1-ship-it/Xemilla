@@ -1,0 +1,2 @@
+ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS qr_artistico_url TEXT;
+ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS num_mesas INTEGER DEFAULT 10;

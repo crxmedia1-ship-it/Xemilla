@@ -105,7 +105,7 @@ export function sanitizeMenuFontFamily(value) {
     .trim()
     .slice(0, 60);
   if (!cleaned || /url\(|@import|https?:/i.test(cleaned)) return '';
-  if (!/^[A-Za-z0-9][A-Za-z0-9 \-]*$/.test(cleaned)) return '';
+  if (!/^[A-Za-z0-9][A-Za-z0-9 -]*$/.test(cleaned)) return '';
   return cleaned;
 }
 

@@ -3,12 +3,50 @@ import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 
 export const prerender = false;
 
+const THROTTLE_MS = 30_000;
+const THROTTLE_MAX_KEYS = 5_000;
+/**
+ * Best-effort por instancia serverless: una vista por IP + plato cada 30 s.
+ * @type {Map<string, number>}
+ */
+const recentViews = new Map();
+
+/**
+ * @param {string} key
+ * @returns {boolean} true si la vista debe ignorarse
+ */
+function isThrottled(key) {
+  const now = Date.now();
+  const last = recentViews.get(key);
+  if (last && now - last < THROTTLE_MS) return true;
+  if (recentViews.size >= THROTTLE_MAX_KEYS) {
+    for (const [k, t] of recentViews) {
+      if (now - t >= THROTTLE_MS) recentViews.delete(k);
+    }
+    if (recentViews.size >= THROTTLE_MAX_KEYS) recentViews.clear();
+  }
+  recentViews.set(key, now);
+  return false;
+}
+
+/**
+ * @param {{ clientAddress: string }} ctx
+ */
+function clientIp(ctx) {
+  try {
+    return ctx.clientAddress || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /**
  * Registra una visualización de plato.
  * Live: una fila por evento (created_at). Legacy: contador `vistas`.
- * POST { restaurante_id, plato_id, plato_nombre? }
+ * POST { restaurante_id, plato_id }
  */
-export async function POST({ request, cookies }) {
+export async function POST(ctx) {
+  const { request, cookies } = ctx;
   /** @type {Record<string, unknown>} */
   let raw = {};
   try {
@@ -19,9 +57,6 @@ export async function POST({ request, cookies }) {
 
   const restauranteId = String(raw.restaurante_id || '').trim();
   const platoId = Number(raw.plato_id);
-  const platoNombre = String(raw.plato_nombre || raw.nombre || '')
-    .trim()
-    .slice(0, 160);
 
   if (!restauranteId) {
     return json({ ok: false, error: 'restaurante_id requerido' }, 400);
@@ -30,9 +65,24 @@ export async function POST({ request, cookies }) {
     return json({ ok: false, error: 'plato_id bigint inválido' }, 400);
   }
 
+  if (isThrottled(`${clientIp(ctx)}:${restauranteId}:${platoId}`)) {
+    return json({ ok: true, throttled: true });
+  }
+
   try {
     const service = createSupabaseServiceClient();
     const client = service ?? createSupabaseServerClient({ request, cookies });
+
+    const { data: plato } = await client
+      .from('platos')
+      .select('id, nombre')
+      .eq('id', platoId)
+      .eq('restaurante_id', restauranteId)
+      .maybeSingle();
+    if (!plato) {
+      return json({ ok: false, error: 'Plato no encontrado' }, 404);
+    }
+    const platoNombre = String(plato.nombre || '').trim().slice(0, 160);
 
     const probe = await client
       .from('plato_vistas')

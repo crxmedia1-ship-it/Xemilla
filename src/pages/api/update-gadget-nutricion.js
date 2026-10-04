@@ -49,7 +49,7 @@ export async function POST({ request, cookies }) {
       return json(
         {
           error:
-            'Columna gadget_nutricion no existe. Ejecutá supabase_nutricion.sql en Supabase.',
+            'Columna gadget_nutricion no existe. Ejecutá supabase/scripts/nutricion.sql en Supabase.',
         },
         400,
       );

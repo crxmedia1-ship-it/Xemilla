@@ -1,8 +1,11 @@
 import { v2 as cloudinary } from 'cloudinary';
+import { getAssignedRestauranteId, isSuperAdminUser } from '../../config/superadmin.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import {
   optimizedPublicUrl,
   normalizeCloudinaryAssetType,
+  resolveCloudinaryCredentials,
+  sanitizeMediaFolderSegment,
 } from '../../lib/cloudinary.js';
 
 export const prerender = false;
@@ -14,48 +17,81 @@ const ALLOWED = new Set([
   'image/webp',
   'image/gif',
   'image/avif',
+  'image/heic',
+  'image/heif',
   'video/mp4',
+  'video/x-m4v',
   'video/webm',
   'video/quicktime',
 ]);
 
 /**
- * @param {unknown} value
- */
-function envStr(value) {
-  return String(value ?? '')
-    .trim()
-    .replace(/^["']|["']$/g, '');
-}
-
-/**
- * Credenciales xemilla-app / wdmzaemi (solo servidor).
- */
-function getServerCredentials() {
-  return {
-    cloud_name:
-      envStr(import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME) ||
-      envStr(process.env.PUBLIC_CLOUDINARY_CLOUD_NAME) ||
-      'wdmzaemi',
-    api_key:
-      envStr(import.meta.env.CLOUDINARY_API_KEY) ||
-      envStr(process.env.CLOUDINARY_API_KEY) ||
-      '898619513596338',
-    api_secret:
-      envStr(import.meta.env.CLOUDINARY_API_SECRET) ||
-      envStr(process.env.CLOUDINARY_API_SECRET) ||
-      'wwbvurr5oDt0BantZHTn4O3IJJQ',
-  };
-}
-
-/**
- * Configura el SDK y limpia CLOUDINARY_URL residual.
+ * Configura el SDK con las credenciales de entorno y limpia CLOUDINARY_URL residual.
+ * @returns {{ cloud_name: string, api_key: string, api_secret: string } | null}
  */
 function configureCloudinaryServer() {
-  const { cloud_name, api_key, api_secret } = getServerCredentials();
+  const creds = resolveCloudinaryCredentials();
+  if (!creds) return null;
   delete process.env.CLOUDINARY_URL;
-  cloudinary.config({ cloud_name, api_key, api_secret, secure: true });
-  return { cloud_name, api_key, api_secret };
+  cloudinary.config({ ...creds, secure: true });
+  return creds;
+}
+
+/**
+ * Resuelve la carpeta destino respetando la propiedad del restaurante.
+ * SuperAdmin puede subir a cualquier slug (incluido uno aún no creado).
+ * Operativo solo a su restaurante asignado o del que es dueño (`user_id`).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {import('@supabase/supabase-js').User} user
+ * @param {string} requestedSlug
+ * @param {string} requestedId
+ * @returns {Promise<{ slug: string } | { error: string, status: number }>}
+ */
+async function resolveUploadSlug(supabase, user, requestedSlug, requestedId) {
+  /** @param {{ column: 'id' | 'slug', value: string }} q */
+  const findRestaurante = async ({ column, value }) => {
+    const { data } = await supabase
+      .from('restaurantes')
+      .select('id, slug, user_id')
+      .eq(column, value)
+      .maybeSingle();
+    return data;
+  };
+
+  if (isSuperAdminUser(user)) {
+    if (requestedSlug) return { slug: requestedSlug };
+    if (requestedId) {
+      const row = await findRestaurante({ column: 'id', value: requestedId });
+      if (row?.slug) return { slug: row.slug };
+    }
+    return { slug: 'general' };
+  }
+
+  const assigned = getAssignedRestauranteId(user);
+  const isAssigned = (row) =>
+    Boolean(row) &&
+    ((assigned && (String(row.id) === assigned || row.slug === assigned)) ||
+      row.user_id === user.id);
+
+  if (requestedId || requestedSlug) {
+    const row = requestedId
+      ? await findRestaurante({ column: 'id', value: requestedId })
+      : await findRestaurante({ column: 'slug', value: requestedSlug });
+    if (!isAssigned(row)) {
+      return { error: 'Sin permiso para este restaurante', status: 403 };
+    }
+    return { slug: row.slug };
+  }
+
+  if (assigned) {
+    const row =
+      (await findRestaurante({ column: 'id', value: assigned })) ||
+      (await findRestaurante({ column: 'slug', value: assigned }));
+    if (row?.slug) return { slug: row.slug };
+  }
+
+  return { error: 'No hay un restaurante asignado a esta cuenta', status: 403 };
 }
 
 /**
@@ -74,6 +110,12 @@ export async function POST({ request, cookies }) {
   }
 
   const creds = configureCloudinaryServer();
+  if (!creds) {
+    console.error(
+      '[api/upload] Faltan CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET / PUBLIC_CLOUDINARY_CLOUD_NAME',
+    );
+    return json({ error: 'Cloudinary no está configurado en el servidor' }, 503);
+  }
 
   let form;
   try {
@@ -96,26 +138,17 @@ export async function POST({ request, cookies }) {
     return json({ error: 'El archivo no puede superar 25 MB' }, 400);
   }
 
-  if (
-    file.type &&
-    !ALLOWED.has(file.type) &&
-    !file.type.startsWith('image/') &&
-    !file.type.startsWith('video/')
-  ) {
-    return json({ error: `Tipo no permitido: ${file.type}` }, 400);
+  if (!ALLOWED.has(file.type)) {
+    return json({ error: `Tipo no permitido: ${file.type || 'desconocido'}` }, 400);
   }
 
-  let slug = String(form.get('restaurante_slug') || form.get('slug') || '').trim();
-  const restauranteId = String(form.get('restaurante_id') || '').trim();
-  if (!slug && restauranteId) {
-    const { data: restRow } = await supabase
-      .from('restaurantes')
-      .select('slug')
-      .eq('id', restauranteId)
-      .maybeSingle();
-    slug = String(restRow?.slug || '').trim();
+  const requestedSlug = String(form.get('restaurante_slug') || form.get('slug') || '').trim();
+  const requestedId = String(form.get('restaurante_id') || '').trim();
+  const target = await resolveUploadSlug(supabase, user, requestedSlug, requestedId);
+  if ('error' in target) {
+    return json({ error: target.error }, target.status);
   }
-  if (!slug) slug = 'black-sushi';
+  const slug = sanitizeMediaFolderSegment(target.slug, 'general');
 
   const rawAssetType = String(form.get('asset_type') || '').trim();
   const assetType = normalizeCloudinaryAssetType(rawAssetType || 'dishes');
@@ -167,7 +200,6 @@ export async function POST({ request, cookies }) {
     console.error('❌ ERROR CRÍTICO CLOUDINARY:', {
       message,
       cloud_name: creds.cloud_name,
-      api_key: creds.api_key,
     });
     return json({ error: message }, 500);
   }

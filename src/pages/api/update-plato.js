@@ -175,7 +175,7 @@ export async function POST({ request, cookies }) {
     if (Object.keys(legacy).length === 0) {
       return json({
         error:
-          'Columnas de nutrición no existen aún en Supabase. Ejecutá supabase_nutricion.sql.',
+          'Columnas de nutrición no existen aún en Supabase. Ejecutá supabase/scripts/nutricion.sql.',
       }, 400);
     }
     const retry = await writeClient

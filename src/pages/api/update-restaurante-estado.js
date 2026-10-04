@@ -49,7 +49,7 @@ export async function POST({ request, cookies }) {
       return json(
         {
           error:
-            'Columna activo no existe aún. Ejecutá supabase_restaurante_activo.sql en Supabase.',
+            'Columna activo no existe aún. Ejecutá supabase/scripts/restaurante_activo.sql en Supabase.',
         },
         400,
       );

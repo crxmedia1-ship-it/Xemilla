@@ -4,7 +4,7 @@ dist/
 .astro/
 
 # dependencies
-node_modules/
+node_modules
 node_modules.nosync/
 
 # logs
@@ -25,3 +25,6 @@ pnpm-debug.log*
 .idea/
 .vercel
 .env*
+
+# local MCP config (contains credentials)
+.cursor/mcp.json

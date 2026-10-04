@@ -1,8 +1,14 @@
-import { isSuperAdminUser, ADMIN_ROLE_OPERATIVO } from '../../config/superadmin.js';
+import {
+  isSuperAdminUser,
+  getAssignedRestauranteId,
+  ADMIN_ROLE_OPERATIVO,
+} from '../../config/superadmin.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { createSupabaseServiceClient } from '../../lib/supabase/service.js';
 
 export const prerender = false;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * SuperAdmin: crea (o reasigna) un Auth user como Admin Operativo
@@ -112,6 +118,27 @@ export async function POST({ request, cookies }) {
       );
     }
 
+    if (isSuperAdminUser(listed)) {
+      return json({ error: 'Ese email pertenece a un SuperAdmin y no se puede reasignar' }, 403);
+    }
+
+    const previousRestId = getAssignedRestauranteId(listed);
+    if (previousRestId && previousRestId !== canonicalRestId && raw.confirmar_reasignacion !== true) {
+      const { data: prevRow } = await service
+        .from('restaurantes')
+        .select('nombre_comercial, slug')
+        .eq(UUID_RE.test(previousRestId) ? 'id' : 'slug', previousRestId)
+        .maybeSingle();
+      const prevName = prevRow?.nombre_comercial || prevRow?.slug || previousRestId;
+      return json(
+        {
+          code: 'REASSIGN_REQUIRED',
+          error: `${email} ya administra «${prevName}». Si continuás, perderá el acceso a ese local, su contraseña cambiará y pasará a administrar «${restRow.nombre_comercial}».`,
+        },
+        409,
+      );
+    }
+
     const { data: updated, error: updErr } = await service.auth.admin.updateUserById(
       listed.id,
       {
@@ -145,6 +172,18 @@ export async function POST({ request, cookies }) {
 
   if (!operativoUser?.id) {
     return json({ error: 'Usuario Auth no disponible tras el alta' }, 500);
+  }
+
+  // RLS también da acceso por `user_id`: al reasignar, los locales anteriores vuelven al SuperAdmin.
+  if (reused) {
+    const { error: unlinkErr } = await service
+      .from('restaurantes')
+      .update({ user_id: user.id })
+      .eq('user_id', operativoUser.id)
+      .neq('id', canonicalRestId);
+    if (unlinkErr) {
+      console.error('[api/create-admin-user] unlink previous:', unlinkErr.message);
+    }
   }
 
   // Vincula dueño RLS (operativo escribe menú; SuperAdmin sigue vía service role)

@@ -13,6 +13,7 @@ import {
   parseNosotrosBloques,
   parseRedesSociales,
   parseUiEstilo,
+  sanitizeCssAvanzado,
   uiEstiloToCssVars,
 } from './secciones-ui.js';
 import { parseBoutiqueConfig } from './boutique.js';
@@ -75,19 +76,6 @@ function parseJsonConfig(value) {
     }
   }
   return {};
-}
-
-/**
- * Sanitiza CSS custom (bloquea cierre de style / scripts).
- * @param {unknown} value
- * @returns {string}
- */
-export function sanitizeCustomCss(value) {
-  if (typeof value !== 'string') return '';
-  return value
-    .replace(/<\/style/gi, '/* blocked */')
-    .replace(/<script/gi, '/* blocked */')
-    .trim();
 }
 
 /**
@@ -623,7 +611,7 @@ async function loadRestauranteBySlug(slug) {
   const uiEstilo = parseUiEstilo(row.ui_estilo);
   // Alias legacy: columna custom_css → ui_estilo.css_avanzado
   if (!uiEstilo.css_avanzado) {
-    const legacyCss = sanitizeCustomCss(row.custom_css);
+    const legacyCss = sanitizeCssAvanzado(row.custom_css);
     if (legacyCss) uiEstilo.css_avanzado = legacyCss;
   }
 
@@ -728,7 +716,7 @@ async function loadRestauranteBySlug(slug) {
     home_theme: homeThemeRaw,
     nosotros_theme: nosotrosThemeRaw,
     ubicacion_theme: ubicacionThemeRaw,
-    customCss: sanitizeCustomCss(row.custom_css),
+    customCss: sanitizeCssAvanzado(row.custom_css),
     seccionesFondo: {
       home: fondoHome,
       nosotros: fondoNosotros,

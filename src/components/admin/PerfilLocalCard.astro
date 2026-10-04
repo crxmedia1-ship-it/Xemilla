@@ -1,10 +1,9 @@
 ---
 import { DIAS_SEMANA } from '../../lib/horarios-semana.js';
 
-/**
- * Horario + mapa + redes (mismo bloque en Perfil y en Identidad → Horarios).
- * @typedef {{ url: string, on: boolean }} RedState
- */
+/** Horario + mapa + redes (mismo bloque en Perfil y en Identidad → Horarios). */
+type RedState = { url: string; on: boolean };
+
 interface Props {
   scope: string;
   mapsInputId: string;
