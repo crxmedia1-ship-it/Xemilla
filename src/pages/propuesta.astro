@@ -3,6 +3,8 @@ export const prerender = false;
 
 import PhoneSync from '../components/propuesta/PhoneSync.astro';
 import QrArt from '../components/propuesta/QrArt.astro';
+import { getPropuesta, isPropuestaId, touchPropuesta } from '../lib/propuestas.js';
+import { createSupabaseServiceClient } from '../lib/supabase/service.js';
 import Layout from '../layouts/Layout.astro';
 
 /** Número comercial de WhatsApp. Editar solo los dígitos, con código de país. */
@@ -57,12 +59,25 @@ function toSlug(name: string) {
 }
 
 const params = Astro.url.searchParams;
-const para = readText(params.get('para'), 'Tu Restaurante');
-const setup = readSetup(params.get('setup'));
-const logo = readLogo(params.get('logo'));
+const propuestaService = createSupabaseServiceClient();
+const propuestaGuardada =
+  propuestaService && isPropuestaId(params.get('p'))
+    ? await getPropuesta(propuestaService, String(params.get('p')))
+    : null;
+if (propuestaGuardada && propuestaService) {
+  await touchPropuesta(propuestaService, propuestaGuardada.id, 'vista');
+}
+const propuestaId = propuestaGuardada?.id ?? '';
+
+const para = readText(propuestaGuardada?.nombre ?? params.get('para'), 'Tu Restaurante');
+const setup = readSetup(propuestaGuardada?.setup ?? params.get('setup'));
+const logo = readLogo(propuestaGuardada?.logo_url ?? params.get('logo'));
 const initial = para.charAt(0).toUpperCase();
 const slug = toSlug(para);
-const domain = readDomain(params.get('dominio'), `${slug.replace(/-/g, '')}.com`);
+const domain = readDomain(
+  propuestaGuardada?.dominio ?? params.get('dominio'),
+  `${slug.replace(/-/g, '')}.com`,
+);
 const domainName = domain.split('.')[0] || domain;
 const domainTlds = ['.com', '.net', '.org', '.app', '.io', '.co'] as const;
 
@@ -175,7 +190,7 @@ const WORLDS = {
   estudio: { themeColor: '#f2f1ee', fade: 'from-[#f2f1ee]' },
 } as const;
 type World = keyof typeof WORLDS;
-const requestedWorld = params.get('mundo');
+const requestedWorld = propuestaGuardada?.mundo ?? params.get('mundo');
 const world: World = requestedWorld && requestedWorld in WORLDS ? (requestedWorld as World) : 'estudio';
 const palette = world === 'estudio' ? 'light' : 'dark';
 
@@ -259,7 +274,7 @@ const glass =
     }
   </div>
 
-  <main data-palette={palette} class="font-blacksushi relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-5 pt-12 text-zinc-200 sm:px-8 sm:pt-20 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+  <main data-palette={palette} data-propuesta-id={propuestaId} class="font-blacksushi relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-5 pt-12 text-zinc-200 sm:px-8 sm:pt-20 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
     <header class="mx-auto flex max-w-3xl flex-col items-center text-center">
       <p data-collide class="inline-flex items-center rounded-full border border-white/10 bg-zinc-900/40 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-zinc-400 shadow-2xl backdrop-blur-xl">
         Propuesta privada de exclusividad
@@ -567,6 +582,7 @@ const glass =
       href={waHref}
       target="_blank"
       rel="noopener noreferrer"
+      data-propuesta-event="whatsapp"
       class="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-zinc-100 px-3 text-sm font-medium text-zinc-950 transition active:scale-[0.98]"
     >
       WhatsApp
@@ -1044,6 +1060,26 @@ const glass =
     document.head.appendChild(s);
   };
 
+  const propuestaTrackId = document.querySelector('main')?.getAttribute('data-propuesta-id') || '';
+  const trackPropuesta = (tipo: string) => {
+    if (!propuestaTrackId || !tipo) return;
+    const body = JSON.stringify({ id: propuestaTrackId, tipo });
+    const blob = new Blob([body], { type: 'application/json' });
+    if (!navigator.sendBeacon?.('/api/propuesta-evento', blob)) {
+      void fetch('/api/propuesta-evento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      });
+    }
+  };
+  const dialogTipos: Record<string, string> = {
+    'ar-dialog': 'ar',
+    'nutri-dialog': 'nutri',
+    'qr-dialog': 'qr',
+  };
+
   for (const btn of document.querySelectorAll<HTMLElement>('[data-dialog-open]')) {
     const dialog = document.getElementById(btn.dataset.dialogOpen ?? '');
     if (!(dialog instanceof HTMLDialogElement)) continue;
@@ -1055,6 +1091,7 @@ const glass =
         if (!viewer.getAttribute('src')) viewer.setAttribute('src', viewer.dataset.src ?? '');
       }
       dialog.showModal();
+      trackPropuesta(dialogTipos[dialog.id] || '');
     });
     dialog.querySelector('[data-dialog-close]')?.addEventListener('click', () => dialog.close());
     dialog.addEventListener('click', (event) => {
@@ -1065,6 +1102,10 @@ const glass =
       if (!inside) dialog.close();
     });
   }
+
+  document.querySelector('[data-propuesta-event="whatsapp"]')?.addEventListener('click', () => {
+    trackPropuesta('whatsapp');
+  });
 
   for (const track of document.querySelectorAll<HTMLElement>('[data-carousel]')) {
     const nav = track.previousElementSibling;

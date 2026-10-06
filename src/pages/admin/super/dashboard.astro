@@ -12,6 +12,7 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
+import { listPropuestas } from '../../../lib/propuestas.js';
 import {
   resolveHubCoverUrl,
   resolveHubLogoBg,
@@ -100,6 +101,52 @@ const mesaPorId = new Map(
     )
     .map((r, i) => [String(r.id), String(i + 1).padStart(2, '0')]),
 );
+const propuestas = await listPropuestas(getSuperAdminWriteClient(gate.supabase, gate.user));
+const requestedTab = Astro.url.searchParams.get('tab');
+const superTab =
+  requestedTab === 'metricas' || requestedTab === 'propuestas' ? requestedTab : 'locales';
+
+/**
+ * @param {string | null | undefined} iso
+ */
+function formatPropuestaCuando(iso) {
+  if (!iso) return 'Todavía no la abrieron';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'Todavía no la abrieron';
+  return new Intl.DateTimeFormat('es-VE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+const propAbiertas = propuestas.filter((p) => Number(p.vistas) > 0);
+const propStats = {
+  total: propuestas.length,
+  aperturas: propuestas.reduce((sum, p) => sum + (Number(p.vistas) || 0), 0),
+  abiertas: propAbiertas.length,
+  tasaApertura: propuestas.length
+    ? Math.round((propAbiertas.length / propuestas.length) * 100)
+    : 0,
+  contacto: propuestas.filter((p) => Number(p.vio_whatsapp) > 0).length,
+};
+const propInteres = [
+  ['Realidad aumentada', 'vio_ar'],
+  ['Ficha nutricional', 'vio_nutri'],
+  ['QRs de mesa', 'vio_qr'],
+  ['WhatsApp', 'vio_whatsapp'],
+].map(([label, key]) => {
+  const vieron = propuestas.filter((p) => Number(p[key]) > 0).length;
+  return {
+    label,
+    vieron,
+    clics: propuestas.reduce((sum, p) => sum + (Number(p[key]) || 0), 0),
+    pct: propAbiertas.length ? Math.round((vieron / propAbiertas.length) * 100) : 0,
+  };
+});
+const propTop = [...propuestas]
+  .sort((a, b) => (Number(b.vistas) || 0) - (Number(a.vistas) || 0))
+  .slice(0, 5);
+const propTopMax = Math.max(1, ...propTop.map((p) => Number(p.vistas) || 0));
 const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
 
 /** Operativo access = Auth metadata restaurante_id (not truthy restaurantes.user_id — that is often SuperAdmin). */
@@ -289,6 +336,13 @@ function resolvePhone(r) {
   return String(r?.whatsapp_url || r?.whatsapp_num || '').trim();
 }
 
+/** @param {string} phone */
+function formatPhoneLabel(phone) {
+  if (!/^https?:\/\//i.test(phone)) return phone;
+  const digits = phone.replace(/\D/g, '');
+  return digits ? `+${digits}` : phone;
+}
+
 /**
  * @param {string} direccion
  * @param {string} coordenadas
@@ -419,7 +473,7 @@ function resolveMapsEmbed(direccion) {
           type="button"
           role="tab"
           data-super-tab="locales"
-          aria-selected="true"
+          aria-selected={superTab === 'locales' ? 'true' : 'false'}
           class="super-until-hero__link"
         >
           Locales
@@ -428,15 +482,24 @@ function resolveMapsEmbed(direccion) {
           type="button"
           role="tab"
           data-super-tab="metricas"
-          aria-selected="false"
+          aria-selected={superTab === 'metricas' ? 'true' : 'false'}
           class="super-until-hero__link"
         >
           Métricas
         </button>
+        <button
+          type="button"
+          role="tab"
+          data-super-tab="propuestas"
+          aria-selected={superTab === 'propuestas' ? 'true' : 'false'}
+          class="super-until-hero__link"
+        >
+          Propuestas
+        </button>
       </nav>
     </section>
 
-    <div data-super-panel="locales" class="admin-fade-in-up">
+    <div data-super-panel="locales" class="admin-fade-in-up" hidden={superTab !== 'locales'}>
       {
         restaurantes.length === 0 ? (
           <div class="glass-panel solid-obstacle mt-12 max-w-xl p-8 text-center">
@@ -740,46 +803,62 @@ function resolveMapsEmbed(direccion) {
                       <button type="button" class="hub-modal__close" data-close-info aria-label="Cerrar">×</button>
                     </div>
                     <p class="hub-modal__hint">{nombre || r.slug}</p>
-                    <div class="hub-modal__section">
-                      <span class="hub-modal__section-label">Contacto</span>
-                      {phone ? (
-                        <div>
-                          <p class="hub-modal__section-value">{phone}</p>
-                          {waHref ? (
-                            <a href={waHref} target="_blank" rel="noopener noreferrer" class="hub-modal__link">
-                              Abrir WhatsApp
-                            </a>
-                          ) : null}
+                    <div class="hub-info-grid">
+                      <section class="hub-info-card" data-empty={phone ? undefined : ''}>
+                        <div class="hub-info-card__head">
+                          <span class="hub-info-card__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                          </span>
+                          <span class="hub-modal__section-label">Contacto</span>
                         </div>
-                      ) : (
-                        <p class="hub-modal__section-value hub-modal__section-value--muted">Sin número cargado</p>
-                      )}
-                    </div>
-                    <div class="hub-modal__section">
-                      <span class="hub-modal__section-label">Ubicación</span>
-                      {direccion ? (
-                        <p class="hub-modal__section-value">{direccion}</p>
-                      ) : (
-                        <p class="hub-modal__section-value hub-modal__section-value--muted">Sin dirección cargada</p>
-                      )}
-                      {mapsHref ? (
-                        <a href={mapsHref} target="_blank" rel="noopener noreferrer" class="hub-modal__link">
-                          Abrir en Google Maps
-                        </a>
+                        {phone ? (
+                          <p class="hub-info-card__value">{formatPhoneLabel(phone)}</p>
+                        ) : (
+                          <p class="hub-info-card__value hub-modal__section-value--muted">Sin número cargado</p>
+                        )}
+                        {phone ? (
+                          <div class="hub-info-card__actions">
+                            {waHref ? (
+                              <a href={waHref} target="_blank" rel="noopener noreferrer" class="hub-info-btn hub-info-btn--primary">
+                                WhatsApp
+                              </a>
+                            ) : null}
+                            <a href={`tel:${formatPhoneLabel(phone).replace(/[^\d+]/g, '')}`} class="hub-info-btn">Llamar</a>
+                          </div>
+                        ) : null}
+                      </section>
+                      <section class="hub-info-card" data-empty={direccion ? undefined : ''}>
+                        <div class="hub-info-card__head">
+                          <span class="hub-info-card__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          </span>
+                          <span class="hub-modal__section-label">Ubicación</span>
+                        </div>
+                        {direccion ? (
+                          <p class="hub-info-card__value">{direccion}</p>
+                        ) : (
+                          <p class="hub-info-card__value hub-modal__section-value--muted">Sin dirección cargada</p>
+                        )}
+                        {mapsHref ? (
+                          <div class="hub-info-card__actions">
+                            <a href={mapsHref} target="_blank" rel="noopener noreferrer" class="hub-info-btn">
+                              Abrir en Maps
+                            </a>
+                          </div>
+                        ) : null}
+                      </section>
+                      {mapsEmbed ? (
+                        <div class="hub-info-card hub-info-card--map">
+                          <iframe
+                            class="hub-modal__map"
+                            src={mapsEmbed}
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            title={`Mapa de ${nombre || r.slug}`}
+                          ></iframe>
+                        </div>
                       ) : null}
                     </div>
-                    {mapsEmbed ? (
-                      <div class="hub-modal__section" style="padding:0.55rem;">
-                        <span class="hub-modal__section-label" style="padding:0.35rem 0.4rem 0;">Mapa</span>
-                        <iframe
-                          class="hub-modal__map"
-                          src={mapsEmbed}
-                          loading="lazy"
-                          referrerpolicy="no-referrer-when-downgrade"
-                          title={`Mapa de ${nombre || r.slug}`}
-                        ></iframe>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
 
@@ -832,7 +911,7 @@ function resolveMapsEmbed(direccion) {
     <div
       data-super-panel="metricas"
       class="super-net mt-8 w-full min-w-full space-y-8"
-      hidden
+      hidden={superTab !== 'metricas'}
       data-network-series={JSON.stringify(networkSeriesPayload)}
     >
       <header class="w-full flex flex-wrap items-end justify-between gap-4">
@@ -1238,6 +1317,253 @@ function resolveMapsEmbed(direccion) {
           </div>
         </article>
       </section>
+
+      <!-- D) Propuestas comerciales -->
+      <section class="w-full space-y-6 pt-2" aria-label="Métricas de propuestas">
+        <header class="flex flex-wrap items-end justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="text-xl font-light tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl">
+              Propuestas comerciales
+            </h3>
+            <p class="mt-1 text-sm text-zinc-500">Quién abrió el enlace de venta y qué miró</p>
+          </div>
+          <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Histórico</span>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+          <article class={kpiCardClass}>
+            <p class={kpiLabelClass}>Propuestas enviadas</p>
+            <p class={kpiValueClass}>{formatKpi(propStats.total)}</p>
+            <p class={kpiHintClass}>
+              <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
+              Enlaces creados
+            </p>
+          </article>
+          <article class={kpiCardClass}>
+            <p class={kpiLabelClass}>Aperturas</p>
+            <p class={kpiValueClass}>{formatKpi(propStats.aperturas)}</p>
+            <p class={kpiHintClass}>
+              <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
+              Veces que abrieron un enlace
+            </p>
+          </article>
+          <article class={kpiCardClass}>
+            <p class={kpiLabelClass}>Tasa de apertura</p>
+            <p class={kpiValueClass}>
+              {propStats.tasaApertura}<span class="text-2xl text-zinc-400 dark:text-zinc-500">%</span>
+            </p>
+            <p class={kpiHintClass}>
+              <span class="h-1 w-1 rounded-full bg-emerald-500/70" aria-hidden="true"></span>
+              {propStats.abiertas} de {propStats.total} abiertas
+            </p>
+          </article>
+          <article class={kpiCardClass}>
+            <p class={kpiLabelClass}>Pidieron contacto</p>
+            <p class={kpiValueClass}>{formatKpi(propStats.contacto)}</p>
+            <p class={kpiHintClass}>
+              <span class="h-1 w-1 rounded-full bg-emerald-500/70" aria-hidden="true"></span>
+              Tocaron WhatsApp
+            </p>
+          </article>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col">
+            <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
+              <span>Qué les interesó</span>
+              <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 shrink-0">
+                % de abiertas
+              </span>
+            </header>
+            {
+              propStats.abiertas === 0 ? (
+                <p class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
+                  Todavía nadie abrió una propuesta.
+                </p>
+              ) : (
+                <ul class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {propInteres.map((item) => (
+                    <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                      <div class="flex items-center justify-between gap-3">
+                        <span class="text-sm font-medium text-zinc-900 dark:text-white">{item.label}</span>
+                        <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">
+                          {item.pct}%
+                          <span class="text-[11px] text-zinc-400"> · {formatKpi(item.clics)} clics</span>
+                        </span>
+                      </div>
+                      <div class="h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
+                        <div class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60" style={`width: ${item.pct}%`} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </article>
+
+          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col">
+            <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
+              <span>Propuestas más abiertas</span>
+              <a href="?tab=propuestas" class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-900 shrink-0">
+                Gestionar ↗
+              </a>
+            </header>
+            {
+              propTop.length === 0 ? (
+                <p class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
+                  Todavía no hay propuestas.
+                </p>
+              ) : (
+                <ol class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {propTop.map((p, i) => (
+                    <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                      <div class="flex items-center gap-3">
+                        <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                          #{String(i + 1).padStart(2, '0')}
+                        </span>
+                        {p.logo_url ? (
+                          <img
+                            src={p.logo_url}
+                            alt=""
+                            class="w-8 h-8 rounded-lg object-contain bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shrink-0"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-500 dark:text-zinc-300 shrink-0">
+                            {initialsFromName(p.nombre)}
+                          </div>
+                        )}
+                        <div class="min-w-0 flex-1">
+                          <p class="truncate text-sm font-medium text-zinc-900 dark:text-white">{p.nombre}</p>
+                          <p class="truncate text-[11px] text-zinc-500">{formatPropuestaCuando(p.ultima_vista)}</p>
+                        </div>
+                        <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">
+                          {formatKpi(p.vistas)}
+                        </span>
+                      </div>
+                      <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
+                        <div
+                          class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60"
+                          style={`width: ${Math.round(((Number(p.vistas) || 0) / propTopMax) * 100)}%`}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )
+            }
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <div data-super-panel="propuestas" class="super-props" hidden={superTab !== 'propuestas'}>
+      <header class="super-props__head">
+        <div>
+          <p class="super-props__kicker">Enlace de venta</p>
+          <h2>Propuestas</h2>
+          <p>El nombre y el logo arman el enlace. Acá ves cuántas veces lo abrieron y qué miraron.</p>
+        </div>
+      </header>
+
+      <form id="propuesta-form" class="super-prop-form" novalidate>
+        <label>
+          <span>Restaurante</span>
+          <input name="nombre" type="text" maxlength="80" required placeholder="Black Sushi" autocomplete="off" />
+        </label>
+        <label>
+          <span>Implementación (USD)</span>
+          <input name="setup" inputmode="decimal" maxlength="12" value="600" placeholder="600" />
+        </label>
+        <label class="super-prop-form__wide">
+          <span>Logo</span>
+          <span class="super-prop-logo">
+            <span class="super-prop-logo__mark" data-prop-logo-mark aria-hidden="true">?</span>
+            <input name="logo" type="url" placeholder="https://…" autocomplete="off" data-prop-logo />
+            <input type="file" accept="image/png,image/jpeg,image/webp" hidden data-prop-logo-file />
+            <button type="button" class="super-prop-logo__pick" data-prop-logo-pick>Subir</button>
+          </span>
+        </label>
+        <label>
+          <span>Dominio</span>
+          <input name="dominio" type="text" placeholder="blacksushi.com" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          <span>Mundo</span>
+          <select name="mundo">
+            <option value="estudio" selected>Estudio, claro</option>
+            <option value="barra">Barra</option>
+            <option value="espacio">Espacio</option>
+          </select>
+        </label>
+        <div class="super-prop-form__actions">
+          <button type="submit" class="super-until-hero__cta" data-prop-submit>
+            <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
+            Crear enlace
+          </button>
+          <p class="super-prop-form__status" data-prop-status role="status"></p>
+        </div>
+      </form>
+
+      <div class="super-prop-result" data-prop-result hidden>
+        <p>Enlace listo</p>
+        <a data-prop-result-link href="/propuesta" target="_blank" rel="noopener noreferrer"></a>
+        <button type="button" data-prop-copy>Copiar</button>
+      </div>
+
+      {
+        propuestas.length === 0 ? (
+          <p class="super-props__empty" data-prop-empty>Todavía no hay propuestas.</p>
+        ) : (
+          <ul class="super-props__list">
+            {propuestas.map((p) => {
+              const href = `/propuesta?p=${p.id}`;
+              const cuando = formatPropuestaCuando(p.ultima_vista);
+              const miradas = [
+                ['AR', p.vio_ar],
+                ['Ficha', p.vio_nutri],
+                ['QRs', p.vio_qr],
+                ['WhatsApp', p.vio_whatsapp],
+              ];
+              return (
+                <li>
+                  <article class="super-prop" data-propuesta-card={p.id}>
+                    <div class="super-prop__id">
+                      {p.logo_url ? (
+                        <img src={p.logo_url} alt="" class="super-prop__logo" />
+                      ) : (
+                        <span class="super-prop__logo super-prop__logo--letter">{String(p.nombre || '?').charAt(0).toUpperCase()}</span>
+                      )}
+                      <div class="min-w-0">
+                        <h3>{p.nombre}</h3>
+                        <p>{cuando}</p>
+                      </div>
+                    </div>
+                    <p class="super-prop__views">
+                      <strong>{p.vistas}</strong>
+                      <span>{p.vistas === 1 ? 'apertura' : 'aperturas'}</span>
+                    </p>
+                    <ul class="super-prop__seen">
+                      {miradas.map(([label, count]) => (
+                        <li data-seen={Number(count) > 0 ? 'yes' : 'no'}>
+                          <span>{label}</span>
+                          <strong>{count}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <div class="super-prop__links">
+                      <a href={href} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      <button type="button" data-prop-copy={href}>Copiar enlace</button>
+                      <button type="button" data-prop-delete={p.id}>Borrar</button>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      }
     </div>
 
     <!-- Modal: Nuevo Restaurante -->

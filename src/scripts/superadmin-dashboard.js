@@ -1368,6 +1368,171 @@
     }
   }
 
+  function initPropuestas() {
+    const form = document.getElementById('propuesta-form');
+    if (!(form instanceof HTMLFormElement) || form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+
+    const statusEl = form.querySelector('[data-prop-status]');
+    const submitBtn = form.querySelector('[data-prop-submit]');
+    const logoInput = form.querySelector('[data-prop-logo]');
+    const logoFile = form.querySelector('[data-prop-logo-file]');
+    const logoPick = form.querySelector('[data-prop-logo-pick]');
+    const logoMark = form.querySelector('[data-prop-logo-mark]');
+    const result = document.querySelector('[data-prop-result]');
+    const resultLink = document.querySelector('[data-prop-result-link]');
+
+    const setStatus = (text) => {
+      if (statusEl) statusEl.textContent = text;
+    };
+
+    const paintLogo = (url) => {
+      if (!(logoMark instanceof HTMLElement)) return;
+      logoMark.textContent = '';
+      logoMark.style.backgroundImage = url ? `url("${url}")` : '';
+      if (!url) logoMark.textContent = '?';
+    };
+
+    logoPick?.addEventListener('click', () => {
+      if (logoFile instanceof HTMLInputElement) logoFile.click();
+    });
+
+    logoFile?.addEventListener('change', async () => {
+      const file = logoFile instanceof HTMLInputElement ? logoFile.files?.[0] : null;
+      if (!file || !(logoInput instanceof HTMLInputElement)) return;
+      setStatus('Subiendo logo…');
+      const body = new FormData();
+      body.set('file', file);
+      body.set('restaurante_slug', 'propuestas');
+      body.set('asset_type', 'logo');
+      try {
+        const response = await fetch('/api/upload', { method: 'POST', body });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.url) {
+          setStatus(payload.error || 'No se pudo subir el logo.');
+          return;
+        }
+        logoInput.value = payload.url;
+        paintLogo(payload.url);
+        setStatus('');
+      } catch {
+        setStatus('No se pudo subir el logo.');
+      }
+    });
+
+    logoInput?.addEventListener('input', () => {
+      if (logoInput instanceof HTMLInputElement) paintLogo(logoInput.value.trim());
+    });
+
+    const copyText = async (value, button) => {
+      try {
+        await navigator.clipboard.writeText(value);
+        if (button instanceof HTMLButtonElement) {
+          const prev = button.textContent;
+          button.textContent = 'Copiado';
+          window.setTimeout(() => {
+            button.textContent = prev;
+          }, 1400);
+        }
+      } catch {
+        setStatus('No se pudo copiar. Seleccioná el enlace a mano.');
+      }
+    };
+
+    if (document.documentElement.dataset.propClicksBound !== 'true') {
+      document.documentElement.dataset.propClicksBound = 'true';
+      document.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const copyBtn = target.closest('[data-prop-copy]');
+        if (copyBtn instanceof HTMLButtonElement && copyBtn.dataset.propCopy) {
+          event.preventDefault();
+          const href = new URL(copyBtn.dataset.propCopy, window.location.origin).href;
+          try {
+            await navigator.clipboard.writeText(href);
+            const prev = copyBtn.textContent;
+            copyBtn.textContent = 'Copiado';
+            window.setTimeout(() => {
+              copyBtn.textContent = prev;
+            }, 1400);
+          } catch {
+            const status = document.querySelector('[data-prop-status]');
+            if (status) status.textContent = 'No se pudo copiar. Seleccioná el enlace a mano.';
+          }
+          return;
+        }
+        const deleteBtn = target.closest('[data-prop-delete]');
+        if (!(deleteBtn instanceof HTMLButtonElement)) return;
+        const id = deleteBtn.dataset.propDelete || '';
+        if (!id || !window.confirm('¿Borrar esta propuesta? El enlace deja de abrir esa casa.')) return;
+        deleteBtn.disabled = true;
+        try {
+          const response = await fetch('/api/propuestas', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            const status = document.querySelector('[data-prop-status]');
+            if (status) status.textContent = payload.error || 'No se pudo borrar.';
+            deleteBtn.disabled = false;
+            return;
+          }
+          deleteBtn.closest('[data-propuesta-card]')?.parentElement?.remove();
+        } catch {
+          const status = document.querySelector('[data-prop-status]');
+          if (status) status.textContent = 'No se pudo borrar.';
+          deleteBtn.disabled = false;
+        }
+      });
+    }
+
+    result?.querySelector('[data-prop-copy]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const href = resultLink instanceof HTMLAnchorElement ? resultLink.href : '';
+      if (href) await copyText(href, button instanceof HTMLButtonElement ? button : null);
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!(submitBtn instanceof HTMLButtonElement)) return;
+      const data = new FormData(form);
+      submitBtn.disabled = true;
+      setStatus('Creando enlace…');
+      try {
+        const response = await fetch('/api/propuestas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: String(data.get('nombre') || ''),
+            setup: String(data.get('setup') || ''),
+            logoUrl: String(data.get('logo') || ''),
+            dominio: String(data.get('dominio') || ''),
+            mundo: String(data.get('mundo') || ''),
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.href) {
+          setStatus(payload.error || 'No se pudo crear la propuesta.');
+          submitBtn.disabled = false;
+          return;
+        }
+        const href = new URL(payload.href, window.location.origin).href;
+        if (result instanceof HTMLElement) result.hidden = false;
+        if (resultLink instanceof HTMLAnchorElement) {
+          resultLink.href = href;
+          resultLink.textContent = href.replace(/^https?:\/\//, '');
+        }
+        setStatus('');
+        window.location.assign('/admin/super/dashboard?tab=propuestas');
+      } catch {
+        setStatus('No se pudo crear la propuesta.');
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
   const LOGO_INK_SELECTOR = '[data-card-logo-img], [data-ficha-logo-img]';
 
   /**
@@ -1437,6 +1602,7 @@
     initOperativoForms();
     initNuevoRestModal();
     initSuperNetTimeframe();
+    initPropuestas();
     void hydrateLogoPlatesFromCovers();
   }
 
