@@ -304,31 +304,6 @@ function resolveMapsEmbed(direccion) {
           />
         </a>
 
-        <nav
-          class="super-until-hero__links"
-          role="tablist"
-          aria-label="Secciones SuperAdmin"
-        >
-          <button
-            type="button"
-            role="tab"
-            data-super-tab="locales"
-            aria-selected="true"
-            class="super-until-hero__link"
-          >
-            Locales
-          </button>
-          <button
-            type="button"
-            role="tab"
-            data-super-tab="metricas"
-            aria-selected="false"
-            class="super-until-hero__link"
-          >
-            Métricas
-          </button>
-        </nav>
-
         <div class="super-until-hero__actions">
           <button
             type="button"
@@ -343,6 +318,54 @@ function resolveMapsEmbed(direccion) {
           <form method="POST" action="/api/admin-logout" class="super-until-hero__logout">
             <button type="submit" class="super-until-hero__logout-btn">Salir</button>
           </form>
+          <details class="super-jump" data-card-menu>
+            <summary class="super-jump__btn" aria-label="Accesos de Xemilla" aria-haspopup="menu">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+                <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M19.4 13.1a7.7 7.7 0 0 0 .1-2.2l2-1.2-2-3.4-2.2.6a7.8 7.8 0 0 0-1.9-1.1L15 3h-6l-.4 2.8a7.8 7.8 0 0 0-1.9 1.1l-2.2-.6-2 3.4 2 1.2a7.7 7.7 0 0 0 .1 2.2l-2 1.2 2 3.4 2.2-.6a7.8 7.8 0 0 0 1.9 1.1L9 21h6l.4-2.8a7.8 7.8 0 0 0 1.9-1.1l2.2.6 2-3.4-2-1.2Z" />
+              </svg>
+            </summary>
+            <div class="super-card-menu flex flex-col" data-card-menu-panel role="menu" aria-label="Accesos de Xemilla">
+              <p class="super-jump__title">Xemilla</p>
+              <a href="/" target="_blank" rel="noopener noreferrer" class="super-card-menu__item" role="menuitem">
+                <span class="super-card-menu__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" /></svg>
+                </span>
+                <span class="super-card-menu__copy">
+                  <span class="super-card-menu__label">Inicio</span>
+                  <span class="super-card-menu__hint">Sitio comercial</span>
+                </span>
+              </a>
+              <a href="/propuesta" target="_blank" rel="noopener noreferrer" class="super-card-menu__item" role="menuitem">
+                <span class="super-card-menu__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M7 3.5h7l5 5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" /><path d="M14 3.5V9h5" /><path d="M9 13h6M9 17h4" /></svg>
+                </span>
+                <span class="super-card-menu__copy">
+                  <span class="super-card-menu__label">Propuesta</span>
+                  <span class="super-card-menu__hint">Página de venta</span>
+                </span>
+              </a>
+              <a href="/black-sushi" target="_blank" rel="noopener noreferrer" class="super-card-menu__item" role="menuitem">
+                <span class="super-card-menu__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" /><path d="M8 8V6a4 4 0 0 1 8 0v2" /></svg>
+                </span>
+                <span class="super-card-menu__copy">
+                  <span class="super-card-menu__label">Carta demo</span>
+                  <span class="super-card-menu__hint">/black-sushi</span>
+                </span>
+              </a>
+              <div class="super-card-menu__divider" aria-hidden="true"></div>
+              <a href="/admin/login" target="_blank" rel="noopener noreferrer" class="super-card-menu__item" role="menuitem">
+                <span class="super-card-menu__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2" /><path d="M15 12H3m0 0 3-3m-3 3 3 3" /></svg>
+                </span>
+                <span class="super-card-menu__copy">
+                  <span class="super-card-menu__label">Acceso del local</span>
+                  <span class="super-card-menu__hint">Entrada del restaurante</span>
+                </span>
+              </a>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -353,6 +376,31 @@ function resolveMapsEmbed(direccion) {
           · {networkLocalesActivos} con acceso activo
         </p>
       </div>
+
+      <nav
+        class="super-until-hero__links"
+        role="tablist"
+        aria-label="Secciones SuperAdmin"
+      >
+        <button
+          type="button"
+          role="tab"
+          data-super-tab="locales"
+          aria-selected="true"
+          class="super-until-hero__link"
+        >
+          Locales
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-super-tab="metricas"
+          aria-selected="false"
+          class="super-until-hero__link"
+        >
+          Métricas
+        </button>
+      </nav>
     </section>
 
     <div data-super-panel="locales" class="admin-fade-in-up">
@@ -1438,14 +1486,18 @@ function resolveMapsEmbed(direccion) {
   html.admin-panel .super-net-card {
     background-color: #ffffff !important;
     color: inherit !important;
-    border-color: rgba(228, 228, 231, 0.9) !important;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(28, 25, 23, 0.08) !important;
+    border-radius: 1.35rem;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 22px 48px -30px rgba(40, 30, 20, 0.32) !important;
   }
 
   
 
   html.admin-panel .super-net .super-net-kpi-value {
-    color: #18181b !important;
+    color: #1c1917 !important;
+    font-weight: 300;
   }
 
   

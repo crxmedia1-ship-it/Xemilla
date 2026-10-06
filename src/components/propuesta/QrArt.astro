@@ -1,0 +1,151 @@
+---
+/**
+ * QR real y escaneable (corrección de errores H).
+ * Sin imagen: módulos en puntos, ojos redondeados y la inicial en el centro.
+ * Con imagen: patrón tipo ControlNet. La foto llena el cuadrado y cada módulo
+ * la aclara o la oscurece, así el plato se lee primero y el código sigue
+ * escaneando.
+ */
+import QRCode from 'qrcode';
+
+interface Props {
+  url: string;
+  initial: string;
+  ink?: string;
+  paper?: string;
+  accent?: string;
+  image?: string;
+  class?: string;
+}
+
+const { url, initial, ink = '#18181b', paper = '#ffffff', accent = ink, image, class: className } = Astro.props;
+
+const { modules } = QRCode.create(url, { errorCorrectionLevel: 'H' });
+const size = modules.size;
+const quiet = 2;
+const view = size + quiet * 2;
+
+const inFinder = (r: number, c: number) =>
+  (r < 8 && c < 8) || (r < 8 && c >= size - 8) || (r >= size - 8 && c < 8);
+
+const badge = Math.round(size * 0.24) | 1;
+const badgeStart = (size - badge) / 2;
+const inBadge = (r: number, c: number) =>
+  r >= badgeStart - 0.5 && r < badgeStart + badge + 0.5 && c >= badgeStart - 0.5 && c < badgeStart + badge + 0.5;
+
+const artistic = Boolean(image);
+const dark: Array<{ x: number; y: number }> = [];
+const light: Array<{ x: number; y: number }> = [];
+for (let r = 0; r < size; r++) {
+  for (let c = 0; c < size; c++) {
+    if (inFinder(r, c) || (!artistic && inBadge(r, c))) continue;
+    const cell = { x: c + quiet + 0.5, y: r + quiet + 0.5 };
+    if (modules.get(r, c)) dark.push(cell);
+    else light.push(cell);
+  }
+}
+
+const finders = [
+  { x: quiet, y: quiet },
+  { x: quiet + size - 7, y: quiet },
+  { x: quiet, y: quiet + size - 7 },
+];
+const center = quiet + size / 2;
+const clipId = `qr-clip-${Math.random().toString(36).slice(2, 8)}`;
+const softenId = `${clipId}-soften`;
+const darkenId = `${clipId}-darken`;
+const liftId = `${clipId}-lift`;
+const maskDark = `${clipId}-mask-dark`;
+const maskLight = `${clipId}-mask-light`;
+---
+
+<svg viewBox={`0 0 ${view} ${view}`} class={className} role="img" aria-label={`Código QR de ${url}`}>
+  {
+    artistic ? (
+      <>
+        <defs>
+          <clipPath id={clipId}>
+            <rect width={view} height={view} rx={view * 0.045} />
+          </clipPath>
+          <filter id={softenId} x="-12%" y="-12%" width="124%" height="124%">
+            <feGaussianBlur stdDeviation="0.2" />
+          </filter>
+          <filter id={darkenId} color-interpolation-filters="sRGB">
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="0.28" />
+              <feFuncG type="linear" slope="0.28" />
+              <feFuncB type="linear" slope="0.28" />
+            </feComponentTransfer>
+          </filter>
+          <filter id={liftId} color-interpolation-filters="sRGB">
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="0.38" intercept="0.62" />
+              <feFuncG type="linear" slope="0.38" intercept="0.62" />
+              <feFuncB type="linear" slope="0.38" intercept="0.62" />
+            </feComponentTransfer>
+          </filter>
+          <mask id={maskDark} maskUnits="userSpaceOnUse" x="0" y="0" width={view} height={view}>
+            <rect width={view} height={view} fill="#000" />
+            <g filter={`url(#${softenId})`} fill="#fff">
+              {dark.map((d) => (
+                <rect x={d.x - 0.5} y={d.y - 0.5} width="1" height="1" rx="0.22" />
+              ))}
+            </g>
+          </mask>
+          <mask id={maskLight} maskUnits="userSpaceOnUse" x="0" y="0" width={view} height={view}>
+            <rect width={view} height={view} fill="#000" />
+            <g filter={`url(#${softenId})`} fill="#fff">
+              {light.map((d) => (
+                <rect x={d.x - 0.5} y={d.y - 0.5} width="1" height="1" rx="0.22" />
+              ))}
+            </g>
+          </mask>
+        </defs>
+        <g clip-path={`url(#${clipId})`}>
+          <image href={image} width={view} height={view} preserveAspectRatio="xMidYMid slice" />
+          <g mask={`url(#${maskLight})`} filter={`url(#${liftId})`}>
+            <image href={image} width={view} height={view} preserveAspectRatio="xMidYMid slice" />
+          </g>
+          <g mask={`url(#${maskDark})`} filter={`url(#${darkenId})`}>
+            <image href={image} width={view} height={view} preserveAspectRatio="xMidYMid slice" />
+          </g>
+          {finders.map((f) => (
+            <g>
+              <rect x={f.x + 0.15} y={f.y + 0.15} width="6.7" height="6.7" rx="1.7" fill={ink} />
+              <rect x={f.x + 1.15} y={f.y + 1.15} width="4.7" height="4.7" rx="1.05" fill={paper} />
+              <rect x={f.x + 2.2} y={f.y + 2.2} width="2.6" height="2.6" rx="0.55" fill={ink} />
+            </g>
+          ))}
+        </g>
+      </>
+    ) : (
+      <>
+        <rect width={view} height={view} rx={view * 0.08} fill={paper} />
+        <g fill={ink}>
+          {dark.map((d) => (
+            <circle cx={d.x} cy={d.y} r="0.43" />
+          ))}
+        </g>
+        {finders.map((f) => (
+          <g>
+            <rect x={f.x + 0.5} y={f.y + 0.5} width="6" height="6" rx="1.9" fill="none" stroke={ink} stroke-width="1" />
+            <rect x={f.x + 2} y={f.y + 2} width="3" height="3" rx="1" fill={accent} />
+          </g>
+        ))}
+        <circle cx={center} cy={center} r={badge / 2} fill={ink} />
+        <text
+          x={center}
+          y={center}
+          fill={paper}
+          font-size={badge * 0.55}
+          font-family="'Cormorant Garamond', Georgia, serif"
+          font-weight="700"
+          text-anchor="middle"
+          dominant-baseline="central"
+        >
+          {initial}
+        </text>
+      </>
+    )
+  }
+</svg>

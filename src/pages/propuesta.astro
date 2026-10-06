@@ -1,0 +1,2249 @@
+---
+export const prerender = false;
+
+import PhoneSync from '../components/propuesta/PhoneSync.astro';
+import QrArt from '../components/propuesta/QrArt.astro';
+import Layout from '../layouts/Layout.astro';
+
+/** Número comercial de WhatsApp. Editar solo los dígitos, con código de país. */
+const WHATSAPP_NUMBER = '584120000000';
+
+const ANNUAL_LICENSE = '200';
+
+/** Fuentes de la propuesta + las de la carta y el panel reales que replica PhoneSync. */
+const FONT_HREF =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600&family=Instrument+Sans:wght@500;600;700&display=swap';
+
+function readText(value: string | null, fallback: string, max = 80) {
+  const clean = (value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+  return clean || fallback;
+}
+
+function readSetup(value: string | null) {
+  const clean = (value ?? '').trim().replace(/[^\d.,]/g, '').slice(0, 12);
+  return clean || '500';
+}
+
+function readLogo(value: string | null) {
+  const raw = (value ?? '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}
+
+function readDomain(value: string | null, fallback: string) {
+  const clean = (value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0];
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(clean) ? clean : fallback;
+}
+
+function toSlug(name: string) {
+  const slug = name
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'tu-restaurante';
+}
+
+const params = Astro.url.searchParams;
+const para = readText(params.get('para'), 'Tu Restaurante');
+const setup = readSetup(params.get('setup'));
+const logo = readLogo(params.get('logo'));
+const initial = para.charAt(0).toUpperCase();
+const slug = toSlug(para);
+const domain = readDomain(params.get('dominio'), `${slug.replace(/-/g, '')}.com`);
+const domainName = domain.split('.')[0] || domain;
+const domainTlds = ['.com', '.net', '.org', '.app', '.io', '.co'] as const;
+
+const waText = `Hola, revisé la propuesta de Xemilla para ${para} y quiero coordinar el despliegue.`;
+const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(waText)}`;
+
+/** Trazos de íconos (viewBox 24×24, solo stroke). */
+const ICONS = {
+  cube: 'M12 2.5 20.5 7v10L12 21.5 3.5 17V7zM3.5 7 12 11.5 20.5 7M12 11.5v10',
+  leaf: 'M5 19.5c0-8.5 6-14.5 15-14.5 0 9-6 15-14.5 15M5 19.5l7.5-7.5',
+  qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM14 17.5h2.5V20H14zM17.5 14H20v2.5h-2.5z',
+  instagram: 'M7.5 3.5h9a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM17 7h.01',
+  pin: 'M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  wifi: 'M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',
+  whatsapp: 'M4 20l1.3-3.9A8 8 0 1 1 8 18.8zM9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1a4 4 0 0 1-2-2l1-1-1-2z',
+} as const;
+
+const pains = [
+  { stat: '0.5s', visual: 'channels', title: 'Abre al instante', body: 'Desde el QR o Instagram. Sin PDFs ni zoom.' },
+  { stat: '1 toque', visual: 'location', title: 'Horarios y ubicación', body: 'Si estás abierto y cómo llegar con Maps o Waze.' },
+  { stat: '10s', visual: 'toggle', title: 'Cambias todo tú', body: 'Platos nuevos o agotados, precios y anuncios desde tu teléfono o PC.' },
+] as const;
+
+const included = [
+  { title: 'Tu dominio propio', detail: 'Dominio personalizado', visual: 'domain' },
+  { title: 'Tu carta completa', detail: 'Platos, fotos y categorías', visual: 'menu' },
+  { title: 'Panel privado', detail: 'Cambio de precios instantáneo', visual: 'panel' },
+  { title: 'Divisas automáticas', detail: 'USD, bolívares del BCV y euros', visual: 'fx' },
+  { title: 'Perfil del local', detail: 'Horarios, Wi-Fi, ubicación y reservas', visual: 'place' },
+  { title: 'Banner de eventos', detail: 'Catas, promos y especiales', visual: 'banner' },
+  { title: 'Métricas', detail: 'Visitas, platos más vistos y más', visual: 'metrics' },
+] as const;
+
+const investment = [
+  {
+    label: 'Implementación',
+    amount: setup,
+    cadence: 'Pago único',
+    tags: ['Llave en mano', 'Identidad visual', 'Lista para servicio'],
+  },
+  {
+    label: 'Licencia cloud',
+    amount: ANNUAL_LICENSE,
+    cadence: 'Anual',
+    tags: ['Hosting veloz', 'Mantenimiento del sistema', 'Soporte técnico'],
+  },
+];
+
+const gadgets = [
+  {
+    icon: ICONS.cube,
+    title: 'Realidad aumentada',
+    body: 'Tus platos insignia en 3D sobre la mesa.',
+    action: { dialog: 'ar-dialog', label: 'Ver en AR' },
+  },
+  {
+    icon: ICONS.leaf,
+    title: 'Ficha nutricional',
+    body: 'Calorías, macros y alérgenos.',
+    action: { dialog: 'nutri-dialog', label: 'Ver ficha' },
+  },
+  {
+    icon: ICONS.qr,
+    title: 'QRs artísticos',
+    body: 'Acrílicos, NFC y listos para imprimir.',
+    action: { dialog: 'qr-dialog', label: 'Ver diseños' },
+  },
+];
+
+const nutriDemo = {
+  name: 'Risotto de hongos',
+  serving: '1 porción · 350 g',
+  kcal: 520,
+  macros: [
+    { label: 'Proteína', grams: 18, pct: 36, color: '#34d399' },
+    { label: 'Carbohidratos', grams: 62, pct: 82, color: '#fbbf24' },
+    { label: 'Grasas', grams: 22, pct: 48, color: '#fb7185' },
+  ],
+  allergens: ['Lácteos', 'Sulfitos', 'Apio'],
+};
+
+const AR_DEMO_MODEL =
+  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb';
+
+/** Bocados 3D distintos, repartidos de arriba a abajo. Ninguno se repite. */
+const foods = [
+  { src: '/propuesta/comida-nigiri.png', size: 52 },
+  { src: '/propuesta/comida-limon.png', size: 46 },
+  { src: '/propuesta/comida-albahaca.png', size: 38 },
+  { src: '/propuesta/comida-fresa.png', size: 44 },
+  { src: '/propuesta/comida-gamba.png', size: 50 },
+  { src: '/propuesta/comida-uvas.png', size: 42 },
+  { src: '/propuesta/comida-tomate.png', size: 40 },
+  { src: '/propuesta/comida-champinon.png', size: 44 },
+  { src: '/propuesta/comida-aceituna.png', size: 34 },
+  { src: '/propuesta/comida-ajo.png', size: 36 },
+  { src: '/propuesta/comida-frambuesa.png', size: 38 },
+  { src: '/propuesta/comida-higo.png', size: 46 },
+  { src: '/propuesta/comida-macaron.png', size: 42 },
+  { src: '/propuesta/comida-aguacate.png', size: 50 },
+];
+
+/**
+ * Mundo en el que vive la comida (`?mundo=`). Cada uno define su fondo,
+ * su luz sobre los bocados y el color de la barra del navegador.
+ */
+const WORLDS = {
+  barra: { themeColor: '#0a0806', fade: 'from-[#0a0806]' },
+  espacio: { themeColor: '#050508', fade: 'from-[#050508]' },
+  estudio: { themeColor: '#f2f1ee', fade: 'from-[#f2f1ee]' },
+} as const;
+type World = keyof typeof WORLDS;
+const requestedWorld = params.get('mundo');
+const world: World = requestedWorld && requestedWorld in WORLDS ? (requestedWorld as World) : 'estudio';
+const palette = world === 'estudio' ? 'light' : 'dark';
+
+/** Partículas deterministas: mismo cielo (o polvo) en cada visita. */
+function starfield(count: number, seed: number, alpha: [number, number], tints: string[]) {
+  let s = seed;
+  const rand = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+  return Array.from({ length: count }, () => {
+    const x = (rand() * 100).toFixed(2);
+    const y = (rand() * 100).toFixed(2);
+    const a = (alpha[0] + rand() * (alpha[1] - alpha[0])).toFixed(2);
+    const tint = tints[Math.floor(rand() * tints.length)];
+    return `${x}vw ${y}vh 0 0 rgba(${tint},${a})`;
+  }).join(',');
+}
+
+const starsFar = starfield(220, 7, [0.25, 0.6], ['255,255,255', '200,215,255']);
+const starsMid = starfield(70, 41, [0.5, 0.85], ['255,255,255', '190,210,255', '255,232,200']);
+const starsNear = starfield(18, 113, [0.8, 1], ['255,255,255', '210,225,255']);
+const dust = starfield(90, 29, [0.15, 0.55], ['255,214,160', '255,236,210']);
+
+const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+const veinPeak = (count: number, at: number) =>
+  Array.from({ length: count }, (_, i) => (i === at ? '1' : '0')).join(' ');
+const marbleVeins = svgUrl(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1200'><filter id='v' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='0.0018 0.006' numOctaves='4' seed='14' stitchTiles='stitch' result='n'/><feColorMatrix in='n' values='0 0 0 0 1 0 0 0 0 0.94 0 0 0 0 0.86 1 0 0 0 0' result='a'/><feComponentTransfer in='a' result='main'><feFuncA type='table' tableValues='${veinPeak(48, 24)}'/></feComponentTransfer><feComponentTransfer in='a' result='thin'><feFuncA type='table' tableValues='${veinPeak(90, 38).replace(/1/, '0.45')}'/></feComponentTransfer><feMerge><feMergeNode in='main'/><feMergeNode in='thin'/></feMerge></filter><rect width='100%' height='100%' filter='url(#v)'/></svg>`,
+);
+const stoneGrain = svgUrl(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(#g)'/></svg>`,
+);
+
+const glass =
+  'rounded-3xl border border-white/10 bg-zinc-900/40 shadow-2xl backdrop-blur-xl';
+---
+
+<Layout
+  title={`Propuesta privada · ${para}`}
+  description={`Transformamos el menú y los enlaces de redes de ${para} en una WebApp de ultra-lujo, instantánea y con control operativo total.`}
+  theme="crx"
+  themeColor={WORLDS[world].themeColor}
+  fontHref={FONT_HREF}
+>
+  {
+    world === 'espacio' ? (
+      <div class="world deep-space" aria-hidden="true">
+        <div class="nebula" />
+        <div class="galaxy-band" />
+        <span class="stars stars-far" style={`box-shadow:${starsFar}`} />
+        <span class="stars stars-mid" style={`box-shadow:${starsMid}`} />
+        <span class="stars stars-near" style={`box-shadow:${starsNear}`} />
+        <div class="space-vignette" />
+      </div>
+    ) : world === 'estudio' ? (
+      <div class="world white-studio" aria-hidden="true">
+        <div class="softbox" />
+        <div class="cyclorama" />
+        <div class="studio-grain" style={`background-image:${stoneGrain}`} />
+      </div>
+    ) : (
+      <div class="world chef-bar" aria-hidden="true">
+        <div class="stone-veins" style={`background-image:${marbleVeins}`} />
+        <div class="stone-grain" style={`background-image:${stoneGrain}`} />
+        <div class="pendant-light" />
+        <span class="dust" style={`box-shadow:${dust}`} />
+        <div class="bar-vignette" />
+      </div>
+    )
+  }
+
+  <div class="food-space" id="food-space" data-world={world} aria-hidden="true">
+    {
+      foods.map((food) => (
+        <div class="food" data-food style={`--size:${food.size}px`}>
+          {food.src ? (
+            <img src={food.src} alt="" draggable="false" decoding="async" />
+          ) : (
+            <span class="food-ref" />
+          )}
+        </div>
+      ))
+    }
+  </div>
+
+  <main data-palette={palette} class="font-blacksushi relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-5 pt-12 text-zinc-200 sm:px-8 sm:pt-20 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <header class="mx-auto flex max-w-3xl flex-col items-center text-center">
+      <p data-collide class="inline-flex items-center rounded-full border border-white/10 bg-zinc-900/40 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-zinc-400 shadow-2xl backdrop-blur-xl">
+        Propuesta privada de exclusividad
+      </p>
+
+      <div data-collide class="mt-8 flex flex-wrap items-center justify-center">
+        <img
+          src="/propuesta/xemilla.png"
+          alt="Xemilla"
+          width="1024"
+          height="274"
+          class="xemilla-mark xemilla-mark--dark h-8 w-auto sm:h-9"
+          decoding="async"
+        />
+        <img
+          src="/propuesta/xemilla-on-light.png"
+          alt=""
+          width="1024"
+          height="274"
+          class="xemilla-mark xemilla-mark--light h-8 w-auto sm:h-9"
+          decoding="async"
+          aria-hidden="true"
+        />
+        <span class="mx-3 font-light text-zinc-600" aria-hidden="true">×</span>
+        {
+          logo ? (
+            <div class="flex h-12 w-auto max-w-[140px] items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-2">
+              <img
+                src={logo}
+                alt={`Logotipo de ${para}`}
+                class="h-8 w-auto object-contain"
+                decoding="async"
+                referrerpolicy="no-referrer"
+                onerror="var seal=document.getElementById('brand-seal'); if(seal) seal.classList.remove('hidden'); this.parentElement?.remove();"
+              />
+            </div>
+          ) : null
+        }
+        <div
+          id="brand-seal"
+          class:list={[
+            'flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-zinc-900 font-serif text-lg font-bold text-zinc-200 shadow-lg',
+            logo && 'hidden',
+          ]}
+          aria-label={para}
+        >
+          {initial}
+        </div>
+      </div>
+
+      <h1 data-pass class="mt-10 text-balance text-[1.85rem] font-light leading-[1.12] tracking-[-0.025em] text-zinc-50 sm:text-5xl lg:text-[3.15rem]">
+        Tu restaurante llega<br />antes que el cliente.
+      </h1>
+      <p class="mt-5 max-w-md text-balance text-base font-light leading-relaxed text-zinc-400 sm:text-lg">
+        Todo el ecosistema digital de {para} en una sola WebApp, controlada desde cualquier lugar.
+      </p>
+    </header>
+
+    <section class="mt-14 sm:mt-20" aria-labelledby="dolores-title">
+      <h2 id="dolores-title" class="sr-only">Los 3 dolores que resolvemos</h2>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+        {
+          pains.map((pain) => (
+            <article class:list={[glass, 'flex flex-col p-5 sm:p-7']}>
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-3xl font-light tracking-tight text-zinc-50 sm:text-4xl">{pain.stat}</p>
+                <div data-collide aria-hidden="true">
+                  {pain.visual === 'channels' && (
+                    <div class="flex items-center gap-1.5">
+                      {[ICONS.qr, ICONS.instagram].map((icon) => (
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300">
+                          <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d={icon} />
+                          </svg>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {pain.visual === 'location' && (
+                    <div class="flex items-center gap-1.5">
+                      <span class="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium tracking-wide text-zinc-300">
+                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                        Abierto ahora
+                      </span>
+                      <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300">
+                        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                          <path d={ICONS.pin} />
+                        </svg>
+                      </span>
+                    </div>
+                  )}
+                  {pain.visual === 'toggle' && (
+                    <div class="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-3 pr-1 text-[10px] font-medium tracking-wide text-zinc-400">
+                      Disponible
+                      <span class="relative h-5 w-9 rounded-full bg-emerald-400">
+                        <span class="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-[#fff] shadow" />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <h3 class="mt-3 text-base font-medium tracking-tight text-zinc-100 md:mt-6">{pain.title}</h3>
+              <p class="mt-1 text-sm font-light text-zinc-400">{pain.body}</p>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="mt-14 sm:mt-20" aria-labelledby="studio-title">
+      <div class="plan-frame rounded-[1.85rem] bg-gradient-to-b from-white/30 via-white/10 to-white/5 p-px shadow-[0_0_80px_rgba(255,255,255,0.05)]">
+        <div class:list={[glass, 'rounded-[1.8rem] px-6 py-8 sm:px-10 sm:py-12']}>
+          <div class="text-center">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Plan insignia</p>
+            <h2
+              id="studio-title"
+              class="mt-3 text-[2.6rem] font-semibold leading-[1.05] tracking-[-0.045em] text-zinc-50 sm:text-6xl"
+            >
+              Xemilla Studio.
+            </h2>
+            <p class="mx-auto mt-4 max-w-xl text-balance text-base font-medium leading-snug tracking-[-0.01em] text-zinc-500 sm:text-xl">
+              Sembramos la tecnología. Tú la cosechas y la controlas desde tu teléfono o PC: platos, precios, horarios, anuncios y&nbsp;métricas.
+            </p>
+          </div>
+
+          <div class="mt-10">
+            <PhoneSync domain={domain} />
+          </div>
+
+          <ul class="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {
+              included.map((item) => (
+                <li class:list={['feat', item.visual === 'domain' && 'feat--wide sm:col-span-2']}>
+                  <div class="feat__stage" aria-hidden="true">
+                    {item.visual === 'domain' && (
+                      <p class="feat__domain">
+                        <span class="feat__domain-name">{domainName}</span>
+                        <span class="feat__tld">
+                          {domainTlds.map((tld) => (
+                            <span class="feat__tld-sizer">{tld}</span>
+                          ))}
+                          <span class="feat__tld-track">
+                            {domainTlds.map((tld) => (
+                              <span>{tld}</span>
+                            ))}
+                            <span>{domainTlds[0]}</span>
+                          </span>
+                        </span>
+                      </p>
+                    )}
+                    {item.visual === 'menu' && (
+                      <ul class="feat-menu">
+                        <li><span>Burrata</span><span>12</span></li>
+                        <li><span>Risotto</span><span>16</span></li>
+                        <li><span>Pulpo</span><span>19</span></li>
+                      </ul>
+                    )}
+                    {item.visual === 'panel' && (
+                      <ul class="feat-price">
+                        <li><span>Risotto</span><span><s>16</s><b>18</b></span></li>
+                        <li><span>Pulpo</span><span><s>19</s><b>21</b></span></li>
+                      </ul>
+                    )}
+                    {item.visual === 'fx' && (
+                      <div class="feat-fx">
+                        <b>USD</b>
+                        <span>Bs</span>
+                        <span>EUR</span>
+                      </div>
+                    )}
+                    {item.visual === 'place' && (
+                      <div class="feat-open">
+                        <span class="feat-open__dot"></span>
+                        <span>
+                          <b>Abierto ahora</b>
+                          <i>12:00 – 23:00</i>
+                        </span>
+                      </div>
+                    )}
+                    {item.visual === 'banner' && (
+                      <div class="feat-poster">
+                        <span>Esta noche</span>
+                        <strong>Cata</strong>
+                      </div>
+                    )}
+                    {item.visual === 'metrics' && (
+                      <div class="feat-bars">
+                        <span style="height:38%"></span>
+                        <span style="height:62%"></span>
+                        <span style="height:46%"></span>
+                        <span style="height:100%"></span>
+                        <span style="height:72%"></span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium tracking-tight text-zinc-100">{item.title}</p>
+                    <p class="mt-0.5 text-xs font-light leading-snug text-zinc-500">{item.detail}</p>
+                  </div>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-14 sm:mt-20" aria-labelledby="inversion-title">
+      <div class="mb-6 text-center sm:mb-8">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Inversión</p>
+        <h2 id="inversion-title" class="mt-3 text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-zinc-50 sm:text-5xl">
+          La cuenta, por favor.
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {
+          investment.map((plan) => (
+            <article class:list={[glass, 'flex flex-col p-6 sm:p-8']}>
+              <p class="text-[10px] font-medium uppercase tracking-[0.28em] text-zinc-500">{plan.label}</p>
+              <div class="mt-5 flex items-baseline gap-2">
+                <p class="flex items-baseline gap-2 text-5xl font-light tracking-tight text-zinc-50">
+                  <span class="tabular-nums">{plan.amount}</span>
+                  <span class="text-base font-light tracking-normal text-zinc-400">USD</span>
+                </p>
+                <span class="ml-auto shrink-0 self-center whitespace-nowrap rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  {plan.cadence}
+                </span>
+              </div>
+              <ul class="mt-6 grid gap-2.5 border-t border-white/10 pt-5">
+                {plan.tags.map((tag) => (
+                  <li class="flex items-center gap-2.5 text-sm font-light text-zinc-300">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))
+        }
+      </div>
+      <p class="mt-5 text-center text-xs font-light tracking-wide text-zinc-500">
+        Sin mensualidades · Sin costos ocultos
+      </p>
+      <p class="mt-1 text-center text-xs font-light tracking-wide text-zinc-500">
+        Rediseños y funciones nuevas se cotizan aparte.
+      </p>
+    </section>
+
+    <section class="mt-14 sm:mt-20" aria-labelledby="gadgets-title">
+      <div class="mb-6 text-center sm:mb-8">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Adicionales</p>
+        <h2 id="gadgets-title" class="mt-3 text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-zinc-50 sm:text-5xl">
+          Solo para degustadores.
+        </h2>
+        <p class="mx-auto mt-4 max-w-md text-balance text-base font-medium leading-snug tracking-[-0.01em] text-zinc-500">
+          No están incluidos en el plan. Se suman con un costo extra, precio a&nbsp;consultar.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+        {
+          gadgets.map((gadget) => (
+            <article class:list={[glass, 'flex items-center gap-4 p-5 md:flex-col md:items-start md:p-6']}>
+              <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-zinc-300" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d={gadget.icon} />
+                </svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <h3 class="flex flex-wrap items-center gap-2 text-sm font-medium tracking-tight text-zinc-100">
+                  {gadget.title}
+                  <span class="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+                    A consultar
+                  </span>
+                </h3>
+                <p class="mt-0.5 text-sm font-light text-zinc-400">{gadget.body}</p>
+              </div>
+              {gadget.action && (
+                <button
+                  type="button"
+                  data-dialog-open={gadget.action.dialog}
+                  class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-zinc-50 px-3.5 py-2 text-xs font-semibold tracking-tight text-zinc-950 shadow-lg transition active:scale-[0.97] md:mt-auto"
+                >
+                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d={gadget.icon} />
+                  </svg>
+                  {gadget.action.label}
+                </button>
+              )}
+            </article>
+          ))
+        }
+      </div>
+    </section>
+  </main>
+
+  <div class={`pointer-events-none fixed inset-x-0 bottom-0 z-40 h-24 bg-gradient-to-t to-transparent ${WORLDS[world].fade}`} aria-hidden="true"></div>
+  <nav
+    data-palette={palette}
+    class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-50 mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/15 bg-zinc-950/80 p-2 shadow-2xl backdrop-blur-2xl"
+    aria-label="Acciones de la propuesta"
+  >
+    <a
+      href={waHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-zinc-100 px-3 text-sm font-medium text-zinc-950 transition active:scale-[0.98]"
+    >
+      WhatsApp
+    </a>
+    <button
+      type="button"
+      disabled
+      aria-disabled="true"
+      class="inline-flex min-h-12 shrink-0 cursor-default items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-center text-[0.68rem] font-medium uppercase leading-tight tracking-[0.12em] text-zinc-300 backdrop-blur-xl disabled:opacity-100"
+    >
+      Ver Demo<br />en Vivo
+    </button>
+  </nav>
+
+  <dialog id="ar-dialog" class="demo-dialog" aria-labelledby="ar-dialog-title">
+    <div class="demo-dialog__head">
+      <p id="ar-dialog-title" class="demo-dialog__title">Plato en 3D</p>
+      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+    </div>
+    <model-viewer
+      class="ar-dialog__viewer"
+      data-src={AR_DEMO_MODEL}
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      ar-placement="floor"
+      ar-scale="auto"
+      camera-controls
+      auto-rotate
+      shadow-intensity="1"
+      touch-action="pan-y"
+      alt="Modelo 3D de un plato"
+    >
+      <button type="button" slot="ar-button" class="ar-dialog__place">Ver en tu mesa</button>
+    </model-viewer>
+    <p class="demo-dialog__hint">Gíralo con el dedo. Desde el teléfono, ponlo sobre tu mesa.</p>
+  </dialog>
+
+  <dialog id="nutri-dialog" class="demo-dialog" aria-labelledby="nutri-dialog-title">
+    <div class="demo-dialog__head">
+      <div>
+        <p id="nutri-dialog-title" class="demo-dialog__title">{nutriDemo.name}</p>
+        <p class="nutri__serving">{nutriDemo.serving}</p>
+      </div>
+      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+    </div>
+    <div class="nutri">
+      <div class="nutri__kcal">
+        <span class="nutri__kcal-value">{nutriDemo.kcal}</span>
+        <span class="nutri__kcal-unit">kcal</span>
+      </div>
+      <ul class="nutri__macros">
+        {
+          nutriDemo.macros.map((macro) => (
+            <li class="nutri__macro">
+              <div class="nutri__macro-row">
+                <span>{macro.label}</span>
+                <span class="nutri__macro-grams">{macro.grams} g</span>
+              </div>
+              <span class="nutri__bar">
+                <span class="nutri__bar-fill" style={`width:${macro.pct}%;background:${macro.color}`} />
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="nutri__label">Alérgenos</p>
+      <ul class="nutri__allergens">
+        {nutriDemo.allergens.map((allergen) => <li>{allergen}</li>)}
+      </ul>
+    </div>
+    <p class="demo-dialog__hint">Así lo ve tu cliente al tocar un plato.</p>
+  </dialog>
+
+  <dialog id="qr-dialog" class="demo-dialog demo-dialog--wide" aria-labelledby="qr-dialog-title">
+    <div class="demo-dialog__head">
+      <div>
+        <p id="qr-dialog-title" class="demo-dialog__title">QRs de autor</p>
+        <p class="nutri__serving">Con tu marca, impresos y listos para el local.</p>
+      </div>
+      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+    </div>
+
+    <div class="qr-hero">
+      <div class="qr-hero__slot" data-photo-slot aria-hidden="true"></div>
+      <QrArt
+        url={`https://${domain}`}
+        initial={initial}
+        class="qr-hero__code"
+        accent="#9a3412"
+      />
+      <div class="qr-hero__copy">
+        <p class="qr-hero__name">{para}</p>
+        <p class="qr-hero__domain">{domain}</p>
+        <p class="qr-hero__note">Sigue siendo un QR real: escanéalo con tu cámara.</p>
+      </div>
+    </div>
+
+    <div class="qr-carousel__bar">
+      <p class="nutri__label">Formatos para tu local</p>
+      <div class="qr-carousel__nav">
+        <button type="button" data-carousel-step="-1" aria-label="Anterior">‹</button>
+        <button type="button" data-carousel-step="1" aria-label="Siguiente">›</button>
+      </div>
+    </div>
+    <ul class="qr-mockups" data-carousel>
+      <li>
+        <div class="qr-stage">
+          <div class="mock-tent">
+            <span class="mock-tent__label">Escanea la carta</span>
+            <QrArt url={`https://${domain}`} initial={initial} class="mock-tent__code" accent="#9a3412" />
+          </div>
+          <span class="mock-tent__base"></span>
+        </div>
+        <p class="qr-mockups__title">Soporte de mesa</p>
+        <p class="qr-mockups__sub">Acrílico con base de madera</p>
+      </li>
+      <li>
+        <div class="qr-stage">
+          <div class="mock-nfc">
+            <svg class="mock-nfc__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+              <path d="M7.5 8.2a5.2 5.2 0 0 1 0 7.6" />
+              <path d="M10.6 5.6a8.4 8.4 0 0 1 0 12.8" />
+              <path d="M13.7 3.2a11.4 11.4 0 0 1 0 17.6" />
+              <circle cx="4.6" cy="12" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            <span class="mock-nfc__name">{para}</span>
+          </div>
+        </div>
+        <p class="qr-mockups__title">Tag NFC</p>
+        <p class="qr-mockups__sub">Acerca el teléfono y abre la carta</p>
+      </li>
+      <li>
+        <div class="qr-stage">
+          <div class="mock-coaster">
+            <QrArt
+              url={`https://${domain}`}
+              initial={initial}
+              class="mock-coaster__code"
+              ink="#3b2a1a"
+              paper="transparent"
+            />
+          </div>
+        </div>
+        <p class="qr-mockups__title">Posavasos grabado</p>
+        <p class="qr-mockups__sub">Madera grabada con láser</p>
+      </li>
+      <li>
+        <div class="qr-stage qr-stage--glass">
+          <div class="mock-sticker">
+            <QrArt url={`https://${domain}`} initial={initial} class="mock-sticker__code" ink="#f5f0e8" paper="#18181b" accent="#d9c29a" />
+            <span class="mock-sticker__label">Menú digital</span>
+          </div>
+        </div>
+        <p class="qr-mockups__title">Vinilo de vitrina</p>
+        <p class="qr-mockups__sub">Para puerta, barra o estantes</p>
+      </li>
+      <li>
+        <div class="qr-stage">
+          <div class="mock-plate">
+            <span class="mock-plate__number">07</span>
+            <QrArt url={`https://${domain}`} initial={initial} class="mock-plate__code" ink="#18181b" accent="#b08d57" />
+          </div>
+        </div>
+        <p class="qr-mockups__title">Placa numerada</p>
+        <p class="qr-mockups__sub">Número de mesa y QR en una pieza</p>
+      </li>
+      <li>
+        <div class="qr-stage">
+          <div class="mock-display">
+            <QrArt url={`https://${domain}`} initial={initial} class="mock-display__code" ink="#2a1f12" paper="#e9d3a6" accent="#2a1f12" />
+            <span class="mock-display__label">{para}</span>
+          </div>
+          <span class="mock-display__stand"></span>
+        </div>
+        <p class="qr-mockups__title">Display de barra</p>
+        <p class="qr-mockups__sub">Metal dorado para caja o recepción</p>
+      </li>
+      <li>
+        <div class="qr-stage">
+          <div class="mock-bag">
+            <span class="mock-bag__sticker">
+              <QrArt url={`https://${domain}`} initial={initial} class="mock-bag__code" accent="#9a3412" />
+            </span>
+          </div>
+        </div>
+        <p class="qr-mockups__title">Sticker delivery</p>
+        <p class="qr-mockups__sub">Para bolsas y empaques</p>
+      </li>
+    </ul>
+  </dialog>
+</Layout>
+
+<script>
+  /*
+   * Los bocados viven en coordenadas del documento, no de la pantalla:
+   * cada uno ocupa un lugar en la página y solo se ve cuando el lector
+   * hace scroll hasta ahí.
+   *
+   * Paredes: cada línea de texto, cada enlace/botón y todo lo marcado con
+   * data-collide. Un texto con data-pass (o dentro de uno) deja pasar la
+   * comida por detrás, para resaltarlo.
+   */
+  const TEXT = 'h1, h2, h3, h4, p, li, blockquote, figcaption';
+  const SOLID = 'a, button, [data-collide]';
+  type Wall = { left: number; top: number; right: number; bottom: number };
+
+  const space = document.getElementById('food-space');
+  if (space && space.dataset.live !== '1') {
+    space.dataset.live = '1';
+    const root: HTMLElement = space;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const GAP = 6;
+
+    const pieces = [...space.querySelectorAll<HTMLElement>('[data-food]')].map((el) => ({
+      el,
+      size: 0,
+      r: 0,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      heading: Math.random() * Math.PI * 2,
+      cruise: 9 + Math.random() * 7,
+      rot: Math.random() * 360,
+      spin: (Math.random() - 0.5) * 8,
+      seed: Math.random() * 1000,
+    }));
+
+    type Piece = (typeof pieces)[number];
+
+    let width = 0;
+    let height = 0;
+    let walls: Wall[] = [];
+    /** Paredes que viajan con la pantalla (la barra fija); se miden en cada frame. */
+    let floating: HTMLElement[] = [];
+
+    const toWall = (r: DOMRect, box: DOMRect): Wall => ({
+      left: r.left - box.left - GAP,
+      top: r.top - box.top - GAP,
+      right: r.right - box.left + GAP,
+      bottom: r.bottom - box.top + GAP,
+    });
+
+    const passes = (el: Element) => el.closest('[data-pass]') !== null;
+
+    function isFixed(el: Element | null) {
+      for (let node = el; node && node !== document.body; node = node.parentElement) {
+        if (getComputedStyle(node).position === 'fixed') return true;
+      }
+      return false;
+    }
+
+    function measure() {
+      const box = root.getBoundingClientRect();
+      width = box.width;
+      height = box.height;
+      const next: Wall[] = [];
+      floating = [];
+
+      for (const el of document.querySelectorAll<HTMLElement>(SOLID)) {
+        if (root.contains(el) || passes(el)) continue;
+        if (isFixed(el)) {
+          floating.push(el);
+          continue;
+        }
+        const r = el.getBoundingClientRect();
+        if (r.width > 4 && r.height > 4) next.push(toWall(r, box));
+      }
+
+      const range = document.createRange();
+      for (const el of document.querySelectorAll('main ' + TEXT.split(', ').join(', main '))) {
+        if (passes(el) || el.closest(SOLID)) continue;
+        range.selectNodeContents(el);
+        for (const r of range.getClientRects()) {
+          if (r.width > 4 && r.height > 4) next.push(toWall(r, box));
+        }
+      }
+
+      walls = next;
+      for (const p of pieces) {
+        p.size = p.el.offsetWidth;
+        p.r = p.size * 0.45;
+      }
+    }
+
+    function floatingWalls() {
+      if (!floating.length) return [];
+      const box = root.getBoundingClientRect();
+      return floating.map((el) => toWall(el.getBoundingClientRect(), box));
+    }
+
+    function overlapsWall(x: number, y: number, r: number) {
+      return walls.some((w) => {
+        const dx = x - Math.min(Math.max(x, w.left), w.right);
+        const dy = y - Math.min(Math.max(y, w.top), w.bottom);
+        return dx * dx + dy * dy < r * r;
+      });
+    }
+
+    function overlapsPiece(x: number, y: number, r: number, upTo: number) {
+      for (let i = 0; i < upTo; i++) {
+        const o = pieces[i];
+        if (Math.hypot(x - o.x, y - o.y) < r + o.r + 8) return true;
+      }
+      return false;
+    }
+
+    /** Reparte un bocado por franja vertical para que cada sección tenga el suyo. */
+    function place(p: Piece, index: number) {
+      const band = height / pieces.length;
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const x = p.r + Math.random() * Math.max(1, width - p.r * 2);
+        const y = band * index + p.r + Math.random() * Math.max(1, band - p.r * 2);
+        if (!overlapsWall(x, y, p.r) && !overlapsPiece(x, y, p.r, index)) {
+          p.x = x;
+          p.y = y;
+          return;
+        }
+      }
+      p.x = p.r + Math.random() * Math.max(1, width - p.r * 2);
+      p.y = band * index + band / 2;
+    }
+
+    function reflect(p: Piece, nx: number, ny: number) {
+      const vn = p.vx * nx + p.vy * ny;
+      if (vn < 0) {
+        p.vx -= 2 * vn * nx;
+        p.vy -= 2 * vn * ny;
+        p.heading = Math.atan2(p.vy, p.vx);
+        p.spin += (Math.random() - 0.5) * 6;
+      }
+    }
+
+    function collideWall(p: Piece, w: Wall) {
+      const cx = Math.min(Math.max(p.x, w.left), w.right);
+      const cy = Math.min(Math.max(p.y, w.top), w.bottom);
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= p.r * p.r) return;
+      let nx = 0;
+      let ny = 0;
+      let depth = 0;
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        nx = dx / d;
+        ny = dy / d;
+        depth = p.r - d;
+      } else {
+        const toLeft = p.x - w.left;
+        const toRight = w.right - p.x;
+        const toTop = p.y - w.top;
+        const toBottom = w.bottom - p.y;
+        const min = Math.min(toLeft, toRight, toTop, toBottom);
+        if (min === toLeft) [nx, depth] = [-1, toLeft + p.r];
+        else if (min === toRight) [nx, depth] = [1, toRight + p.r];
+        else if (min === toTop) [ny, depth] = [-1, toTop + p.r];
+        else [ny, depth] = [1, toBottom + p.r];
+      }
+      p.x += nx * depth;
+      p.y += ny * depth;
+      reflect(p, nx, ny);
+    }
+
+    function collideEdges(p: Piece) {
+      if (p.x < p.r) {
+        p.x = p.r;
+        reflect(p, 1, 0);
+      } else if (p.x > width - p.r) {
+        p.x = width - p.r;
+        reflect(p, -1, 0);
+      }
+      if (p.y < p.r) {
+        p.y = p.r;
+        reflect(p, 0, 1);
+      } else if (p.y > height - p.r) {
+        p.y = height - p.r;
+        reflect(p, 0, -1);
+      }
+    }
+
+    function collidePair(a: Piece, b: Piece) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 0.01;
+      const min = a.r + b.r;
+      if (dist >= min) return;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const push = (min - dist) / 2;
+      a.x -= nx * push;
+      a.y -= ny * push;
+      b.x += nx * push;
+      b.y += ny * push;
+      const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      if (rel >= 0) return;
+      a.vx += rel * nx;
+      a.vy += rel * ny;
+      b.vx -= rel * nx;
+      b.vy -= rel * ny;
+      a.heading = Math.atan2(a.vy, a.vx);
+      b.heading = Math.atan2(b.vy, b.vx);
+      a.spin += (Math.random() - 0.5) * 5;
+      b.spin += (Math.random() - 0.5) * 5;
+    }
+
+    function draw(p: Piece, t: number) {
+      const bob = Math.sin(t * 0.0009 + p.seed) * 3;
+      const left = p.x - p.size / 2;
+      const top = p.y - p.size / 2 + bob;
+      p.el.style.transform = `translate3d(${left}px, ${top}px, 0) rotate(${p.rot}deg)`;
+    }
+
+    function step(dt: number, t: number) {
+      const moving = floatingWalls();
+      for (const p of pieces) {
+        p.heading += Math.sin(t * 0.00025 + p.seed) * 0.35 * dt;
+        const targetX = Math.cos(p.heading) * p.cruise;
+        const targetY = Math.sin(p.heading) * p.cruise;
+        const ease = Math.min(1, dt * 0.8);
+        p.vx += (targetX - p.vx) * ease;
+        p.vy += (targetY - p.vy) * ease;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.spin = Math.max(-12, Math.min(12, p.spin * (1 - dt * 0.05)));
+        p.rot += p.spin * dt;
+        collideEdges(p);
+        for (const w of walls) collideWall(p, w);
+        for (const w of moving) collideWall(p, w);
+      }
+      for (let i = 0; i < pieces.length; i++) {
+        for (let j = i + 1; j < pieces.length; j++) collidePair(pieces[i], pieces[j]);
+      }
+      for (const p of pieces) collideEdges(p);
+    }
+
+    measure();
+    pieces.forEach(place);
+    const start = performance.now();
+    pieces.forEach((p) => draw(p, start));
+    space.classList.add('is-on');
+
+    const relayout = () => {
+      measure();
+      for (const p of pieces) {
+        collideEdges(p);
+        for (const w of walls) collideWall(p, w);
+      }
+    };
+    new ResizeObserver(relayout).observe(document.documentElement);
+    window.addEventListener('load', relayout, { once: true });
+    document.fonts?.ready.then(relayout);
+
+    if (!reduced) {
+      let raf = 0;
+      let last = start;
+      const frame = (now: number) => {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        step(dt, now);
+        for (const p of pieces) draw(p, now);
+        raf = requestAnimationFrame(frame);
+      };
+      raf = requestAnimationFrame(frame);
+      document.addEventListener('astro:before-swap', () => cancelAnimationFrame(raf), { once: true });
+    }
+  }
+
+  const loadModelViewer = () => {
+    if (customElements.get('model-viewer') || document.querySelector('script[data-model-viewer]')) return;
+    const s = document.createElement('script');
+    s.type = 'module';
+    s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js';
+    s.setAttribute('data-model-viewer', 'true');
+    document.head.appendChild(s);
+  };
+
+  for (const btn of document.querySelectorAll<HTMLElement>('[data-dialog-open]')) {
+    const dialog = document.getElementById(btn.dataset.dialogOpen ?? '');
+    if (!(dialog instanceof HTMLDialogElement)) continue;
+
+    btn.addEventListener('click', () => {
+      const viewer = dialog.querySelector<HTMLElement>('model-viewer');
+      if (viewer) {
+        loadModelViewer();
+        if (!viewer.getAttribute('src')) viewer.setAttribute('src', viewer.dataset.src ?? '');
+      }
+      dialog.showModal();
+    });
+    dialog.querySelector('[data-dialog-close]')?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+      if (event.target !== dialog) return;
+      const r = dialog.getBoundingClientRect();
+      const inside =
+        event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+      if (!inside) dialog.close();
+    });
+  }
+
+  for (const track of document.querySelectorAll<HTMLElement>('[data-carousel]')) {
+    const nav = track.previousElementSibling;
+    for (const btn of nav?.querySelectorAll<HTMLElement>('[data-carousel-step]') ?? []) {
+      btn.addEventListener('click', () => {
+        const card = track.firstElementChild as HTMLElement | null;
+        const step = (card?.offsetWidth ?? 160) + 10;
+        track.scrollBy({ left: Number(btn.dataset.carouselStep) * step, behavior: 'smooth' });
+      });
+    }
+  }
+</script>
+
+<style>
+  .demo-dialog {
+    width: min(92vw, 420px);
+    margin: auto;
+    padding: 14px;
+    border: 0;
+    border-radius: 28px;
+    background: #fbfaf8;
+    color: #18181b;
+    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.55);
+  }
+
+  .demo-dialog::backdrop {
+    background: rgba(15, 12, 10, 0.45);
+    backdrop-filter: blur(8px);
+  }
+
+  .demo-dialog__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px 10px;
+  }
+
+  .demo-dialog__title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .demo-dialog__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: rgba(24, 24, 27, 0.07);
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .ar-dialog__viewer {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: min(62vh, 380px);
+    border-radius: 20px;
+    background: radial-gradient(circle at 50% 35%, #ffffff, #ebe8e3);
+    --poster-color: transparent;
+  }
+
+  .ar-dialog__place {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #18181b;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    transform: translateX(-50%);
+  }
+
+  .nutri__serving {
+    margin-top: 2px;
+    color: #71717a;
+    font-size: 12px;
+  }
+
+  .nutri {
+    padding: 18px;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06);
+  }
+
+  .nutri__kcal {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(24, 24, 27, 0.08);
+  }
+
+  .nutri__kcal-value {
+    font-size: 44px;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .nutri__kcal-unit {
+    color: #71717a;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .nutri__macros {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nutri__macro-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .nutri__macro-grams {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .nutri__bar {
+    display: block;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(24, 24, 27, 0.07);
+  }
+
+  .nutri__bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .nutri__label {
+    margin-top: 18px;
+    color: #71717a;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .nutri__allergens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nutri__allergens li {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 11px 0 8px;
+    border-radius: 9px;
+    background: #fff5f6;
+    color: #9f1239;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.28);
+  }
+
+  .nutri__allergens li::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.14);
+  }
+
+  .demo-dialog--wide {
+    width: min(94vw, 600px);
+    max-height: 92dvh;
+    overflow-y: auto;
+  }
+
+  .qr-hero {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06);
+  }
+
+  .qr-hero :global(.qr-hero__code) {
+    flex: 0 0 148px;
+    width: 148px;
+    height: 148px;
+  }
+
+  .qr-hero__slot {
+    flex: 0 0 148px;
+    width: 148px;
+    height: 148px;
+    border-radius: 18px;
+    background: #f3f0eb;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.1);
+  }
+
+  .qr-hero__copy {
+    min-width: 0;
+  }
+
+  .qr-hero__name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .qr-hero__domain {
+    margin-top: 4px;
+    color: #b08d57;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .qr-hero__note {
+    margin-top: 10px;
+    color: #71717a;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .qr-carousel__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .qr-carousel__nav {
+    display: flex;
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .qr-carousel__nav button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(24, 24, 27, 0.07);
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .qr-mockups {
+    display: grid;
+    grid-auto-columns: calc((100% - 20px) / 2.6);
+    grid-auto-flow: column;
+    gap: 10px;
+    margin: 10px -14px 0;
+    padding: 0 14px 4px;
+    overflow-x: auto;
+    list-style: none;
+    scroll-padding-inline: 14px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .qr-mockups::-webkit-scrollbar {
+    display: none;
+  }
+
+  .qr-mockups > li {
+    scroll-snap-align: start;
+  }
+
+  .mock-plate {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 4px;
+    background: linear-gradient(165deg, #f8f6f2, #ddd6cb 58%, #f3efe8);
+    box-shadow:
+      inset 0 1px 0 #fff,
+      inset 0 0 0 1px rgba(24, 24, 27, 0.08),
+      0 16px 18px -14px rgba(0, 0, 0, 0.5);
+    transform: perspective(520px) rotateX(10deg);
+  }
+
+  .mock-plate__number {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .mock-plate :global(.mock-plate__code) {
+    width: 58px;
+    height: 58px;
+  }
+
+  .mock-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px 8px;
+    border-radius: 2px;
+    background: linear-gradient(160deg, #f6e7c4 0%, #d7b56a 42%, #c6a15a 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 0 0 1px rgba(90, 64, 24, 0.25),
+      0 14px 18px -12px rgba(0, 0, 0, 0.55);
+  }
+
+  .mock-display :global(.mock-display__code) {
+    width: 72px;
+    height: 72px;
+  }
+
+  .mock-display__label {
+    max-width: 80px;
+    overflow: hidden;
+    color: #2a1f12;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .mock-display__stand {
+    width: 46px;
+    height: 7px;
+    border-radius: 0 0 2px 2px;
+    background: linear-gradient(90deg, #8d6b39, #f0ddb0 48%, #8d6b39);
+    box-shadow: 0 8px 10px -8px rgba(0, 0, 0, 0.6);
+  }
+
+  .mock-bag {
+    position: relative;
+    width: 86px;
+    height: 104px;
+    margin-top: 22px;
+    border-radius: 2px 2px 4px 4px;
+    background: linear-gradient(90deg, #c9a67a 0 8px, #e0c39a 8px 78px, #c9a67a 78px);
+    box-shadow:
+      inset 0 0 0 1px rgba(90, 60, 30, 0.12),
+      0 16px 18px -14px rgba(0, 0, 0, 0.5);
+  }
+
+  .mock-bag::before {
+    content: '';
+    position: absolute;
+    top: -16px;
+    left: 18px;
+    width: 50px;
+    height: 22px;
+    border: 3px solid #b89268;
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .mock-bag__sticker {
+    position: absolute;
+    top: 34px;
+    left: 50%;
+    padding: 4px;
+    border-radius: 9px;
+    background: #fff;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+    transform: translateX(-50%) rotate(-6deg);
+  }
+
+  .mock-bag__sticker :global(.mock-bag__code) {
+    display: block;
+    width: 62px;
+    height: 62px;
+  }
+
+  .qr-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 170px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #efece7 0%, #efece7 62%, #d9d1c5 62%, #cfc5b6 100%);
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.05);
+    overflow: hidden;
+  }
+
+  .qr-stage--glass {
+    background:
+      linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 42%, transparent 54%),
+      linear-gradient(180deg, #b9c6cc, #8e9ea6);
+  }
+
+  .qr-mockups__title {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .qr-mockups__sub {
+    color: #71717a;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .mock-tent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 96px;
+    margin-top: 4px;
+    padding: 12px 8px 10px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
+    box-shadow:
+      inset 1px 0 0 #fff,
+      inset -1px 0 0 rgba(24, 24, 27, 0.06),
+      0 16px 20px -14px rgba(0, 0, 0, 0.45);
+    transform: perspective(560px) rotateY(-10deg);
+  }
+
+  .mock-tent__label {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .mock-tent :global(.mock-tent__code) {
+    width: 70px;
+    height: 70px;
+  }
+
+  .mock-nfc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 96px;
+    height: 120px;
+    border-radius: 16px;
+    background: linear-gradient(165deg, #2c2c30, #121214 72%);
+    color: #f6f1e8;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 16px 18px -14px rgba(0, 0, 0, 0.55);
+  }
+
+  .mock-nfc__mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mock-nfc__name {
+    max-width: 78px;
+    overflow: hidden;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .mock-tent__base {
+    width: 112px;
+    height: 9px;
+    margin-top: -1px;
+    border-radius: 1px;
+    background: linear-gradient(180deg, #d2b48c, #8d6844 42%, #6d4d30);
+    box-shadow: 0 8px 10px -7px rgba(0, 0, 0, 0.5);
+  }
+
+  .mock-coaster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 112px;
+    height: 112px;
+    margin-top: 10px;
+    border-radius: 999px;
+    background: radial-gradient(circle at 32% 28%, #ead3b0, #c79a66 48%, #a67c49);
+    box-shadow:
+      inset 0 0 0 7px rgba(92, 60, 30, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 18px 16px -14px rgba(0, 0, 0, 0.55);
+    transform: perspective(480px) rotateX(20deg);
+  }
+
+  .mock-coaster :global(.mock-coaster__code) {
+    width: 78px;
+    height: 78px;
+    opacity: 0.85;
+  }
+
+  .mock-sticker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 8px 7px;
+    border-radius: 4px;
+    background: rgba(16, 16, 18, 0.92);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.35),
+      0 12px 18px -12px rgba(0, 0, 0, 0.55);
+  }
+
+  .mock-sticker :global(.mock-sticker__code) {
+    width: 82px;
+    height: 82px;
+  }
+
+  .mock-sticker__label {
+    color: #d9c29a;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 480px) {
+    .qr-hero {
+      flex-wrap: wrap;
+    }
+
+    .qr-hero__slot,
+    .qr-hero :global(.qr-hero__code) {
+      flex-basis: calc(50% - 9px);
+      width: auto;
+      height: auto;
+      aspect-ratio: 1;
+    }
+
+    .qr-mockups {
+      grid-auto-columns: 62%;
+    }
+  }
+
+  .demo-dialog__hint {
+    padding: 12px 6px 4px;
+    color: #71717a;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .feat {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 22px;
+    border: 1px solid color-mix(in oklab, var(--color-white) 10%, transparent);
+    background: color-mix(in oklab, var(--color-white) 4%, transparent);
+  }
+
+  .feat__stage {
+    display: flex;
+    align-items: center;
+    min-height: 92px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: #f6f3ee;
+    color: #1c1917;
+  }
+
+  .feat--wide .feat__stage {
+    min-height: 108px;
+  }
+
+  .feat__domain {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+    font-size: clamp(1.7rem, 4vw, 2.35rem);
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .feat__tld {
+    --tld-step: 1.28em;
+    display: inline-grid;
+    height: var(--tld-step);
+    overflow: hidden;
+    color: #9a6b3f;
+  }
+
+  .feat__tld-sizer,
+  .feat__tld-track {
+    grid-area: 1 / 1;
+  }
+
+  .feat__tld-sizer {
+    visibility: hidden;
+  }
+
+  .feat__tld-track {
+    display: flex;
+    flex-direction: column;
+    animation: feat-tld 16.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  .feat__tld-track span,
+  .feat__tld-sizer {
+    display: block;
+    height: var(--tld-step);
+    line-height: 1;
+  }
+
+  @keyframes feat-tld {
+    0%,
+    14.8% {
+      transform: translateY(0);
+    }
+    16.666%,
+    31.466% {
+      transform: translateY(calc(var(--tld-step) * -1));
+    }
+    33.333%,
+    48.133% {
+      transform: translateY(calc(var(--tld-step) * -2));
+    }
+    50%,
+    64.8% {
+      transform: translateY(calc(var(--tld-step) * -3));
+    }
+    66.666%,
+    81.466% {
+      transform: translateY(calc(var(--tld-step) * -4));
+    }
+    83.333%,
+    98.133% {
+      transform: translateY(calc(var(--tld-step) * -5));
+    }
+    100% {
+      transform: translateY(calc(var(--tld-step) * -6));
+    }
+  }
+
+  .feat-menu {
+    display: grid;
+    width: 100%;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .feat-menu li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .feat-menu li span:last-child {
+    color: #9a6b3f;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .feat-price {
+    display: grid;
+    width: 100%;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .feat-price li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .feat-price li span:last-child {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .feat-price s {
+    color: #a8a29e;
+    font-size: 16px;
+    text-decoration-thickness: 1px;
+  }
+
+  .feat-price b {
+    color: #9a6b3f;
+    font-weight: 600;
+  }
+
+  .feat-fx {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .feat-fx b,
+  .feat-fx span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    margin: 0;
+    border-radius: 999px;
+  }
+
+  .feat-fx b {
+    background: #1c1917;
+    color: #f6f3ee;
+  }
+
+  .feat-fx span {
+    color: #78716c;
+    box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.12);
+  }
+
+  .feat-open {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .feat-open b {
+    display: block;
+    font-weight: 600;
+  }
+
+  .feat-open i {
+    display: block;
+    margin-top: 3px;
+    color: #78716c;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  .feat-open__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #059669;
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.16);
+  }
+
+  .feat-poster {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .feat-poster span {
+    color: #9a6b3f;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .feat-poster strong {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+
+  .feat-bars {
+    display: flex;
+    width: 100%;
+    align-items: flex-end;
+    gap: 8px;
+    height: 56px;
+  }
+
+  .feat-bars span {
+    flex: 1;
+    border-radius: 6px 6px 2px 2px;
+    background: #e4dfd8;
+  }
+
+  .feat-bars span:nth-child(4) {
+    background: #059669;
+  }
+
+  .world {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .chef-bar {
+    background:
+      radial-gradient(ellipse 140% 90% at 50% 0%, #17110b 0%, transparent 62%),
+      #0a0806;
+  }
+
+  .stone-veins {
+    position: absolute;
+    inset: -40%;
+    background-size: 1200px 1200px;
+    opacity: 0.16;
+    filter: blur(0.6px);
+    transform: rotate(-22deg);
+    mask-image: radial-gradient(ellipse 22% 30% at 50% 50%, rgba(0, 0, 0, 0.4), #000 100%);
+  }
+
+  .stone-grain {
+    position: absolute;
+    inset: 0;
+    background-size: 320px 320px;
+    mix-blend-mode: overlay;
+  }
+
+  .pendant-light {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 55% 42% at 50% 6%, rgba(255, 196, 128, 0.2), transparent 72%),
+      radial-gradient(ellipse 26% 20% at 50% 2%, rgba(255, 226, 180, 0.16), transparent 70%),
+      radial-gradient(ellipse 40% 34% at 88% 78%, rgba(255, 170, 100, 0.07), transparent 70%);
+    animation: light-breathe 9s ease-in-out infinite alternate;
+  }
+
+  .dust {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1.5px;
+    height: 1.5px;
+    border-radius: 999px;
+    mask-image: radial-gradient(ellipse 60% 55% at 50% 10%, #000 30%, transparent 80%);
+    animation: dust-drift 26s ease-in-out infinite alternate;
+  }
+
+  .bar-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 90% 80% at 50% 35%, transparent 45%, rgba(0, 0, 0, 0.72) 100%);
+  }
+
+  @keyframes light-breathe {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0.86;
+    }
+  }
+
+  @keyframes dust-drift {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(14px, -26px, 0);
+    }
+  }
+
+  /* Paleta zinc invertida: el mismo markup oscuro se lee en claro. */
+  [data-palette='light'] {
+    --color-white: oklch(0% 0 0);
+    --color-zinc-50: oklch(14.1% 0.005 285.823);
+    --color-zinc-100: oklch(21% 0.006 285.885);
+    --color-zinc-200: oklch(27.4% 0.006 286.033);
+    --color-zinc-300: oklch(37% 0.013 285.805);
+    --color-zinc-400: oklch(46% 0.016 285.9);
+    --color-zinc-500: oklch(56% 0.016 285.938);
+    --color-zinc-600: oklch(70.5% 0.015 286.067);
+    --color-zinc-700: oklch(87.1% 0.006 286.286);
+    --color-zinc-800: oklch(92% 0.004 286.32);
+    --color-zinc-900: oklch(98.5% 0 0);
+    --color-zinc-950: oklch(99.5% 0 0);
+    --color-emerald-400: oklch(59.6% 0.145 163.225);
+  }
+
+  .xemilla-mark--light {
+    display: none;
+  }
+
+  [data-palette='light'] .xemilla-mark--dark {
+    display: none;
+  }
+
+  [data-palette='light'] .xemilla-mark--light {
+    display: block;
+  }
+
+  [data-palette='light'] .plan-frame {
+    background: linear-gradient(180deg, #ffffff, rgba(0, 0, 0, 0.08));
+  }
+
+  [data-palette='light'] article,
+  [data-palette='light'] .rounded-\[1\.8rem\] {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 18px 40px -18px rgba(40, 30, 20, 0.18);
+  }
+
+  .white-studio {
+    background: linear-gradient(180deg, #fbfaf8 0%, #f2f1ee 55%, #e9e7e3 100%);
+  }
+
+  .softbox {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 38% at 50% -4%, rgba(255, 255, 255, 1), transparent 70%),
+      radial-gradient(ellipse 35% 60% at 0% 40%, rgba(255, 255, 255, 0.7), transparent 70%),
+      radial-gradient(ellipse 35% 60% at 100% 40%, rgba(255, 255, 255, 0.55), transparent 70%);
+  }
+
+  .cyclorama {
+    position: absolute;
+    inset: auto -10% 0;
+    height: 46%;
+    background:
+      radial-gradient(ellipse 60% 70% at 50% 100%, rgba(255, 255, 255, 0.85), transparent 70%),
+      linear-gradient(180deg, transparent 0%, rgba(120, 110, 100, 0.07) 40%, rgba(120, 110, 100, 0.04) 100%);
+    border-radius: 50% 50% 0 0 / 22% 22% 0 0;
+  }
+
+  .studio-grain {
+    position: absolute;
+    inset: 0;
+    background-size: 320px 320px;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    filter: invert(1);
+  }
+
+  .deep-space {
+    background:
+      radial-gradient(ellipse 120% 80% at 50% 0%, #0d0f1f 0%, transparent 60%),
+      radial-gradient(ellipse 100% 70% at 50% 100%, #0a0b16 0%, transparent 65%),
+      #050508;
+  }
+
+  .nebula {
+    position: absolute;
+    inset: -25%;
+    background:
+      radial-gradient(ellipse 38% 30% at 22% 28%, rgba(99, 72, 210, 0.22), transparent 70%),
+      radial-gradient(ellipse 32% 26% at 78% 62%, rgba(32, 140, 170, 0.16), transparent 70%),
+      radial-gradient(ellipse 28% 22% at 60% 18%, rgba(190, 70, 140, 0.12), transparent 70%),
+      radial-gradient(ellipse 30% 24% at 30% 82%, rgba(60, 90, 200, 0.14), transparent 70%);
+    filter: blur(40px);
+    animation: nebula-drift 140s ease-in-out infinite alternate;
+  }
+
+  .galaxy-band {
+    position: absolute;
+    left: -30%;
+    top: 30%;
+    width: 160%;
+    height: 34%;
+    transform: rotate(-24deg);
+    background:
+      radial-gradient(ellipse 50% 50% at 50% 50%, rgba(220, 225, 255, 0.07), transparent 70%),
+      radial-gradient(ellipse 30% 22% at 46% 52%, rgba(255, 236, 214, 0.06), transparent 70%);
+    filter: blur(24px);
+  }
+
+  .stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .stars-far {
+    width: 1px;
+    height: 1px;
+  }
+
+  .stars-mid {
+    width: 1.5px;
+    height: 1.5px;
+    animation: twinkle 7s ease-in-out infinite alternate;
+  }
+
+  .stars-near {
+    width: 2px;
+    height: 2px;
+    filter: drop-shadow(0 0 3px rgba(200, 220, 255, 0.9));
+    animation: twinkle 4.5s ease-in-out -2s infinite alternate;
+  }
+
+  .space-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
+  }
+
+  @keyframes nebula-drift {
+    from {
+      transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1);
+    }
+    to {
+      transform: translate3d(2%, 1.5%, 0) rotate(6deg) scale(1.08);
+    }
+  }
+
+  @keyframes twinkle {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0.45;
+    }
+  }
+
+  .food-space {
+    --food-scale: 1;
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .food-space:not(.is-on) .food {
+    opacity: 0;
+  }
+
+  .food {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(var(--size) * var(--food-scale));
+    height: calc(var(--size) * var(--food-scale));
+    transition: opacity 0.8s ease;
+    will-change: transform;
+  }
+
+  .food img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.55));
+    user-select: none;
+  }
+
+  .food-ref {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    background: radial-gradient(
+      circle at 34% 30%,
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.12) 42%,
+      rgba(255, 255, 255, 0.03) 70%
+    );
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+      inset -6px -8px 14px rgba(0, 0, 0, 0.45),
+      0 0 22px rgba(150, 175, 255, 0.12);
+  }
+
+  [data-world='barra'] .food-ref {
+    background: radial-gradient(
+      circle at 40% 24%,
+      rgba(255, 238, 214, 0.7),
+      rgba(255, 214, 170, 0.16) 44%,
+      rgba(255, 255, 255, 0.03) 72%
+    );
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 230, 200, 0.16),
+      inset -4px -9px 14px rgba(0, 0, 0, 0.55);
+  }
+
+  [data-world='estudio'] .food-ref {
+    background: radial-gradient(
+      circle at 38% 28%,
+      #ffffff,
+      #f1efeb 40%,
+      #d9d5cf 78%,
+      #c9c4bd 100%
+    );
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.8),
+      inset -5px -8px 14px rgba(90, 80, 70, 0.18);
+  }
+
+  [data-world='estudio'] .food img {
+    filter: drop-shadow(0 8px 12px rgba(60, 45, 30, 0.18));
+  }
+
+  [data-world='estudio'] .food::after,
+  [data-world='barra'] .food::after {
+    content: '';
+    position: absolute;
+    left: 14%;
+    right: 14%;
+    top: 108%;
+    height: 22%;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    filter: blur(7px);
+    z-index: -1;
+  }
+
+  [data-world='estudio'] .food::after {
+    background: rgba(70, 55, 40, 0.16);
+    filter: blur(8px);
+  }
+
+  @media (max-width: 767px) {
+    .food-space {
+      --food-scale: 0.78;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .food {
+      will-change: auto;
+    }
+
+    .nebula,
+    .stars,
+    .pendant-light,
+    .dust,
+    .feat__tld-track {
+      animation: none;
+    }
+  }
+</style>

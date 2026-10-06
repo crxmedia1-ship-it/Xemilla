@@ -3703,7 +3703,7 @@ html.admin-panel .studio-photo-caption .text-zinc-300 {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 0.75rem 1.25rem;
   padding: 0.85rem 1rem 0;
@@ -3860,6 +3860,57 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   background: var(--bg-card-elevated);
 }
 
+.super-jump {
+  position: relative;
+}
+
+.super-jump > .super-card-menu:not(.is-open) {
+  display: none !important;
+}
+
+.super-jump__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--overlay-soft) 90%, transparent);
+  color: var(--text-soft);
+  list-style: none;
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.super-jump__btn::-webkit-details-marker {
+  display: none;
+}
+
+.super-jump__btn:hover,
+.super-jump[open] > .super-jump__btn {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--bg-card-elevated);
+}
+
+.super-jump__btn:focus-visible {
+  outline: 2px solid var(--focus-border);
+  outline-offset: 2px;
+}
+
+.super-jump__title {
+  margin: 0.4rem 0.75rem 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a1a1aa !important;
+}
+
 .super-until-hero__copy {
   position: relative;
   z-index: 2;
@@ -3905,30 +3956,12 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 
   .super-until-hero__nav {
     grid-template-columns: 1fr auto;
-    grid-template-areas:
-      'brand actions'
-      'links links';
     gap: 0.65rem 0.75rem;
     padding: 0.8rem 0.85rem 0;
   }
 
-  .super-until-hero__brand {
-    grid-area: brand;
-  }
-
-  .super-until-hero__actions {
-    grid-area: actions;
-  }
-
   .super-until-hero__links {
-    grid-area: links;
-    justify-content: stretch;
     width: 100%;
-  }
-
-  .super-until-hero__link {
-    flex: 1;
-    text-align: center;
   }
 
   .super-until-hero__logout {
@@ -3953,6 +3986,163 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   .super-until-hero__eyebrow {
     font-size: 0.88rem;
   }
+}
+
+/* SuperAdmin · papel editorial, el mismo aire de la propuesta */
+.super-admin-dash {
+  background:
+    radial-gradient(ellipse 70% 36% at 50% -8%, #ffffff, transparent 68%),
+    linear-gradient(180deg, #fbfaf8 0%, #f3f1ed 52%, #ebe7e2 100%);
+  color: #1c1917;
+}
+
+.super-admin-dash .super-until-hero {
+  gap: 0;
+  margin-bottom: 1.65rem;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.super-admin-dash .super-until-hero::before {
+  display: none;
+}
+
+.super-admin-dash .super-until-hero__nav,
+.super-admin-dash .super-until-hero__copy {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.super-admin-dash .super-until-hero__copy {
+  max-width: 40rem;
+  padding-top: 1.35rem;
+  padding-bottom: 0.15rem;
+}
+
+.super-admin-dash .super-until-hero__eyebrow {
+  font-size: clamp(1.85rem, 4.2vw, 2.75rem) !important;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  color: #1c1917 !important;
+}
+
+.super-admin-dash .super-until-hero__sub {
+  margin-top: 0.45rem;
+  font-size: 0.98rem;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: #78716c !important;
+}
+
+.super-admin-dash .super-until-hero__links {
+  justify-content: flex-start;
+  width: auto;
+  gap: 1.4rem;
+  margin-top: 1.15rem;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(28, 25, 23, 0.1);
+  border-radius: 0;
+  background: transparent;
+}
+
+.super-admin-dash .super-until-hero__link {
+  flex: none;
+  padding: 0.45rem 0 0.7rem;
+  border-radius: 0;
+  background: transparent !important;
+  color: #a8a29e !important;
+  font-size: 0.98rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  box-shadow: none !important;
+}
+
+.super-admin-dash .super-until-hero__link:hover {
+  color: #1c1917 !important;
+  background: transparent !important;
+}
+
+.super-admin-dash .super-until-hero__link[aria-selected='true'] {
+  color: #1c1917 !important;
+  background: transparent !important;
+  box-shadow: inset 0 -1.5px 0 #1c1917 !important;
+}
+
+.super-admin-dash .super-until-hero__cta {
+  min-height: 2.35rem;
+  padding: 0.5rem 1.05rem 0.5rem 0.85rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: none;
+}
+
+.super-admin-dash .super-jump__btn,
+.super-admin-dash .super-until-hero__logout-btn {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(28, 25, 23, 0.1);
+  color: #44403c !important;
+}
+
+html.admin-panel .super-admin-dash .super-hub-search {
+  margin-top: 1.35rem;
+  border-radius: 1.15rem;
+  border-color: rgba(28, 25, 23, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 40px -28px rgba(40, 30, 20, 0.22);
+}
+
+html.admin-panel .super-admin-dash .super-hub-card {
+  border-radius: 1.35rem;
+  --hub-shell-bg: #ffffff;
+  --hub-shell-border: rgba(28, 25, 23, 0.08);
+  --hub-shell-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 22px 48px -30px rgba(40, 30, 20, 0.32);
+}
+
+html.admin-panel .super-admin-dash .super-hub-card:hover {
+  --hub-shell-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 28px 56px -28px rgba(40, 30, 20, 0.38);
+}
+
+.super-admin-dash .super-net > header .min-w-0 > p:first-child {
+  letter-spacing: 0.18em;
+  color: #a8a29e !important;
+  font-weight: 500;
+}
+
+.super-admin-dash .super-net h2 {
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  color: #1c1917;
+}
+
+.super-admin-dash .super-net > header .min-w-0 > p:last-child {
+  color: #78716c;
+}
+
+.super-admin-dash .super-tf-bar {
+  border-color: rgba(28, 25, 23, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 28px -22px rgba(40, 30, 20, 0.35);
+}
+
+.super-admin-dash .super-net-card {
+  border-color: rgba(28, 25, 23, 0.08) !important;
+  border-radius: 1.35rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 22px 48px -30px rgba(40, 30, 20, 0.32) !important;
 }
 
 /* ─── Admin mobile polish (Studio + SuperAdmin) ─────────────────────── */
