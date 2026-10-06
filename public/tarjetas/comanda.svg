@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324 200" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdfcf8"/>
+      <stop offset="0.6" stop-color="#f6f3ec"/>
+      <stop offset="1" stop-color="#ebe6db"/>
+    </linearGradient>
+    <filter id="thermal" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5"/>
+      <feColorMatrix values="0 0 0 0 0.4  0 0 0 0 0.38  0 0 0 0 0.34  0 0 0 0.09 0"/>
+    </filter>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4.5" flood-color="#1c1a16" flood-opacity="0.28"/>
+    </filter>
+    <clipPath id="shape">
+      <path d="M12 14 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 V186 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 l-6 5 l-6 -5 Z"/>
+    </clipPath>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect width="324" height="200" fill="url(#paper)" clip-path="url(#shape)"/>
+  </g>
+
+  <g clip-path="url(#shape)">
+    <rect width="324" height="200" filter="url(#thermal)"/>
+    <path d="M26 40 H298" stroke="#bdb7aa" stroke-width="1" stroke-dasharray="3 3"/>
+    <path d="M12 60 H312" stroke="#000" stroke-width="18" opacity="0.015"/>
+    <path d="M12 140 H312" stroke="#000" stroke-width="22" opacity="0.012"/>
+  </g>
+</svg>

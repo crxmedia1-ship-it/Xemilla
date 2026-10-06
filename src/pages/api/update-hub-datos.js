@@ -4,7 +4,7 @@ import {
 } from '../../config/superadmin.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
-import { isHttpUrl, persistHubInUiEstilo } from '../../lib/hub-media.js';
+import { HUB_TARJETAS, isHttpUrl, persistHubInUiEstilo } from '../../lib/hub-media.js';
 
 export const prerender = false;
 
@@ -22,7 +22,8 @@ const SAFE_SELECT =
  *   whatsapp_num? | telefono?,
  *   logo_url?,
  *   hub_cover_url?,
- *   hub_logo_bg?
+ *   hub_logo_bg?,
+ *   tarjeta?
  * }
  *
  * URLs vacías NO borran media existente.
@@ -67,6 +68,8 @@ export async function POST({ request, cookies }) {
   let coverUrl = null;
   /** @type {string | null} */
   let logoBg = null;
+  /** @type {string} */
+  let tarjeta = '';
 
   if (raw.nombre_comercial !== undefined) {
     const nombre = String(raw.nombre_comercial ?? '').trim();
@@ -112,7 +115,15 @@ export async function POST({ request, cookies }) {
     }
   }
 
-  if (Object.keys(patch).length === 0) {
+  if (raw.tarjeta !== undefined) {
+    const next = String(raw.tarjeta ?? '').trim();
+    if (!HUB_TARJETAS.includes(next)) {
+      return json({ error: 'Diseño de tarjeta inválido' }, 400);
+    }
+    tarjeta = next;
+  }
+
+  if (Object.keys(patch).length === 0 && !tarjeta) {
     return json({ error: 'Sin campos para actualizar' }, 400);
   }
 
@@ -123,6 +134,7 @@ export async function POST({ request, cookies }) {
   const result = await updateHubDatos(writeClient, restauranteId, patch, {
     coverUrl,
     logoBg,
+    tarjeta,
   });
   if (result.error) {
     console.error('[api/update-hub-datos]', result.error);
@@ -136,9 +148,20 @@ export async function POST({ request, cookies }) {
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {string} restauranteId
  * @param {Record<string, unknown>} patch
- * @param {{ coverUrl: string | null, logoBg: string | null }} hubMeta
+ * @param {{ coverUrl: string | null, logoBg: string | null, tarjeta?: string }} hubMeta
  */
 async function updateHubDatos(client, restauranteId, patch, hubMeta) {
+  if (Object.keys(patch).length === 0 && hubMeta.tarjeta) {
+    await persistHubInUiEstilo(client, restauranteId, { tarjeta: hubMeta.tarjeta });
+    const { data, error } = await client
+      .from('restaurantes')
+      .select(SAFE_SELECT)
+      .eq('id', restauranteId)
+      .maybeSingle();
+    if (error || !data) return { data: null, error: error?.message || 'No se pudo actualizar' };
+    return { data: { ...data, tarjeta: hubMeta.tarjeta }, error: null };
+  }
+
   const attempts = [
     patch,
     omitKeys(patch, ['hub_logo_bg']),
@@ -174,18 +197,20 @@ async function updateHubDatos(client, restauranteId, patch, hubMeta) {
       if (hubMeta.coverUrl) row.hub_cover_url = hubMeta.coverUrl;
       if (hubMeta.logoBg) row.hub_logo_bg = hubMeta.logoBg;
 
-      /** @type {{ coverUrl?: string, logoBg?: string }} */
+      /** @type {{ coverUrl?: string, logoBg?: string, tarjeta?: string }} */
       const uiFallback = {};
       if (hubMeta.coverUrl && !usedCoverColumn) uiFallback.coverUrl = hubMeta.coverUrl;
       if (hubMeta.logoBg && !usedLogoBgColumn) uiFallback.logoBg = hubMeta.logoBg;
       // Siempre duplicar en ui_estilo (respaldo durable aunque existan columnas Hub)
       if (hubMeta.coverUrl) uiFallback.coverUrl = hubMeta.coverUrl;
       if (hubMeta.logoBg) uiFallback.logoBg = hubMeta.logoBg;
+      if (hubMeta.tarjeta) uiFallback.tarjeta = hubMeta.tarjeta;
 
       if (Object.keys(uiFallback).length > 0) {
         await persistHubInUiEstilo(client, restauranteId, uiFallback);
       }
 
+      if (hubMeta.tarjeta) row.tarjeta = hubMeta.tarjeta;
       return { data: row, error: null };
     }
 

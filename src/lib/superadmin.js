@@ -160,5 +160,21 @@ export async function createRestauranteAsSuperAdmin(supabase, user, input) {
     return { error: error.message };
   }
 
+  if (data?.id) {
+    try {
+      const { persistHubInUiEstilo, nextHubTarjeta, readUiHub } = await import('./hub-media.js');
+      const { data: existing } = await client.from('restaurantes').select('ui_estilo');
+      const used = (existing ?? []).map((row) => String(readUiHub(row).tarjeta || ''));
+      await persistHubInUiEstilo(client, String(data.id), {
+        tarjeta: nextHubTarjeta(used),
+      });
+    } catch (persistErr) {
+      console.warn(
+        '[superadmin] createRestaurante: no se pudo asignar la tarjeta',
+        persistErr,
+      );
+    }
+  }
+
   return { restaurante: data };
 }

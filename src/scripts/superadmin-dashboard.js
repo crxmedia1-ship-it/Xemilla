@@ -33,8 +33,6 @@
     });
   }
 
-  const ACCESS_ACTIVE_CLASSES =
-    'inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-black/45 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-emerald-300 backdrop-blur-md';
   const DEFAULT_CTA = 'CREAR ACCESO';
   const ACTIVE_CTA = 'ACTUALIZAR CLAVE';
 
@@ -49,9 +47,9 @@
       document.querySelector(`li.super-hub-card[data-restaurante-id="${restauranteId}"]`);
     const badge = card?.querySelector('[data-access-badge]');
     if (badge instanceof HTMLElement) {
-      badge.className = ACCESS_ACTIVE_CLASSES;
+      badge.className = 'super-hub-card__state super-hub-card__state--on';
       badge.innerHTML =
-        '<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true"></span>Acceso Activo';
+        '<span class="super-hub-card__dot" aria-hidden="true"></span>Acceso activo';
     }
   }
 
@@ -201,15 +199,14 @@
       card.classList.toggle('super-hub-card--paused', !activo);
 
       let badge = card.querySelector('[data-estado-badge]');
-      const badgeHost = card.querySelector('.absolute.left-3.top-3');
+      const badgeHost = card.querySelector('[data-estado-host]');
       if (!activo) {
         if (!(badge instanceof HTMLElement) && badgeHost instanceof HTMLElement) {
           badge = document.createElement('span');
           badge.setAttribute('data-estado-badge', '');
-          badge.className =
-            'inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-black/55 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-amber-300 backdrop-blur-md';
+          badge.className = 'super-hub-card__state super-hub-card__state--paused';
           badge.innerHTML =
-            '<span class="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true"></span>Desactivado';
+            '<span class="super-hub-card__dot" aria-hidden="true"></span>Desactivado';
           badgeHost.prepend(badge);
         }
       } else if (badge instanceof HTMLElement) {
@@ -461,62 +458,32 @@
       const restauranteId = form.dataset.restauranteId || '';
       const restauranteSlug = form.dataset.slug || '';
       const logoFile = form.querySelector('[data-ficha-logo-file]');
-      const coverFile = form.querySelector('[data-ficha-cover-file]');
       const logoHidden = form.querySelector('[data-ficha-logo-url]');
-      const coverHidden = form.querySelector('[data-ficha-cover-url]');
-      const logoBgHidden = form.querySelector('[data-ficha-logo-bg]');
+      const tarjetaInput = form.querySelector('[data-ficha-tarjeta]');
+      const stage = form.querySelector('[data-ficha-stage]');
       const feedback = form.querySelector('[data-ficha-feedback]');
 
-      /**
-       * @param {string} hex
-       */
-      const applyPlateColor = (hex) => {
-        const color = /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : '#111111';
-        if (logoBgHidden instanceof HTMLInputElement) logoBgHidden.value = color;
-        const logoPreview = form.querySelector('[data-ficha-logo-preview]');
-        if (logoPreview instanceof HTMLElement) {
-          logoPreview.style.setProperty('--hub-logo-plate', color);
-          logoPreview.style.background = color;
-        }
-        const card = document.querySelector(
-          `li.super-hub-card[data-restaurante-id="${restauranteId}"]`,
-        );
-        const logoZone = card?.querySelector('[data-card-logo-zone]');
-        if (logoZone instanceof HTMLElement) {
-          logoZone.style.setProperty('--hub-logo-plate', color);
-          logoZone.style.background = color;
-          logoZone.dataset.logoPlateBg = color;
-        }
-      };
+      form.querySelectorAll('[data-ficha-color]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-ficha-color') || '';
+          if (!id) return;
+          if (tarjetaInput instanceof HTMLInputElement) tarjetaInput.value = id;
+          if (stage instanceof HTMLElement) stage.dataset.tarjeta = id;
+          form.querySelectorAll('[data-ficha-color]').forEach((other) => {
+            const on = other === btn;
+            other.classList.toggle('is-on', on);
+            if (other instanceof HTMLElement) other.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+        });
+      });
 
-      /**
-       * @param {string} coverUrl
-       */
-      const refreshPlateFromCover = async (coverUrl) => {
-        const sample = window.XemillaImageCrop?.samplePlateColorFromUrl;
-        if (typeof sample !== 'function' || !coverUrl) return '#111111';
-        try {
-          const hex = await sample(coverUrl);
-          applyPlateColor(hex);
-          return hex;
-        } catch {
-          return '#111111';
-        }
-      };
-
-      /**
-       * @param {HTMLInputElement | null} fileInput
-       * @param {HTMLInputElement | null} hidden
-       * @param {'logo' | 'cover'} kind
-       */
-      const bindUpload = (fileInput, hidden, kind) => {
-        if (!(fileInput instanceof HTMLInputElement)) return;
-        fileInput.addEventListener('change', () => {
-          const file = fileInput.files?.[0];
-          fileInput.value = '';
+      if (logoFile instanceof HTMLInputElement) {
+        logoFile.addEventListener('change', () => {
+          const file = logoFile.files?.[0];
+          logoFile.value = '';
           if (!file) return;
 
-          const runUpload = async (croppedFile, meta) => {
+          const runUpload = async (croppedFile) => {
             if (feedback instanceof HTMLElement) {
               feedback.textContent = 'Subiendo…';
               feedback.classList.remove('hidden', 'text-rose-400', 'text-emerald-400');
@@ -524,41 +491,20 @@
             }
             try {
               const url = await uploadCardMedia(croppedFile, restauranteSlug);
-              if (hidden instanceof HTMLInputElement) hidden.value = url;
+              if (logoHidden instanceof HTMLInputElement) logoHidden.value = url;
 
-              const preview =
-                kind === 'cover'
-                  ? form.querySelector('[data-ficha-cover-preview]')
-                  : form.querySelector('[data-ficha-logo-preview]');
+              const preview = form.querySelector('[data-ficha-logo-preview]');
               if (preview instanceof HTMLElement) {
-                const empty = preview.querySelector(
-                  kind === 'cover' ? '[data-ficha-cover-empty]' : '[data-ficha-logo-empty]',
-                );
-                empty?.remove();
-                let img = preview.querySelector(
-                  kind === 'cover' ? '[data-ficha-cover-img]' : '[data-ficha-logo-img]',
-                );
+                preview.querySelector('[data-ficha-logo-empty]')?.remove();
+                let img = preview.querySelector('[data-ficha-logo-img]');
                 if (!(img instanceof HTMLImageElement)) {
                   img = document.createElement('img');
                   img.alt = '';
-                  if (kind === 'cover') img.dataset.fichaCoverImg = '';
-                  else {
-                    img.dataset.fichaLogoImg = '';
-                    img.className = 'mx-auto max-h-16 w-auto object-contain';
-                  }
+                  img.dataset.fichaLogoImg = '';
+                  img.className = 'hub-ficha-stage__img';
                   preview.appendChild(img);
                 }
                 img.src = url;
-              }
-
-              if (kind === 'cover') {
-                await refreshPlateFromCover(url);
-              } else if (meta?.plateBg) {
-                applyPlateColor(meta.plateBg);
-              } else {
-                const coverUrl =
-                  coverHidden instanceof HTMLInputElement ? coverHidden.value.trim() : '';
-                await refreshPlateFromCover(coverUrl);
               }
 
               if (feedback instanceof HTMLElement) {
@@ -578,35 +524,18 @@
 
           const cropApi = window.XemillaImageCrop;
           if (cropApi && typeof cropApi.open === 'function') {
-            const coverUrl =
-              coverHidden instanceof HTMLInputElement ? coverHidden.value.trim() : '';
-            const existingBg =
-              logoBgHidden instanceof HTMLInputElement ? logoBgHidden.value.trim() : '';
             void cropApi.open({
               file,
-              aspect: kind === 'cover' ? 'cover' : 'logo',
-              title: kind === 'cover' ? 'Recortar cover' : 'Recortar logo',
-              coverUrl: kind === 'logo' ? coverUrl : '',
-              background: kind === 'logo' && /^#[0-9A-Fa-f]{6}$/.test(existingBg) ? existingBg : undefined,
-              onConfirm: (cropped, meta) => runUpload(cropped, meta),
+              aspect: 'logo',
+              title: 'Recortar logo',
+              onConfirm: (cropped) => runUpload(cropped),
             });
             return;
           }
 
           void runUpload(file);
         });
-      };
-
-      bindUpload(
-        logoFile instanceof HTMLInputElement ? logoFile : null,
-        logoHidden instanceof HTMLInputElement ? logoHidden : null,
-        'logo',
-      );
-      bindUpload(
-        coverFile instanceof HTMLInputElement ? coverFile : null,
-        coverHidden instanceof HTMLInputElement ? coverHidden : null,
-        'cover',
-      );
+      }
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -627,10 +556,8 @@
           phoneInput instanceof HTMLInputElement ? phoneInput.value.trim() : '';
         const logoUrl =
           logoHidden instanceof HTMLInputElement ? logoHidden.value.trim() : '';
-        const coverUrl =
-          coverHidden instanceof HTMLInputElement ? coverHidden.value.trim() : '';
-        let logoBg =
-          logoBgHidden instanceof HTMLInputElement ? logoBgHidden.value.trim() : '';
+        const tarjeta =
+          tarjetaInput instanceof HTMLInputElement ? tarjetaInput.value.trim() : '';
 
         if (!nombre) {
           if (feedback instanceof HTMLElement) {
@@ -639,11 +566,6 @@
             feedback.classList.add('text-rose-400');
           }
           return;
-        }
-
-        // Si hay cover y la placa sigue en default, muestrear antes de guardar
-        if (coverUrl && (!logoBg || logoBg === '#111111')) {
-          logoBg = await refreshPlateFromCover(coverUrl);
         }
 
         submitBtn.disabled = true;
@@ -657,10 +579,8 @@
             nombre_comercial: nombre,
             whatsapp_num: telefono,
           };
-          // Solo enviar media con URL real — nunca '' (evita borrar covers)
           if (logoUrl) body.logo_url = logoUrl;
-          if (coverUrl) body.hub_cover_url = coverUrl;
-          if (/^#[0-9A-Fa-f]{6}$/.test(logoBg)) body.hub_logo_bg = logoBg;
+          if (tarjeta) body.tarjeta = tarjeta;
 
           const res = await fetch('/api/update-hub-datos', {
             method: 'POST',
@@ -670,40 +590,17 @@
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error || 'No se pudo guardar');
 
-          const coverZone = card?.querySelector('[data-card-cover-zone]');
           const logoZone = card?.querySelector('[data-card-logo-zone]');
-          const savedCover = String(
-            data.restaurante?.hub_cover_url || coverUrl || '',
-          ).trim();
           const savedLogo = String(data.restaurante?.logo_url || logoUrl || '').trim();
-          const savedBg = String(data.restaurante?.hub_logo_bg || logoBg || '').trim();
           const savedName = String(data.restaurante?.nombre_comercial || nombre);
+          const savedTarjeta = String(data.restaurante?.tarjeta || tarjeta || '').trim();
           if (card instanceof HTMLElement) {
             card.dataset.hubName = `${savedName} ${card.dataset.hubSlug || ''}`.toLowerCase();
           }
-
-          // Actualizar cover solo si hay URL — nunca vaciar el grid
-          if (coverZone instanceof HTMLElement && savedCover) {
-            const existing = coverZone.querySelector('[data-card-cover-img]');
-            const empty = coverZone.querySelector('[data-card-cover-empty]');
-            if (existing instanceof HTMLImageElement) {
-              existing.src = savedCover;
-            } else {
-              empty?.remove();
-              const img = document.createElement('img');
-              img.src = savedCover;
-              img.alt = '';
-              img.dataset.cardCoverImg = '';
-              img.className =
-                'h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]';
-              coverZone.insertBefore(img, coverZone.firstChild);
-            }
-          }
+          const face = card?.querySelector('.super-hub-card__face');
+          if (face instanceof HTMLElement && savedTarjeta) face.dataset.tarjeta = savedTarjeta;
 
           if (logoZone instanceof HTMLElement) {
-            if (/^#[0-9A-Fa-f]{6}$/.test(savedBg)) {
-              applyPlateColor(savedBg);
-            }
             if (savedLogo) {
               logoZone.querySelector('[data-card-logo-empty]')?.remove();
               let img = logoZone.querySelector('[data-card-logo-img]');
@@ -724,7 +621,7 @@
               if (!(pImg instanceof HTMLImageElement)) {
                 pImg = document.createElement('img');
                 pImg.dataset.fichaLogoImg = '';
-                pImg.className = 'mx-auto max-h-16 w-auto object-contain';
+                pImg.className = 'hub-ficha-stage__img';
                 fichaLogoPreview.appendChild(pImg);
               }
               pImg.src = savedLogo;
@@ -1471,7 +1368,68 @@
     }
   }
 
+  const LOGO_INK_SELECTOR = '[data-card-logo-img], [data-ficha-logo-img]';
+
+  /**
+   * Un logo claro con fondo transparente se pierde en el papel de la comanda:
+   * lo marcamos para imprimirlo en tinta oscura.
+   * @param {Element | null} img
+   */
+  function inkLightLogo(img) {
+    if (!(img instanceof HTMLImageElement) || !img.currentSrc) return;
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = () => {
+      try {
+        const size = 48;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        ctx.drawImage(probe, 0, 0, size, size);
+        const { data } = ctx.getImageData(0, 0, size, size);
+        let clear = 0;
+        let ink = 0;
+        let lum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i + 3] / 255;
+          if (a < 0.1) {
+            clear += 1;
+            continue;
+          }
+          ink += a;
+          lum += (a * (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2])) / 255;
+        }
+        const light = clear / (data.length / 4) > 0.2 && ink > 0 && lum / ink > 0.7;
+        img.classList.toggle('is-light-logo', light);
+      } catch {
+        /* Sin CORS no se puede leer: el logo queda como viene. */
+      }
+    };
+    probe.src = img.currentSrc;
+  }
+
+  let logoInkBound = false;
+  function initLogoInk() {
+    if (!logoInkBound) {
+      logoInkBound = true;
+      document.addEventListener(
+        'load',
+        (e) => {
+          const t = e.target;
+          if (t instanceof HTMLImageElement && t.matches(LOGO_INK_SELECTOR)) inkLightLogo(t);
+        },
+        true,
+      );
+    }
+    document.querySelectorAll(LOGO_INK_SELECTOR).forEach((img) => {
+      if (img instanceof HTMLImageElement && img.complete) inkLightLogo(img);
+    });
+  }
+
   function initSuperHub() {
+    initLogoInk();
     initSuperTabs();
     initHubSearch();
     initCardMenus();

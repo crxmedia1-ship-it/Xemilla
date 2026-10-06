@@ -36,6 +36,43 @@ export function resolveHubCoverUrl(row) {
   return isHttpUrl(fromUi) ? fromUi : '';
 }
 
+/** Plantillas fijas de la tarjeta. Se asigna una al crear el restaurante. */
+export const HUB_TARJETAS = ['comanda'];
+
+/**
+ * El diseño que menos veces está asignado. En empate gana el primero del catálogo.
+ * @param {string[]} used
+ */
+export function nextHubTarjeta(used) {
+  /** @type {Record<string, number>} */
+  const counts = {};
+  for (const id of HUB_TARJETAS) counts[id] = 0;
+  for (const id of used) {
+    if (id in counts) counts[id] += 1;
+  }
+  return HUB_TARJETAS.reduce((best, id) => (counts[id] < counts[best] ? id : best), HUB_TARJETAS[0]);
+}
+
+/**
+ * @param {unknown} seed
+ */
+export function pickHubTarjeta(seed) {
+  const key = String(seed || '');
+  let n = 0;
+  for (let i = 0; i < key.length; i += 1) n = (n + key.charCodeAt(i) * (i + 3)) % HUB_TARJETAS.length;
+  return HUB_TARJETAS[n] || 'comanda';
+}
+
+/**
+ * Tarjeta guardada en ui_estilo.hub.tarjeta, o una estable a partir del id.
+ * @param {Record<string, unknown>} row
+ */
+export function resolveHubTarjeta(row) {
+  const stored = String(readUiHub(row).tarjeta || '').trim();
+  if (HUB_TARJETAS.includes(stored)) return stored;
+  return pickHubTarjeta(String(row?.id || row?.slug || ''));
+}
+
 /**
  * Color de placa del logo — columna hub_logo_bg o ui_estilo.hub.logo_bg.
  * @param {Record<string, unknown>} row
@@ -51,15 +88,17 @@ export function resolveHubLogoBg(row) {
  * Persiste cover/logo_bg en ui_estilo.hub (merge, no pisa el resto).
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {string} restauranteId
- * @param {{ coverUrl?: string | null, logoBg?: string | null }} hubPatch
+ * @param {{ coverUrl?: string | null, logoBg?: string | null, tarjeta?: string | null }} hubPatch
  */
 export async function persistHubInUiEstilo(client, restauranteId, hubPatch) {
   const coverUrl =
     hubPatch.coverUrl !== undefined ? String(hubPatch.coverUrl || '').trim() : undefined;
   const logoBg =
     hubPatch.logoBg !== undefined ? String(hubPatch.logoBg || '').trim() : undefined;
+  const tarjeta =
+    hubPatch.tarjeta !== undefined ? String(hubPatch.tarjeta || '').trim() : undefined;
 
-  if (coverUrl === undefined && logoBg === undefined) return;
+  if (coverUrl === undefined && logoBg === undefined && tarjeta === undefined) return;
 
   try {
     const { data } = await client
@@ -81,6 +120,7 @@ export async function persistHubInUiEstilo(client, restauranteId, hubPatch) {
     const nextHub = { ...prevHub };
     if (coverUrl !== undefined && isHttpUrl(coverUrl)) nextHub.cover_url = coverUrl;
     if (logoBg !== undefined && /^#[0-9A-Fa-f]{6}$/.test(logoBg)) nextHub.logo_bg = logoBg;
+    if (tarjeta !== undefined && HUB_TARJETAS.includes(tarjeta)) nextHub.tarjeta = tarjeta;
 
     await client
       .from('restaurantes')

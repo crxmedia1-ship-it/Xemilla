@@ -12,7 +12,14 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
-import { resolveHubCoverUrl, resolveHubLogoBg } from '../../../lib/hub-media.js';
+import {
+  resolveHubCoverUrl,
+  resolveHubLogoBg,
+  resolveHubTarjeta,
+  readUiHub,
+  HUB_TARJETAS,
+  persistHubInUiEstilo,
+} from '../../../lib/hub-media.js';
 import { cloudinaryTrimUrl } from '../../../lib/plato-media-url.js';
 
 const gate = await requireSuperAdmin({
@@ -71,6 +78,28 @@ const logoTrimPrefill = createPrefill.logoUrl
   : '';
 
 const restaurantes = await listAllRestaurantes(gate.supabase, gate.user);
+const hubWrite = getSuperAdminWriteClient(gate.supabase, gate.user);
+await Promise.all(
+  restaurantes.map(async (row, index) => {
+    const stored = String(readUiHub(row).tarjeta || '').trim();
+    if (HUB_TARJETAS.includes(stored)) return;
+    const tarjeta = HUB_TARJETAS[index % HUB_TARJETAS.length];
+    const prev =
+      row.ui_estilo && typeof row.ui_estilo === 'object' && !Array.isArray(row.ui_estilo)
+        ? row.ui_estilo
+        : {};
+    row.ui_estilo = { ...prev, hub: { ...readUiHub(row), tarjeta } };
+    await persistHubInUiEstilo(hubWrite, String(row.id), { tarjeta });
+  }),
+);
+const mesaPorId = new Map(
+  [...restaurantes]
+    .sort(
+      (a, b) =>
+        Number(String(b.slug) === 'crx-prueba') - Number(String(a.slug) === 'crx-prueba'),
+    )
+    .map((r, i) => [String(r.id), String(i + 1).padStart(2, '0')]),
+);
 const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
 
 /** Operativo access = Auth metadata restaurante_id (not truthy restaurantes.user_id — that is often SuperAdmin). */
@@ -122,10 +151,13 @@ function formatTasa(n) {
 
 /** @param {string | null | undefined} name */
 function initialsFromName(name) {
-  return String(name || '')
+  const parts = String(name || '')
     .trim()
-    .slice(0, 2)
-    .toUpperCase() || '—';
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return '—';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
 }
 
 const emptyCellClass = 'super-net-empty text-zinc-300 dark:text-zinc-700 font-mono text-xs';
@@ -238,7 +270,8 @@ function resolveCoverUrl(r) {
  */
 function resolveLogoUrl(r) {
   const v = String(r?.logo_url || '').trim();
-  return v && /^https?:\/\//i.test(v) ? v : '';
+  if (/^https?:\/\//i.test(v) || v.startsWith('/')) return v;
+  return '';
 }
 
 /**
@@ -469,9 +502,7 @@ function resolveMapsEmbed(direccion) {
                 localesConAcceso.has(String(r.id)) ||
                 localesConAcceso.has(String(r.slug));
               const ctaLabel = tieneAcceso ? 'ACTUALIZAR CLAVE' : 'CREAR ACCESO';
-              const coverUrl = resolveCoverUrl(r);
               const logoUrl = resolveLogoUrl(r);
-              const logoPlateBg = resolveLogoPlateBg(r);
               const phone = resolvePhone(r);
               const waHref = resolveWaHref(r.whatsapp_url, r.whatsapp_num);
               const nombre = String(r.nombre_comercial || '').trim();
@@ -480,7 +511,9 @@ function resolveMapsEmbed(direccion) {
               const mapsHref = resolveMapsHref(direccion, coordenadas);
               const mapsEmbed = resolveMapsEmbed(direccion);
               const studioHref = `/admin/dashboard?restaurante=${encodeURIComponent(r.id)}`;
+              const tarjetaActual = resolveHubTarjeta(r);
               const searchKey = `${nombre} ${r.slug || ''}`.toLowerCase();
+              const esPrueba = String(r.slug || '') === 'crx-prueba';
               return (
               <li
                 class:list={[
@@ -492,77 +525,8 @@ function resolveMapsEmbed(direccion) {
                 data-hub-slug={String(r.slug || '')}
                 data-hub-activo={r.activo === false ? 'false' : 'true'}
               >
-                <div class="super-hub-card__media">
-                  {/* Cover 100% */}
-                  <div class="absolute inset-0 z-0 overflow-hidden bg-black" data-card-cover-zone>
-                    {coverUrl ? (
-                      <img
-                        src={coverUrl}
-                        alt=""
-                        class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                        loading="lazy"
-                        decoding="async"
-                        data-card-cover-img
-                      />
-                    ) : (
-                      <div class="h-full w-full bg-black" aria-hidden="true" data-card-cover-empty></div>
-                    )}
-                    <div
-                      class="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/45 via-black/10 to-transparent"
-                      aria-hidden="true"
-                    ></div>
-                  </div>
-
-                  {/* Logo — placa con color derivado del cover */}
-                  <div
-                    class="super-hub-card__logo-glass"
-                    data-card-logo-zone
-                    data-logo-plate-bg={logoPlateBg}
-                    style={`--hub-logo-plate: ${logoPlateBg}; background: ${logoPlateBg};`}
-                  >
-                    {logoUrl ? (
-                      <img
-                        src={logoUrl}
-                        alt={nombre || r.slug}
-                        class="super-hub-card__logo-img"
-                        loading="lazy"
-                        decoding="async"
-                        data-card-logo-img
-                      />
-                    ) : (
-                      <span class="super-hub-card__logo-empty" data-card-logo-empty>Logo</span>
-                    )}
-                  </div>
-
-                  <div class="absolute left-3 top-3 z-20 flex flex-col gap-1.5">
-                    {r.activo === false ? (
-                      <span
-                        data-estado-badge
-                        class="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-black/55 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-amber-300 backdrop-blur-md"
-                      >
-                        <span class="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true"></span>
-                        Desactivado
-                      </span>
-                    ) : null}
-                    {tieneAcceso ? (
-                      <span
-                        data-access-badge
-                        class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-black/55 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-emerald-300 backdrop-blur-md"
-                      >
-                        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true"></span>
-                        Acceso Activo
-                      </span>
-                    ) : (
-                      <span
-                        data-access-badge
-                        class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[0.62rem] font-medium tracking-wide text-zinc-400 backdrop-blur-md"
-                      >
-                        <span class="h-1.5 w-1.5 rounded-full bg-zinc-500" aria-hidden="true"></span>
-                        Sin Acceso
-                      </span>
-                    )}
-                  </div>
-
+                <div class="super-hub-card__face" data-tarjeta={tarjetaActual}>
+                  <span class="super-hub-card__ticket" aria-hidden="true">Comanda · Mesa {mesaPorId.get(String(r.id))}</span>
                   <details class="absolute right-3 top-3 z-30" data-card-menu>
                     <summary
                       class="cursor-pointer list-none [&::-webkit-details-marker]:hidden"
@@ -670,13 +634,51 @@ function resolveMapsEmbed(direccion) {
                     </div>
                   </details>
 
-                  <div class="pointer-events-none absolute inset-0 z-[12] flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:pointer-events-auto group-hover:opacity-100">
-                    <a
-                      href={studioHref}
-                      class="rounded-full border border-white/25 bg-white/12 px-5 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md transition hover:bg-white/20"
-                    >
-                      Entrar al Studio
-                    </a>
+                  <a href={studioHref} class="super-hub-card__mark" aria-label={`Entrar al Studio de ${nombre || r.slug}`}>
+                    {esPrueba && !logoUrl ? (
+                      <span class="super-hub-card__sticker" aria-hidden="true">Prueba</span>
+                    ) : (
+                      <span class="super-hub-card__logo-glass" data-card-logo-zone>
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt=""
+                            class="super-hub-card__logo-img"
+                            loading="lazy"
+                            decoding="async"
+                            data-card-logo-img
+                          />
+                        ) : (
+                          <span class="super-hub-card__logo-empty" data-card-logo-empty>
+                            {initialsFromName(nombre || r.slug)}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </a>
+
+                  <div class="super-hub-card__meta">
+                    <a href={studioHref} class="super-hub-card__name">{nombre || r.slug}</a>
+                    {r.slug ? <p class="super-hub-card__slug">/{r.slug}</p> : null}
+                    <div class="super-hub-card__states" data-estado-host>
+                      {r.activo === false ? (
+                        <span data-estado-badge class="super-hub-card__state super-hub-card__state--paused">
+                          <span class="super-hub-card__dot" aria-hidden="true"></span>
+                          Desactivado
+                        </span>
+                      ) : null}
+                      {tieneAcceso ? (
+                        <span data-access-badge class="super-hub-card__state super-hub-card__state--on">
+                          <span class="super-hub-card__dot" aria-hidden="true"></span>
+                          Acceso activo
+                        </span>
+                      ) : (
+                        <span data-access-badge class="super-hub-card__state">
+                          <span class="super-hub-card__dot" aria-hidden="true"></span>
+                          Sin acceso
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -689,59 +691,32 @@ function resolveMapsEmbed(direccion) {
                       <button type="button" class="hub-modal__close" data-close-ficha aria-label="Cerrar">×</button>
                     </div>
                     <p class="hub-modal__hint">
-                      Cover a pantalla completa · logo PNG sin fondo: la placa toma un color del cover automáticamente.
+                      El logo va impreso en la comanda.
                     </p>
                     <form class="space-y-3.5" data-ficha-form data-restaurante-id={r.id} data-slug={r.slug || ''} novalidate>
-                      <div class="hub-ficha-preview">
-                        <div>
-                          <div class="hub-ficha-slot hub-ficha-slot--cover" data-ficha-cover-preview>
-                            <span class="hub-ficha-slot__badge">Cover 100%</span>
-                            {coverUrl ? (
-                              <img src={coverUrl} alt="" data-ficha-cover-img />
-                            ) : (
-                              <span class="hub-ficha-slot__empty" data-ficha-cover-empty>Sin cover</span>
-                            )}
-                          </div>
-                          <div class="hub-ficha-slot__actions">
-                            <span>Foto cover</span>
-                            <label class="hub-ficha-file">
-                              Cambiar / recortar
-                              <input type="file" accept="image/*" data-ficha-cover-file />
-                            </label>
-                          </div>
-                          <input type="hidden" name="hub_cover_url" value={coverUrl} data-ficha-cover-url />
-                        </div>
-
-                        <div>
-                          <div
-                            class="hub-ficha-slot hub-ficha-slot--logo"
-                            data-ficha-logo-preview
-                            style={`--hub-logo-plate: ${logoPlateBg};`}
-                          >
-                            <span class="hub-ficha-slot__badge">Logo · rectángulo</span>
-                            {logoUrl ? (
-                              <img
-                                src={logoUrl}
-                                alt=""
-                                data-ficha-logo-img
-                                class="mx-auto max-h-16 w-auto object-contain"
-                              />
-                            ) : (
-                              <span class="hub-ficha-slot__empty" data-ficha-logo-empty>Sin logo</span>
-                            )}
-                          </div>
-                          <div class="hub-ficha-slot__actions">
-                            <span>Logo PNG</span>
-                            <label class="hub-ficha-file">
-                              Cambiar / recortar
-                              <input type="file" accept="image/*" data-ficha-logo-file />
-                            </label>
-                          </div>
-                          <input type="hidden" name="logo_url" value={logoUrl} data-ficha-logo-url />
-                          <input type="hidden" name="hub_logo_bg" value={logoPlateBg} data-ficha-logo-bg />
+                      <div class="hub-ficha-stage" data-ficha-stage data-tarjeta={tarjetaActual}>
+                        <span class="super-hub-card__ticket" aria-hidden="true">Comanda · Mesa {mesaPorId.get(String(r.id))}</span>
+                        <div class="hub-ficha-stage__mark" data-ficha-logo-preview>
+                          {esPrueba && !logoUrl ? (
+                            <span class="super-hub-card__sticker super-hub-card__sticker--ficha" aria-hidden="true">Prueba</span>
+                          ) : logoUrl ? (
+                            <img src={logoUrl} alt="" data-ficha-logo-img class="hub-ficha-stage__img" />
+                          ) : (
+                            <span class="hub-ficha-stage__empty" data-ficha-logo-empty>
+                              {initialsFromName(nombre || r.slug)}
+                            </span>
+                          )}
                         </div>
                       </div>
-
+                      <div class="hub-ficha-stage__bar">
+                        <span>Logo</span>
+                        <label class="hub-ficha-file">
+                          Cambiar
+                          <input type="file" accept="image/*" data-ficha-logo-file />
+                        </label>
+                      </div>
+                      <input type="hidden" name="logo_url" value={logoUrl} data-ficha-logo-url />
+                      <input type="hidden" name="tarjeta" value={tarjetaActual} data-ficha-tarjeta />
                       <label class="block">
                         <span>Nombre</span>
                         <input type="text" name="nombre_comercial" required value={nombre} />

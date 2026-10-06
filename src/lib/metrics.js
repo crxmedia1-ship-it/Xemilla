@@ -535,7 +535,7 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
           nombre: String(r.nombre_comercial || r.slug || 'Local').trim() || 'Local',
           slug: String(r.slug || '').trim(),
           visitas: byRest[id] || 0,
-          logoUrl: logo && /^https?:\/\//i.test(logo) ? logo : '',
+          logoUrl: logo && (/^https?:\/\//i.test(logo) || logo.startsWith('/')) ? logo : '',
         };
       })
       .sort((a, b) => b.visitas - a.visitas || a.nombre.localeCompare(b.nombre, 'es'));
@@ -595,7 +595,7 @@ export async function fetchNetworkIntelligence(client, opts = {}) {
       id,
       nombre: String(r.nombre_comercial || r.slug || 'Local').trim() || 'Local',
       slug: String(r.slug || '').trim(),
-      logoUrl: logo && /^https?:\/\//i.test(logo) ? logo : '',
+      logoUrl: logo && (/^https?:\/\//i.test(logo) || logo.startsWith('/')) ? logo : '',
       visitas30d: visitas,
       platoMasVisto: allBucket.topPlatoByRest[id] || '—',
       tasaWhatsapp,

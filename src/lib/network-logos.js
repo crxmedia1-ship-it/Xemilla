@@ -54,7 +54,7 @@ function mapLogos(rows) {
   const logos = [];
   for (const row of rows ?? []) {
     const logoUrl = String(row.logo_url || '').trim();
-    if (!/^https?:\/\//i.test(logoUrl)) continue;
+    if (!/^https?:\/\//i.test(logoUrl) && !logoUrl.startsWith('/')) continue;
     logos.push({
       id: String(row.id),
       name: String(row.nombre_comercial || '').trim() || 'Local',
