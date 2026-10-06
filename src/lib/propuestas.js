@@ -92,6 +92,24 @@ export async function listPropuestas(client) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {number} [limit]
+ */
+export async function listPropuestaEventos(client, limit = 12) {
+  const { data, error } = await client
+    .from('propuesta_eventos')
+    .select('id, propuesta_id, tipo, created_at')
+    .order('id', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[propuestas] eventos:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {string} id
  */
 export async function getPropuesta(client, id) {

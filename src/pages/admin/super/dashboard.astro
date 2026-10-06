@@ -12,7 +12,7 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
-import { listPropuestas } from '../../../lib/propuestas.js';
+import { listPropuestas, listPropuestaEventos } from '../../../lib/propuestas.js';
 import {
   resolveHubCoverUrl,
   resolveHubLogoBg,
@@ -101,7 +101,11 @@ const mesaPorId = new Map(
     )
     .map((r, i) => [String(r.id), String(i + 1).padStart(2, '0')]),
 );
-const propuestas = await listPropuestas(getSuperAdminWriteClient(gate.supabase, gate.user));
+const propuestasClient = getSuperAdminWriteClient(gate.supabase, gate.user);
+const [propuestas, propEventos] = await Promise.all([
+  listPropuestas(propuestasClient),
+  listPropuestaEventos(propuestasClient),
+]);
 const requestedTab = Astro.url.searchParams.get('tab');
 const superTab =
   requestedTab === 'metricas' || requestedTab === 'propuestas' ? requestedTab : 'locales';
@@ -119,34 +123,86 @@ function formatPropuestaCuando(iso) {
   }).format(date);
 }
 
+/** @param {Record<string, any>} p */
+const propExploro = (p) => Number(p.vio_ar) > 0 || Number(p.vio_nutri) > 0 || Number(p.vio_qr) > 0;
 const propAbiertas = propuestas.filter((p) => Number(p.vistas) > 0);
 const propStats = {
   total: propuestas.length,
   aperturas: propuestas.reduce((sum, p) => sum + (Number(p.vistas) || 0), 0),
   abiertas: propAbiertas.length,
-  tasaApertura: propuestas.length
-    ? Math.round((propAbiertas.length / propuestas.length) * 100)
-    : 0,
   contacto: propuestas.filter((p) => Number(p.vio_whatsapp) > 0).length,
 };
+const propEmbudo = [
+  { label: 'Enviadas', hint: 'Enlaces creados', n: propStats.total },
+  { label: 'Abiertas', hint: 'Al menos una apertura', n: propStats.abiertas },
+  { label: 'Exploraron', hint: 'AR, ficha o QRs', n: propuestas.filter(propExploro).length },
+  { label: 'Contactaron', hint: 'Tocaron WhatsApp', n: propStats.contacto },
+].map((step) => ({
+  ...step,
+  pct: propStats.total ? Math.round((step.n / propStats.total) * 100) : 0,
+}));
+
+/** @param {Record<string, any>} p */
+function propuestaEstado(p) {
+  if (Number(p.vio_whatsapp) > 0) return { label: 'Pidió contacto', tone: 'hot' };
+  if (propExploro(p)) return { label: 'Exploró', tone: 'warm' };
+  if (Number(p.vistas) > 0) return { label: 'Abierta', tone: 'open' };
+  return { label: 'Sin abrir', tone: 'idle' };
+}
+
+const PROP_EVENTO_TEXTO = {
+  vista: 'abrió la propuesta',
+  ar: 'probó la realidad aumentada',
+  nutri: 'miró la ficha nutricional',
+  qr: 'miró los QRs de mesa',
+  whatsapp: 'tocó WhatsApp',
+};
+const propNombrePorId = new Map(propuestas.map((p) => [String(p.id), p.nombre]));
+const propActividad = propEventos
+  .filter((e) => propNombrePorId.has(String(e.propuesta_id)))
+  .map((e) => ({
+    id: e.id,
+    nombre: propNombrePorId.get(String(e.propuesta_id)),
+    texto: PROP_EVENTO_TEXTO[e.tipo] || e.tipo,
+    tipo: e.tipo,
+    cuando: formatHace(e.created_at),
+  }));
+
+/** @param {string | null | undefined} iso */
+function formatHace(iso) {
+  const t = new Date(String(iso || '')).getTime();
+  if (Number.isNaN(t)) return '';
+  const min = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (min < 1) return 'ahora';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `hace ${d} d`;
+  return new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium' }).format(new Date(t));
+}
+
+/** @param {string | null | undefined} iso */
+function formatFechaCorta(iso) {
+  const date = new Date(String(iso || ''));
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-VE', { day: 'numeric', month: 'short' }).format(date);
+}
 const propInteres = [
-  ['Realidad aumentada', 'vio_ar'],
-  ['Ficha nutricional', 'vio_nutri'],
-  ['QRs de mesa', 'vio_qr'],
-  ['WhatsApp', 'vio_whatsapp'],
-].map(([label, key]) => {
+  ['Realidad aumentada', 'AR', 'vio_ar'],
+  ['Ficha nutricional', 'Ficha', 'vio_nutri'],
+  ['QRs de mesa', 'QRs', 'vio_qr'],
+  ['WhatsApp', 'WhatsApp', 'vio_whatsapp'],
+].map(([label, short, key]) => {
   const vieron = propuestas.filter((p) => Number(p[key]) > 0).length;
   return {
     label,
+    short,
     vieron,
     clics: propuestas.reduce((sum, p) => sum + (Number(p[key]) || 0), 0),
     pct: propAbiertas.length ? Math.round((vieron / propAbiertas.length) * 100) : 0,
   };
 });
-const propTop = [...propuestas]
-  .sort((a, b) => (Number(b.vistas) || 0) - (Number(a.vistas) || 0))
-  .slice(0, 5);
-const propTopMax = Math.max(1, ...propTop.map((p) => Number(p.vistas) || 0));
 const writeClient = getSuperAdminWriteClient(gate.supabase, gate.user);
 
 /** Operativo access = Auth metadata restaurante_id (not truthy restaurantes.user_id — that is often SuperAdmin). */
@@ -1319,142 +1375,149 @@ function resolveMapsEmbed(direccion) {
       </section>
 
       <!-- D) Propuestas comerciales -->
-      <section class="w-full space-y-6 pt-2" aria-label="Métricas de propuestas">
-        <header class="flex flex-wrap items-end justify-between gap-3">
+      <section class="super-propm" aria-label="Métricas de propuestas">
+        <header class="super-propm__head">
           <div class="min-w-0">
-            <h3 class="text-xl font-light tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl">
-              Propuestas comerciales
-            </h3>
-            <p class="mt-1 text-sm text-zinc-500">Quién abrió el enlace de venta y qué miró</p>
+            <h3>Propuestas comerciales</h3>
+            <p>Todas las que enviaste y qué hizo cada restaurante con el enlace</p>
           </div>
-          <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Histórico</span>
+          <a href="?tab=propuestas" class="super-propm__cta">+ Nueva propuesta</a>
         </header>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-          <article class={kpiCardClass}>
-            <p class={kpiLabelClass}>Propuestas enviadas</p>
-            <p class={kpiValueClass}>{formatKpi(propStats.total)}</p>
-            <p class={kpiHintClass}>
-              <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
-              Enlaces creados
-            </p>
+        <div class="super-propm__top">
+          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card">
+            <header class="super-propm__card-head">
+              <span>Embudo</span>
+              <small>{formatKpi(propStats.aperturas)} aperturas</small>
+            </header>
+            <ol class="super-propm__funnel" aria-label="Embudo de propuestas">
+              {propEmbudo.map((step, i) => (
+                <li data-step={i}>
+                  <span class="super-propm__funnel-label" title={step.hint}>{step.label}</span>
+                  <span class="super-propm__funnel-track" aria-hidden="true">
+                    <span style={`width: ${step.n ? Math.max(step.pct, 6) : 0}%`}></span>
+                  </span>
+                  <strong>{formatKpi(step.n)}</strong>
+                  <small>{i === 0 ? '' : `${step.pct}%`}</small>
+                </li>
+              ))}
+            </ol>
           </article>
-          <article class={kpiCardClass}>
-            <p class={kpiLabelClass}>Aperturas</p>
-            <p class={kpiValueClass}>{formatKpi(propStats.aperturas)}</p>
-            <p class={kpiHintClass}>
-              <span class="h-1 w-1 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true"></span>
-              Veces que abrieron un enlace
-            </p>
-          </article>
-          <article class={kpiCardClass}>
-            <p class={kpiLabelClass}>Tasa de apertura</p>
-            <p class={kpiValueClass}>
-              {propStats.tasaApertura}<span class="text-2xl text-zinc-400 dark:text-zinc-500">%</span>
-            </p>
-            <p class={kpiHintClass}>
-              <span class="h-1 w-1 rounded-full bg-emerald-500/70" aria-hidden="true"></span>
-              {propStats.abiertas} de {propStats.total} abiertas
-            </p>
-          </article>
-          <article class={kpiCardClass}>
-            <p class={kpiLabelClass}>Pidieron contacto</p>
-            <p class={kpiValueClass}>{formatKpi(propStats.contacto)}</p>
-            <p class={kpiHintClass}>
-              <span class="h-1 w-1 rounded-full bg-emerald-500/70" aria-hidden="true"></span>
-              Tocaron WhatsApp
-            </p>
-          </article>
-        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col">
-            <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
+          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card">
+            <header class="super-propm__card-head">
               <span>Qué les interesó</span>
-              <span class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 shrink-0">
-                % de abiertas
-              </span>
+              <small>% de abiertas</small>
             </header>
-            {
-              propStats.abiertas === 0 ? (
-                <p class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
-                  Todavía nadie abrió una propuesta.
-                </p>
-              ) : (
-                <ul class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {propInteres.map((item) => (
-                    <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                      <div class="flex items-center justify-between gap-3">
-                        <span class="text-sm font-medium text-zinc-900 dark:text-white">{item.label}</span>
-                        <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">
-                          {item.pct}%
-                          <span class="text-[11px] text-zinc-400"> · {formatKpi(item.clics)} clics</span>
-                        </span>
-                      </div>
-                      <div class="h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
-                        <div class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60" style={`width: ${item.pct}%`} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )
-            }
+            <ul class="super-propm__rings">
+              {propInteres.map((item) => (
+                <li title={`${item.label}: ${item.vieron} de ${propStats.abiertas} abiertas · ${item.clics} clics`}>
+                  <span
+                    class="super-propm__ring"
+                    data-hot={item.short === 'WhatsApp' ? '' : undefined}
+                    style={`--p: ${item.pct}`}
+                  >
+                    <strong>{item.pct}<small>%</small></strong>
+                  </span>
+                  <span class="super-propm__ring-label">{item.short}</span>
+                  <small>{formatKpi(item.clics)} {item.clics === 1 ? 'clic' : 'clics'}</small>
+                </li>
+              ))}
+            </ul>
           </article>
 
-          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col">
-            <header class="text-sm font-semibold text-zinc-900 dark:text-white tracking-wide mb-4 flex items-center justify-between gap-3">
-              <span>Propuestas más abiertas</span>
-              <a href="?tab=propuestas" class="text-[11px] font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-900 shrink-0">
-                Gestionar ↗
-              </a>
+          <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card super-propm__activity">
+            <header class="super-propm__card-head">
+              <span>Actividad reciente</span>
+              <small>Al recargar</small>
             </header>
-            {
-              propTop.length === 0 ? (
-                <p class="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800/80 px-4 py-6 text-center text-sm text-zinc-500">
-                  Todavía no hay propuestas.
-                </p>
-              ) : (
-                <ol class="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {propTop.map((p, i) => (
-                    <li class="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                      <div class="flex items-center gap-3">
-                        <span class="w-8 shrink-0 font-mono text-xs text-zinc-400 dark:text-zinc-500">
-                          #{String(i + 1).padStart(2, '0')}
-                        </span>
-                        {p.logo_url ? (
-                          <img
-                            src={p.logo_url}
-                            alt=""
-                            class="w-8 h-8 rounded-lg object-contain bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shrink-0"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : (
-                          <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-mono font-bold text-zinc-500 dark:text-zinc-300 shrink-0">
-                            {initialsFromName(p.nombre)}
-                          </div>
-                        )}
-                        <div class="min-w-0 flex-1">
-                          <p class="truncate text-sm font-medium text-zinc-900 dark:text-white">{p.nombre}</p>
-                          <p class="truncate text-[11px] text-zinc-500">{formatPropuestaCuando(p.ultima_vista)}</p>
-                        </div>
-                        <span class="shrink-0 font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">
-                          {formatKpi(p.vistas)}
-                        </span>
-                      </div>
-                      <div class="ml-11 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800/80">
-                        <div
-                          class="h-full rounded-full bg-zinc-400/80 dark:bg-zinc-500/60"
-                          style={`width: ${Math.round(((Number(p.vistas) || 0) / propTopMax) * 100)}%`}
-                        />
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )
-            }
+            {propActividad.length === 0 ? (
+              <p class="super-propm__empty">
+                Cuando un restaurante abra su enlace o toque algo, aparece aquí con la hora.
+              </p>
+            ) : (
+              <ol class="super-propm__feed">
+                {propActividad.map((ev) => (
+                  <li data-tipo={ev.tipo}>
+                    <span class="super-propm__dot" aria-hidden="true"></span>
+                    <p>
+                      <strong>{ev.nombre}</strong> {ev.texto}
+                    </p>
+                    <time>{ev.cuando}</time>
+                  </li>
+                ))}
+              </ol>
+            )}
           </article>
         </div>
+
+        <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card super-propm__card--flush">
+          <header class="super-propm__card-head">
+            <span>Todas las propuestas enviadas</span>
+            <small>{formatKpi(propStats.total)} en total</small>
+          </header>
+          {propuestas.length === 0 ? (
+            <p class="super-propm__empty">
+              Todavía no enviaste ninguna. Crea la primera en
+              <a href="?tab=propuestas">Propuestas</a> y quedará guardada aquí.
+            </p>
+          ) : (
+            <table class="super-propm__table">
+              <thead>
+                <tr>
+                  <th>Restaurante</th>
+                  <th>Enviada</th>
+                  <th>Aperturas</th>
+                  <th>Última apertura</th>
+                  <th>Miró</th>
+                  <th>Estado</th>
+                  <th><span class="sr-only">Abrir</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {propuestas.map((p) => {
+                  const estado = propuestaEstado(p);
+                  const miro = [
+                    ['AR', p.vio_ar],
+                    ['Ficha', p.vio_nutri],
+                    ['QR', p.vio_qr],
+                    ['WA', p.vio_whatsapp],
+                  ];
+                  return (
+                    <tr>
+                      <td data-col="rest">
+                        <div class="super-propm__rest">
+                          {p.logo_url ? (
+                            <img src={p.logo_url} alt="" loading="lazy" decoding="async" />
+                          ) : (
+                            <span>{initialsFromName(p.nombre)}</span>
+                          )}
+                          <strong>{p.nombre}</strong>
+                        </div>
+                      </td>
+                      <td data-label="Enviada">{formatFechaCorta(p.created_at)}</td>
+                      <td data-label="Aperturas" class="super-propm__mono">{formatKpi(p.vistas)}</td>
+                      <td data-label="Última apertura">{p.ultima_vista ? formatHace(p.ultima_vista) : '—'}</td>
+                      <td data-label="Miró">
+                        <ul class="super-propm__chips">
+                          {miro.map(([label, n]) => (
+                            <li data-on={Number(n) > 0 ? '' : undefined} title={`${n} ${label}`}>{label}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td data-label="Estado">
+                        <span class="super-propm__estado" data-tone={estado.tone}>{estado.label}</span>
+                      </td>
+                      <td data-col="open">
+                        <a href={`/propuesta?p=${p.id}`} target="_blank" rel="noopener noreferrer">Abrir ↗</a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </article>
       </section>
     </div>
 
@@ -1463,7 +1526,7 @@ function resolveMapsEmbed(direccion) {
         <div>
           <p class="super-props__kicker">Enlace de venta</p>
           <h2>Propuestas</h2>
-          <p>El nombre y el logo arman el enlace. Acá ves cuántas veces lo abrieron y qué miraron.</p>
+          <p>Crea un enlace de venta con el nombre y el logo del restaurante. Las aperturas y lo que miró cada uno están en <a href="?tab=metricas" class="underline underline-offset-2">Métricas</a>.</p>
         </div>
       </header>
 
@@ -1485,18 +1548,11 @@ function resolveMapsEmbed(direccion) {
             <button type="button" class="super-prop-logo__pick" data-prop-logo-pick>Subir</button>
           </span>
         </label>
-        <label>
+        <label class="super-prop-form__wide">
           <span>Dominio</span>
           <input name="dominio" type="text" placeholder="blacksushi.com" autocomplete="off" spellcheck="false" />
         </label>
-        <label>
-          <span>Mundo</span>
-          <select name="mundo">
-            <option value="estudio" selected>Estudio, claro</option>
-            <option value="barra">Barra</option>
-            <option value="espacio">Espacio</option>
-          </select>
-        </label>
+        <input type="hidden" name="mundo" value="estudio" />
         <div class="super-prop-form__actions">
           <button type="submit" class="super-until-hero__cta" data-prop-submit>
             <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
