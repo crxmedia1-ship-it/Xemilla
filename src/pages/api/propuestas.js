@@ -11,7 +11,7 @@ export const prerender = false;
 
 /**
  * SuperAdmin: crea o borra un enlace de propuesta.
- * POST { nombre, logoUrl, setup, dominio, mundo }
+ * POST { nombre, logoUrl, setup, anual, sinPrecio, mundo }
  * DELETE { id }
  */
 export async function POST({ request, cookies }) {
@@ -30,7 +30,8 @@ export async function POST({ request, cookies }) {
     nombre: String(body.nombre || ''),
     logoUrl: String(body.logoUrl || ''),
     setup: String(body.setup || ''),
-    dominio: String(body.dominio || ''),
+    anual: String(body.anual || ''),
+    sinPrecio: body.sinPrecio === true,
     mundo: String(body.mundo || ''),
   });
 

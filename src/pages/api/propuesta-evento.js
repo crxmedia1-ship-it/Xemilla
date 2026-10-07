@@ -22,7 +22,7 @@ function isThrottled(key) {
 
 /**
  * Cuenta lo que el cliente abrió en una propuesta guardada.
- * POST { id, tipo: 'ar' | 'nutri' | 'qr' | 'whatsapp' }
+ * POST { id, tipo: 'ar' | 'nutri' | 'qr' | 'ia' | 'whatsapp' }
  * La vista de la página se cuenta en el servidor al abrir el enlace.
  */
 export async function POST(ctx) {

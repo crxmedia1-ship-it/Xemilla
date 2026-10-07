@@ -1377,30 +1377,41 @@
     const submitBtn = form.querySelector('[data-prop-submit]');
     const logoInput = form.querySelector('[data-prop-logo]');
     const logoFile = form.querySelector('[data-prop-logo-file]');
-    const logoPick = form.querySelector('[data-prop-logo-pick]');
+    const logoClear = form.querySelector('[data-prop-logo-clear]');
     const logoMark = form.querySelector('[data-prop-logo-mark]');
+    const drop = form.querySelector('[data-prop-drop]');
+    const dropTitle = form.querySelector('[data-prop-drop-title]');
+    const dropSub = form.querySelector('[data-prop-drop-sub]');
+    const nombreInput = form.querySelector('[data-prop-nombre]');
+    const domainHint = form.querySelector('[data-prop-domain-hint]');
+    const amounts = form.querySelector('[data-prop-amounts]');
     const result = document.querySelector('[data-prop-result]');
     const resultLink = document.querySelector('[data-prop-result-link]');
+    const DROP_SUB = dropSub?.textContent || '';
 
     const setStatus = (text) => {
       if (statusEl) statusEl.textContent = text;
     };
 
-    const paintLogo = (url) => {
-      if (!(logoMark instanceof HTMLElement)) return;
-      logoMark.textContent = '';
-      logoMark.style.backgroundImage = url ? `url("${url}")` : '';
-      if (!url) logoMark.textContent = '?';
+    const paintLogo = (url, fileName = '') => {
+      if (logoMark instanceof HTMLElement) {
+        logoMark.style.backgroundImage = url ? `url("${url}")` : '';
+        logoMark.textContent = url ? '' : '?';
+      }
+      if (dropTitle) dropTitle.textContent = url ? 'Cambiar logo' : 'Elegir archivo';
+      if (dropSub) dropSub.textContent = url ? fileName || 'Logo listo' : DROP_SUB;
+      if (logoClear instanceof HTMLElement) logoClear.hidden = !url;
     };
 
-    logoPick?.addEventListener('click', () => {
-      if (logoFile instanceof HTMLInputElement) logoFile.click();
-    });
-
-    logoFile?.addEventListener('change', async () => {
-      const file = logoFile instanceof HTMLInputElement ? logoFile.files?.[0] : null;
+    /** @param {File | null | undefined} file */
+    const uploadLogo = async (file) => {
       if (!file || !(logoInput instanceof HTMLInputElement)) return;
+      if (!file.type.startsWith('image/')) {
+        setStatus('El logo tiene que ser una imagen.');
+        return;
+      }
       setStatus('Subiendo logo…');
+      if (drop instanceof HTMLElement) drop.dataset.busy = 'true';
       const body = new FormData();
       body.set('file', file);
       body.set('restaurante_slug', 'propuestas');
@@ -1413,16 +1424,76 @@
           return;
         }
         logoInput.value = payload.url;
-        paintLogo(payload.url);
+        paintLogo(payload.url, file.name);
         setStatus('');
       } catch {
         setStatus('No se pudo subir el logo.');
+      } finally {
+        if (drop instanceof HTMLElement) delete drop.dataset.busy;
+        if (logoFile instanceof HTMLInputElement) logoFile.value = '';
       }
+    };
+
+    logoFile?.addEventListener('change', () => {
+      if (logoFile instanceof HTMLInputElement) uploadLogo(logoFile.files?.[0]);
     });
 
-    logoInput?.addEventListener('input', () => {
-      if (logoInput instanceof HTMLInputElement) paintLogo(logoInput.value.trim());
+    if (drop instanceof HTMLElement) {
+      ['dragenter', 'dragover'].forEach((type) =>
+        drop.addEventListener(type, (event) => {
+          event.preventDefault();
+          drop.dataset.over = 'true';
+        }),
+      );
+      ['dragleave', 'drop'].forEach((type) =>
+        drop.addEventListener(type, () => delete drop.dataset.over),
+      );
+      drop.addEventListener('drop', (event) => {
+        event.preventDefault();
+        uploadLogo(event.dataTransfer?.files?.[0]);
+      });
+    }
+
+    logoClear?.addEventListener('click', () => {
+      if (logoInput instanceof HTMLInputElement) logoInput.value = '';
+      paintLogo('');
     });
+
+    /** Misma regla que la propuesta: «Black Sushi» → blacksushi.com */
+    const domainFromName = (name) =>
+      name
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '');
+
+    nombreInput?.addEventListener('input', () => {
+      if (!(nombreInput instanceof HTMLInputElement) || !(domainHint instanceof HTMLElement)) return;
+      const base = domainFromName(nombreInput.value);
+      domainHint.textContent = '';
+      if (!base) {
+        domainHint.textContent = 'El dominio de la propuesta se arma con el nombre.';
+        return;
+      }
+      domainHint.append('Dominio en la propuesta: ');
+      const strong = document.createElement('strong');
+      strong.textContent = `${base}.com`;
+      domainHint.append(strong);
+    });
+
+    const isSinPrecio = () =>
+      form.querySelector('[data-prop-price-mode]:checked')?.getAttribute('value') === 'consultar';
+
+    form.querySelectorAll('[data-prop-price-mode]').forEach((radio) =>
+      radio.addEventListener('change', () => {
+        if (!(amounts instanceof HTMLElement)) return;
+        const off = isSinPrecio();
+        amounts.dataset.off = off ? 'true' : 'false';
+        amounts.querySelectorAll('input').forEach((input) => {
+          input.disabled = off;
+        });
+      }),
+    );
 
     const copyText = async (value, button) => {
       try {
@@ -1507,8 +1578,9 @@
           body: JSON.stringify({
             nombre: String(data.get('nombre') || ''),
             setup: String(data.get('setup') || ''),
+            anual: String(data.get('anual') || ''),
+            sinPrecio: isSinPrecio(),
             logoUrl: String(data.get('logo') || ''),
-            dominio: String(data.get('dominio') || ''),
             mundo: String(data.get('mundo') || ''),
           }),
         });

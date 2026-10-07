@@ -122,7 +122,8 @@ function formatPropuestaCuando(iso) {
 }
 
 /** @param {Record<string, any>} p */
-const propExploro = (p) => Number(p.vio_ar) > 0 || Number(p.vio_nutri) > 0 || Number(p.vio_qr) > 0;
+const propExploro = (p) =>
+  Number(p.vio_ar) > 0 || Number(p.vio_nutri) > 0 || Number(p.vio_qr) > 0 || Number(p.vio_ia) > 0;
 const propAbiertas = propuestas.filter((p) => Number(p.vistas) > 0);
 const propStats = {
   total: propuestas.length,
@@ -133,7 +134,7 @@ const propStats = {
 const propEmbudo = [
   { label: 'Enviadas', hint: 'Enlaces creados', n: propStats.total },
   { label: 'Abiertas', hint: 'Al menos una apertura', n: propStats.abiertas },
-  { label: 'Exploraron', hint: 'AR, ficha o QRs', n: propuestas.filter(propExploro).length },
+  { label: 'Exploraron', hint: 'AR, ficha, QRs o Klientiq', n: propuestas.filter(propExploro).length },
   { label: 'Contactaron', hint: 'Tocaron WhatsApp', n: propStats.contacto },
 ].map((step) => ({
   ...step,
@@ -153,6 +154,7 @@ const PROP_EVENTO_TEXTO = {
   ar: 'probó la realidad aumentada',
   nutri: 'miró la ficha nutricional',
   qr: 'miró los QRs de mesa',
+  ia: 'miró el asistente Klientiq',
   whatsapp: 'tocó WhatsApp',
 };
 const propNombrePorId = new Map(propuestas.map((p) => [String(p.id), p.nombre]));
@@ -190,6 +192,7 @@ const propInteres = [
   ['Realidad aumentada', 'AR', 'vio_ar'],
   ['Ficha nutricional', 'Ficha', 'vio_nutri'],
   ['QRs de mesa', 'QRs', 'vio_qr'],
+  ['Klientiq CRM + IA', 'Klientiq', 'vio_ia'],
   ['WhatsApp', 'WhatsApp', 'vio_whatsapp'],
 ].map(([label, short, key]) => {
   const vieron = propuestas.filter((p) => Number(p[key]) > 0).length;
@@ -1463,6 +1466,7 @@ function resolveMapsEmbed(direccion) {
                     ['AR', p.vio_ar],
                     ['Ficha', p.vio_nutri],
                     ['QR', p.vio_qr],
+                    ['IA', p.vio_ia],
                     ['WA', p.vio_whatsapp],
                   ];
                   return (
@@ -1513,27 +1517,54 @@ function resolveMapsEmbed(direccion) {
       </header>
 
       <form id="propuesta-form" class="super-prop-form" novalidate>
-        <label>
+        <label class="super-prop-form__wide">
           <span>Restaurante</span>
-          <input name="nombre" type="text" maxlength="80" required placeholder="Black Sushi" autocomplete="off" />
+          <input name="nombre" type="text" maxlength="80" required placeholder="Black Sushi" autocomplete="off" data-prop-nombre />
+          <small class="super-prop-form__hint" data-prop-domain-hint>El dominio de la propuesta se arma con el nombre.</small>
         </label>
-        <label>
-          <span>Implementación (USD)</span>
-          <input name="setup" inputmode="decimal" maxlength="12" value="600" placeholder="600" />
-        </label>
-        <label class="super-prop-form__wide">
-          <span>Logo</span>
-          <span class="super-prop-logo">
+
+        <fieldset class="super-prop-form__wide super-prop-price">
+          <legend>Precio</legend>
+          <div class="super-prop-price__modes" role="radiogroup" aria-label="Precio">
+            <label class="super-prop-price__mode">
+              <input type="radio" name="precio_modo" value="con" checked data-prop-price-mode />
+              <span>Con precio</span>
+            </label>
+            <label class="super-prop-price__mode">
+              <input type="radio" name="precio_modo" value="consultar" data-prop-price-mode />
+              <span>Sin precio · «A consultar»</span>
+            </label>
+          </div>
+          <div class="super-prop-price__amounts" data-prop-amounts>
+            <label>
+              <span>Implementación (USD, pago único)</span>
+              <input name="setup" inputmode="decimal" maxlength="12" value="600" placeholder="600" />
+            </label>
+            <label>
+              <span>Licencia anual (USD)</span>
+              <input name="anual" inputmode="decimal" maxlength="12" value="200" placeholder="200" />
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="super-prop-form__wide super-prop-logo-field">
+          <span class="super-prop-logo-field__label">Logo</span>
+          <label class="super-prop-drop" data-prop-drop>
             <span class="super-prop-logo__mark" data-prop-logo-mark aria-hidden="true">?</span>
-            <input name="logo" type="url" placeholder="https://…" autocomplete="off" data-prop-logo />
-            <input type="file" accept="image/png,image/jpeg,image/webp" hidden data-prop-logo-file />
-            <button type="button" class="super-prop-logo__pick" data-prop-logo-pick>Subir</button>
-          </span>
-        </label>
-        <label class="super-prop-form__wide">
-          <span>Dominio</span>
-          <input name="dominio" type="text" placeholder="blacksushi.com" autocomplete="off" spellcheck="false" />
-        </label>
+            <span class="super-prop-drop__text">
+              <strong data-prop-drop-title>Elegir archivo</strong>
+              <em data-prop-drop-sub>o arrástralo aquí · SVG, PNG, JPG, WEBP o HEIC</em>
+            </span>
+            <input
+              type="file"
+              accept="image/svg+xml,.svg,image/png,image/jpeg,image/webp,image/gif,image/avif,image/heic,image/heif"
+              class="sr-only"
+              data-prop-logo-file
+            />
+          </label>
+          <button type="button" class="super-prop-logo__pick" data-prop-logo-clear hidden>Quitar</button>
+          <input type="hidden" name="logo" data-prop-logo />
+        </div>
         <input type="hidden" name="mundo" value="estudio" />
         <div class="super-prop-form__actions">
           <button type="submit" class="super-until-hero__cta" data-prop-submit>
@@ -1558,10 +1589,12 @@ function resolveMapsEmbed(direccion) {
             {propuestas.map((p) => {
               const href = `/propuesta?p=${p.id}`;
               const cuando = formatPropuestaCuando(p.ultima_vista);
+              const precio = p.sin_precio ? 'A consultar' : `${p.setup} + ${p.anual ?? '200'}/año USD`;
               const miradas = [
                 ['AR', p.vio_ar],
                 ['Ficha', p.vio_nutri],
                 ['QRs', p.vio_qr],
+                ['Klientiq', p.vio_ia],
                 ['WhatsApp', p.vio_whatsapp],
               ];
               return (
@@ -1575,7 +1608,7 @@ function resolveMapsEmbed(direccion) {
                       )}
                       <div class="min-w-0">
                         <h3>{p.nombre}</h3>
-                        <p>{cuando}</p>
+                        <p>{cuando} · {precio}</p>
                       </div>
                     </div>
                     <p class="super-prop__views">

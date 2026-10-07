@@ -4267,12 +4267,14 @@ html.admin-panel .super-admin-dash .super-hub-card {
   --face-pad: 1.5rem 1.2rem 1rem;
 }
 
+/* Abajo: datos a la izquierda y logo a la derecha, cada uno en su columna para no pisarse. */
 .super-admin-dash .super-hub-card__face {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  column-gap: 0.7rem;
+  container-type: inline-size;
   aspect-ratio: 1.62 / 1;
   min-height: 0;
   padding: var(--face-pad);
@@ -4311,11 +4313,13 @@ html.admin-panel .super-admin-dash .super-hub-card {
 
 .super-admin-dash .super-hub-card__mark {
   position: relative;
-  display: grid;
-  place-items: center;
-  flex: 1;
-  min-height: 0;
-  margin-top: 0.55rem;
+  display: flex;
+  grid-column: 2;
+  grid-row: 2;
+  align-items: flex-end;
+  justify-content: flex-end;
+  align-self: end;
+  min-width: 0;
   text-decoration: none;
 }
 
@@ -4324,8 +4328,8 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass {
   left: auto;
   right: auto;
   bottom: auto;
-  width: min(92%, 16rem);
-  height: 5.25rem;
+  width: auto;
+  height: auto;
   min-height: 0;
   padding: 0;
   border: 0 !important;
@@ -4334,18 +4338,14 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass {
   box-shadow: none !important;
 }
 
-/* Centrado real en la comanda; el margen lateral simétrico deja libre el botón «…». */
-html.admin-panel .super-admin-dash .super-hub-card__mark:has(img) {
-  place-items: center;
-  width: 100%;
-  padding: 0.45rem 1.6rem 0.1rem;
-  box-sizing: border-box;
+/* Tope de ancho: deja al menos la mitad de la comanda para el nombre y el estado. */
+html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img) {
+  width: min(46cqw, 10.5rem);
+  height: clamp(3rem, 24cqw, 4.6rem);
 }
 
-html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img) {
-  width: 100%;
-  height: 100%;
-  max-height: 7.4rem;
+html.admin-panel .super-admin-dash .super-hub-card__logo-glass img {
+  object-position: right bottom;
 }
 
 .hub-modal .hub-ficha-stage__mark:has(img) {
@@ -4354,26 +4354,10 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img) {
   margin-top: 6%;
 }
 
-html.admin-panel .super-admin-dash .super-hub-card__mark:has(img[src$='sanza.svg']) {
-  padding-inline: 0.35rem;
-}
-
-html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img[src$='sanza.svg']) {
-  width: 100%;
-  height: 5.6rem;
-  max-height: none;
-}
-
-/* Isotipos cuadrados: a igual altura que un wordmark quedarían diminutos. */
+/* Isotipos cuadrados: caja cuadrada, así no reservan ancho que el texto necesita. */
 html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img.is-square-logo) {
-  height: 4.9rem;
-  max-height: none;
-}
-
-html.admin-panel .super-admin-dash .super-hub-card__face:has(img.is-square-logo) .super-hub-card__meta,
-html.admin-panel .super-admin-dash .super-hub-card__face:has(img[src$='sanza.svg']) .super-hub-card__meta {
-  gap: 0;
-  margin-top: 0;
+  width: clamp(3.4rem, 27cqw, 5rem);
+  height: clamp(3.4rem, 27cqw, 5rem);
 }
 
 .super-admin-dash .super-hub-card__logo-empty {
@@ -4406,6 +4390,13 @@ html.admin-panel .super-admin-dash .super-hub-card__face:has(img[src$='sanza.svg
   opacity: 0.82;
 }
 
+.super-admin-dash .super-hub-card__mark .super-hub-card__sticker {
+  margin: 0 0.2rem 0.35rem 0;
+  padding: 0.22rem 0.6rem 0.26rem;
+  border-width: 2.5px;
+  font-size: clamp(0.85rem, 5cqw, 1.2rem);
+}
+
 .super-admin-dash .super-hub-card__sticker--ficha {
   font-size: clamp(1.6rem, 5vw, 2.2rem);
 }
@@ -4414,27 +4405,36 @@ html.admin-panel .super-admin-dash .super-hub-card__face:has(img[src$='sanza.svg
   position: relative;
   z-index: 1;
   display: flex;
+  grid-column: 1;
+  grid-row: 2;
+  align-self: end;
   flex-direction: column;
   gap: 0.08rem;
   min-width: 0;
-  margin-top: 0.15rem;
-  padding-top: 0.45rem;
   border-top: 0;
 }
 
 .super-admin-dash .super-hub-card__name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--card-ink);
   font-size: 0.98rem;
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1.15;
+  overflow-wrap: anywhere;
   text-decoration: none;
 }
 
 .super-admin-dash .super-hub-card__slug {
+  overflow: hidden;
   margin: 0;
   color: var(--card-muted);
   font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .super-admin-dash .super-hub-card__states {
@@ -4452,6 +4452,7 @@ html.admin-panel .super-admin-dash .super-hub-card__face:has(img[src$='sanza.svg
   font-size: 0.7rem;
   letter-spacing: 0;
   text-transform: none;
+  white-space: nowrap;
 }
 
 .super-admin-dash .super-hub-card__dot {
@@ -5199,6 +5200,168 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   font-size: 0.95rem;
 }
 
+.super-admin-dash .super-prop-form__hint {
+  color: #a8a29e;
+  font-size: 0.76rem;
+}
+
+.super-admin-dash .super-prop-form__hint strong {
+  color: #57534e;
+  font-weight: 600;
+}
+
+.super-admin-dash .super-prop-price {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.super-admin-dash .super-prop-price legend,
+.super-admin-dash .super-prop-logo-field__label {
+  margin-bottom: 0.35rem;
+  padding: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #78716c;
+}
+
+.super-admin-dash .super-prop-price__modes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-self: start;
+  padding: 0.25rem;
+  border: 1px solid rgba(28, 25, 23, 0.08);
+  border-radius: 999px;
+  background: #f3f1ed;
+}
+
+.super-admin-dash .super-prop-form .super-prop-price__mode {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.super-admin-dash .super-prop-form .super-prop-price__mode input {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.super-admin-dash .super-prop-form .super-prop-price__mode span {
+  display: block;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  color: #78716c;
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.super-admin-dash .super-prop-form .super-prop-price__mode input:checked + span {
+  background: #1c1917;
+  color: #fff;
+}
+
+.super-admin-dash .super-prop-form .super-prop-price__mode input:focus-visible + span {
+  outline: 2px solid #1c1917;
+  outline-offset: 2px;
+}
+
+.super-admin-dash .super-prop-price__amounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1rem;
+  transition: opacity 0.2s ease;
+}
+
+.super-admin-dash .super-prop-price__amounts[data-off='true'] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.super-admin-dash .super-prop-logo-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.super-admin-dash .super-prop-logo-field__label {
+  flex: 1 0 100%;
+  margin-bottom: 0;
+}
+
+.super-admin-dash .super-prop-form .super-prop-drop {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4rem;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px dashed rgba(28, 25, 23, 0.18);
+  border-radius: 1rem;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.super-admin-dash .super-prop-form .super-prop-drop:hover,
+.super-admin-dash .super-prop-form .super-prop-drop[data-over='true'] {
+  border-color: #1c1917;
+  background: #faf9f7;
+}
+
+.super-admin-dash .super-prop-form .super-prop-drop:focus-within {
+  outline: 2px solid #1c1917;
+  outline-offset: 2px;
+}
+
+.super-admin-dash .super-prop-form .super-prop-drop[data-busy='true'] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.super-admin-dash .super-prop-form .super-prop-drop .super-prop-logo__mark {
+  width: 2.8rem;
+  height: 2.8rem;
+  background-size: contain;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+}
+
+.super-admin-dash .super-prop-form .super-prop-drop__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.super-admin-dash .super-prop-drop__text strong {
+  color: #1c1917;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.super-admin-dash .super-prop-drop__text em {
+  overflow: hidden;
+  color: #a8a29e;
+  font-size: 0.76rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .super-admin-dash .super-prop-logo__pick,
 .super-admin-dash .super-prop__links button,
 .super-admin-dash .super-prop-result button {
@@ -5378,6 +5541,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 @media (max-width: 640px) {
   .super-admin-dash .super-prop-form,
+  .super-admin-dash .super-prop-price__amounts,
   .super-admin-dash .super-prop {
     grid-template-columns: 1fr;
   }

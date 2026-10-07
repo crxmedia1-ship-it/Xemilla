@@ -3,14 +3,13 @@ export const prerender = false;
 
 import PhoneSync from '../components/propuesta/PhoneSync.astro';
 import QrArt from '../components/propuesta/QrArt.astro';
+import CurrencySwitcher from '../components/app/CurrencySwitcher.astro';
 import { getPropuesta, isPropuestaId, touchPropuesta } from '../lib/propuestas.js';
 import { createSupabaseServiceClient } from '../lib/supabase/service.js';
 import Layout from '../layouts/Layout.astro';
 
 /** Número comercial de WhatsApp. Editar solo los dígitos, con código de país. */
 const WHATSAPP_NUMBER = '584120000000';
-
-const ANNUAL_LICENSE = '200';
 
 /** Fuentes de la propuesta + las de la carta y el panel reales que replica PhoneSync. */
 const FONT_HREF =
@@ -21,9 +20,9 @@ function readText(value: string | null, fallback: string, max = 80) {
   return clean || fallback;
 }
 
-function readSetup(value: string | null) {
+function readAmount(value: string | null, fallback: string) {
   const clean = (value ?? '').trim().replace(/[^\d.,]/g, '').slice(0, 12);
-  return clean || '500';
+  return clean || fallback;
 }
 
 function readLogo(value: string | null) {
@@ -70,7 +69,9 @@ if (propuestaGuardada && propuestaService) {
 const propuestaId = propuestaGuardada?.id ?? '';
 
 const para = readText(propuestaGuardada?.nombre ?? params.get('para'), 'Tu Restaurante');
-const setup = readSetup(propuestaGuardada?.setup ?? params.get('setup'));
+const setup = readAmount(propuestaGuardada?.setup ?? params.get('setup'), '500');
+const anual = readAmount(propuestaGuardada?.anual ?? params.get('anual'), '200');
+const sinPrecio = propuestaGuardada ? propuestaGuardada.sin_precio === true : params.get('precio') === 'consultar';
 const logo = readLogo(propuestaGuardada?.logo_url ?? params.get('logo'));
 const initial = para.charAt(0).toUpperCase();
 const slug = toSlug(para);
@@ -93,23 +94,87 @@ const ICONS = {
   pin: 'M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   wifi: 'M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',
   whatsapp: 'M4 20l1.3-3.9A8 8 0 1 1 8 18.8zM9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1a4 4 0 0 1-2-2l1-1-1-2z',
+  spark: 'M10 3.5l1.6 4.4 4.4 1.6-4.4 1.6L10 15.5l-1.6-4.4L4 9.5l4.4-1.6zM17.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z',
 } as const;
 
 const pains = [
-  { stat: '0.5s', visual: 'channels', title: 'Abre al instante', body: 'Desde el QR o Instagram. Sin PDFs ni zoom.' },
-  { stat: '1 toque', visual: 'location', title: 'Horarios y ubicación', body: 'Si estás abierto y cómo llegar con Maps o Waze.' },
-  { stat: '10s', visual: 'toggle', title: 'Cambias todo tú', body: 'Platos nuevos o agotados, precios y anuncios desde tu teléfono o PC.' },
+  {
+    stat: '0,5',
+    unit: 's',
+    visual: 'channels',
+    title: 'Abre al instante.',
+    body: 'Con el QR o el NFC de la mesa, o un link en tu Instagram. Sin zoom ni descargas.',
+  },
+  {
+    stat: '1',
+    unit: 'ecosistema',
+    visual: 'eco',
+    title: 'No es un PDF.',
+    body: 'Menú, horarios, ubicación, reservas y WhatsApp conectados en un solo lugar.',
+  },
+  {
+    stat: '24/7',
+    unit: 'en tus manos',
+    visual: 'toggle',
+    title: 'Tú tienes el control.',
+    body: 'Cambia platos, precios, horarios y más desde tu teléfono, al instante.',
+  },
 ] as const;
 
+/** Satélites del visual «ecosistema», repartidos en una órbita de 150×150. */
+const ecoNodes = [ICONS.qr, ICONS.pin, ICONS.whatsapp, ICONS.wifi, ICONS.instagram].map((icon, n) => {
+  const angle = ((-90 + n * 72) * Math.PI) / 180;
+  return { icon, x: +(75 + 57 * Math.cos(angle)).toFixed(2), y: +(75 + 57 * Math.sin(angle)).toFixed(2) };
+});
+
 const included = [
-  { title: 'Tu dominio propio', detail: 'Dominio personalizado', visual: 'domain' },
-  { title: 'Tu carta completa', detail: 'Platos, fotos y categorías', visual: 'menu' },
-  { title: 'Panel privado', detail: 'Cambio de precios instantáneo', visual: 'panel' },
-  { title: 'Divisas automáticas', detail: 'USD, bolívares del BCV y euros', visual: 'fx' },
-  { title: 'Perfil del local', detail: 'Horarios, Wi-Fi, ubicación y reservas', visual: 'place' },
-  { title: 'Banner de eventos', detail: 'Catas, promos y especiales', visual: 'banner' },
-  { title: 'Métricas', detail: 'Visitas, platos más vistos y más', visual: 'metrics' },
+  {
+    title: 'Tu dominio propio',
+    hook: 'Tu marca, tu dirección.',
+    detail: 'Dominio personalizado',
+    visual: 'domain',
+    more: `${domain} abre en medio segundo desde el QR, tu Instagram o Google.`,
+  },
+  {
+    title: 'Crea platos al instante',
+    hook: 'Lo creas y ya está en la mesa.',
+    detail: 'Foto, nombre y precio en segundos',
+    visual: 'menu',
+    more: 'Subes la foto, pones nombre y precio, y aparece en todas las mesas.',
+  },
+  {
+    title: 'Divisas automáticas',
+    hook: 'Siempre a la tasa del día.',
+    detail: 'USD, bolívares del BCV y euros',
+    visual: 'fx',
+    more: 'Dólares, bolívares a tasa BCV y euros. La tasa se actualiza sola cada día.',
+  },
+  {
+    title: 'Perfil del local',
+    hook: 'Lo que preguntan, ya resuelto.',
+    detail: 'Horarios, Wi-Fi, ubicación y reservas',
+    visual: 'place',
+    more: 'Abierto o cerrado, horario, Wi-Fi, cómo llegar y reservas por WhatsApp.',
+  },
+  {
+    title: 'Banner de eventos',
+    hook: 'Cada evento, a la vista.',
+    detail: 'Catas, promos y especiales',
+    visual: 'banner',
+    more: 'Un flyer al abrir el menú para catas o promos. Se quita solo al vencer.',
+  },
+  {
+    title: 'Métricas en vivo',
+    hook: 'Decide con datos, no con intuición.',
+    detail: 'Visitas, platos estrella y clics',
+    visual: 'metrics',
+    more: 'Cuántos abren tu menú, qué platos atraen y quién te escribe.',
+  },
 ] as const;
+
+/** El primero ocupa todo el ancho; si las demás quedan impares, el último también, para no dejar uno solo en su fila. */
+const isWideFeature = (index: number) =>
+  index === 0 || (index === included.length - 1 && (included.length - 1) % 2 === 1);
 
 const investment = [
   {
@@ -120,11 +185,13 @@ const investment = [
   },
   {
     label: 'Licencia cloud',
-    amount: ANNUAL_LICENSE,
+    amount: anual,
     cadence: 'Anual',
     tags: ['Hosting veloz', 'Mantenimiento del sistema', 'Soporte técnico'],
   },
 ];
+
+const ticketDate = new Intl.DateTimeFormat('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date());
 
 const gadgets = [
   {
@@ -144,6 +211,12 @@ const gadgets = [
     title: 'QRs artísticos',
     body: 'Acrílicos, NFC y listos para imprimir.',
     action: { dialog: 'qr-dialog', label: 'Ver diseños' },
+  },
+  {
+    icon: ICONS.spark,
+    title: 'Klientiq CRM + IA',
+    body: 'IA que atiende y reserva 24/7, conectada a tu CRM o al sistema que ya usas.',
+    action: { dialog: 'ia-dialog', label: 'Ver chat' },
   },
 ];
 
@@ -326,59 +399,114 @@ const glass =
       </div>
 
       <h1 data-pass class="mt-10 text-balance text-[1.85rem] font-light leading-[1.12] tracking-[-0.025em] text-zinc-50 sm:text-5xl lg:text-[3.15rem]">
-        Tu restaurante llega<br />antes que el cliente.
+        Tu menú deja de ser un gasto<br />y empieza a vender.
       </h1>
       <p class="mt-5 max-w-md text-balance text-base font-light leading-relaxed text-zinc-400 sm:text-lg">
-        Todo el ecosistema digital de {para} en una sola WebApp, controlada desde cualquier lugar.
+        Convertimos cada mesa de {para} en un canal de venta: platos que se antojan, un ticket más alto y decisiones con datos reales.
       </p>
     </header>
 
     <section class="mt-14 sm:mt-20" aria-labelledby="dolores-title">
       <h2 id="dolores-title" class="sr-only">Los 3 dolores que resolvemos</h2>
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+      <div class="bento">
         {
           pains.map((pain) => (
-            <article class:list={[glass, 'flex flex-col p-5 sm:p-7']}>
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-3xl font-light tracking-tight text-zinc-50 sm:text-4xl">{pain.stat}</p>
-                <div data-collide aria-hidden="true">
-                  {pain.visual === 'channels' && (
-                    <div class="flex items-center gap-1.5">
-                      {[ICONS.qr, ICONS.instagram].map((icon) => (
-                        <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300">
-                          <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d={icon} />
-                          </svg>
+            <div class="bento__card">
+              <div class:list={['bento__stage', pain.visual !== 'toggle' && 'bento__stage--bare']} data-collide aria-hidden="true">
+                {pain.visual === 'channels' && (
+                  <div class="bn-open">
+                    <span class="bn-open__sources">
+                      <span class="bn-open__qr">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                          <path d={ICONS.qr} />
+                        </svg>
+                        <i class="bn-open__scan" />
+                      </span>
+                      <span class="bn-open__nfc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                          <path d="M7.5 8.2a5.2 5.2 0 0 1 0 7.6" />
+                          <path d="M10.6 5.6a8.4 8.4 0 0 1 0 12.8" />
+                          <path d="M13.7 3.2a11.4 11.4 0 0 1 0 17.6" />
+                          <circle cx="4.6" cy="12" r="1.2" fill="currentColor" stroke="none" />
+                        </svg>
+                        <b>NFC</b>
+                      </span>
+                    </span>
+                    <span class="bn-open__arrow" />
+                    <span class="feat-ev__phone bn-open__phone">
+                      <span class="feat-ev__screen bn-open__screen">
+                        <span class="feat-ev__status">9:41</span>
+                        <span class="bn-open__menu">
+                          <b>{initial}</b>
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      </span>
+                    </span>
+                  </div>
+                )}
+                {pain.visual === 'eco' && (
+                  <div class="bn-eco text-zinc-500">
+                    <div class="bn-eco__orbit">
+                      <svg class="bn-eco__lines" viewBox="0 0 150 150">
+                        <circle class="bn-eco__ring" cx="75" cy="75" r="57" />
+                        {ecoNodes.map((node) => (
+                          <line class="bn-eco__flow" x1={node.x} y1={node.y} x2="75" y2="75" />
+                        ))}
+                      </svg>
+                      {ecoNodes.map((node, n) => (
+                        <span class="bn-eco__node" style={`left:${(node.x / 150) * 100}%;top:${(node.y / 150) * 100}%`}>
+                          <span style={`animation-delay:${n * 0.6}s`}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                              <path d={node.icon} />
+                            </svg>
+                          </span>
                         </span>
                       ))}
                     </div>
-                  )}
-                  {pain.visual === 'location' && (
-                    <div class="flex items-center gap-1.5">
-                      <span class="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium tracking-wide text-zinc-300">
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                        Abierto ahora
-                      </span>
-                      <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300">
-                        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                          <path d={ICONS.pin} />
-                        </svg>
-                      </span>
+                    <span class="bn-eco__core bg-zinc-50 text-zinc-950">{initial}</span>
+                    <span class="bn-eco__pdf">PDF</span>
+                  </div>
+                )}
+                {pain.visual === 'toggle' && (
+                  <div class="bn-hours">
+                    <div class="bn-hours__card">
+                      <p class="bn-hours__head">
+                        <span>Horario</span>
+                        <span class="bn-hours__status">
+                          <i />
+                          Abierto ahora
+                        </span>
+                      </p>
+                      <div class="bn-hours__days">
+                        {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, d) => (
+                          <span class:list={[d === 4 && 'is-today', d === 6 && 'is-new']}>{day}</span>
+                        ))}
+                      </div>
+                      <p class="bn-hours__time">
+                        <span>12:00</span>
+                        <i>–</i>
+                        <span class="bn-hours__roll">
+                          <span>23:00</span>
+                          <span>01:00</span>
+                        </span>
+                      </p>
                     </div>
-                  )}
-                  {pain.visual === 'toggle' && (
-                    <div class="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-3 pr-1 text-[10px] font-medium tracking-wide text-zinc-400">
-                      Disponible
-                      <span class="relative h-5 w-9 rounded-full bg-emerald-400">
-                        <span class="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-[#fff] shadow" />
-                      </span>
-                    </div>
-                  )}
-                </div>
+                    <span class="bn-hours__toast">✓ Publicado en todas las mesas</span>
+                  </div>
+                )}
               </div>
-              <h3 class="mt-3 text-base font-medium tracking-tight text-zinc-100 md:mt-6">{pain.title}</h3>
-              <p class="mt-1 text-sm font-light text-zinc-400">{pain.body}</p>
-            </article>
+              <div class="bento__text">
+                <p class="bento__stat text-zinc-50">
+                  {pain.stat}
+                  <span class="text-zinc-500">{pain.unit}</span>
+                </p>
+                <h3 class="mt-2 text-base font-semibold tracking-[-0.02em] text-zinc-100 sm:text-lg">{pain.title}</h3>
+                <p class="mt-1 text-sm font-light leading-snug text-zinc-400">{pain.body}</p>
+              </div>
+            </div>
           ))
         }
       </div>
@@ -386,7 +514,7 @@ const glass =
 
     <section class="mt-14 sm:mt-20" aria-labelledby="studio-title">
       <div class="plan-frame rounded-[1.85rem] bg-gradient-to-b from-white/30 via-white/10 to-white/5 p-px shadow-[0_0_80px_rgba(255,255,255,0.05)]">
-        <div class:list={[glass, 'rounded-[1.8rem] px-6 py-8 sm:px-10 sm:py-12']}>
+        <div class:list={[glass, 'rounded-[1.8rem] px-4 py-8 min-[400px]:px-6 sm:px-10 sm:py-12']}>
           <div class="text-center">
             <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Plan insignia</p>
             <h2
@@ -406,8 +534,19 @@ const glass =
 
           <ul class="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {
-              included.map((item) => (
-                <li class:list={['feat', item.visual === 'domain' && 'feat--wide sm:col-span-2']}>
+              included.map((item, index) => (
+                <li class:list={['feat-flip', isWideFeature(index) && 'feat--wide sm:col-span-2']}>
+                  <div
+                    class="feat-flip__card"
+                    role="button"
+                    tabindex="0"
+                    aria-pressed="false"
+                    data-feat-flip
+                  >
+                  <div class="feat feat-flip__face">
+                  <span class="feat-flip__hint" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" /></svg>
+                  </span>
                   <div class="feat__stage" aria-hidden="true">
                     {item.visual === 'domain' && (
                       <p class="feat__domain">
@@ -429,20 +568,25 @@ const glass =
                       <ul class="feat-menu">
                         <li><span>Burrata</span><span>12</span></li>
                         <li><span>Risotto</span><span>16</span></li>
-                        <li><span>Pulpo</span><span>19</span></li>
-                      </ul>
-                    )}
-                    {item.visual === 'panel' && (
-                      <ul class="feat-price">
-                        <li><span>Risotto</span><span><s>16</s><b>18</b></span></li>
-                        <li><span>Pulpo</span><span><s>19</s><b>21</b></span></li>
+                        <li class="feat-new">
+                          <span class="feat-new__add">+ Nuevo plato</span>
+                          <span class="feat-new__dish">
+                            <span>Tataki<em>Nuevo</em></span>
+                            <span>18</span>
+                          </span>
+                        </li>
                       </ul>
                     )}
                     {item.visual === 'fx' && (
-                      <div class="feat-fx">
-                        <b>USD</b>
-                        <span>Bs</span>
-                        <span>EUR</span>
+                      <div class="feat-cur" data-feat-currency>
+                        <div class="feat-cur__top">
+                          <CurrencySwitcher />
+                          <span class="feat-cur__try">Pruébalo</span>
+                        </div>
+                        <p class="feat-cur__dish">
+                          <span>Burrata</span>
+                          <span class="precio-dinamico" data-precio-usd="12">$12.00</span>
+                        </p>
                       </div>
                     )}
                     {item.visual === 'place' && (
@@ -455,9 +599,31 @@ const glass =
                       </div>
                     )}
                     {item.visual === 'banner' && (
-                      <div class="feat-poster">
-                        <span>Esta noche</span>
-                        <strong>Cata</strong>
+                      <div class="feat-ev">
+                        <div class="feat-ev__row">
+                          <span class="feat-ev__phone">
+                            <span class="feat-ev__screen">
+                              <span class="feat-ev__status">9:41</span>
+                              <span class="feat-ev__menu">
+                                <i></i>
+                                <i></i>
+                                <i></i>
+                                <i></i>
+                              </span>
+                              <span class="feat-ev__flyer">
+                                <img src="/propuesta/comida-uvas.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+                                <b>Cata</b>
+                                <em>de vinos</em>
+                                <span class="feat-ev__flyer-date">Vie · 8 p.&nbsp;m.</span>
+                              </span>
+                            </span>
+                          </span>
+                          <span class="feat-ev__info">
+                            <span class="feat-ev__eyebrow">Al abrir el menú</span>
+                            <strong>Cata de vinos</strong>
+                            <span class="feat-ev__chip">Vie · 8 p.&nbsp;m.</span>
+                          </span>
+                        </div>
                       </div>
                     )}
                     {item.visual === 'metrics' && (
@@ -474,6 +640,16 @@ const glass =
                     <p class="text-sm font-medium tracking-tight text-zinc-100">{item.title}</p>
                     <p class="mt-0.5 text-xs font-light leading-snug text-zinc-500">{item.detail}</p>
                   </div>
+                  </div>
+                  <div class="feat feat-flip__face feat-flip__back" aria-hidden="true">
+                    <p class="feat-flip__eyebrow text-zinc-500">{item.title}</p>
+                    <p class="feat-flip__hook text-zinc-100">{item.hook}</p>
+                    <p class="feat-flip__more text-zinc-400">{item.more}</p>
+                    <span class="feat-flip__hint" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" /></svg>
+                    </span>
+                  </div>
+                  </div>
                 </li>
               ))
             }
@@ -489,37 +665,67 @@ const glass =
           La cuenta, por favor.
         </h2>
       </div>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-        {
-          investment.map((plan) => (
-            <article class:list={[glass, 'flex flex-col p-6 sm:p-8']}>
-              <p class="text-[10px] font-medium uppercase tracking-[0.28em] text-zinc-500">{plan.label}</p>
-              <div class="mt-5 flex items-baseline gap-2">
-                <p class="flex items-baseline gap-2 text-5xl font-light tracking-tight text-zinc-50">
-                  <span class="tabular-nums">{plan.amount}</span>
-                  <span class="text-base font-light tracking-normal text-zinc-400">USD</span>
-                </p>
-                <span class="ml-auto shrink-0 self-center whitespace-nowrap rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
-                  {plan.cadence}
-                </span>
-              </div>
-              <ul class="mt-6 grid gap-2.5 border-t border-white/10 pt-5">
-                {plan.tags.map((tag) => (
-                  <li class="flex items-center gap-2.5 text-sm font-light text-zinc-300">
-                    <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))
-        }
+      <div class="ticket" data-collide>
+        <div class="ticket__paper">
+          <header class="ticket__head">
+            <p class="ticket__brand">Xemilla</p>
+            <p class="ticket__for">Propuesta para {para}</p>
+            <p class="ticket__meta">
+              <span>Mesa 01</span>
+              <span>{ticketDate}</span>
+            </p>
+          </header>
+
+          <ul class="ticket__items">
+            {
+              investment.map((plan) => (
+                <li>
+                  <p class="ticket__row">
+                    <span>1 × {plan.label}</span>
+                    <i aria-hidden="true" />
+                    <b>{sinPrecio ? 'A consultar' : plan.cadence === 'Anual' ? 'Incluida' : plan.amount}</b>
+                  </p>
+                  <p class="ticket__note">
+                    {plan.cadence === 'Anual' && !sinPrecio ? `Primer año gratis · luego ${anual}/año` : plan.cadence}
+                  </p>
+                  <ul class="ticket__subs">
+                    {plan.tags.map((tag) => (
+                      <li>{tag}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))
+            }
+          </ul>
+
+          <div class="ticket__zero">
+            <p class="ticket__row">
+              <span>Mensualidades</span>
+              <i aria-hidden="true" />
+              <b>0</b>
+            </p>
+            <p class="ticket__row">
+              <span>Costos ocultos</span>
+              <i aria-hidden="true" />
+              <b>0</b>
+            </p>
+          </div>
+
+          <div class="ticket__total">
+            <p class="ticket__row">
+              <span>{sinPrecio ? 'Total' : 'Total primer año'}</span>
+              <i aria-hidden="true" />
+              <b>{sinPrecio ? 'A consultar' : `${setup} USD`}</b>
+            </p>
+            {!sinPrecio && <p class="ticket__note">Desde el 2.º año, solo {anual} USD al año.</p>}
+          </div>
+
+          <footer class="ticket__foot">
+            <span class="ticket__barcode" aria-hidden="true" />
+            <p>¡Gracias por su visita!</p>
+          </footer>
+        </div>
       </div>
-      <p class="mt-5 text-center text-xs font-light tracking-wide text-zinc-500">
-        Sin mensualidades · Sin costos ocultos
-      </p>
       <p class="mt-1 text-center text-xs font-light tracking-wide text-zinc-500">
         Rediseños y funciones nuevas se cotizan aparte.
       </p>
@@ -535,10 +741,10 @@ const glass =
           No están incluidos en el plan. Se suman con un costo extra, precio a&nbsp;consultar.
         </p>
       </div>
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+      <div class="grid grid-cols-1 gap-3 md:auto-rows-fr md:grid-cols-2 md:gap-4 lg:grid-cols-4">
         {
           gadgets.map((gadget) => (
-            <article class:list={[glass, 'flex items-center gap-4 p-5 md:flex-col md:items-start md:p-6']}>
+            <article class:list={[glass, 'grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5 p-5 md:flex md:flex-col md:gap-4 md:p-6']}>
               <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-zinc-300" aria-hidden="true">
                 <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d={gadget.icon} />
@@ -557,7 +763,7 @@ const glass =
                 <button
                   type="button"
                   data-dialog-open={gadget.action.dialog}
-                  class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-zinc-50 px-3.5 py-2 text-xs font-semibold tracking-tight text-zinc-950 shadow-lg transition active:scale-[0.97] md:mt-auto"
+                  class="col-start-2 inline-flex shrink-0 items-center gap-1.5 justify-self-start rounded-full bg-zinc-50 px-3.5 py-2 text-xs font-semibold tracking-tight text-zinc-950 shadow-lg transition active:scale-[0.97] md:mt-auto"
                 >
                   <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d={gadget.icon} />
@@ -773,9 +979,64 @@ const glass =
       </li>
     </ul>
   </dialog>
+
+  <dialog id="ia-dialog" class="demo-dialog" aria-labelledby="ia-dialog-title">
+    <div class="demo-dialog__head">
+      <div>
+        <p id="ia-dialog-title" class="demo-dialog__title">Klientiq CRM + IA</p>
+        <p class="ia-chat__sub">Atiende por ti, también a las 3 a.&nbsp;m.</p>
+      </div>
+      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+    </div>
+    <div class="ia-chat">
+      <div class="ia-chat__bar">
+        <span class:list={['ia-chat__avatar', logo && 'ia-chat__avatar--logo']} data-initial={initial} aria-hidden="true">
+          {
+            logo ? (
+              <img
+                src={logo}
+                alt=""
+                decoding="async"
+                referrerpolicy="no-referrer"
+                onerror="var a=this.parentElement; if(a){a.classList.remove('ia-chat__avatar--logo'); a.textContent=a.dataset.initial||'';}"
+              />
+            ) : (
+              initial
+            )
+          }
+        </span>
+        <div class="min-w-0">
+          <p class="ia-chat__name">{para}</p>
+          <p class="ia-chat__status">en línea · asistente IA</p>
+        </div>
+      </div>
+      <ol class="ia-chat__thread">
+        <li class="ia-chat__msg ia-chat__msg--in">Hola! ¿Tienen mesa para 4 esta noche? <time>23:48</time></li>
+        <li class="ia-chat__msg ia-chat__msg--out">
+          ¡Hola, Ana! Sí, tengo mesa a las 8:30&nbsp;p.&nbsp;m. ¿Te la reservo? Por cierto, hoy hay postre de la casa. <time>23:48</time>
+        </li>
+        <li class="ia-chat__msg ia-chat__msg--in">Sí, porfa. Una persona es celíaca <time>23:49</time></li>
+        <li class="ia-chat__msg ia-chat__msg--out">
+          Listo: mesa para 4 a las 8:30&nbsp;p.&nbsp;m. Te dejo el menú con los platos sin gluten marcados. <time>23:49</time>
+        </li>
+      </ol>
+      <div class="ia-chat__crm">
+        <p class="ia-chat__crm-title">Ficha en el CRM</p>
+        <ul class="ia-chat__tags">
+          <li>Ana · 3.ª visita</li>
+          <li>Sin gluten</li>
+          <li>Grupo de 4</li>
+          <li>Recordatorio: cumpleaños 12/11</li>
+        </ul>
+      </div>
+    </div>
+    <p class="demo-dialog__hint">Responde, reserva y guarda cada cliente para invitarlo a volver, sin depender de apps de delivery.</p>
+  </dialog>
 </Layout>
 
 <script>
+  import { initCurrencyEngine } from '../scripts/currency-engine';
+
   /*
    * Los bocados viven en coordenadas del documento, no de la pantalla:
    * cada uno ocupa un lugar en la página y solo se ve cuando el lector
@@ -1078,6 +1339,7 @@ const glass =
     'ar-dialog': 'ar',
     'nutri-dialog': 'nutri',
     'qr-dialog': 'qr',
+    'ia-dialog': 'ia',
   };
 
   for (const btn of document.querySelectorAll<HTMLElement>('[data-dialog-open]')) {
@@ -1117,9 +1379,832 @@ const glass =
       });
     }
   }
+
+  for (const demo of document.querySelectorAll<HTMLElement>('[data-feat-currency]')) {
+    initCurrencyEngine(demo, { persist: false });
+    // Probar el selector no debe girar la tarjeta.
+    demo.addEventListener('click', (event) => event.stopPropagation());
+    demo.addEventListener('keydown', (event) => event.stopPropagation());
+  }
+
+  for (const card of document.querySelectorAll<HTMLElement>('[data-feat-flip]')) {
+    const [front, back] = card.children;
+    const flip = () => {
+      const open = card.getAttribute('aria-pressed') !== 'true';
+      card.setAttribute('aria-pressed', String(open));
+      front?.setAttribute('aria-hidden', String(open));
+      back?.setAttribute('aria-hidden', String(!open));
+    };
+    card.addEventListener('click', flip);
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      flip();
+    });
+  }
 </script>
 
 <style>
+  /* Ticket de restaurante: papel con borde dentado, filas con puntos guía y total. */
+  .ticket {
+    display: flex;
+    justify-content: center;
+    filter: drop-shadow(0 22px 30px rgba(28, 25, 23, 0.2));
+  }
+
+  .ticket__paper {
+    --tooth: 7px;
+    position: relative;
+    width: min(100%, 330px);
+    padding: 24px 20px 20px;
+    background: #fffdf8;
+    color: #1c1917;
+    font-variant-numeric: tabular-nums;
+    -webkit-mask:
+      radial-gradient(var(--tooth) at 50% 0, transparent 98%, #000) 50% 0 / calc(var(--tooth) * 2) 51% repeat-x,
+      radial-gradient(var(--tooth) at 50% 100%, transparent 98%, #000) 50% 100% / calc(var(--tooth) * 2) 51% repeat-x;
+    mask:
+      radial-gradient(var(--tooth) at 50% 0, transparent 98%, #000) 50% 0 / calc(var(--tooth) * 2) 51% repeat-x,
+      radial-gradient(var(--tooth) at 50% 100%, transparent 98%, #000) 50% 100% / calc(var(--tooth) * 2) 51% repeat-x;
+  }
+
+  .ticket__head {
+    text-align: center;
+  }
+
+  .ticket__brand {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+  }
+
+  .ticket__for {
+    margin-top: 4px;
+    color: #57534e;
+    font-size: 12px;
+  }
+
+  .ticket__meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px dashed #d6d3d1;
+    color: #78716c;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .ticket__items {
+    display: grid;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1.5px dashed #d6d3d1;
+  }
+
+  .ticket__row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .ticket__row span {
+    white-space: nowrap;
+  }
+
+  .ticket__row i {
+    flex: 1;
+    min-width: 12px;
+    border-bottom: 2px dotted #d6d3d1;
+    transform: translateY(-4px);
+  }
+
+  .ticket__row b {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .ticket__note {
+    margin-top: 2px;
+    color: #9a6b3f;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .ticket__subs {
+    display: grid;
+    gap: 2px;
+    margin-top: 6px;
+    padding-left: 18px;
+    color: #57534e;
+    font-size: 12px;
+  }
+
+  .ticket__subs li::before {
+    content: '— ';
+    color: #a8a29e;
+  }
+
+  .ticket__zero {
+    display: grid;
+    gap: 4px;
+    padding: 10px 0;
+    border-bottom: 3px double #d6d3d1;
+  }
+
+  .ticket__zero .ticket__row {
+    color: #57534e;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .ticket__total {
+    padding: 12px 0 2px;
+  }
+
+  .ticket__total .ticket__row {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .ticket__total .ticket__row span {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .ticket__total .ticket__row b {
+    font-weight: 700;
+  }
+
+  .ticket__total .ticket__note {
+    color: #78716c;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .ticket__foot {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    color: #78716c;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .ticket__barcode {
+    width: 70%;
+    height: 26px;
+    background: repeating-linear-gradient(
+      90deg,
+      #1c1917 0 2px,
+      transparent 2px 4px,
+      #1c1917 4px 5px,
+      transparent 5px 8px,
+      #1c1917 8px 11px,
+      transparent 11px 12px,
+      #1c1917 12px 13px,
+      transparent 13px 16px
+    );
+    opacity: 0.85;
+  }
+
+  /* Beneficios sueltos, sin cajas: ilustración, cifra y texto centrados. */
+  .bento {
+    display: grid;
+    gap: 44px;
+  }
+
+  @media (min-width: 768px) {
+    .bento {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 28px;
+    }
+  }
+
+  .bento__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .bento__text {
+    max-width: 19rem;
+    margin-top: 18px;
+  }
+
+  .bento__stat {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    font-size: clamp(2.8rem, 7vw, 3.6rem);
+    font-weight: 300;
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+
+  .bento__stat span {
+    font-size: 0.4em;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .bento__stat {
+      font-size: 2.7rem;
+    }
+
+    .bento__text h3 {
+      font-size: 1rem;
+    }
+
+    .bento__text p:not(.bento__stat) {
+      font-size: 0.875rem;
+    }
+  }
+
+  .bento__stage {
+    position: relative;
+    width: 100%;
+    max-width: 300px;
+    height: 150px;
+    overflow: hidden;
+    border-radius: 22px;
+    background: #f6f3ee;
+    color: #1c1917;
+    box-shadow: 0 18px 40px -28px rgba(28, 25, 23, 0.45);
+  }
+
+  /* QR que se escanea y abre el menú en el teléfono. */
+  .bn-open {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding-top: 10px;
+    overflow: hidden;
+  }
+
+  .bn-open__sources {
+    display: grid;
+    gap: 10px;
+  }
+
+  .bn-open__qr,
+  .bn-open__nfc {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    overflow: hidden;
+    border-radius: 15px;
+    background: #fff;
+    color: #1c1917;
+    box-shadow:
+      0 0 0 1px rgba(28, 25, 23, 0.05),
+      0 10px 20px -10px rgba(28, 25, 23, 0.45);
+  }
+
+  .bn-open__qr svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .bn-open__nfc {
+    align-content: center;
+    gap: 1px;
+  }
+
+  .bn-open__nfc svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .bn-open__nfc path {
+    animation: bn-nfc 3.2s ease-in-out infinite;
+  }
+
+  .bn-open__nfc path:nth-of-type(2) {
+    animation-delay: 0.15s;
+  }
+
+  .bn-open__nfc path:nth-of-type(3) {
+    animation-delay: 0.3s;
+  }
+
+  .bn-open__nfc b {
+    color: #78716c;
+    font-size: 7.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+  }
+
+  .bn-open__scan {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    height: 2px;
+    border-radius: 2px;
+    background: #9a6b3f;
+    box-shadow: 0 0 8px 1px rgba(154, 107, 63, 0.6);
+    animation: bn-scan 3.2s ease-in-out infinite;
+  }
+
+  .bn-open__arrow {
+    width: 26px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, #a8a29e 0 4px, transparent 4px 8px);
+    background-size: 16px 2px;
+    animation: bn-dash 0.8s linear infinite;
+  }
+
+  .bn-open__phone {
+    align-self: flex-end;
+    width: 88px;
+    height: 152px;
+    margin-bottom: -44px;
+    -webkit-mask-image: linear-gradient(#000 38%, transparent 70%);
+    mask-image: linear-gradient(#000 38%, transparent 70%);
+  }
+
+  .bn-open__screen::after {
+    display: none;
+  }
+
+  .bn-open__menu {
+    display: grid;
+    gap: 6px;
+    padding: 16px 8px 0;
+  }
+
+  .bn-open__menu b {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    margin: 0 auto 2px;
+    border-radius: 6px;
+    background: #1c1917;
+    color: #f6f3ee;
+    font-size: 9px;
+  }
+
+  .bn-open__menu i {
+    height: 5px;
+    border-radius: 999px;
+    background: #e7e5e4;
+    transform-origin: left;
+    animation: bn-load 3.2s ease-out infinite;
+  }
+
+  .bn-open__menu i:nth-of-type(2) {
+    width: 70%;
+    animation-delay: 0.08s;
+  }
+
+  .bn-open__menu i:nth-of-type(3) {
+    animation-delay: 0.16s;
+  }
+
+  .bn-open__menu i:nth-of-type(4) {
+    width: 55%;
+    animation-delay: 0.24s;
+  }
+
+  @keyframes bn-scan {
+    0%,
+    100% {
+      top: 10px;
+    }
+    50% {
+      top: calc(100% - 12px);
+    }
+  }
+
+  @keyframes bn-nfc {
+    0%,
+    45%,
+    100% {
+      color: #1c1917;
+      opacity: 1;
+    }
+    60% {
+      color: #9a6b3f;
+      opacity: 0.35;
+    }
+    75% {
+      color: #9a6b3f;
+      opacity: 1;
+    }
+  }
+
+  @keyframes bn-dash {
+    to {
+      background-position: 16px 0;
+    }
+  }
+
+  @keyframes bn-load {
+    0%,
+    40% {
+      transform: scaleX(0);
+    }
+    60%,
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  /* Ecosistema: el local al centro, conectado a todo lo que el cliente necesita. */
+  .bento__stage--bare {
+    overflow: visible;
+    background: none;
+    box-shadow: none;
+  }
+
+  .bn-eco {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150px;
+    height: 150px;
+    transform: translate(-50%, -50%);
+  }
+
+  .bn-eco__orbit {
+    position: absolute;
+    inset: 0;
+    animation: bn-eco-spin 48s linear infinite;
+  }
+
+  .bn-eco__lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+  }
+
+  .bn-eco__ring {
+    stroke-width: 1;
+    stroke-opacity: 0.35;
+  }
+
+  .bn-eco__flow {
+    stroke-width: 1.4;
+    stroke-dasharray: 2 4;
+    stroke-linecap: round;
+    stroke-opacity: 0.75;
+    animation: bn-eco-flow 1.4s linear infinite;
+  }
+
+  .bn-eco__node {
+    position: absolute;
+    translate: -50% -50%;
+    animation: bn-eco-spin 48s linear infinite reverse;
+  }
+
+  .bn-eco__node > span {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: #fff;
+    color: #44403c;
+    box-shadow:
+      0 0 0 1px rgba(28, 25, 23, 0.06),
+      0 8px 18px -8px rgba(28, 25, 23, 0.45);
+    animation: bn-eco-node 3s ease-in-out infinite;
+  }
+
+  .bn-eco__node svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .bn-eco__core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+    font-size: 19px;
+    font-weight: 700;
+    box-shadow: 0 12px 24px -10px rgba(28, 25, 23, 0.55);
+    transform: translate(-50%, -50%);
+  }
+
+  .bn-eco__core::before,
+  .bn-eco__core::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1.5px solid rgba(120, 113, 108, 0.6);
+    opacity: 0;
+    z-index: -1;
+    animation: bn-eco-halo 3s ease-out infinite;
+  }
+
+  .bn-eco__core::after {
+    animation-delay: 1.5s;
+  }
+
+  .bn-eco__pdf {
+    position: absolute;
+    top: 16px;
+    right: -30px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(185, 28, 28, 0.1);
+    color: #b91c1c;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    rotate: 8deg;
+  }
+
+  @keyframes bn-eco-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  @keyframes bn-eco-flow {
+    to {
+      stroke-dashoffset: -6;
+    }
+  }
+
+  @keyframes bn-eco-halo {
+    0% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.9);
+    }
+  }
+
+  @keyframes bn-eco-node {
+    0%,
+    70%,
+    100% {
+      scale: 1;
+      color: #44403c;
+    }
+    15% {
+      scale: 1.14;
+      color: #059669;
+    }
+  }
+
+  /* Horario: cierras más tarde y abres el domingo, y se publica al instante. */
+  .bn-hours {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .bn-hours__card {
+    width: min(86%, 208px);
+    padding: 9px 11px 10px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 12px 26px -14px rgba(28, 25, 23, 0.5);
+    transform: translateY(-12px);
+  }
+
+  .bn-hours__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #a8a29e;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .bn-hours__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(5, 150, 105, 0.1);
+    color: #047857;
+    font-size: 8.5px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .bn-hours__status i {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: #059669;
+    animation: bn-hours-live 1.6s ease-in-out infinite;
+  }
+
+  .bn-hours__days {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 9px;
+  }
+
+  .bn-hours__days span {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #f5f2ee;
+    color: #57534e;
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  .bn-hours__days .is-today {
+    background: #1c1917;
+    color: #f6f3ee;
+  }
+
+  .bn-hours__days .is-new {
+    animation: bn-hours-day 6s ease infinite;
+  }
+
+  .bn-hours__time {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 9px;
+    color: #1c1917;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bn-hours__time i {
+    color: #a8a29e;
+    font-style: normal;
+    font-weight: 400;
+  }
+
+  .bn-hours__roll {
+    position: relative;
+    display: block;
+    height: 1.3em;
+    overflow: hidden;
+    margin: 0 -4px;
+    padding: 0 4px;
+    border-radius: 6px;
+    line-height: 1.3em;
+    animation: bn-hours-mark 6s ease infinite;
+  }
+
+  .bn-hours__roll span {
+    display: block;
+    animation: bn-hours-roll 6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  .bn-hours__toast {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #1c1917;
+    color: #f6f3ee;
+    font-size: 9.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    animation: bn-hours-toast 6s ease infinite;
+  }
+
+  @keyframes bn-hours-live {
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  @keyframes bn-hours-day {
+    0%,
+    30%,
+    100% {
+      background: #f5f2ee;
+      color: #c4bfba;
+      text-decoration: line-through;
+    }
+    38%,
+    92% {
+      background: rgba(5, 150, 105, 0.14);
+      color: #047857;
+      text-decoration: none;
+    }
+  }
+
+  @keyframes bn-hours-roll {
+    0%,
+    14% {
+      transform: translateY(0);
+    }
+    22%,
+    92% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bn-hours-mark {
+    0%,
+    14%,
+    40%,
+    100% {
+      background: transparent;
+      color: #1c1917;
+    }
+    22%,
+    32% {
+      background: rgba(154, 107, 63, 0.14);
+      color: #9a6b3f;
+    }
+  }
+
+  @keyframes bn-hours-toast {
+    0%,
+    44% {
+      opacity: 0;
+      transform: translate(-50%, 6px);
+    }
+    52%,
+    90% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bn-open__scan,
+    .bn-open__nfc path,
+    .bn-open__arrow,
+    .bn-open__menu i,
+    .bn-eco__orbit,
+    .bn-eco__node,
+    .bn-eco__node > span,
+    .bn-eco__flow,
+    .bn-eco__core::before,
+    .bn-eco__core::after,
+    .bn-hours__status i,
+    .bn-hours__days .is-new,
+    .bn-hours__roll,
+    .bn-hours__roll span,
+    .bn-hours__toast {
+      animation: none;
+    }
+  }
+
   .demo-dialog {
     width: min(92vw, 420px);
     margin: auto;
@@ -1682,6 +2767,133 @@ const glass =
     text-align: center;
   }
 
+  .ia-chat__sub {
+    margin-top: 2px;
+    color: #71717a;
+    font-size: 12px;
+  }
+
+  .ia-chat {
+    overflow: hidden;
+    border-radius: 20px;
+    background: #efeae2;
+  }
+
+  .ia-chat__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #075e54;
+    color: #fff;
+  }
+
+  .ia-chat__avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .ia-chat__avatar--logo {
+    overflow: hidden;
+    width: 42px;
+    height: 42px;
+    padding: 4px;
+    background: #fff;
+  }
+
+  .ia-chat__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .ia-chat__name {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ia-chat__status {
+    font-size: 11px;
+    opacity: 0.8;
+  }
+
+  .ia-chat__thread {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .ia-chat__msg {
+    max-width: 84%;
+    padding: 7px 10px 5px;
+    border-radius: 12px;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.12);
+    font-size: 13.5px;
+    line-height: 1.35;
+  }
+
+  .ia-chat__msg time {
+    margin-left: 6px;
+    color: #8696a0;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .ia-chat__msg--in {
+    align-self: flex-start;
+    border-top-left-radius: 4px;
+    background: #fff;
+  }
+
+  .ia-chat__msg--out {
+    align-self: flex-end;
+    border-top-right-radius: 4px;
+    background: #d9fdd3;
+  }
+
+  .ia-chat__crm {
+    margin: 0 12px 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .ia-chat__crm-title {
+    color: #71717a;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .ia-chat__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .ia-chat__tags li {
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #f4f4f5;
+    color: #3f3f46;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+
   .feat {
     display: flex;
     flex-direction: column;
@@ -1690,6 +2902,115 @@ const glass =
     border-radius: 22px;
     border: 1px solid color-mix(in oklab, var(--color-white) 10%, transparent);
     background: color-mix(in oklab, var(--color-white) 4%, transparent);
+  }
+
+  /* Tarjeta que gira: las dos caras ocupan la misma celda, así mide lo que la más alta. */
+  .feat-flip {
+    perspective: 1200px;
+  }
+
+  .feat-flip__card {
+    position: relative;
+    display: grid;
+    height: 100%;
+    border-radius: 22px;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .feat-flip__card[aria-pressed='true'] {
+    transform: rotateY(180deg);
+  }
+
+  .feat-flip__card:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-white) 45%, transparent);
+    outline-offset: 3px;
+  }
+
+  .feat-flip__face {
+    position: relative;
+    grid-area: 1 / 1;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .feat-flip__back {
+    justify-content: center;
+    gap: 0;
+    padding: 18px;
+    transform: rotateY(180deg);
+  }
+
+  .feat-flip__eyebrow {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .feat-flip__hook {
+    margin-top: 6px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  .feat-flip__more {
+    margin-top: 10px;
+    padding-right: 26px;
+    font-size: 0.84rem;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+    text-wrap: pretty;
+  }
+
+  .feat-flip__face > div:not(.feat__stage) {
+    padding-right: 34px;
+  }
+
+  .feat-flip__hint {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(28, 25, 23, 0.07);
+    color: #78716c;
+    transition:
+      transform 0.3s ease,
+      background-color 0.3s ease;
+  }
+
+  .feat-flip__hint svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @media (hover: hover) {
+    .feat-flip__card:hover .feat-flip__hint {
+      transform: rotate(-60deg);
+      background: rgba(28, 25, 23, 0.12);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feat-flip__card {
+      transition: none;
+    }
   }
 
   .feat__stage {
@@ -1801,72 +3122,162 @@ const glass =
     font-variant-numeric: tabular-nums;
   }
 
-  .feat-price {
+  /* El tercer plato se crea en bucle: botón «Nuevo plato» y luego el plato con su etiqueta. */
+  .feat-menu li.feat-new {
     display: grid;
-    width: 100%;
-    gap: 12px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .feat-price li {
+  .feat-new__add,
+  .feat-new__dish {
+    grid-area: 1 / 1;
+  }
+
+  .feat-new__add {
+    justify-self: start;
+    padding: 2px 10px;
+    border: 1px dashed #a8a29e;
+    border-radius: 999px;
+    color: #78716c;
+    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    animation: feat-new-add 4.5s ease infinite;
+  }
+
+  .feat-menu li.feat-new .feat-new__dish {
+    display: flex;
+    width: 100%;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: #1c1917;
+    animation: feat-new-dish 4.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+
+  .feat-menu li.feat-new .feat-new__dish > span:last-child {
+    color: #9a6b3f;
+  }
+
+  .feat-new__dish em {
+    line-height: 1.3;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #059669;
+    color: #fff;
+    font-family: system-ui, sans-serif;
+    font-size: 8.5px;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    vertical-align: 3px;
+  }
+
+  @keyframes feat-new-add {
+    0%,
+    30% {
+      opacity: 1;
+      transform: none;
+    }
+    38%,
+    92% {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes feat-new-dish {
+    0%,
+    34% {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    44%,
+    90% {
+      opacity: 1;
+      transform: none;
+    }
+    96%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feat-new__add {
+      display: none;
+    }
+
+    .feat-menu li.feat-new .feat-new__dish {
+      animation: none;
+    }
+  }
+
+  .feat-cur {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+    margin-block: -4px;
+    --menu-texto-color: #1c1917;
+    --menu-surface-color: #fffdf9;
+    --menu-accent-color: #9a6b3f;
+  }
+
+  .feat-cur__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .feat-cur :global(.currency-compact__menu) {
+    right: auto;
+    left: 0;
+    transform-origin: top left;
+  }
+
+  .feat-cur__try {
+    color: #9a6b3f;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .feat-cur__dish {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
+    margin: 0;
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 600;
     line-height: 1;
   }
 
-  .feat-price li span:last-child {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .feat-price s {
-    color: #a8a29e;
-    font-size: 16px;
-    text-decoration-thickness: 1px;
-  }
-
-  .feat-price b {
+  .feat-cur__dish .precio-dinamico {
     color: #9a6b3f;
-    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transition: opacity 180ms ease;
   }
 
-  .feat-fx {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+  .feat-cur__dish .precio-dinamico.is-converting {
+    opacity: 0;
   }
 
-  .feat-fx b,
-  .feat-fx span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 36px;
-    margin: 0;
-    border-radius: 999px;
-  }
-
-  .feat-fx b {
-    background: #1c1917;
-    color: #f6f3ee;
-  }
-
-  .feat-fx span {
-    color: #78716c;
-    box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.12);
+  /* El menú de divisas abierto debe quedar sobre las tarjetas vecinas. */
+  .feat-flip:has(.currency-compact.is-open) {
+    position: relative;
+    z-index: 5;
   }
 
   .feat-open {
@@ -1900,27 +3311,268 @@ const glass =
     box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.16);
   }
 
-  .feat-poster {
-    display: flex;
-    width: 100%;
-    flex-direction: column;
-    gap: 2px;
+  /* Flyer del banner en un teléfono que asoma desde el borde inferior: aparece al abrir el menú, en bucle. */
+  .feat__stage:has(.feat-ev) {
+    overflow: hidden;
   }
 
-  .feat-poster span {
-    color: #9a6b3f;
-    font-size: 11px;
+  .feat-ev {
+    width: 100%;
+    height: 92px;
+    margin-block: -16px;
+    container: feat-ev / inline-size;
+  }
+
+  .feat-ev__row {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  .feat-ev__phone {
+    position: relative;
+    flex: none;
+    align-self: flex-end;
+    width: 62px;
+    height: 104px;
+    margin-bottom: -26px;
+    padding: 3px;
+    border-radius: 15px;
+    background: linear-gradient(145deg, #3f3f46, #18181b 40%, #27272a);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+      0 14px 26px -12px rgba(28, 25, 23, 0.55);
+  }
+
+  /* Botones laterales: volumen a la izquierda, encendido a la derecha. */
+  .feat-ev__phone::before,
+  .feat-ev__phone::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    border-radius: 2px;
+    background: #27272a;
+  }
+
+  .feat-ev__phone::before {
+    top: 20px;
+    left: -2px;
+    height: 12px;
+    box-shadow: 0 16px 0 #27272a;
+  }
+
+  .feat-ev__phone::after {
+    top: 26px;
+    right: -2px;
+    height: 18px;
+  }
+
+  .feat-ev__screen {
+    position: relative;
+    display: block;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #fffdf9;
+  }
+
+  /* Dynamic Island */
+  .feat-ev__screen::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    z-index: 3;
+    width: 18px;
+    height: 5px;
+    border-radius: 999px;
+    background: #0a0a0a;
+    transform: translateX(-50%);
+  }
+
+  .feat-ev__screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(28, 25, 23, 0.5);
+    animation: feat-ev-dim 5s ease infinite;
+  }
+
+  .feat-ev__status {
+    position: absolute;
+    top: 3px;
+    left: 6px;
+    color: #1c1917;
+    font-size: 5px;
+    font-weight: 700;
+  }
+
+  .feat-ev__menu {
+    display: grid;
+    gap: 5px;
+    padding: 16px 7px 0;
+  }
+
+  .feat-ev__menu i {
+    height: 3.5px;
+    border-radius: 999px;
+    background: #e7e5e4;
+  }
+
+  .feat-ev__menu i:first-child {
+    width: 60%;
+    height: 5px;
+    margin-bottom: 2px;
+    background: #d6d3d1;
+  }
+
+  .feat-ev__menu i:nth-child(3) {
+    width: 75%;
+  }
+
+  .feat-ev__flyer {
+    position: absolute;
+    top: 14px;
+    left: 6px;
+    right: 6px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 2px 5px;
+    border-radius: 5px;
+    background: linear-gradient(170deg, #7a2133, #3b0d17);
+    color: #fbefe3;
+    box-shadow:
+      0 6px 12px -4px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 1px rgba(232, 196, 140, 0.4);
+    animation: feat-ev-pop 5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    will-change: transform, opacity;
+  }
+
+  .feat-ev__flyer img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+  }
+
+  .feat-ev__flyer b {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.16em;
+    line-height: 1;
+  }
+
+  .feat-ev__flyer em {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 7px;
+    line-height: 1.1;
+    opacity: 0.85;
+  }
+
+  .feat-ev__flyer-date {
+    margin-top: 3px;
+    color: #e8c48c;
+    font-size: 4.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .feat-ev__info {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .feat-ev__eyebrow {
+    color: #9a6b3f;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
-  .feat-poster strong {
+  .feat-ev__info strong {
+    margin-top: 3px;
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 36px;
+    font-size: 21px;
     font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 0.95;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .feat-ev__chip {
+    margin-top: 7px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #1c1917;
+    color: #f6f3ee;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .feat-ev__eyebrow,
+  .feat-ev__info strong {
+    white-space: nowrap;
+  }
+
+  @container feat-ev (max-width: 220px) {
+    .feat-ev__row {
+      justify-content: flex-start;
+      gap: 12px;
+      padding-left: 2px;
+    }
+
+    .feat-ev__eyebrow {
+      font-size: 8.5px;
+      letter-spacing: 0.1em;
+    }
+
+    .feat-ev__info strong {
+      font-size: 17px;
+    }
+  }
+
+  @keyframes feat-ev-pop {
+    0%,
+    8% {
+      opacity: 0;
+      transform: translateY(8px) scale(0.8);
+    }
+    20%,
+    88% {
+      opacity: 1;
+      transform: none;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  @keyframes feat-ev-dim {
+    0%,
+    8%,
+    100% {
+      opacity: 0;
+    }
+    20%,
+    88% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feat-ev__flyer,
+    .feat-ev__screen::after {
+      animation: none;
+    }
   }
 
   .feat-bars {

@@ -1,0 +1,372 @@
+---
+/**
+ * Selector de divisas del menú (USD, bolívares BCV y euros).
+ * Lo activa initCurrencyEngine() de src/scripts/currency-engine.ts sobre su contenedor.
+ */
+interface Props {
+  /** VES por 1 USD (BCV) — respaldo si no llega la tasa en vivo */
+  tasaBcv?: number;
+  /** EUR por 1 USD */
+  tasaEurUsd?: number;
+  /** VES por 1 EUR (BCV) */
+  tasaEur?: number;
+  class?: string;
+}
+
+const { tasaBcv = 36.5, tasaEurUsd = 0.92, tasaEur = 0, class: className } = Astro.props;
+---
+
+<div
+  class:list={['currency-compact', className]}
+  data-currency-switcher
+  data-tasa-bcv={String(tasaBcv)}
+  data-tasa-eur-usd={String(tasaEurUsd)}
+  data-tasa-eur={String(tasaEur || '')}
+>
+  <button
+    type="button"
+    class="currency-compact__trigger"
+    data-currency-trigger
+    data-currency-face="usd"
+    aria-label="Cambiar divisa de precios"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+  >
+    <span class="currency-coin" aria-hidden="true">
+      <span class="currency-coin__symbol" data-currency-trigger-label>$</span>
+    </span>
+    <span class="currency-compact__code" data-currency-trigger-word>USD</span>
+    <svg class="currency-compact__chevron" viewBox="0 0 12 12" aria-hidden="true">
+      <path d="M3 4.75 6 7.75l3-3" />
+    </svg>
+  </button>
+  <div class="currency-compact__menu" data-currency-menu hidden role="listbox" aria-label="Divisa de visualización">
+    <p class="currency-compact__heading">Ver precios en</p>
+    {
+      [
+        { code: 'USD', face: 'usd', symbol: '$', name: 'Dólar' },
+        { code: 'BS', face: 'bs', symbol: 'Bs', name: 'Bolívar' },
+        { code: 'EUR', face: 'eur', symbol: '€', name: 'Euro' },
+      ].map((c) => (
+        <button
+          type="button"
+          class:list={['currency-compact__option', { 'is-active': c.code === 'USD' }]}
+          data-currency-btn={c.code}
+          aria-pressed={c.code === 'USD' ? 'true' : 'false'}
+        >
+          <span class="currency-coin currency-coin--sm" data-face={c.face} aria-hidden="true">
+            <span class="currency-coin__symbol">{c.symbol}</span>
+          </span>
+          <span class="currency-compact__option-text">
+            <span class="currency-compact__option-code">{c.code === 'BS' ? 'VES' : c.code}</span>
+            <span class="currency-compact__option-name">{c.name}</span>
+          </span>
+          <svg class="currency-compact__check" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m3.5 8.5 3 3 6-7" />
+          </svg>
+        </button>
+      ))
+    }
+    <p class="currency-compact__rate" data-currency-rate aria-live="polite">Tasa BCV</p>
+  </div>
+</div>
+
+<style>
+  /* ── Currency compact (popover) ─────────────────────────── */
+  .currency-compact {
+    /* Texto y superficie salen del mismo par de la paleta del menú: legible en temas claros y oscuros. */
+    --cur-ink: var(--menu-texto-color, var(--color-texto, #f5f1e8));
+    --cur-surface: var(--menu-surface-color, var(--color-fondo, #111111));
+    --cur-accent: var(--menu-accent-color, var(--color-acento, #c9a24b));
+    position: relative;
+    z-index: 25;
+    font-family: var(--menu-font-body, inherit);
+  }
+
+  .currency-compact__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    height: 2.25rem;
+    padding: 0 0.62rem 0 0.3rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--cur-ink) 18%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--cur-ink) 9%, transparent), color-mix(in srgb, var(--cur-ink) 3%, transparent));
+    color: var(--cur-ink);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+      0 6px 16px -8px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      border-color 200ms ease,
+      background-color 200ms ease,
+      transform 160ms ease;
+  }
+
+  .currency-compact__trigger:hover,
+  .currency-compact__trigger[aria-expanded='true'] {
+    border-color: color-mix(in srgb, var(--cur-accent) 55%, transparent);
+  }
+
+  .currency-compact__trigger:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--cur-accent) 70%, transparent);
+    outline-offset: 2px;
+  }
+
+  .currency-compact__trigger:active {
+    transform: scale(0.96);
+  }
+
+  /* Moneda metálica: oro (USD), bronce (Bs), plata (EUR). */
+  .currency-coin {
+    --coin-hi: #fff4c8;
+    --coin-mid: #d9ad48;
+    --coin-lo: #8a6418;
+    --coin-ink: #4a3208;
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.62rem;
+    height: 1.62rem;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.85) 0 8%, transparent 34%),
+      conic-gradient(
+        from 210deg,
+        var(--coin-mid),
+        var(--coin-hi) 18%,
+        var(--coin-mid) 36%,
+        var(--coin-lo) 58%,
+        var(--coin-mid) 78%,
+        var(--coin-hi) 92%,
+        var(--coin-mid)
+      );
+    box-shadow:
+      inset 0 0 0 1.5px color-mix(in srgb, var(--coin-lo) 70%, transparent),
+      inset 0 0 0 3px color-mix(in srgb, var(--coin-hi) 55%, transparent),
+      0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .currency-coin::after {
+    content: '';
+    position: absolute;
+    inset: 0.2rem;
+    border-radius: inherit;
+    border: 1px dashed color-mix(in srgb, var(--coin-lo) 55%, transparent);
+    pointer-events: none;
+  }
+
+  .currency-coin__symbol {
+    position: relative;
+    z-index: 1;
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--coin-ink);
+    text-shadow: 0 1px 0 color-mix(in srgb, var(--coin-hi) 80%, transparent);
+  }
+
+  .currency-compact__trigger[data-currency-face='bs'] .currency-coin,
+  .currency-coin[data-face='bs'] {
+    --coin-hi: #ffd9b8;
+    --coin-mid: #c27a45;
+    --coin-lo: #6e3712;
+    --coin-ink: #3e1a05;
+  }
+
+  .currency-compact__trigger[data-currency-face='eur'] .currency-coin,
+  .currency-coin[data-face='eur'] {
+    --coin-hi: #ffffff;
+    --coin-mid: #c3cad3;
+    --coin-lo: #6b7480;
+    --coin-ink: #232a33;
+  }
+
+  .currency-compact__trigger[data-currency-face='bs'] .currency-coin__symbol,
+  .currency-coin[data-face='bs'] .currency-coin__symbol {
+    font-size: 0.6rem;
+    letter-spacing: -0.04em;
+  }
+
+  .currency-compact__trigger .currency-coin__symbol {
+    animation: currency-coin-flip 420ms cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  @keyframes currency-coin-flip {
+    from {
+      transform: rotateY(90deg);
+      opacity: 0;
+    }
+  }
+
+  .currency-compact__code {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .currency-compact__chevron {
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-left: -0.08rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.6;
+    transition: transform 220ms ease;
+  }
+
+  .currency-compact__trigger[aria-expanded='true'] .currency-compact__chevron {
+    transform: rotate(180deg);
+  }
+
+  .currency-compact__menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 40;
+    width: 12.5rem;
+    padding: 0.35rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--cur-ink) 14%, transparent);
+    background:
+      linear-gradient(color-mix(in srgb, var(--cur-surface) 94%, transparent), color-mix(in srgb, var(--cur-surface) 94%, transparent)),
+      var(--color-fondo, #111111);
+    color: var(--cur-ink);
+    box-shadow:
+      0 22px 44px -12px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    transform-origin: top right;
+    animation: currency-menu-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  }
+
+  @keyframes currency-menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.96);
+    }
+  }
+
+  .currency-compact__menu[hidden] {
+    display: none;
+  }
+
+  .currency-compact__heading {
+    margin: 0;
+    padding: 0.4rem 0.55rem 0.35rem;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  .currency-compact__option {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border: 0;
+    border-radius: 0.7rem;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 160ms ease;
+  }
+
+  .currency-compact__option:hover,
+  .currency-compact__option:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--cur-ink) 7%, transparent);
+  }
+
+  .currency-compact__option.is-active {
+    background: color-mix(in srgb, var(--cur-accent) 14%, transparent);
+  }
+
+  .currency-coin--sm {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .currency-compact__option-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.12rem;
+    min-width: 0;
+  }
+
+  .currency-compact__option-code {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1;
+  }
+
+  .currency-compact__option-name {
+    font-size: 0.66rem;
+    line-height: 1.1;
+    opacity: 0.6;
+  }
+
+  .currency-compact__check {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: var(--cur-accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transform: scale(0.6);
+    transition:
+      opacity 160ms ease,
+      transform 200ms ease;
+  }
+
+  .currency-compact__option.is-active .currency-compact__check {
+    opacity: 1;
+    transform: none;
+  }
+
+  .currency-compact__rate {
+    margin: 0.3rem 0 0;
+    padding: 0.5rem 0.55rem 0.35rem;
+    border-top: 1px solid color-mix(in srgb, var(--cur-ink) 10%, transparent);
+    font-size: 0.6rem;
+    line-height: 1.35;
+    color: color-mix(in srgb, var(--cur-ink) 65%, transparent);
+  }
+
+  .currency-compact__rate strong {
+    font-weight: 700;
+    color: var(--cur-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .currency-compact__trigger {
+      transition: none !important;
+    }
+
+    .currency-compact__menu,
+    .currency-coin__symbol {
+      animation: none !important;
+    }
+  }
+</style>

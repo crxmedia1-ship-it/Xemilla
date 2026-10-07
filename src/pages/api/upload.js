@@ -11,7 +11,10 @@ import {
 export const prerender = false;
 
 const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_SVG_BYTES = 2 * 1024 * 1024;
+const SVG_TYPE = 'image/svg+xml';
 const ALLOWED = new Set([
+  SVG_TYPE,
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -142,6 +145,16 @@ export async function POST({ request, cookies }) {
     return json({ error: `Tipo no permitido: ${file.type || 'desconocido'}` }, 400);
   }
 
+  const isSvg = file.type === SVG_TYPE;
+  if (isSvg) {
+    if (file.size > MAX_SVG_BYTES) {
+      return json({ error: 'El SVG no puede superar 2 MB' }, 400);
+    }
+    if (!isSafeSvg(await file.text())) {
+      return json({ error: 'Ese SVG trae código o enlaces externos. Expórtalo de nuevo como SVG simple.' }, 400);
+    }
+  }
+
   const requestedSlug = String(form.get('restaurante_slug') || form.get('slug') || '').trim();
   const requestedId = String(form.get('restaurante_id') || '').trim();
   const target = await resolveUploadSlug(supabase, user, requestedSlug, requestedId);
@@ -175,8 +188,9 @@ export async function POST({ request, cookies }) {
       stream.end(buffer);
     });
 
+    /** El SVG va sin transformaciones de entrega para que siga siendo vectorial. */
     const url =
-      optimizedPublicUrl(uploadResult) ||
+      (isSvg ? uploadResult.secure_url : optimizedPublicUrl(uploadResult)) ||
       uploadResult.secure_url ||
       uploadResult.url ||
       '';
@@ -203,6 +217,27 @@ export async function POST({ request, cookies }) {
     });
     return json({ error: message }, 500);
   }
+}
+
+/**
+ * Un SVG puede ejecutar código si alguien lo abre directo en el navegador:
+ * solo se aceptan dibujos sin scripts, eventos ni recursos externos.
+ * @param {string} text
+ */
+function isSafeSvg(text) {
+  if (!/<svg[\s>]/i.test(text)) return false;
+  const blocked = [
+    /<script/i,
+    /<foreignObject/i,
+    /<(iframe|embed|object|audio|video)\b/i,
+    /\son[a-z]+\s*=/i,
+    /javascript:/i,
+    /<!ENTITY/i,
+    /(?:xlink:)?href\s*=\s*["']\s*(?!#|data:image\/)/i,
+    /url\(\s*["']?\s*(?!#|data:image\/)/i,
+    /@import/i,
+  ];
+  return !blocked.some((re) => re.test(text));
 }
 
 function json(body, status = 200) {

@@ -2,7 +2,7 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const MUNDOS = new Set(['barra', 'espacio', 'estudio']);
-const TIPOS = new Set(['vista', 'ar', 'nutri', 'qr', 'whatsapp']);
+const TIPOS = new Set(['vista', 'ar', 'nutri', 'qr', 'ia', 'whatsapp']);
 
 /**
  * @param {unknown} value
@@ -24,6 +24,14 @@ export function readPropuestaNombre(value) {
 export function readPropuestaSetup(value) {
   const clean = String(value || '').trim().replace(/[^\d.,]/g, '').slice(0, 12);
   return clean || '600';
+}
+
+/**
+ * @param {unknown} value
+ */
+export function readPropuestaAnual(value) {
+  const clean = String(value || '').trim().replace(/[^\d.,]/g, '').slice(0, 12);
+  return clean || '200';
 }
 
 /**
@@ -79,7 +87,7 @@ export async function listPropuestas(client) {
   const { data, error } = await client
     .from('propuestas')
     .select(
-      'id, nombre, logo_url, setup, dominio, mundo, vistas, ultima_vista, vio_ar, vio_nutri, vio_qr, vio_whatsapp, created_at',
+      'id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo, vistas, ultima_vista, vio_ar, vio_nutri, vio_qr, vio_ia, vio_whatsapp, created_at',
     )
     .order('created_at', { ascending: false });
 
@@ -116,7 +124,7 @@ export async function getPropuesta(client, id) {
   if (!isPropuestaId(id)) return null;
   const { data, error } = await client
     .from('propuestas')
-    .select('id, nombre, logo_url, setup, dominio, mundo')
+    .select('id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo')
     .eq('id', id)
     .maybeSingle();
 
@@ -129,7 +137,7 @@ export async function getPropuesta(client, id) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} client
- * @param {{ nombre: string, logoUrl?: string, setup?: string, dominio?: string, mundo?: string }} input
+ * @param {{ nombre: string, logoUrl?: string, setup?: string, anual?: string, sinPrecio?: boolean, dominio?: string, mundo?: string }} input
  */
 export async function createPropuesta(client, input) {
   const nombre = readPropuestaNombre(input.nombre);
@@ -139,6 +147,8 @@ export async function createPropuesta(client, input) {
     nombre,
     logo_url: readPropuestaLogo(input.logoUrl) || null,
     setup: readPropuestaSetup(input.setup),
+    anual: readPropuestaAnual(input.anual),
+    sin_precio: input.sinPrecio === true,
     dominio: readPropuestaDominio(input.dominio) || null,
     mundo: readPropuestaMundo(input.mundo),
   };
@@ -146,7 +156,7 @@ export async function createPropuesta(client, input) {
   const { data, error } = await client
     .from('propuestas')
     .insert(row)
-    .select('id, nombre, logo_url, setup, dominio, mundo')
+    .select('id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo')
     .single();
 
   if (error || !data) {
