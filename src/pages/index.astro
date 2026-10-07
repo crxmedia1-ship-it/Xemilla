@@ -7,143 +7,140 @@ import { listPublicNetworkLogos } from '../lib/network-logos.js';
 const waHref =
   'https://wa.me/584148706285?text=Hola.%20Me%20interesa%20elevar%20la%20experiencia%20digital%20de%20mi%20restaurante%20y%20me%20gustar%C3%ADa%20agendar%20un%20demo%20de%20Xemilla.';
 
-const logoSrc =
-  'https://res.cloudinary.com/wdmzaemi/image/upload/v1789022797/Photoroom_20260810_004814.png';
-
-/**
- * Placeholder cinematic BG — Mixkit free stock (smoke on black).
- * Swap `videoSrc` for a branded/dark particles asset when available.
- */
-const videoSrc = 'https://assets.mixkit.co/videos/1961/1961-720.mp4';
+const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap';
 
 const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 
 const networkLogos = await listPublicNetworkLogos();
-/** Duplicado para marquee infinito sin corte */
-const marqueeLogos =
-  networkLogos.length > 0 ? [...networkLogos, ...networkLogos] : [];
+/** Tira con al menos 8 logos, para que el carrusel llene el ancho aunque haya pocas marcas. */
+const logoStrip = networkLogos.length
+  ? Array.from({ length: Math.ceil(8 / networkLogos.length) }, () => networkLogos).flat()
+  : [];
+
+const FOODS = [
+  ['nigiri', 52],
+  ['limon', 46],
+  ['albahaca', 38],
+  ['fresa', 44],
+  ['gamba', 50],
+  ['uvas', 42],
+  ['tomate', 40],
+  ['champinon', 44],
+  ['aceituna', 34],
+  ['ajo', 36],
+  ['frambuesa', 38],
+  ['higo', 46],
+  ['macaron', 42],
+  ['aguacate', 50],
+] as const;
+
+/** Lluvia determinista: cada pieza tiene su carril, ritmo y giro; el delay negativo la arranca a mitad de caída. */
+let seed = 11;
+const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const rain = FOODS.map(([name, size], i) => {
+  const duration = 16 + rand() * 12;
+  return {
+    src: `/propuesta/comida-${name}.png`,
+    style: [
+      `--size:${size}px`,
+      `left:${(((i * 5) % FOODS.length) + 0.2 + rand() * 0.6) * (100 / FOODS.length)}%`,
+      `--dx:${Math.round((rand() - 0.5) * 80)}px`,
+      `--r0:${Math.round(rand() * 360)}deg`,
+      `--r1:${Math.round((rand() - 0.5) * 540)}deg`,
+      `animation-duration:${duration.toFixed(1)}s`,
+      `animation-delay:-${(rand() * duration).toFixed(1)}s`,
+    ].join(';'),
+  };
+});
+
+const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(#g)'/></svg>`,
+)}")`;
 ---
 
 <Layout
   title="Xemilla · Software gastronómico"
   theme="crx"
-  themeColor="#000000"
+  themeColor="#f2f1ee"
+  fontHref={FONT_HREF}
   description="Xemilla — software gastronómico de marca blanca para restaurantes"
 >
-  <main
-    id="hero-stage"
-    class="landing-lock relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden overflow-x-hidden overscroll-none bg-black"
-  >
-    {/* Immersive background — play once, climax zoom + fade to black */}
-    <div class="hero-video-fade absolute inset-0 z-0 overflow-hidden bg-black" aria-hidden="true">
-      <!-- TODO: Reemplazar este src por el enlace del video definitivo de Cloudinary -->
-      <video
-        id="hero-video"
-        autoplay
-        muted
-        playsinline
-        class="absolute inset-0 z-0 h-full w-full object-cover"
-        src={videoSrc}
+  <div class="studio" aria-hidden="true">
+    <div class="studio__softbox"></div>
+    <div class="studio__cyclorama"></div>
+    <div class="studio__grain" style={`background-image:${studioGrain}`}></div>
+  </div>
+
+  <div class="rain" aria-hidden="true">
+    {rain.map((food) => <img class="rain__food" src={food.src} alt="" style={food.style} draggable="false" decoding="async" />)}
+  </div>
+
+  <main class="landing-lock relative z-10 flex h-[100dvh] max-h-[100dvh] w-full flex-col items-center overflow-hidden px-5 font-blacksushi text-zinc-950">
+    <p class="landing-in mt-[max(1.5rem,env(safe-area-inset-top))] inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.24em] text-zinc-500 shadow-[0_10px_30px_-18px_rgba(40,30,20,0.35)] backdrop-blur-xl">
+      <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span>
+      Software gastronómico
+    </p>
+
+    <div class="flex w-full flex-1 flex-col items-center justify-center text-center">
+      <img
+        src="/propuesta/xemilla-on-light.png"
+        alt="Xemilla"
+        width="1024"
+        height="274"
+        class="landing-in h-auto w-[62%] max-w-[260px] sm:w-72 sm:max-w-none"
+        style="--d: 0.1s"
+        decoding="async"
       />
+      <h1
+        class="landing-in mt-7 max-w-xl text-balance text-[1.9rem] font-medium leading-[1.08] tracking-[-0.045em] sm:mt-9 sm:text-5xl"
+        style="--d: 0.25s"
+      >
+        {slogan}
+      </h1>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="landing-in mt-9 inline-flex min-h-12 items-center justify-center rounded-xl bg-zinc-950 px-8 text-sm font-medium tracking-wide text-white shadow-[0_18px_40px_-18px_rgba(0,0,0,0.55)] transition hover:scale-[1.02] active:scale-[0.98]"
+        style="--d: 0.4s"
+      >
+        Solicitar acceso
+      </a>
     </div>
 
-    {/* Spatial void — black cosmos; fades in on climax */}
-    <div id="spatial-void" class="spatial-void absolute inset-0 z-[1]" aria-hidden="true">
-      <div class="spatial-void__base"></div>
-      <div class="spatial-void__nebula"></div>
-      <div class="spatial-void__stars"></div>
-    </div>
-
-    {/* Dark cinematic veil — softens with void over matched 3s crossfade */}
-    <div
-      class="cinematic-veil absolute inset-0 bg-gradient-to-b from-black/90 via-black/75 to-black/95 z-10 pointer-events-none transition-opacity duration-[3000ms] ease-in-out"
-    ></div>
-
-    {/* Film grain between veil and UI */}
-    <div class="bg-film-grain absolute inset-0 z-[15] pointer-events-none" aria-hidden="true" />
-
-    {/* Pointer light — paint-only, above grain / below CTA */}
-    <div id="pointer-light" class="pointer-light absolute inset-0 z-[16]" aria-hidden="true"></div>
-
-    {/* Light-revealed: partner logos + powered by CRX */}
-    <div
-      id="crx-credit"
-      class="crx-credit absolute inset-0 z-[17] flex flex-col items-center justify-end gap-5 pb-[max(2.25rem,env(safe-area-inset-bottom))] pointer-events-none sm:gap-6 sm:pb-[max(2.75rem,env(safe-area-inset-bottom))]"
-      aria-hidden="true"
-    >
+    <footer class="landing-in flex w-full flex-col items-center gap-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] sm:gap-6" style="--d: 0.55s">
       {
         networkLogos.length > 0 && (
-          <div class="partner-marquee mb-11 w-full sm:mb-14" data-partner-marquee>
-            <div class="partner-marquee__track">
-              {marqueeLogos.map((item, i) => (
-                <div class="partner-marquee__item" data-dup={i >= networkLogos.length ? '1' : '0'}>
-                  <img
-                    src={item.logoUrl}
-                    alt=""
-                    width="160"
-                    height="48"
-                    loading="lazy"
-                    decoding="async"
-                    draggable="false"
-                    class="partner-marquee__logo"
-                  />
-                </div>
+          <div class="partners" role="region" aria-label="Restaurantes que usan Xemilla">
+            <div class="partners__track">
+              {[0, 1].map((copy) => (
+                <ul class="partners__set" aria-hidden={copy === 1 ? 'true' : undefined}>
+                  {logoStrip.map((item, i) => (
+                    <li>
+                      <img
+                        src={item.logoUrl}
+                        alt={copy === 0 && i < networkLogos.length ? item.name : ''}
+                        width="160"
+                        height="48"
+                        loading="lazy"
+                        decoding="async"
+                        draggable="false"
+                      />
+                    </li>
+                  ))}
+                </ul>
               ))}
             </div>
           </div>
         )
       }
-      <span class="font-mono text-[10px] uppercase tracking-[0.3em] text-white/90">
-        powered by CRX
-      </span>
-    </div>
-
-    {/* Verified brand badge — exact top center */}
-    <p
-      class="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-30 inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-zinc-900/90 border border-white/10 text-center text-[10px] uppercase font-mono tracking-[0.25em] text-zinc-300 shadow-xl backdrop-blur-md hover:border-white/20 transition-all"
-    >
-      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-      SOFTWARE GASTRONÓMICO
-    </p>
-
-    {/* Central hero — Logo → Slogan → CTA (raised on mobile, centered md+) */}
-    <div
-      class="relative z-20 flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col items-center justify-start gap-3 overflow-hidden px-4 pt-[18vh] pb-[max(2.5rem,env(safe-area-inset-bottom))] md:justify-center md:gap-0 md:pt-0 md:pb-8"
-    >
-      <img
-        src={logoSrc}
-        alt="Xemilla"
-        width="256"
-        height="108"
-        class="logo-settle h-auto w-[70%] max-w-[220px] object-contain opacity-95 sm:w-64 sm:max-w-none md:w-64"
-      />
-
-      <h1
-        id="hero-slogan"
-        class="slogan-typewriter inline-block whitespace-nowrap text-sm sm:text-xl md:text-3xl font-light tracking-tight sm:tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 text-center mt-0 mb-3 md:mt-6 md:mb-10 animate-[typewriter_7s_steps(46)_3s_both,blink_0.75s_step-end_10s_4,hideCaret_0.01s_linear_13s_forwards] border-r-2 border-white/80 pr-1"
-      >
-        {slogan}
-      </h1>
-
-      <div
-        id="cta-container"
-        class="opacity-0 pointer-events-none transition-opacity duration-[1500ms] ease-in-out mt-3 md:mt-12"
-      >
-        <a
-          href={waHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="cta-subtle-scale inline-block backdrop-blur-xl bg-white/10 border border-white/20 text-white font-semibold tracking-wide px-8 py-3.5 md:px-10 md:py-4 rounded-lg transition-transform duration-300 hover:scale-[1.03] animate-[subtleScale_4s_ease-in-out_infinite]"
-        >
-          SOLICITAR ACCESO
-        </a>
-      </div>
-    </div>
+      <span class="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">powered by CRX</span>
+    </footer>
   </main>
 </Layout>
 
 <style is:global>
-  /* Lock landing to one viewport — no rubber-band scroll on mobile */
+  /* Una sola pantalla, sin rebote de scroll en móvil. */
   html:has(.landing-lock),
   html:has(.landing-lock) body {
     height: 100%;
@@ -151,631 +148,233 @@ const marqueeLogos =
     overflow: hidden;
     overscroll-behavior: none;
   }
+</style>
 
+<style>
   .landing-lock {
     overscroll-behavior: none;
     touch-action: manipulation;
   }
 
-  @keyframes typewriter {
-    0% { clip-path: inset(0 100% 0 0); }
-    100% { clip-path: inset(0 0 0 0); }
-  }
-
-  @keyframes blink {
-    from, to { border-color: transparent; }
-    50% { border-color: rgba(255, 255, 255, 0.9); }
-  }
-
-  @keyframes hideCaret {
-    to {
-      border-color: transparent;
-      border-right-width: 0;
-      padding-right: 0;
-    }
-  }
-
-  .slogan-typewriter {
-    display: inline-block;
-    white-space: nowrap;
-    max-width: 100%;
-    border-right: 2px solid rgba(255, 255, 255, 0.8);
-    padding-right: 0.25rem;
-    /* 0–3s clip delay → 3–10s type → 10–13s blink → 13s hide caret */
-    animation:
-      typewriter 7s steps(46) 3s both,
-      blink 0.75s step-end 10s 4,
-      hideCaret 0.01s linear 13s forwards;
-  }
-
-  /* Fit 46-char Spanish line on very narrow phones without wrapping */
-  @media (max-width: 380px) {
-    .slogan-typewriter {
-      font-size: 0.72rem;
-      letter-spacing: -0.025em;
-    }
-  }
-
-  @keyframes logoSettle {
-    from {
-      opacity: 0.85;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .logo-settle {
-    animation: logoSettle 3s cubic-bezier(0.16, 1, 0.3, 1) both;
-    transform-origin: center center;
-  }
-
-  @keyframes subtleScale {
-    0%,
-    100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.03);
-    }
-  }
-
-  .cta-subtle-scale {
-    animation: subtleScale 4s ease-in-out infinite;
-  }
-
-  @keyframes fadeInSoft {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes intoTheVoid {
-    0% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(1.4); opacity: 0; }
-  }
-
-  #hero-video.animate-void {
-    animation: intoTheVoid 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  }
-
-  /* Video wrapper: soft opacity fade from black (climax via .animate-void) */
-  .hero-video-fade {
-    opacity: 0;
-    animation: fadeInSoft 3s ease-in-out forwards;
-  }
-
-  /* After intoTheVoid (3s) finishes: park video layer fully off */
-  #hero-stage.climax-done .hero-video-fade {
-    opacity: 0 !important;
-    animation: none !important;
-  }
-
-  /* ——— Spatial void — black cosmos (no purple); 3s crossfade with intoTheVoid ——— */
-  .spatial-void {
-    opacity: 0;
+  .studio {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
     pointer-events: none;
-    transition: opacity 3s ease-in-out;
+    background: linear-gradient(180deg, #fbfaf8 0%, #f2f1ee 55%, #e9e7e3 100%);
   }
 
-  .spatial-void.void-active {
-    opacity: 1;
-  }
-
-  .spatial-void__base,
-  .spatial-void__nebula,
-  .spatial-void__stars {
+  .studio__softbox {
     position: absolute;
     inset: 0;
-    pointer-events: none;
-  }
-
-  /* Near-pure black + charcoal vignette only */
-  .spatial-void__base {
     background:
-      radial-gradient(ellipse 120% 90% at 50% 40%, rgba(18, 18, 18, 0.55) 0%, transparent 55%),
-      radial-gradient(ellipse 100% 100% at 50% 100%, rgba(0, 0, 0, 0.95) 0%, transparent 50%),
-      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 0, 0, 0.75) 0%, transparent 45%),
-      #050505;
+      radial-gradient(ellipse 70% 38% at 50% -4%, rgba(255, 255, 255, 1), transparent 70%),
+      radial-gradient(ellipse 35% 60% at 0% 40%, rgba(255, 255, 255, 0.7), transparent 70%),
+      radial-gradient(ellipse 35% 60% at 100% 40%, rgba(255, 255, 255, 0.55), transparent 70%);
   }
 
-  /* Soft white/charcoal nebula — no purple / indigo / blue-violet */
-  .spatial-void__nebula {
+  .studio__cyclorama {
+    position: absolute;
+    inset: auto -10% 0;
+    height: 46%;
     background:
-      radial-gradient(ellipse 55% 40% at 22% 68%, rgba(255, 255, 255, 0.045) 0%, transparent 70%),
-      radial-gradient(ellipse 45% 35% at 78% 28%, rgba(160, 160, 160, 0.04) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 45% at 58% 72%, rgba(40, 40, 40, 0.55) 0%, transparent 70%);
-    filter: blur(28px);
-    opacity: 0.9;
-    transform: translate3d(0, 0, 0);
-    animation: nebulaDrift 28s ease-in-out infinite alternate;
+      radial-gradient(ellipse 60% 70% at 50% 100%, rgba(255, 255, 255, 0.85), transparent 70%),
+      linear-gradient(180deg, transparent 0%, rgba(120, 110, 100, 0.07) 40%, rgba(120, 110, 100, 0.04) 100%);
+    border-radius: 50% 50% 0 0 / 22% 22% 0 0;
   }
 
-  @keyframes nebulaDrift {
-    0% { transform: translate3d(-1.5%, 1%, 0) scale(1); }
-    100% { transform: translate3d(2%, -1.5%, 0) scale(1.04); }
+  .studio__grain {
+    position: absolute;
+    inset: 0;
+    background-size: 320px 320px;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    filter: invert(1);
   }
 
-  /* White/grey stars — denser field, mostly faint so it never crowds the void */
-  .spatial-void__stars {
-    opacity: 0.58;
-    background-image:
-      /* Primary (a bit brighter, sparse) */
-      radial-gradient(1.5px 1.5px at 8% 12%, rgba(255, 255, 255, 0.78), transparent),
-      radial-gradient(1px 1px at 18% 42%, rgba(200, 200, 200, 0.5), transparent),
-      radial-gradient(1.5px 1.5px at 27% 78%, rgba(255, 255, 255, 0.48), transparent),
-      radial-gradient(1px 1px at 35% 18%, rgba(180, 180, 180, 0.4), transparent),
-      radial-gradient(2px 2px at 44% 55%, rgba(255, 255, 255, 0.68), transparent),
-      radial-gradient(1px 1px at 52% 8%, rgba(220, 220, 220, 0.5), transparent),
-      radial-gradient(1.5px 1.5px at 61% 33%, rgba(255, 255, 255, 0.36), transparent),
-      radial-gradient(1px 1px at 69% 71%, rgba(190, 190, 190, 0.52), transparent),
-      radial-gradient(1.5px 1.5px at 76% 14%, rgba(255, 255, 255, 0.58), transparent),
-      radial-gradient(1px 1px at 84% 48%, rgba(200, 200, 200, 0.4), transparent),
-      radial-gradient(2px 2px at 91% 82%, rgba(255, 255, 255, 0.62), transparent),
-      radial-gradient(1px 1px at 12% 88%, rgba(170, 170, 170, 0.36), transparent),
-      radial-gradient(1px 1px at 40% 92%, rgba(255, 255, 255, 0.3), transparent),
-      radial-gradient(1.5px 1.5px at 95% 25%, rgba(210, 210, 210, 0.45), transparent),
-      radial-gradient(1px 1px at 58% 44%, rgba(255, 255, 255, 0.26), transparent),
-      /* Mid layer */
-      radial-gradient(1px 1px at 5% 58%, rgba(255, 255, 255, 0.36), transparent),
-      radial-gradient(1px 1px at 15% 28%, rgba(210, 210, 210, 0.3), transparent),
-      radial-gradient(1.2px 1.2px at 22% 64%, rgba(255, 255, 255, 0.38), transparent),
-      radial-gradient(1px 1px at 31% 8%, rgba(190, 190, 190, 0.32), transparent),
-      radial-gradient(1px 1px at 38% 48%, rgba(255, 255, 255, 0.28), transparent),
-      radial-gradient(1.3px 1.3px at 47% 22%, rgba(230, 230, 230, 0.4), transparent),
-      radial-gradient(1px 1px at 54% 66%, rgba(255, 255, 255, 0.3), transparent),
-      radial-gradient(1px 1px at 63% 88%, rgba(180, 180, 180, 0.34), transparent),
-      radial-gradient(1.2px 1.2px at 72% 42%, rgba(255, 255, 255, 0.36), transparent),
-      radial-gradient(1px 1px at 80% 6%, rgba(200, 200, 200, 0.32), transparent),
-      radial-gradient(1px 1px at 88% 60%, rgba(255, 255, 255, 0.28), transparent),
-      radial-gradient(1.4px 1.4px at 97% 38%, rgba(220, 220, 220, 0.38), transparent),
-      radial-gradient(1px 1px at 3% 34%, rgba(255, 255, 255, 0.24), transparent),
-      radial-gradient(1px 1px at 26% 52%, rgba(190, 190, 190, 0.28), transparent),
-      radial-gradient(1px 1px at 49% 80%, rgba(255, 255, 255, 0.32), transparent),
-      /* Dust (tiny, very faint) */
-      radial-gradient(0.8px 0.8px at 10% 50%, rgba(255, 255, 255, 0.22), transparent),
-      radial-gradient(0.8px 0.8px at 20% 16%, rgba(255, 255, 255, 0.2), transparent),
-      radial-gradient(0.8px 0.8px at 33% 70%, rgba(255, 255, 255, 0.21), transparent),
-      radial-gradient(0.8px 0.8px at 42% 30%, rgba(255, 255, 255, 0.18), transparent),
-      radial-gradient(0.8px 0.8px at 56% 58%, rgba(255, 255, 255, 0.2), transparent),
-      radial-gradient(0.8px 0.8px at 67% 20%, rgba(255, 255, 255, 0.19), transparent),
-      radial-gradient(0.8px 0.8px at 74% 86%, rgba(255, 255, 255, 0.21), transparent),
-      radial-gradient(0.8px 0.8px at 82% 34%, rgba(255, 255, 255, 0.18), transparent),
-      radial-gradient(0.8px 0.8px at 90% 72%, rgba(255, 255, 255, 0.2), transparent),
-      radial-gradient(0.8px 0.8px at 6% 76%, rgba(255, 255, 255, 0.17), transparent),
-      radial-gradient(0.8px 0.8px at 48% 12%, rgba(255, 255, 255, 0.19), transparent),
-      radial-gradient(0.8px 0.8px at 93% 52%, rgba(255, 255, 255, 0.18), transparent);
-    transition: opacity 3s ease-in-out;
+  .landing-in {
+    animation: landing-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both;
   }
 
-  .spatial-void.void-active .spatial-void__stars {
-    opacity: 0.88;
+  @keyframes landing-in {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
   }
 
-  /* Soften black veil so stars read — still black, no purple haze */
-  #hero-stage.void-active .cinematic-veil {
-    opacity: 0.35;
-  }
-
-  /* Pointer spotlight — soft white; coords from window listeners */
-  .pointer-light {
-    --lx: 50%;
-    --ly: 50%;
-    pointer-events: none;
-    background: radial-gradient(
-      420px circle at var(--lx, 50%) var(--ly, 50%),
-      rgba(255, 255, 255, 0.2),
-      rgba(160, 160, 160, 0.06) 35%,
-      transparent 65%
-    );
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    mix-blend-mode: screen;
-  }
-
-  .pointer-light.light-active {
-    opacity: 1;
-  }
-
-  /* Light-revealed credit + logos — full-bleed; mask at pointer reveals bottom strip */
-  .crx-credit {
-    --lx: -9999px;
-    --ly: -9999px;
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    -webkit-mask-image: radial-gradient(
-      260px circle at var(--lx) var(--ly),
-      #000 0%,
-      rgba(0, 0, 0, 0.75) 42%,
-      transparent 72%
-    );
-    mask-image: radial-gradient(
-      260px circle at var(--lx) var(--ly),
-      #000 0%,
-      rgba(0, 0, 0, 0.75) 42%,
-      transparent 72%
-    );
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-  }
-
-  .crx-credit.light-active {
-    opacity: 1;
-  }
-
-  /* Partner logo marquee — full-bleed; monochrome; light-masked */
-  .partner-marquee {
-    width: 100%;
-    max-width: none;
+  .rain {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
     overflow: hidden;
-    mask-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      #000 8%,
-      #000 92%,
-      transparent 100%
-    );
-    -webkit-mask-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      #000 8%,
-      #000 92%,
-      transparent 100%
-    );
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse 38% 24% at 50% 50%, rgba(0, 0, 0, 0.3) 40%, #000 100%);
   }
 
-  .partner-marquee__track {
+  @media (max-width: 767px) {
+    .rain {
+      mask-image: radial-gradient(ellipse 60% 22% at 50% 50%, rgba(0, 0, 0, 0.3) 40%, #000 100%);
+    }
+  }
+
+  .rain__food {
+    position: absolute;
+    top: 0;
+    width: var(--size);
+    height: var(--size);
+    object-fit: contain;
+    filter: drop-shadow(0 8px 12px rgba(60, 45, 30, 0.18));
+    user-select: none;
+    animation: food-fall linear infinite;
+    will-change: transform;
+  }
+
+  @keyframes food-fall {
+    from {
+      transform: translate3d(0, -12vh, 0) rotate(var(--r0));
+    }
+    to {
+      transform: translate3d(var(--dx), 108vh, 0) rotate(calc(var(--r0) + var(--r1)));
+    }
+  }
+
+  @media (max-width: 767px) {
+    .rain__food {
+      width: calc(var(--size) * 0.78);
+      height: calc(var(--size) * 0.78);
+    }
+
+    .rain__food:nth-child(3n) {
+      display: none;
+    }
+  }
+
+  .partners {
+    width: 100%;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  }
+
+  .partners__track {
     display: flex;
     width: max-content;
-    align-items: center;
-    gap: 2.75rem;
-    animation: partnerMarquee 38s linear infinite;
-    animation-play-state: paused; /* only run while light reveals the strip */
+    animation: partners-roll 40s linear infinite;
   }
 
-  .crx-credit.light-active .partner-marquee__track {
-    animation-play-state: running;
+  .partners:hover .partners__track {
+    animation-play-state: paused;
   }
 
-  .partner-marquee__item {
-    flex: 0 0 auto;
+  .partners__set {
     display: flex;
+    flex: none;
     align-items: center;
-    justify-content: center;
-    height: 2.15rem;
+    gap: 3rem;
+    margin: 0;
+    padding: 0 1.5rem;
+    list-style: none;
   }
 
-  .partner-marquee__logo {
+  .partners img {
     display: block;
-    height: 1.95rem;
     width: auto;
-    max-width: 9.5rem;
+    height: 2rem;
+    max-width: 8.5rem;
     object-fit: contain;
-    /* Unifica todos los logos al mismo color (blanco) */
-    filter: brightness(0) invert(1);
-    opacity: 0.9;
     user-select: none;
     -webkit-user-drag: none;
   }
 
   @media (min-width: 640px) {
-    .partner-marquee__item {
-      height: 2.45rem;
+    .partners__set {
+      gap: 4rem;
+      padding: 0 2rem;
     }
 
-    .partner-marquee__logo {
-      height: 2.2rem;
-      max-width: 11rem;
-    }
-
-    .partner-marquee__track {
-      gap: 3.25rem;
+    .partners img {
+      height: 2.4rem;
+      max-width: 10.5rem;
     }
   }
 
-  @media (min-width: 1024px) {
-    .partner-marquee__item {
-      height: 2.75rem;
-    }
+  .partners li.is-light {
+    padding: 0.45rem 0.8rem;
+    border-radius: 0.75rem;
+    background: #18181b;
+    box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.6);
+  }
 
-    .partner-marquee__logo {
-      height: 2.45rem;
-      max-width: 12.5rem;
-    }
+  .partners li.is-light img {
+    height: 1.6rem;
+  }
 
-    .partner-marquee__track {
-      gap: 3.75rem;
+  @media (min-width: 640px) {
+    .partners li.is-light img {
+      height: 1.9rem;
     }
   }
 
-  /* Phones / coarse pointers: cheaper void + light (battery + GPU) */
-  @media (max-width: 768px), (pointer: coarse) {
-    .spatial-void__nebula {
-      filter: blur(16px);
-      animation: none;
-      opacity: 0.85;
-    }
-
-    .spatial-void__stars {
-      opacity: 0.5;
-      /* Drop dust layer paint cost; keep primary + mid */
-      background-image:
-        radial-gradient(1.5px 1.5px at 8% 12%, rgba(255, 255, 255, 0.78), transparent),
-        radial-gradient(1px 1px at 18% 42%, rgba(200, 200, 200, 0.5), transparent),
-        radial-gradient(1.5px 1.5px at 27% 78%, rgba(255, 255, 255, 0.48), transparent),
-        radial-gradient(1px 1px at 35% 18%, rgba(180, 180, 180, 0.4), transparent),
-        radial-gradient(2px 2px at 44% 55%, rgba(255, 255, 255, 0.68), transparent),
-        radial-gradient(1px 1px at 52% 8%, rgba(220, 220, 220, 0.5), transparent),
-        radial-gradient(1.5px 1.5px at 61% 33%, rgba(255, 255, 255, 0.36), transparent),
-        radial-gradient(1px 1px at 69% 71%, rgba(190, 190, 190, 0.52), transparent),
-        radial-gradient(1.5px 1.5px at 76% 14%, rgba(255, 255, 255, 0.58), transparent),
-        radial-gradient(1px 1px at 84% 48%, rgba(200, 200, 200, 0.4), transparent),
-        radial-gradient(2px 2px at 91% 82%, rgba(255, 255, 255, 0.62), transparent),
-        radial-gradient(1px 1px at 12% 88%, rgba(170, 170, 170, 0.36), transparent),
-        radial-gradient(1.5px 1.5px at 95% 25%, rgba(210, 210, 210, 0.45), transparent),
-        radial-gradient(1px 1px at 5% 58%, rgba(255, 255, 255, 0.36), transparent),
-        radial-gradient(1.2px 1.2px at 22% 64%, rgba(255, 255, 255, 0.38), transparent),
-        radial-gradient(1px 1px at 54% 66%, rgba(255, 255, 255, 0.3), transparent),
-        radial-gradient(1.2px 1.2px at 72% 42%, rgba(255, 255, 255, 0.36), transparent),
-        radial-gradient(1px 1px at 88% 60%, rgba(255, 255, 255, 0.28), transparent);
-    }
-
-    .spatial-void.void-active .spatial-void__stars {
-      opacity: 0.78;
-    }
-
-    .pointer-light {
-      background: radial-gradient(
-        280px circle at var(--lx, 50%) var(--ly, 50%),
-        rgba(255, 255, 255, 0.18),
-        rgba(160, 160, 160, 0.05) 40%,
-        transparent 68%
-      );
-    }
-
-    .crx-credit {
-      -webkit-mask-image: radial-gradient(
-        200px circle at var(--lx) var(--ly),
-        #000 0%,
-        rgba(0, 0, 0, 0.75) 42%,
-        transparent 72%
-      );
-      mask-image: radial-gradient(
-        200px circle at var(--lx) var(--ly),
-        #000 0%,
-        rgba(0, 0, 0, 0.75) 42%,
-        transparent 72%
-      );
-    }
-
-    .partner-marquee__track {
-      animation-duration: 48s; /* slower = fewer compositor ticks feel */
-    }
-  }
-
-  @keyframes partnerMarquee {
-    from {
-      transform: translateX(0);
-    }
+  @keyframes partners-roll {
     to {
       transform: translateX(-50%);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero-video-fade {
-      opacity: 1;
-      transform: none;
-      animation: none !important;
+    .landing-in {
+      animation: none;
     }
 
-    #hero-video.animate-void {
-      transform: none;
-      animation: none !important;
-      will-change: auto;
-    }
-
-    .logo-settle {
-      opacity: 0.95;
-      transform: none;
-      animation: none !important;
-    }
-
-    .slogan-typewriter {
-      clip-path: none;
-      animation: none !important;
-    }
-
-    #cta-container {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .cta-subtle-scale {
-      animation: none !important;
-    }
-
-    .spatial-void {
-      transition: none;
-    }
-
-    .spatial-void.void-active {
-      opacity: 1;
-    }
-
-    .spatial-void__nebula {
-      animation: none !important;
-      will-change: auto;
-    }
-
-    #hero-stage.void-active .cinematic-veil {
-      opacity: 0.35;
-      transition: none;
-    }
-
-    .partner-marquee__track {
-      animation: none !important;
-      transform: none !important;
-      justify-content: center;
-      width: 100%;
-      flex-wrap: wrap;
-      row-gap: 0.75rem;
-    }
-
-    .partner-marquee__item[data-dup='1'] {
-      display: none;
+    .rain__food,
+    .partners__track {
+      animation-play-state: paused;
     }
   }
 </style>
 
 <script>
-  function bindHeroClimax() {
-    const video = document.getElementById('hero-video');
-    const cta = document.getElementById('cta-container');
-    const stage = document.getElementById('hero-stage');
-    const voidEl = document.getElementById('spatial-void');
-    const lightEl = document.getElementById('pointer-light');
-    const creditEl = document.getElementById('crx-credit');
-    if (!video) return;
-
-    // Single bind guard (DOMContentLoaded + astro:page-load / ClientRouter)
-    if (video.dataset.climaxBound === '1') return;
-    video.dataset.climaxBound = '1';
-
-    let transitionTriggered = false;
-    const startTime = performance.now();
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const setLight = (x, y) => {
-      const lx = `${x}px`;
-      const ly = `${y}px`;
-      if (lightEl) {
-        lightEl.style.setProperty('--lx', lx);
-        lightEl.style.setProperty('--ly', ly);
-        lightEl.classList.add('light-active');
-      }
-      if (creditEl) {
-        creditEl.style.setProperty('--lx', lx);
-        creditEl.style.setProperty('--ly', ly);
-        creditEl.classList.add('light-active');
-      }
-    };
-
-    const hideLight = () => {
-      lightEl?.classList.remove('light-active');
-      creditEl?.classList.remove('light-active');
-      if (creditEl) {
-        creditEl.style.setProperty('--lx', '-9999px');
-        creditEl.style.setProperty('--ly', '-9999px');
-      }
-    };
-
-    let touchActive = false;
-    let ignoreMouseUntil = 0;
-    let lightRaf = 0;
-    /** @type {{ x: number, y: number } | null} */
-    let pendingLight = null;
-
-    const flushLight = () => {
-      lightRaf = 0;
-      if (!pendingLight) return;
-      setLight(pendingLight.x, pendingLight.y);
-      pendingLight = null;
-    };
-
-    const queueLight = (x, y) => {
-      pendingLight = { x, y };
-      if (!lightRaf) lightRaf = requestAnimationFrame(flushLight);
-    };
-
-    const onMouseMove = (e) => {
-      if (touchActive || performance.now() < ignoreMouseUntil) return;
-      queueLight(e.clientX, e.clientY);
-    };
-
-    const onTouchPoint = (e) => {
-      const t = e.touches && e.touches[0];
-      if (!t) return;
-      touchActive = true;
-      queueLight(t.clientX, t.clientY);
-    };
-
-    const onTouchEnd = () => {
-      touchActive = false;
-      ignoreMouseUntil = performance.now() + 500;
-      hideLight();
-    };
-
-    // Listen on window so CTA stays clickable (light + credit are pointer-events-none)
-    // Touch: press-and-hold only — hide on lift/cancel. Mouse: follow while moving.
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    window.addEventListener('mouseleave', hideLight, { passive: true });
-    document.documentElement.addEventListener('mouseleave', hideLight, { passive: true });
-    window.addEventListener('touchstart', onTouchPoint, { passive: true });
-    window.addEventListener('touchmove', onTouchPoint, { passive: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
-
-    // Reduced motion: show cosmos + CTA without waiting on climax
-    if (reduceMotion) {
-      stage?.classList.add('climax-done', 'void-active');
-      voidEl?.classList.add('void-active');
-    }
-
-    const tryTriggerClimax = () => {
-      if (transitionTriggered) return;
-
-      const duration = video.duration;
-      const timeLeft = Number.isFinite(duration) ? duration - video.currentTime : Infinity;
-      const typingDone = performance.now() - startTime >= 10000;
-      const nearEnd = video.ended || timeLeft <= 3.0;
-
-      // Video-driven climax, but wait until slogan typewriter (3s delay + 7s type = ~10s) finishes
-      if (nearEnd && typingDone) {
-        transitionTriggered = true;
-
-        // Classic crossfade: intoTheVoid (3s) + spatial void + veil all start together
-        video.classList.add('animate-void');
-        stage?.classList.add('void-active');
-        voidEl?.classList.add('void-active');
-
-        // Park video layer only after dissolve — avoids hard cut via climax-done
-        window.setTimeout(() => {
-          stage?.classList.add('climax-done');
-        }, 3000);
-
-        // CTA with climax; slight delay so void is already blending under
-        if (cta) {
-          window.setTimeout(() => {
-            cta.classList.replace('duration-[1500ms]', 'duration-[2500ms]');
-            cta.classList.remove('opacity-0', 'pointer-events-none');
-            cta.classList.add('opacity-100', 'pointer-events-auto');
-          }, 400);
+  /* Un logo casi blanco desaparece sobre el fondo claro: se le pone una pastilla oscura. */
+  const isLightLogo = (src: string) =>
+    new Promise<boolean>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const size = 32;
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(false);
+          ctx.drawImage(img, 0, 0, size, size);
+          const px = ctx.getImageData(0, 0, size, size).data;
+          let sum = 0;
+          let weight = 0;
+          for (let i = 0; i < px.length; i += 4) {
+            const a = px[i + 3] / 255;
+            if (a < 0.2) continue;
+            sum += ((0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255) * a;
+            weight += a;
+          }
+          resolve(weight > 0 && sum / weight > 0.82);
+        } catch {
+          resolve(false);
         }
-      }
-    };
+      };
+      img.onerror = () => resolve(false);
+      img.src = src;
+    });
 
-    video.addEventListener('timeupdate', tryTriggerClimax);
-    video.addEventListener('ended', tryTriggerClimax);
-    // If video ends before typewriter, re-check once typing would finish
-    setTimeout(tryTriggerClimax, 10000);
-
-    // Fallback: ensure caret is gone after post-type blink (3s + 7s + 3s)
-    setTimeout(() => {
-      const sloganEl = document.getElementById('hero-slogan');
-      if (!sloganEl) return;
-      sloganEl.classList.remove('border-r-2', 'border-white/80', 'pr-1');
-      sloganEl.style.borderRightWidth = '0';
-      sloganEl.style.borderColor = 'transparent';
-      sloganEl.style.paddingRight = '0';
-    }, 13000);
+  const items = [...document.querySelectorAll<HTMLLIElement>('.partners li')];
+  const bySrc = new Map<string, HTMLLIElement[]>();
+  for (const li of items) {
+    const src = li.querySelector('img')?.getAttribute('src');
+    if (src) bySrc.set(src, [...(bySrc.get(src) ?? []), li]);
   }
-
-  document.addEventListener('DOMContentLoaded', bindHeroClimax);
-  document.addEventListener('astro:page-load', bindHeroClimax);
+  for (const [src, lis] of bySrc) {
+    void isLightLogo(src).then((light) => {
+      if (light) lis.forEach((li) => li.classList.add('is-light'));
+    });
+  }
 </script>
