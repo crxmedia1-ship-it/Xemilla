@@ -31,3 +31,6 @@ pnpm-debug.log*
 
 # database backups (contain client data)
 backups/
+
+# Supabase CLI (archivos locales)
+supabase/.temp/
