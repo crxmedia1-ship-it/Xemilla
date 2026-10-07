@@ -1,5 +1,3 @@
-import { v2 as cloudinary } from 'cloudinary';
-
 /**
  * @param {string} value
  */
@@ -43,64 +41,6 @@ export function resolveCloudinaryCredentials() {
   }
 
   return null;
-}
-
-/**
- * Construye connection string solo desde las 3 variables Root.
- * @returns {string}
- */
-export function resolveCloudinaryUrl() {
-  const creds = resolveCloudinaryCredentials();
-  if (!creds) return '';
-  return `cloudinary://${creds.api_key}:${creds.api_secret}@${creds.cloud_name}`;
-}
-
-/**
- * Parsea cloudinary://API_KEY:API_SECRET@CLOUD_NAME
- * @param {string} connectionUrl
- * @returns {{ cloud_name: string, api_key: string, api_secret: string } | null}
- */
-export function parseCloudinaryUrl(connectionUrl) {
-  const raw = stripQuotes(String(connectionUrl ?? '').trim());
-  if (!raw) return null;
-
-  const match = raw.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/i);
-  if (!match) return null;
-
-  return {
-    api_key: match[1],
-    api_secret: match[2],
-    cloud_name: match[3],
-  };
-}
-
-/**
- * Inicializa el SDK estrictamente con CLOUDINARY_API_KEY / SECRET / PUBLIC_CLOUDINARY_CLOUD_NAME.
- * @param {string} [connectionUrl] Ignorado salvo para tests; preferimos env Root.
- * @returns {typeof cloudinary | null}
- */
-export function initCloudinary(connectionUrl) {
-  const parsed =
-    resolveCloudinaryCredentials() ||
-    (connectionUrl ? parseCloudinaryUrl(connectionUrl) : null);
-
-  if (!parsed) {
-    console.error(
-      '[cloudinary] Faltan CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET / PUBLIC_CLOUDINARY_CLOUD_NAME',
-    );
-    return null;
-  }
-
-  delete process.env.CLOUDINARY_URL;
-
-  cloudinary.config({
-    cloud_name: parsed.cloud_name,
-    api_key: parsed.api_key,
-    api_secret: parsed.api_secret,
-    secure: true,
-  });
-
-  return cloudinary;
 }
 
 /** Carpetas de Asset Management: identity | categories | dishes */
@@ -177,15 +117,6 @@ export function normalizeCloudinaryAssetType(value, fallback = 'identity') {
   if (key === 'category' || key === 'fondo' || key === 'menu') return 'categories';
   if (key === 'dish' || key === 'plato' || key === 'platos') return 'dishes';
   return fallback;
-}
-
-/**
- * `xemilla/restaurants/${slug}/${asset_type}`
- * @param {unknown} slug
- * @param {unknown} assetType
- */
-export function buildRestaurantMediaFolder(slug, assetType) {
-  return `xemilla/restaurants/${sanitizeMediaFolderSegment(slug, 'general')}/${normalizeCloudinaryAssetType(assetType)}`;
 }
 
 /**

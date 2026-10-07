@@ -14,8 +14,6 @@ import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
 import { listPropuestas, listPropuestaEventos } from '../../../lib/propuestas.js';
 import {
-  resolveHubCoverUrl,
-  resolveHubLogoBg,
   resolveHubTarjeta,
   readUiHub,
   HUB_TARJETAS,
@@ -361,28 +359,12 @@ function resolveWaHref(url, num) {
 }
 
 /**
- * Portada del Hub — columna hub_cover_url o ui_estilo.hub.cover_url.
- * @param {Record<string, unknown>} r
- */
-function resolveCoverUrl(r) {
-  return resolveHubCoverUrl(r);
-}
-
-/**
  * @param {Record<string, unknown>} r
  */
 function resolveLogoUrl(r) {
   const v = String(r?.logo_url || '').trim();
   if (/^https?:\/\//i.test(v) || v.startsWith('/')) return v;
   return '';
-}
-
-/**
- * Color de placa del logo.
- * @param {Record<string, unknown>} r
- */
-function resolveLogoPlateBg(r) {
-  return resolveHubLogoBg(r);
 }
 
 /**

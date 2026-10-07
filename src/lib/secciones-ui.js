@@ -496,25 +496,7 @@ export const HOME_PX_RANGES = Object.freeze({
   overlay: { min: 0, max: 90 },
 });
 
-/** Canonical: frontal | hamburguesa | app_tabs (legacy fijo→frontal, oculto→hamburguesa). */
-export const HOME_NAV_STYLES = Object.freeze(
-  new Set(['frontal', 'hamburguesa', 'app_tabs']),
-);
-export const HOME_OVERLAY_ESTILOS = Object.freeze(
-  new Set(['puro', 'gradiente', 'vineta', 'oscuro', 'cinematico']),
-);
-/** Animación de fondo media (imagen / video / carrusel single). */
-export const HOME_FONDO_ANIMACIONES = Object.freeze(
-  new Set(['in', 'out', 'pan', 'float', 'glow', 'ninguna']),
-);
-export const HOME_EFECTOS_ENTRADA = Object.freeze(
-  new Set(['rise', 'blur', 'reveal', 'ninguno']),
-);
-
-export {
-  GADGET_SERVICIOS_ESTILOS,
-  normalizeGadgetServiciosEstilo,
-} from './gadgets.js';
+export { normalizeGadgetServiciosEstilo } from './gadgets.js';
 const LEGACY_LOGO_PX = Object.freeze({ 1: 40, 2: 64, 3: 96, 4: 128, 5: 160 });
 const LEGACY_TITULO_PX = Object.freeze({ 1: 14, 2: 16, 3: 20, 4: 30, 5: 48 });
 const LEGACY_ESLOGAN_PX = Object.freeze({ 1: 11, 2: 12, 3: 14, 4: 20, 5: 28 });
@@ -601,17 +583,6 @@ export function normalizeHomeOffset(value, opts) {
   const n = Math.round(Number(raw));
   if (!Number.isFinite(n)) return fallback;
   return clampPx(n, opts.min, opts.max);
-}
-
-/** @deprecated Prefer normalizeHomePx — alias para no romper imports. */
-export function normalizeScale(value, fallback = 3) {
-  const n = Number(value);
-  if (Number.isFinite(n) && n >= 1 && n <= 5) return Math.round(n);
-  return fallback;
-}
-
-export function scaleLabel() {
-  return 'PX';
 }
 
 /**
@@ -976,18 +947,6 @@ export function menuLayoutToNavegacion(layoutOrNav) {
   );
 }
 
-/**
- * @param {unknown} navegacion
- * @returns {'hub_categories' | 'classic_grid' | 'split_sidebar' | 'swiper_catalog'}
- */
-export function menuNavegacionToLayout(navegacion) {
-  const nav = normalizeMenuNavegacion(navegacion);
-  if (nav === 'hub_categories') return 'hub_categories';
-  if (nav === 'split_sidebar') return 'split_sidebar';
-  if (nav === 'swiper_catalog') return 'swiper_catalog';
-  return 'classic_grid';
-}
-
 /** @param {unknown} value */
 export function normalizePlatosLayout(value) {
   const v = String(value || '')
@@ -1059,8 +1018,6 @@ export function normalizeDestacadosEfecto(value) {
   // continuo | marquee | loop | lento | vacío → marquee
   return 'marquee';
 }
-
-export const DESTACADOS_EFECTOS = Object.freeze(['marquee', 'snap', 'estatico']);
 
 /** @param {unknown} value */
 export function normalizeEstiloTarjetas(value) {

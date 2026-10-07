@@ -20,14 +20,6 @@
 
 export const MAX_BLOQUE_MEDIA = 3;
 
-/** Estilo visual de las tarjetas / contenedor de Nosotros. */
-export const CONTENEDOR_ESTILOS = /** @type {const} */ ([
-  'vidrio',
-  'solido',
-  'linea',
-  'ninguno',
-]);
-
 /**
  * @param {unknown} value
  * @returns {'vidrio' | 'solido' | 'linea' | 'ninguno'}

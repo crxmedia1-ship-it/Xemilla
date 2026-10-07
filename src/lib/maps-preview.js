@@ -115,16 +115,6 @@ export function googleMapsEmbedSrc(mapsUrl, fallbackQuery = '') {
 }
 
 /**
- * Miniatura estática (OSM) si hay coordenadas; si no, vacía.
- * @param {string} mapsUrl
- */
-export function mapsStaticImageSrc(mapsUrl) {
-  const coords = parseMapsLatLng(mapsUrl);
-  if (!coords) return '';
-  return `https://staticmap.openstreetmap.de/staticmap.php?center=${coords.lat},${coords.lng}&zoom=16&size=800x420&maptype=mapnik&markers=${coords.lat},${coords.lng},red-pushpin`;
-}
-
-/**
  * Normaliza lo guardado: prefiere URL embed limpia si pegaron iframe.
  * @param {string} input
  */

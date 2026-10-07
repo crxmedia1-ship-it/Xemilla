@@ -18,47 +18,6 @@ const ACTION_TYPES = new Set(['whatsapp', 'category', 'close']);
 const DURATION_PRESETS = new Set(['indefinite', 'today', 'weekend', 'custom', 'schedule']);
 
 /**
- * @param {Date} d
- * @returns {string}
- */
-function toIso(d) {
-  return d.toISOString();
-}
-
-/**
- * @param {'indefinite' | 'today' | 'weekend' | 'custom' | 'schedule'} preset
- * @param {string} [customDate] YYYY-MM-DD
- * @param {string} [customTime] HH:mm
- * @returns {string | null}
- */
-export function computePopupExpiresAt(preset, customDate = '', customTime = '23:59') {
-  const now = new Date();
-  if (preset === 'indefinite') return null;
-  if (preset === 'today') {
-    return toIso(new Date(now.getTime() + 24 * 60 * 60 * 1000));
-  }
-  if (preset === 'weekend') {
-    const end = new Date(now);
-    const day = end.getDay();
-    const daysUntilSunday = day === 0 ? 0 : 7 - day;
-    end.setDate(end.getDate() + daysUntilSunday);
-    end.setHours(23, 59, 59, 999);
-    return toIso(end);
-  }
-  if (preset === 'custom' || preset === 'schedule') {
-    const raw = String(customDate || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-    const [y, m, d] = raw.split('-').map(Number);
-    const time = String(customTime || '23:59').trim();
-    const [hh, mm] = time.split(':').map((n) => Number(n) || 0);
-    const end = new Date(y, m - 1, d, hh, mm, 0, 0);
-    if (Number.isNaN(end.getTime())) return null;
-    return toIso(end);
-  }
-  return null;
-}
-
-/**
  * @param {unknown} raw
  * @returns {PopupBanner}
  */

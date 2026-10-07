@@ -4,17 +4,6 @@
  */
 
 /**
- * @param {string} hex
- * @returns {{ r: number, g: number, b: number } | null}
- */
-export function parseHex(hex) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
-  if (!m) return null;
-  const n = Number.parseInt(m[1], 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
-/**
  * @param {number} r
  * @param {number} g
  * @param {number} b

@@ -146,15 +146,6 @@ export function resolveMapsHref(mapaUrl, direccion, ciudad = '') {
 }
 
 /**
- * @param {string} instagram
- */
-export function resolveInstagramHref(instagram) {
-  const ig = String(instagram || '').trim();
-  if (!ig) return '';
-  return /^https?:\/\//i.test(ig) ? ig : `https://instagram.com/${ig.replace(/^@/, '')}`;
-}
-
-/**
  * @param {string} hex
  * @returns {string}
  */

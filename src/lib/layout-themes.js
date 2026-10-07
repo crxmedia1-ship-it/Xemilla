@@ -2,26 +2,6 @@
  * Plantillas de estructura (Layout Themes) para Home, Nosotros y Ubicación.
  */
 
-/** 4 temas canónicos del Home (2026-09-09). */
-export const HOME_THEME_IDS = /** @type {const} */ ([
-  'editorial', // Grand Editorial
-  'sheet',     // Bottom Glass Sheet
-  'split',     // Split Architecture
-  'cards',     // Showcase Cards
-  'pergamino', // Pergamino Hanji
-]);
-export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
-  'editorial',
-  'cinematic',
-  'capsule',
-  'split',
-  'bento',
-  'timeline',
-]);
-export const UBICACION_THEME_IDS = /** @type {const} */ (['modal', 'split', 'minimal']);
-
-/** Fallback cuando Supabase no trae home_theme. */
-export const DEFAULT_HOME_THEME = 'editorial';
 export const DEFAULT_NOSOTROS_THEME = 'editorial';
 export const DEFAULT_UBICACION_THEME = 'modal';
 
@@ -103,19 +83,6 @@ export function sanitizeTheme(raw) {
 export function normalizeHomeTheme(value) {
   return normalizeTheme(value);
 }
-
-export const HOME_THEME_MAP = Object.freeze({
-  editorial: 'editorial',
-  sheet: 'sheet',
-  split: 'split',
-  cards: 'cards',
-  pergamino: 'pergamino',
-  cinematic: 'sheet',
-  hamburguesa: 'sheet',
-  minimal: 'sheet',
-  bento: 'cards',
-  hero: 'cards',
-});
 
 /** Layouts del Studio Home/Core (UI) → theme canónico. */
 export const HOME_LAYOUT_OPTIONS = Object.freeze([
@@ -689,111 +656,4 @@ export function reservasLayoutToDestino(layoutOrDestino) {
   return /** @type {'whatsapp' | 'enlace' | 'telefono' | 'nativo'} */ (
     hit?.destino || 'whatsapp'
   );
-}
-
-/**
- * @param {string} id
- * @param {string} fallbackTagline
- * @param {{ wifiSsid?: string, wifiClave?: string }} [wifi]
- */
-export function homeNavSubtitle(id, fallbackTagline, wifi = {}) {
-  if (id === 'wifi') {
-    const ssid = String(wifi.wifiSsid || '').trim();
-    const clave = String(wifi.wifiClave || '').trim();
-    if (ssid || clave) {
-      const parts = [];
-      if (ssid) parts.push(`SSID: ${ssid}`);
-      if (clave) parts.push(`CLAVE: ${clave}`);
-      return parts.join('  ·  ');
-    }
-    return 'GUEST NETWORK';
-  }
-  const map = {
-    menu: '',
-    nosotros: 'NUESTRA FILOSOFÍA',
-    ubicacion: 'HORARIOS Y UBICACIÓN',
-    dividir: 'SPLIT THE BILL',
-    mesero: 'CALL YOUR SERVER',
-    boutique: 'EXPLORA NUESTRA TIENDA OFICIAL',
-    wifi: 'GUEST NETWORK',
-  };
-  if (id === 'menu') {
-    const fromBrand = fallbackTagline?.trim();
-    return fromBrand ? fromBrand.toUpperCase() : '';
-  }
-  return map[id] || '';
-}
-
-/**
- * @typedef {{
- *   id: string,
- *   label: string,
- *   subtitle: string,
- *   kind: 'section' | 'reservas' | 'boutique',
- *   href?: string,
- *   requiresMesa?: boolean,
- * }} HomeNavItem
- */
-
-/**
- * Construye la secuencia Carrd / Home preservando orden y gate de mesa.
- * @param {{
- *   tagline?: string,
- *   showWifi?: boolean,
- *   showDividir?: boolean,
- *   showLlamarMesero?: boolean,
- *   showBoutique?: boolean,
- *   wifiSsid?: string,
- *   wifiClave?: string,
- *   reservasCta?: { label?: string, href?: string } | null,
- *   compact?: boolean,
- * }} opts
- * @returns {HomeNavItem[]}
- */
-export function buildHomeNavSequence(opts = {}) {
-  const tagline = opts.tagline || '';
-  const wifi = { wifiSsid: opts.wifiSsid || '', wifiClave: opts.wifiClave || '' };
-  const compact = Boolean(opts.compact);
-
-  /** @type {HomeNavItem[]} */
-  const primary = [
-    {
-      id: 'menu',
-      label: 'MENÚ',
-      subtitle: homeNavSubtitle('menu', tagline, wifi),
-      kind: 'section',
-    },
-    {
-      id: 'nosotros',
-      label: 'NOSOTROS',
-      subtitle: homeNavSubtitle('nosotros', tagline, wifi),
-      kind: 'section',
-    },
-  ];
-
-  /** @type {HomeNavItem[]} */
-  const trailing = [
-    {
-      id: 'ubicacion',
-      label: compact ? 'HORARIOS' : 'HORARIOS Y UBICACIÓN',
-      subtitle: homeNavSubtitle('ubicacion', tagline, wifi),
-      kind: 'section',
-    },
-  ];
-
-  const hasReservas = Boolean(opts.reservasCta?.href);
-  /** @type {HomeNavItem | null} */
-  const reservasItem = hasReservas
-    ? {
-        id: 'reservas',
-        label: compact
-          ? 'RESERVAS'
-          : String(opts.reservasCta?.label || 'PEDIR / RESERVAR').toUpperCase(),
-        subtitle: 'RESERVATIONS',
-        kind: 'reservas',
-        href: opts.reservasCta?.href,
-      }
-    : null;
-
-  return [...primary, ...(reservasItem ? [reservasItem] : []), ...trailing];
 }

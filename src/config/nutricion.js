@@ -22,23 +22,6 @@ export const ALERGENOS_OPTIONS = [
 ];
 
 /**
- * @param {unknown} id
- * @returns {{ id: string, label: string, emoji: string, color: string }}
- */
-export function getAlergenoMeta(id) {
-  const key = String(id || '')
-    .trim()
-    .toLowerCase();
-  const opt = ALERGENOS_OPTIONS.find((a) => a.id === key);
-  return {
-    id: key,
-    label: opt?.label || key,
-    emoji: opt?.emoji || '⚠️',
-    color: opt?.color || '#94a3b8',
-  };
-}
-
-/**
  * Píldoras públicas: ocultan platos que contengan alguno de `hidesAny`.
  * @type {Array<{ id: string, label: string, emoji: string, hidesAny: string[], hideUnknown?: boolean }>}
  */
@@ -150,50 +133,3 @@ export function parseMacroInt(value) {
   return n;
 }
 
-/**
- * @param {Record<string, unknown> | null | undefined} plato
- */
-export function platoHasNutricionData(plato) {
-  if (!plato || typeof plato !== 'object') return false;
-  const macros = ['calorias', 'proteinas', 'carbs', 'grasas'].some((k) => {
-    const n = Number(plato[k]);
-    return Number.isFinite(n) && n >= 0;
-  });
-  const alergias = normalizeAlergias(plato.alergias).length > 0;
-  const ingredientes = String(
-    plato.ingredientes_detalle || plato.ingredientesDetalle || '',
-  ).trim().length > 0;
-  return macros || alergias || ingredientes;
-}
-
-/**
- * @param {string[]} alergias
- * @param {string[]} hidesAny
- */
-export function alergiasMatchFilter(alergias, hidesAny) {
-  if (!Array.isArray(alergias) || alergias.length === 0) return false;
-  const set = new Set(alergias.map((a) => canonAlergenoId(a)).filter(Boolean));
-  return hidesAny.some((id) => set.has(canonAlergenoId(id)));
-}
-
-/** Pistas en el nombre/ingredientes si el tag no llegó al DOM. */
-const GLUTEN_HINT =
-  /gluten|\btrigo\b|\bwheat\b|centeno|cebada|espelta|pan\s*rallad|harina\s+de\s+trigo|bread\s*crumb/i;
-const LACTEOS_HINT =
-  /\bl[aá]cteo|\bleche\b|mantequilla|queso|crema|yogur|bechamel|dairy|\bbutter\b|\bcheese\b/i;
-const NUTS_HINT = /fruto[s]?\s*seco|\bmani\b|\bnuez|\balmendr|cacahuate|pistachio|avellana|\bpeanut|\bwalnut/i;
-const PICANTE_HINT = /picante|ají|aji\b|chile|habanero|cayena|sriracha|spicy/i;
-
-/**
- * @param {string} filtroId  sin_gluten | sin_lacteos | …
- * @param {string} nombre
- * @param {string} ingredientes
- */
-export function textoSugiereAlergeno(filtroId, nombre, ingredientes) {
-  const blob = `${nombre || ''} ${ingredientes || ''}`;
-  if (filtroId === 'sin_gluten') return GLUTEN_HINT.test(blob);
-  if (filtroId === 'sin_lacteos') return LACTEOS_HINT.test(blob);
-  if (filtroId === 'sin_frutos_secos') return NUTS_HINT.test(blob);
-  if (filtroId === 'sin_picante') return PICANTE_HINT.test(blob);
-  return false;
-}

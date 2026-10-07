@@ -176,16 +176,3 @@ export function resolveSafeHomeProps(props = {}) {
   };
 }
 
-/**
- * Invoca un callback solo si es función (handlers de modales / overlays).
- * @param {(() => void) | null | undefined} fn
- */
-export function callSafe(fn) {
-  if (typeof fn === 'function') {
-    try {
-      fn();
-    } catch (e) {
-      console.error('Error en handler Home:', e);
-    }
-  }
-}

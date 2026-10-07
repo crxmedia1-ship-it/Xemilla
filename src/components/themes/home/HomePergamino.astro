@@ -96,6 +96,8 @@ const tiles: NavItem[] = [
 ];
 
 
+const slides: NavItem[] = [featured, ...tiles];
+
 const koGlyphs = Array.from(
   new Set(['영업마감안내', featured.ko, ...tiles.map((t) => t.ko)].join('').replace(/\s/g, '')),
 ).join('');
@@ -189,97 +191,89 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
         <span class="perg-tassel perg-tassel--r" aria-hidden="true" />
         <div class="perg-mount">
           <div class="perg-paper">
-            <button
-              type="button"
-              class="perg-feature"
-              data-tab-trigger={featured.id}
-              data-open-section={featured.id}
-            >
-              <img class="perg-ink-img perg-feature__img" src={featured.img} alt="" loading="eager" decoding="async" />
-              <span class="perg-feature__ko" lang="ko" aria-hidden="true">{featured.ko}</span>
-              <span class="perg-feature__title font-serif">
-                <svg class="perg-brush" viewBox="0 0 200 24" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M3 15c28-8 72-10 112-8 30 1 54 3 82 0-22 7-58 10-94 10-36 1-70 1-100-2z" />
-                </svg>
-                <span class="perg-ink-text relative">{featured.label}</span>
-              </span>
-              <span class="perg-feature__sub font-mono">{featured.subtitle}</span>
-            </button>
-
-            <svg class="perg-divider" viewBox="0 0 300 14" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M4 8c40-4 90-5 140-4 52 1 100 2 152 0-30 4-80 6-136 6C110 10 50 10 4 8z" />
-              <circle cx="150" cy="7" r="3.2" />
-            </svg>
-
             <div class="perg-carousel" data-perg-carousel>
-            <ul class="perg-tiles" data-perg-track>
-              {tiles.map((item) => {
-                const inner = (
-                  <>
-                    {item.img ? (
-                      <img class="perg-ink-img perg-tile__img" src={item.img} alt="" loading="eager" decoding="async" />
-                    ) : (
-                      <svg class="perg-tile__img perg-tile__svg" viewBox="0 0 64 48" aria-hidden="true">
-                        <path d="M6 18c15-13 37-13 52 0M14 26c10-8 26-8 36 0M22 34c6-4 14-4 20 0" />
-                        <circle cx="32" cy="41" r="3" />
-                      </svg>
-                    )}
-                    <span class="perg-tile__ko" lang="ko" aria-hidden="true">{item.ko}</span>
-                    <span class="perg-tile__label font-serif perg-ink-text">{item.label}</span>
-                  </>
-                );
-                if (item.kind === 'reservas') {
+              <ul class="perg-slides" data-perg-track>
+                {slides.map((item, i) => {
+                  const inner = (
+                    <>
+                      <span class="perg-slide__ko" lang="ko" aria-hidden="true">{item.ko}</span>
+                      {item.img ? (
+                        <img
+                          class="perg-ink-img perg-slide__img"
+                          src={item.img}
+                          alt=""
+                          loading={i === 0 ? 'eager' : 'lazy'}
+                          decoding="async"
+                        />
+                      ) : null}
+                      <span class="perg-slide__title font-serif">
+                        <svg class="perg-brush" viewBox="0 0 200 24" preserveAspectRatio="none" aria-hidden="true">
+                          <path d="M3 15c28-8 72-10 112-8 30 1 54 3 82 0-22 7-58 10-94 10-36 1-70 1-100-2z" />
+                        </svg>
+                        <span class="perg-ink-text relative">{item.label}</span>
+                      </span>
+                      <span class="perg-slide__sub font-mono">{item.subtitle}</span>
+                    </>
+                  );
+                  if (item.kind === 'reservas') {
+                    return (
+                      <li>
+                        {reservasIsExternal ? (
+                          <a
+                            href={reservasLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-tab-trigger="reservas"
+                            data-reservas-home-cta
+                            class="perg-slide"
+                          >
+                            {inner}
+                          </a>
+                        ) : (
+                          <button type="button" data-tab-trigger="reservas" data-reservas-home-cta class="perg-slide">
+                            {inner}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  }
                   return (
                     <li>
-                      {reservasIsExternal ? (
-                        <a
-                          href={reservasLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          data-tab-trigger="reservas"
-                          data-reservas-home-cta
-                          class="perg-tile"
-                        >
-                          {inner}
-                        </a>
-                      ) : (
-                        <button type="button" data-tab-trigger="reservas" data-reservas-home-cta class="perg-tile">
-                          {inner}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        data-tab-trigger={item.id}
+                        data-open-section={item.id}
+                        data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
+                        class="perg-slide"
+                      >
+                        {inner}
+                      </button>
                     </li>
                   );
-                }
-                return (
-                  <li>
-                    <button
-                      type="button"
-                      data-tab-trigger={item.id}
-                      data-open-section={item.id}
-                      data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
-                      class="perg-tile"
-                    >
-                      {inner}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            {tiles.length > 1 ? (
-              <div class="perg-dots" role="tablist" aria-label="Secciones">
-                {tiles.map((item, i) => (
-                  <button
-                    type="button"
-                    class="perg-dot"
-                    data-perg-dot={i}
-                    aria-label={item.label}
-                    aria-selected={i === 0 ? 'true' : 'false'}
-                  />
-                ))}
-              </div>
-            ) : null}
+                })}
+              </ul>
+              {slides.length > 1 ? (
+                <>
+                  <button type="button" class="perg-arrow perg-arrow--prev" data-perg-prev aria-label="Anterior">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                  </button>
+                  <button type="button" class="perg-arrow perg-arrow--next" data-perg-next aria-label="Siguiente">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  <div class="perg-dots" role="tablist" aria-label="Secciones">
+                    {slides.map((item, i) => (
+                      <button
+                        type="button"
+                        class="perg-dot"
+                        data-perg-dot={i}
+                        aria-label={item.label}
+                        aria-selected={i === 0 ? 'true' : 'false'}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
-
           </div>
         </div>
         </div>
@@ -301,6 +295,15 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     });
   }
 
+  type Dir = 'left' | 'right' | 'up' | 'down';
+
+  const OFFSET: Record<Dir, [string, string]> = {
+    left: ['-100%, 0', '100%, 0'],
+    right: ['100%, 0', '-100%, 0'],
+    up: ['0, -100%', '0, 100%'],
+    down: ['0, 100%', '0, -100%'],
+  };
+
   function initPergaminoCarousel() {
     document.querySelectorAll('.home-pergamino [data-perg-carousel]').forEach((root) => {
       if (!(root instanceof HTMLElement) || root.dataset.ready === '1') return;
@@ -309,60 +312,179 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
       if (!(track instanceof HTMLElement)) return;
       const slides = Array.from(track.children) as HTMLElement[];
       const dots = Array.from(root.querySelectorAll<HTMLElement>('[data-perg-dot]'));
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+      let current = 0;
+      let busy = false;
 
-      const setActive = (index: number) => {
+      const markActive = (index: number) => {
         slides.forEach((slide, i) => slide.classList.toggle('is-active', i === index));
         dots.forEach((dot, i) => dot.setAttribute('aria-selected', i === index ? 'true' : 'false'));
       };
 
-      const nearest = () => {
-        const center = track.scrollLeft + track.clientWidth / 2;
-        let best = 0;
-        let bestDist = Infinity;
-        slides.forEach((slide, i) => {
-          const dist = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center);
-          if (dist < bestDist) {
-            bestDist = dist;
-            best = i;
-          }
-        });
-        return best;
-      };
-
-      const goTo = (index: number, behavior: ScrollBehavior = 'smooth') => {
-        const slide = slides[index];
-        if (!slide) return;
-        track.scrollTo({ left: slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2, behavior });
-        setActive(index);
-      };
-
-      let raf = 0;
-      track.addEventListener(
-        'scroll',
-        () => {
-          cancelAnimationFrame(raf);
-          raf = requestAnimationFrame(() => setActive(nearest()));
-        },
-        { passive: true },
-      );
-
-      dots.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
-
-      /* Un toque en una tarjeta lateral la centra en vez de abrir la sección. */
-      slides.forEach((slide, i) => {
-        slide.addEventListener(
-          'click',
-          (event) => {
-            if (slide.classList.contains('is-active')) return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            goTo(i);
-          },
-          { capture: true },
+      /** Cambia de sección moviéndose en la misma dirección del gesto. */
+      const show = (next: number, dir: Dir, from = 'translate(0, 0)') => {
+        if (busy || next === current || !slides[next]) return;
+        const outgoing = slides[current];
+        const incoming = slides[next];
+        const [outTo, inFrom] = OFFSET[dir];
+        current = next;
+        markActive(next);
+        if (reduceMotion) return;
+        busy = true;
+        const duration = 520;
+        outgoing.classList.add('is-leaving');
+        const outAnim = outgoing.animate(
+          [
+            { transform: from, opacity: 1 },
+            { transform: `translate(${outTo})`, opacity: 0 },
+          ],
+          { duration, easing: EASE, fill: 'forwards' },
         );
+        const anim = incoming.animate(
+          [
+            { transform: `translate(${inFrom})`, opacity: 0 },
+            { transform: 'translate(0, 0)', opacity: 1 },
+          ],
+          { duration, easing: EASE },
+        );
+        anim.finished.finally(() => {
+          outgoing.classList.remove('is-leaving');
+          outAnim.cancel();
+          outgoing.style.transform = '';
+          outgoing.style.opacity = '';
+          busy = false;
+        });
+      };
+
+      const wrap = (i: number) => (i + slides.length) % slides.length;
+      const forward = (dir: Dir) => show(wrap(current + 1), dir);
+      const backward = (dir: Dir) => show(wrap(current - 1), dir);
+
+      /* Arrastre con el dedo: arriba/abajo o a los lados */
+      let startX = 0;
+      let startY = 0;
+      let startT = 0;
+      let axis: 'x' | 'y' | null = null;
+      let tracking = false;
+      let dragged = false;
+
+      const resetDrag = () => {
+        const slide = slides[current];
+        slide.style.transition = 'transform 0.35s ' + EASE + ', opacity 0.35s ease';
+        slide.style.transform = '';
+        slide.style.opacity = '';
+        window.setTimeout(() => (slide.style.transition = ''), 360);
+      };
+
+      const onMove = (event: PointerEvent) => {
+        if (!tracking) return;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        if (!axis) {
+          if (Math.hypot(dx, dy) < 8) return;
+          axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+          dragged = true;
+        }
+        const d = axis === 'x' ? dx : dy;
+        const size = axis === 'x' ? track.clientWidth : track.clientHeight;
+        const slide = slides[current];
+        slide.style.transform = axis === 'x' ? `translate(${d * 0.75}px, 0)` : `translate(0, ${d * 0.75}px)`;
+        slide.style.opacity = String(1 - Math.min(Math.abs(d) / size, 1) * 0.6);
+      };
+
+      const onUp = (event: PointerEvent) => {
+        if (!tracking) return;
+        tracking = false;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        if (!axis) return;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        const d = axis === 'x' ? dx : dy;
+        const size = axis === 'x' ? track.clientWidth : track.clientHeight;
+        const speed = Math.abs(d) / Math.max(1, performance.now() - startT);
+        const slide = slides[current];
+        if (Math.abs(d) > size * 0.18 || (Math.abs(d) > 24 && speed > 0.45)) {
+          const from = slide.style.transform || 'translate(0, 0)';
+          slide.style.transform = '';
+          slide.style.opacity = '';
+          const dir: Dir = axis === 'x' ? (d < 0 ? 'left' : 'right') : d < 0 ? 'up' : 'down';
+          const next = d < 0 ? wrap(current + 1) : wrap(current - 1);
+          show(next, dir, from);
+        } else {
+          resetDrag();
+        }
+      };
+
+      track.addEventListener('pointerdown', (event) => {
+        if (busy || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        startX = event.clientX;
+        startY = event.clientY;
+        startT = performance.now();
+        axis = null;
+        dragged = false;
+        tracking = true;
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
       });
 
-      goTo(0, 'instant');
+      /* Si fue un arrastre, no abrir la sección al soltar */
+      track.addEventListener(
+        'click',
+        (event) => {
+          if (!dragged) return;
+          dragged = false;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        },
+        { capture: true },
+      );
+
+      /* Rueda / trackpad en PC: vertical sube o baja, horizontal va de lado */
+      let wheelLock = 0;
+      root.addEventListener(
+        'wheel',
+        (event) => {
+          event.preventDefault();
+          const now = performance.now();
+          if (now < wheelLock) return;
+          const vertical = Math.abs(event.deltaY) >= Math.abs(event.deltaX);
+          const d = vertical ? event.deltaY : event.deltaX;
+          if (Math.abs(d) < 12) return;
+          wheelLock = now + 700;
+          if (vertical) {
+            if (d > 0) forward('up');
+            else backward('down');
+          } else if (d > 0) forward('left');
+          else backward('right');
+        },
+        { passive: false },
+      );
+
+      dots.forEach((dot, i) =>
+        dot.addEventListener('click', () => show(i, i > current ? 'left' : 'right')),
+      );
+      root.querySelector('[data-perg-prev]')?.addEventListener('click', () => backward('right'));
+      root.querySelector('[data-perg-next]')?.addEventListener('click', () => forward('left'));
+
+      /* Avance automático suave hasta que el cliente toque el carrusel. */
+      let timer = 0;
+      const stopAuto = () => window.clearInterval(timer);
+      if (!reduceMotion && slides.length > 1) {
+        timer = window.setInterval(() => {
+          if (document.hidden || !root.isConnected) return;
+          forward('left');
+        }, 4800);
+        ['pointerdown', 'touchstart', 'click', 'wheel', 'keydown'].forEach((type) =>
+          root.addEventListener(type, stopAuto, { passive: true, once: true }),
+        );
+        document.addEventListener('astro:before-swap', stopAuto, { once: true });
+      }
+
+      markActive(0);
     });
   }
 
@@ -390,7 +512,6 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     --perg-ink: #1c1915;
     --perg-red: var(--color-primario, #b3191c);
     --perg-gold: #d8bd7a;
-    --perg-cord-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_900/v1791364986/xemilla/themes/pergamino/perg-cord.png');
     --perg-knot-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_120/v1791364985/xemilla/themes/pergamino/perg-knot.png');
     --perg-tassel-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_120/v1791364984/xemilla/themes/pergamino/perg-tassel.png');
     --perg-silk-src: var(
@@ -437,6 +558,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     transform: scale(1.15);
     mix-blend-mode: screen;
     pointer-events: none;
+    will-change: opacity;
     animation: perg-glow 4.8s ease-in-out infinite;
   }
 
@@ -456,7 +578,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     mask: var(--perg-logo-mask) center / contain no-repeat;
     mix-blend-mode: soft-light;
     pointer-events: none;
-    animation: perg-glow 4.8s ease-in-out infinite;
+    opacity: 0.8;
   }
 
   @keyframes perg-glow {
@@ -503,7 +625,6 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     width: min(100%, 25rem);
     min-height: 0;
     padding: 0 0.35rem;
-    filter: drop-shadow(0 28px 30px rgba(0, 0, 0, 0.6)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
   }
 
   /* Cordón de seda roja colgado de un clavo de latón (sin varillas) */
@@ -632,7 +753,9 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
       #1f4a35;
     box-shadow:
       inset 1px 0 0 rgba(255, 255, 255, 0.08),
-      inset -1px 0 0 rgba(0, 0, 0, 0.3);
+      inset -1px 0 0 rgba(0, 0, 0, 0.3),
+      0 28px 30px rgba(0, 0, 0, 0.6),
+      0 6px 10px rgba(0, 0, 0, 0.45);
   }
 
   /* Hoja de hanji real (bordes desflecados) apoyada sobre la seda */
@@ -641,20 +764,23 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
     min-height: 0;
     margin: 0 -0.15rem;
     padding: clamp(0.8rem, 6cqh, 2rem) 0.95rem clamp(1rem, 7cqh, 2.4rem);
     color: var(--perg-ink);
     isolation: isolate;
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
   }
 
+  /* La sombra va en la hoja y no en .perg-paper para no recalcularla al cambiar de sección */
   .perg-paper::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: -1;
     background: var(--perg-sheet-src) center / 100% 100% no-repeat;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
   }
 
   /* Luz cenital y ondulación suave del papel colgado */
@@ -670,101 +796,11 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     mix-blend-mode: multiply;
   }
 
-  /* Composición: plato principal pintado + viñetas */
-  .perg-paper {
-    justify-content: space-between;
-    align-items: center;
-    gap: clamp(0.25rem, 2.2cqh, 1rem);
-  }
-
-  .perg-feature,
-  .perg-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .perg-feature:focus-visible,
-  .perg-tile:focus-visible {
-    outline: 2px dashed color-mix(in srgb, var(--perg-red) 60%, transparent);
-    outline-offset: 4px;
-    border-radius: 6px;
-  }
-
-  .perg-feature:active,
-  .perg-tile:active {
-    transform: scale(0.96);
-  }
-
   .perg-ink-img {
     display: block;
     object-fit: contain;
     opacity: 0.92;
     transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .perg-feature {
-    position: relative;
-    flex: 1 1 auto;
-    justify-content: center;
-    width: 100%;
-    min-height: 0;
-  }
-
-  .perg-feature__img {
-    height: clamp(2.6rem, 21cqh, 8.5rem);
-    width: auto;
-    max-width: 70%;
-  }
-
-  .perg-feature__ko {
-    position: absolute;
-    top: 0.2rem;
-    right: 0.4rem;
-    writing-mode: vertical-rl;
-    font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Batang', serif;
-    font-size: 0.82rem;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    color: var(--perg-red);
-    opacity: 0.85;
-    mix-blend-mode: multiply;
-  }
-
-  .perg-feature__title {
-    position: relative;
-    margin-top: clamp(0.2rem, 1.6cqh, 0.7rem);
-    font-size: clamp(1.25rem, min(9cqw, 7.5cqh), 2.4rem);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: 0.16em;
-    margin-right: -0.16em;
-    text-transform: uppercase;
-  }
-
-  .perg-brush {
-    position: absolute;
-    left: -10%;
-    bottom: -0.3em;
-    width: 120%;
-    height: 0.55em;
-    fill: var(--perg-red);
-    opacity: 0.82;
-    filter: url(#perg-ink);
-    mix-blend-mode: multiply;
-  }
-
-  .perg-feature__sub {
-    margin-top: clamp(0.4rem, 2.2cqh, 0.85rem);
-    font-size: 9.5px;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: rgba(28, 25, 21, 0.58);
-    mix-blend-mode: multiply;
   }
 
   .perg-ink-text {
@@ -773,81 +809,172 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     mix-blend-mode: multiply;
   }
 
-  .perg-divider {
-    width: 78%;
-    height: 0.6rem;
-    flex-shrink: 0;
-    fill: rgba(28, 25, 21, 0.45);
+  .perg-carousel {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    margin-inline: -0.95rem;
+  }
+
+  /* Secciones apiladas; el script las desliza en la dirección del gesto */
+  .perg-slides {
+    position: relative;
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .perg-slides > li {
+    position: relative;
+    display: flex;
+    grid-area: 1 / 1;
+    min-height: 0;
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .perg-slides > li.is-active,
+  .perg-slides > li.is-leaving {
+    visibility: visible;
+    opacity: 1;
+    will-change: transform, opacity;
+  }
+
+  .perg-slides img {
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+
+  .perg-slide {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.3rem, 2cqh, 0.9rem);
+    padding: 0 2.2rem;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .perg-slide:focus-visible {
+    outline: 2px dashed color-mix(in srgb, var(--perg-red) 60%, transparent);
+    outline-offset: -6px;
+    border-radius: 8px;
+  }
+
+  .perg-slide:active {
+    transform: scale(0.97);
+  }
+
+  .perg-slide__img {
+    height: clamp(4rem, 40cqh, 14rem);
+    width: auto;
+    max-width: 88%;
+  }
+
+  .perg-slide__ko {
+    position: absolute;
+    top: 0;
+    right: 1.15rem;
+    writing-mode: vertical-rl;
+    font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Batang', serif;
+    font-size: clamp(0.8rem, 3.4cqh, 1rem);
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    color: var(--perg-red);
+    opacity: 0.85;
+    mix-blend-mode: multiply;
+  }
+
+  .perg-slide__title {
+    position: relative;
+    margin-top: clamp(0.2rem, 1.4cqh, 0.6rem);
+    max-width: 100%;
+    font-size: clamp(1.3rem, min(9cqw, 8cqh), 2.5rem);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: 0.12em;
+    margin-right: -0.12em;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .perg-brush {
+    position: absolute;
+    left: -8%;
+    bottom: -0.3em;
+    width: 116%;
+    height: 0.5em;
+    fill: var(--perg-red);
+    opacity: 0.82;
     filter: url(#perg-ink);
     mix-blend-mode: multiply;
   }
 
-  .perg-divider circle {
-    fill: var(--perg-red);
+  .perg-slide__sub {
+    margin-top: clamp(0.3rem, 1.8cqh, 0.8rem);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(28, 25, 21, 0.6);
+    mix-blend-mode: multiply;
   }
 
-  /* Carrusel: una sección grande al centro y las vecinas asomando */
-  .perg-carousel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp(0.35rem, 1.6cqh, 0.7rem);
-    width: calc(100% + 1.9rem);
-    margin-inline: -0.95rem;
-    flex-shrink: 0;
+  /* Flechas de pincel a los lados */
+  .perg-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 3rem;
+    translate: 0 -50%;
+    color: rgba(28, 25, 21, 0.5);
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s ease;
   }
 
-  .perg-tiles {
-    position: relative;
-    container-type: inline-size;
-    display: flex;
-    width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  .perg-arrow svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: url(#perg-ink);
   }
 
-  .perg-tiles::-webkit-scrollbar {
-    display: none;
+  .perg-arrow--prev {
+    left: 0.15rem;
   }
 
-  .perg-tiles::before,
-  .perg-tiles::after {
-    content: '';
-    flex: 0 0 27%;
+  .perg-arrow--next {
+    right: 0.15rem;
   }
 
-  .perg-tiles > li {
-    flex: 0 0 46%;
-    scroll-snap-align: center;
-    opacity: 0.55;
-    transform: scale(0.82);
-    transition:
-      opacity 0.35s ease,
-      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .perg-tiles > li.is-active {
-    opacity: 1;
-    transform: none;
-  }
-
-  .perg-tile {
-    width: 100%;
-    gap: clamp(0.15rem, 1cqh, 0.4rem);
-  }
-
-  .perg-tile__img {
-    height: clamp(2.8rem, 24cqh, 8rem);
-    width: 100%;
+  .perg-arrow:hover,
+  .perg-arrow:focus-visible {
+    color: var(--perg-red);
   }
 
   .perg-dots {
     display: flex;
+    flex-shrink: 0;
+    justify-content: center;
     gap: 0.5rem;
+    padding-top: clamp(0.3rem, 1.6cqh, 0.7rem);
   }
 
   .perg-dot {
@@ -865,53 +992,15 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     background: var(--perg-red);
   }
 
-  .perg-tile__svg {
-    fill: none;
-    stroke: rgba(28, 25, 21, 0.85);
-    stroke-width: 3.2;
-    stroke-linecap: round;
-    filter: url(#perg-ink);
-    mix-blend-mode: multiply;
-  }
-
-  .perg-tile__svg circle {
-    fill: var(--perg-red);
-    stroke: none;
-  }
-
-  .perg-tile__ko {
-    font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Batang', serif;
-    font-size: clamp(0.68rem, 3cqh, 0.9rem);
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    color: var(--perg-red);
-    mix-blend-mode: multiply;
-  }
-
-  .perg-tile__label {
-    max-width: 100%;
-    font-size: clamp(0.7rem, 5cqi, 1.1rem);
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    text-wrap: balance;
-  }
-
-  @container perg-mount (max-height: 330px) {
-    .perg-feature__sub,
-    .perg-feature__ko {
+  @container perg-mount (max-height: 250px) {
+    .perg-slide__sub {
       display: none;
     }
   }
 
   @media (hover: hover) {
-    .perg-feature:hover .perg-ink-img,
-    .perg-tile:hover .perg-ink-img {
-      transform: translateY(-3px) scale(1.04);
-    }
-    .perg-tile:hover .perg-tile__label {
-      color: var(--perg-red);
+    .perg-slide:hover .perg-ink-img {
+      transform: translateY(-3px) scale(1.03);
     }
   }
 
@@ -990,8 +1079,9 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     animation: perg-fade 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .home-pergamino--anim .perg-mount {
-    animation: perg-unroll 1.1s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  .home-pergamino--anim .perg-scroll {
+    transform-origin: 50% 0;
+    animation: perg-hang 1.5s 0.15s cubic-bezier(0.33, 1, 0.68, 1) both;
   }
 
   .home-pergamino--anim .perg-tassel {
@@ -999,15 +1089,27 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
   }
 
   .home-pergamino--anim .perg-paper > * {
-    animation: perg-fade 0.6s 1s ease both;
+    animation: perg-fade 0.6s 0.7s ease both;
   }
 
-  @keyframes perg-unroll {
-    from {
-      clip-path: inset(0 0 100% 0);
+  @keyframes perg-hang {
+    0% {
+      opacity: 0;
+      transform: translateY(-14px) rotate(-1.6deg);
     }
-    to {
-      clip-path: inset(0 0 0 0);
+    30% {
+      opacity: 1;
+      transform: translateY(0) rotate(1deg);
+    }
+    60% {
+      transform: rotate(-0.4deg);
+    }
+    82% {
+      transform: rotate(0.15deg);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -1042,10 +1144,9 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
 
   @media (prefers-reduced-motion: reduce) {
     .home-pergamino--anim .perg-hero,
-    .home-pergamino--anim .perg-mount,
+    .home-pergamino--anim .perg-scroll,
     .home-pergamino--anim .perg-tassel,
     .perg-hero__glow,
-    .perg-hero__logo--lit::after,
     .home-pergamino--anim .perg-paper > * {
       animation: none;
     }

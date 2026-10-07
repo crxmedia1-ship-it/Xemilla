@@ -42,57 +42,6 @@ export const MENU_FONT_PRESETS = {
 
 export const DEFAULT_MENU_FONT = 'elegant';
 
-/** Catálogo agrupado para el selector del admin. */
-export const MENU_FONT_GROUPS = [
-  {
-    label: 'Serif / Editorial',
-    fonts: [
-      'Playfair Display',
-      'Cinzel',
-      'Cormorant Garamond',
-      'Fraunces',
-      'Libre Baskerville',
-      'Lora',
-      'Newsreader',
-      'EB Garamond',
-      'Source Serif 4',
-      'Cormorant',
-    ],
-  },
-  {
-    label: 'Sans / Moderna',
-    fonts: [
-      'Inter',
-      'Space Grotesk',
-      'Syne',
-      'Outfit',
-      'Manrope',
-      'DM Sans',
-      'Plus Jakarta Sans',
-      'Instrument Sans',
-      'Montserrat',
-      'Archivo',
-      'IBM Plex Sans',
-      'Josefin Sans',
-      'Karla',
-      'Nunito',
-      'Raleway',
-      'Work Sans',
-    ],
-  },
-  {
-    label: 'Display / Impacto',
-    fonts: ['Oswald', 'Bebas Neue', 'Italiana', 'Great Vibes'],
-  },
-];
-
-export const MENU_GOOGLE_FONT_OPTIONS = MENU_FONT_GROUPS.flatMap((g) => g.fonts);
-
-/** Hoja Google Fonts para previsualizar el selector en Identidad. */
-export const MENU_FONTS_PREVIEW_HREF = `https://fonts.googleapis.com/css2?${MENU_GOOGLE_FONT_OPTIONS.map(
-  (name) => `family=${name.replace(/ /g, '+')}:wght@400;500;600;700`,
-).join('&')}&display=swap`;
-
 /**
  * @param {unknown} value
  * @returns {string}

@@ -121,15 +121,6 @@ export function parseBoutiqueConfig(configRaw) {
 }
 
 /**
- * Productos activos para la WebApp pública.
- * @param {unknown} configRaw
- * @returns {BoutiqueProducto[]}
- */
-export function getBoutiqueProductosActivos(configRaw) {
-  return parseBoutiqueConfig(configRaw).productos.filter((p) => p.activo);
-}
-
-/**
  * Normaliza payload de API / form a JSON persistible.
  * @param {unknown} rawProductos
  * @param {{ titulo?: string, catalogo_url?: string }} [meta]
