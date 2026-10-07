@@ -17,8 +17,9 @@ import {
 
 
 /**
- * Destacado: SI/sí/true/1 → true; NO/vacío/resto → false.
+ * Destacado: SI/sí/true/1/CHEF → chef; PROMO/PROMOCIÓN → promoción; NO/vacío/resto → no destacado.
  * @param {string} raw
+ * @returns {{ destacado: boolean, destacado_tipo: 'chef' | 'promocion' }}
  */
 function parseDestacado(raw) {
   const v = String(raw ?? '')
@@ -27,8 +28,10 @@ function parseDestacado(raw) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  if (!v || v === 'no' || v === 'n' || v === 'false' || v === '0') return false;
-  return v === 'si' || v === 'true' || v === '1' || v === 'yes' || v === 'y';
+  if (v === 'promo' || v === 'promocion') return { destacado: true, destacado_tipo: 'promocion' };
+  const destacado =
+    v === 'si' || v === 'true' || v === '1' || v === 'yes' || v === 'y' || v === 'chef';
+  return { destacado, destacado_tipo: 'chef' };
 }
 
 /**
@@ -108,6 +111,7 @@ function looksLikeHeader(cells) {
  *   descripcion: string,
  *   precio: number,
  *   destacado: boolean,
+ *   destacado_tipo: 'chef' | 'promocion',
  *   imagen_url: string | null,
  *   line: number,
  * }} ParsedPlatoRow
@@ -159,7 +163,7 @@ export function parseMenuBulkText(text) {
     const categoria = canonicalizeCategoryName(catRaw.trim() || 'General');
     const descripcion = descRaw.trim();
     const precio = parsePrecio(precioRaw);
-    const destacado = parseDestacado(destacadoRaw);
+    const { destacado, destacado_tipo } = parseDestacado(destacadoRaw);
     const imagen_url = parseImagenUrl(imagenRaw);
 
     rows.push({
@@ -168,6 +172,7 @@ export function parseMenuBulkText(text) {
       descripcion,
       precio,
       destacado,
+      destacado_tipo,
       imagen_url,
       line: lineNo,
     });
@@ -300,6 +305,7 @@ export async function bulkInsertPlatos(client, restauranteId, rows) {
       descripcion: r.descripcion || null,
       precio: r.precio,
       destacado: r.destacado,
+      destacado_tipo: r.destacado_tipo,
       imagen_url: r.imagen_url,
       disponible: true,
     };
@@ -309,7 +315,7 @@ export async function bulkInsertPlatos(client, restauranteId, rows) {
     .from('platos')
     .insert(payload)
     .select(
-      'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, categorias(nombre)',
+      'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, categorias(nombre)',
     );
 
   if (error) {

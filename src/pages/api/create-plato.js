@@ -1,4 +1,5 @@
 import { isSuperAdminUser } from '../../config/superadmin.js';
+import { normalizeDestacadoTipo } from '../../lib/destacado-tipo.js';
 import {
   getOrCreateCategoriaByName,
   getOrCreateDefaultCategoria,
@@ -16,7 +17,7 @@ export const prerender = false;
  *
  * JSON: {
  *   restaurante_id, nombre, descripcion?, precio,
- *   destacado?, categoria_id?, categoria?, imagen_url?
+ *   destacado?, destacado_tipo?, categoria_id?, categoria?, imagen_url?
  * }
  * FormData: mismos campos + imagen? (file)
  */
@@ -49,6 +50,7 @@ export async function POST({ request, cookies }) {
         descripcion: form.get('descripcion'),
         precio: form.get('precio'),
         destacado: form.get('destacado'),
+        destacado_tipo: form.get('destacado_tipo'),
         categoria_id: form.get('categoria_id'),
         categoria: form.get('categoria'),
         imagen_url: form.get('imagen_url'),
@@ -71,6 +73,7 @@ export async function POST({ request, cookies }) {
   const descripcion = String(raw.descripcion ?? '').trim() || null;
   const precio = Number(String(raw.precio ?? '').replace(',', '.'));
   const destacado = parseBool(raw.destacado);
+  const destacadoTipo = normalizeDestacadoTipo(raw.destacado_tipo);
   const categoriaIdRaw = Number(raw.categoria_id);
   const categoriaNombre = String(raw.categoria ?? '').trim();
   let imagenUrl =
@@ -152,13 +155,14 @@ export async function POST({ request, cookies }) {
     imagen_url: imagenUrl,
     disponible: true,
     destacado,
+    destacado_tipo: destacadoTipo,
   };
 
   let { data, error } = await writeClient
     .from('platos')
     .insert({ ...baseRow, ...nutricion })
     .select(
-      'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
+      'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle',
     )
     .maybeSingle();
 
@@ -173,7 +177,7 @@ export async function POST({ request, cookies }) {
       .from('platos')
       .insert(baseRow)
       .select(
-        'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id',
+        'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id',
       )
       .maybeSingle();
     data = retry.data;
@@ -191,6 +195,7 @@ export async function POST({ request, cookies }) {
       ...data,
       precio: Number(data.precio),
       destacado: Boolean(data.destacado),
+      destacado_tipo: normalizeDestacadoTipo(data.destacado_tipo),
       categoria_nombre: categoriaLabel,
     },
   });

@@ -1,4 +1,5 @@
 import { isSuperAdminUser } from '../../config/superadmin.js';
+import { normalizeDestacadoTipo } from '../../lib/destacado-tipo.js';
 import { uploadPlatoImage } from '../../lib/platos-admin.js';
 import { applyNutricionPatch } from '../../lib/platos-nutricion.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
@@ -10,7 +11,7 @@ export const prerender = false;
  * Actualiza campos de un plato.
  * Acepta JSON o multipart/form-data (para subir imagen).
  *
- * JSON: { id, nombre?, descripcion?, precio?, disponible?, destacado?, imagen_url? }
+ * JSON: { id, nombre?, descripcion?, precio?, disponible?, destacado?, destacado_tipo?, imagen_url? }
  * FormData: id + imagen (File) y/o mismos campos de texto
  */
 export async function POST({ request, cookies }) {
@@ -41,6 +42,7 @@ export async function POST({ request, cookies }) {
         precio: form.get('precio'),
         disponible: form.get('disponible'),
         destacado: form.get('destacado'),
+        destacado_tipo: form.get('destacado_tipo'),
         imagen_url: form.get('imagen_url'),
         restaurante_id: form.get('restaurante_id'),
         calorias: form.get('calorias'),
@@ -99,6 +101,10 @@ export async function POST({ request, cookies }) {
     patch.destacado = raw.destacado === 'true';
   }
 
+  if (typeof raw.destacado_tipo === 'string' && raw.destacado_tipo.trim()) {
+    patch.destacado_tipo = normalizeDestacadoTipo(raw.destacado_tipo);
+  }
+
   if (typeof raw.imagen_url === 'string') {
     const url = raw.imagen_url.trim();
     if (!url || url.toLowerCase() === 'no') {
@@ -153,7 +159,7 @@ export async function POST({ request, cookies }) {
     .update(patch)
     .eq('id', id)
     .select(
-      'id, nombre, descripcion, precio, disponible, destacado, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
+      'id, nombre, descripcion, precio, disponible, destacado, destacado_tipo, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
     )
     .maybeSingle();
 
@@ -182,7 +188,7 @@ export async function POST({ request, cookies }) {
       .from('platos')
       .update(legacy)
       .eq('id', id)
-      .select('id, nombre, descripcion, precio, disponible, destacado, imagen_url')
+      .select('id, nombre, descripcion, precio, disponible, destacado, destacado_tipo, imagen_url')
       .maybeSingle();
     if (retry.error) {
       console.error('[api/update-plato]', retry.error.message);

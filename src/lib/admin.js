@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from './supabase/server.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
 import { getSuperAdminWriteClient } from './superadmin.js';
 import { normalizeAlergias } from '../config/nutricion.js';
+import { normalizeDestacadoTipo } from './destacado-tipo.js';
 
 const RESTAURANTE_ADMIN_SELECT = [
   'id',
@@ -238,9 +239,9 @@ export async function getAdminDashboardData(ctx, opts = {}) {
 
   // Schema actual: platos no tiene `orden` — un solo SELECT evita reintentos SSR.
   const platosSelect =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
   const platosSelectNoJoin =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
 
   const loadPlatos = (select) =>
     readClient
@@ -312,6 +313,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     imagen_url: p.imagen_url,
     disponible: p.disponible,
     destacado: Boolean(p.destacado),
+    destacado_tipo: normalizeDestacadoTipo(p.destacado_tipo),
     categoria_id: p.categoria_id,
     orden: Number.isFinite(Number(p.orden)) ? Number(p.orden) : index + 1,
     categoria_nombre:

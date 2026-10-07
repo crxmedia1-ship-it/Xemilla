@@ -26,6 +26,7 @@ import {
 import { resolveMediaUrl } from './cloudinary.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
 import { normalizeAlergias } from '../config/nutricion.js';
+import { normalizeDestacadoTipo } from './destacado-tipo.js';
 
 /**
  * Formatea el precio NUMERIC de Postgres para la UI móvil.
@@ -511,7 +512,7 @@ async function loadRestauranteBySlug(slug) {
       (createSupabaseServiceClient() || supabase)
         .from('platos')
         .select(
-          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
+          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
         )
         .eq('restaurante_id', row.id)
         .eq('disponible', true)
@@ -540,7 +541,7 @@ async function loadRestauranteBySlug(slug) {
   }
 
   const platosByCategoria = new Map();
-  /** @type {Array<{ id: number, nombre: string, descripcion: string, precio: string, imagenUrl: string | null, destacado: boolean, categoriaId: string, categoriaNombre: string }>} */
+  /** @type {Array<{ id: number, nombre: string, descripcion: string, precio: string, imagenUrl: string | null, destacado: boolean, destacadoTipo: 'chef' | 'promocion', categoriaId: string, categoriaNombre: string }>} */
   const destacados = [];
 
   const catNombreById = new Map((categorias ?? []).map((c) => [c.id, c.nombre]));
@@ -560,6 +561,7 @@ async function loadRestauranteBySlug(slug) {
       precio: formatPrecio(plato.precio),
       imagenUrl,
       destacado: Boolean(plato.destacado),
+      destacadoTipo: normalizeDestacadoTipo(plato.destacado_tipo),
       categoriaId: String(plato.categoria_id),
       categoriaNombre: catNombreById.get(plato.categoria_id) ?? 'Menú',
       calorias: plato.calorias == null ? null : Number(plato.calorias),

@@ -7,6 +7,7 @@ import {
   resolveNosotrosFuenteCuerpo,
   buildNosotrosFontsHref,
 } from '../../config/nosotros-typography.js';
+import { destacadosHeading, normalizeDestacadoTipo, DESTACADO_TIPO_LABELS } from '../../lib/destacado-tipo.js';
 import { normalizeChipsLayout, normalizeChipsEstilo, normalizePlatosLayout, normalizeEstiloTarjetas, normalizeDestacadosEstilo, normalizeDestacadosEfecto, normalizeMenuNavegacion, expandMenuMasterTokens } from '../../lib/secciones-ui.js';
 
 interface Plato {
@@ -16,6 +17,7 @@ interface Plato {
   precio: string;
   imagenUrl?: string | null;
   destacado?: boolean;
+  destacadoTipo?: string;
   categoriaId?: string;
   categoriaNombre?: string;
   calorias?: number | null;
@@ -212,6 +214,7 @@ function shouldShowDetalleBtn(plato: Plato, mediaUrl: string) {
   return hasMedia(mediaUrl) || showNutricion || (showAr && Boolean(plato.modelo3dUrl?.trim()));
 }
 const destacadosEstilo = normalizeDestacadosEstilo(menuUi.destacados_estilo);
+const destacadosTitulo = destacadosHeading(destacados);
 const destacadosEfecto = normalizeDestacadosEfecto(menuUi.destacados_efecto);
 const menuNavegacion = normalizeMenuNavegacion(menuUi.navegacion);
 const isHubMode = menuNavegacion === 'hub_categories';
@@ -500,10 +503,10 @@ function hubCardStyle(
         data-destacados
         data-destacados-estilo={destacadosEstilo}
         data-destacados-efecto={destacadosEfecto}
-        aria-label="Sugerencias del Chef"
+        aria-label={destacadosTitulo}
       >
         <h3 class="menu-gutter-x mb-2 font-[family-name:var(--menu-font-heading,var(--fuente-display))] text-[0.78rem] font-semibold tracking-[0.16em] uppercase text-[color:var(--menu-titulo-color,color-mix(in_srgb,var(--menu-texto-color,var(--color-texto))_70%,transparent))] sm:mb-3 sm:text-[0.84rem] sm:tracking-[0.2em]">
-          Sugerencias del Chef
+          {destacadosTitulo}
         </h3>
         <div
           class={destacadosTrackClass}
@@ -516,11 +519,13 @@ function hubCardStyle(
             const catId = plato.categoriaId || '';
             const catName = plato.categoriaNombre || 'Menú';
             const sign = chefSignFor(idx);
+            const isPromo = normalizeDestacadoTipo(plato.destacadoTipo) === 'promocion';
             return (
               <button
                 type="button"
                 class:list={[
                   'menu-featured menu-card shrink-0 border border-white/10 bg-white/[0.04] text-left active:scale-[0.98]',
+                  isPromo && 'menu-featured--promo',
                   destacadosEstilo === 'fade' && idx === 0 && 'is-active',
                 ]}
                 data-reveal={destacadosEstilo === 'fade' ? undefined : true}
@@ -567,19 +572,23 @@ function hubCardStyle(
                       <span class="precio-dinamico" data-precio-usd={precioUsd(plato.precio)}>${precioUsd(plato.precio)}</span>
                     </p>
                   </div>
-                  <span class="menu-featured__sign" style={`transform: rotate(${sign.rotate}deg)`} aria-hidden="true">
-                    <svg viewBox="0 0 140 52" fill="none">
-                      {sign.paths.map((d) => (
-                        <path
-                          d={d}
-                          stroke="currentColor"
-                          stroke-width="1.8"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      ))}
-                    </svg>
-                  </span>
+                  {isPromo ? (
+                    <span class="menu-featured__promo">Promo</span>
+                  ) : (
+                    <span class="menu-featured__sign" style={`transform: rotate(${sign.rotate}deg)`} aria-hidden="true">
+                      <svg viewBox="0 0 140 52" fill="none">
+                        {sign.paths.map((d) => (
+                          <path
+                            d={d}
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        ))}
+                      </svg>
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -665,6 +674,7 @@ function hubCardStyle(
               const mediaUrl = plato.imagenUrl?.trim() || '';
               const showDetalleBtn = shouldShowDetalleBtn(plato, mediaUrl);
               const isChefPick = Boolean(plato.destacado);
+              const destacadoTipo = normalizeDestacadoTipo(plato.destacadoTipo);
               return (
                 <li
                   id={`plato-${plato.id}`}
@@ -672,6 +682,7 @@ function hubCardStyle(
                     'menu-plato-item group scroll-mt-40',
                     platoCardSurfaceClass,
                     isChefPick && 'menu-plato-item--chef-pick',
+                    isChefPick && destacadoTipo === 'promocion' && 'menu-plato-item--promo',
                     hasMedia(mediaUrl) && platosLayout === 'bento' && 'menu-plato-item--bento-media',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && 'menu-plato-item--bento-plain',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && showDetalleBtn && 'menu-plato-item--bento-compact',
@@ -686,7 +697,7 @@ function hubCardStyle(
                   data-estilo-tarjeta={estiloTarjetas}
                 >
                   {isChefPick ? (
-                    <span class="menu-chef-pick-badge">Sugerencia del Chef</span>
+                    <span class="menu-chef-pick-badge">{DESTACADO_TIPO_LABELS[destacadoTipo]}</span>
                   ) : null}
                   {
                     platosLayout === 'bento' && hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) ? (
@@ -1444,6 +1455,26 @@ function hubCardStyle(
     overflow: visible;
   }
 
+  .menu-featured__promo {
+    flex: 0 0 auto;
+    margin-bottom: 0.15rem;
+    padding: 0.16rem 0.45rem;
+    border: 1.5px solid var(--menu-accent-color, #e11d48);
+    border-radius: 0.3rem;
+    color: var(--menu-accent-color, #e11d48);
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transform: rotate(-8deg);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .menu-featured--promo {
+    border-color: color-mix(in srgb, var(--menu-accent-color, #e11d48) 45%, rgba(255, 255, 255, 0.1));
+  }
+
   /* —— Sugerencias del Chef: grid compacto —— */
   [data-destacados-estilo='scroll'] [data-destacados-track] {
     display: grid;
@@ -2001,6 +2032,27 @@ function hubCardStyle(
     text-overflow: ellipsis;
     color: color-mix(in srgb, #f3e3a4 94%, #fff);
     box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--promo {
+    border-color: color-mix(in srgb, var(--menu-accent-color, #e11d48) 52%, rgba(255, 255, 255, 0.14));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--menu-accent-color, #e11d48) 26%, transparent),
+      0 10px 28px color-mix(in srgb, var(--menu-accent-color, #e11d48) 14%, transparent);
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--promo::before {
+    background: radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--menu-accent-color, #e11d48) 20%, transparent), transparent 62%);
+  }
+
+  .menu-panel:not([data-menu-filter='all']):not([data-menu-filter='hub']) .menu-plato-item--promo .menu-chef-pick-badge {
+    border-bottom-color: color-mix(in srgb, var(--menu-accent-color, #e11d48) 45%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--menu-accent-color, #e11d48) 70%, rgba(255, 255, 255, 0.05)) 0%,
+      color-mix(in srgb, var(--menu-accent-color, #e11d48) 48%, rgba(0, 0, 0, 0.22)) 100%
+    );
+    color: #fff;
   }
 
   .menu-panel[data-platos-layout='grid'] .menu-plato-item--chef-pick .menu-chef-pick-badge {

@@ -142,14 +142,13 @@ type NavItem = {
   kind: 'section' | 'reservas';
 };
 
+const showReservasNav = Boolean(props?.showReservas ?? props?.reservas_activo ?? reservasCta);
+
 const navItems: NavItem[] = [
   { id: 'menu', label: 'MENÚ', subtitle: menuSubtitle, kind: 'section' },
-  {
-    id: 'reservas',
-    label: reservasLabel,
-    subtitle: subtituloReservas,
-    kind: 'reservas',
-  },
+  ...(showReservasNav
+    ? [{ id: 'reservas', label: reservasLabel, subtitle: subtituloReservas, kind: 'reservas' as const }]
+    : []),
   {
     id: 'nosotros',
     label: navNosotrosLabel,

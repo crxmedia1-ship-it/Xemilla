@@ -317,6 +317,15 @@ COMMENT ON COLUMN public.platos.destacado IS
 ALTER TABLE public.platos
   ADD COLUMN IF NOT EXISTS destacado BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Etiqueta del destacado en el carrusel: Sugerencia del Chef o Promoción.
+ALTER TABLE public.platos
+  ADD COLUMN IF NOT EXISTS destacado_tipo TEXT NOT NULL DEFAULT 'chef';
+ALTER TABLE public.platos
+  DROP CONSTRAINT IF EXISTS platos_destacado_tipo_check;
+ALTER TABLE public.platos
+  ADD CONSTRAINT platos_destacado_tipo_check
+  CHECK (destacado_tipo IN ('chef', 'promocion'));
+
 -- Orden visual del plato dentro de su categoría (1..n relativo en el admin).
 -- REQUIRED MIGRATION: run in Supabase SQL editor if the column is missing.
 ALTER TABLE public.platos

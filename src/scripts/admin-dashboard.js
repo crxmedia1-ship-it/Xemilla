@@ -5,6 +5,11 @@
     subsForMacro,
     subSortIndex,
   } from '../config/menu-macros.js';
+  import {
+    DESTACADO_TIPOS,
+    DESTACADO_TIPO_LABELS,
+    normalizeDestacadoTipo,
+  } from '../lib/destacado-tipo.js';
   import { previewMenuBulkText } from '../lib/menu-bulk.js';
   import {
     cropPlatoImage,
@@ -314,6 +319,7 @@
   const nuevoSubmit = document.getElementById('nuevo-plato-submit');
   const nuevoError = document.getElementById('nuevo-plato-error');
   const npDestacado = document.getElementById('np-destacado');
+  const npDestacadoTipo = document.getElementById('np-destacado-tipo');
   const npCategoriasList = document.getElementById('np-categorias-list');
 
   /** @type {{ id: number, nombre: string }[]} */
@@ -2327,6 +2333,19 @@
     btn.classList.toggle('is-on', on);
   }
 
+  /**
+   * @param {Element | null} picker
+   * @param {string} tipo
+   */
+  function paintDestacadoTipo(picker, tipo) {
+    if (!(picker instanceof HTMLElement)) return;
+    picker.querySelectorAll('[data-set-destacado-tipo]').forEach((opt) => {
+      const active = opt.getAttribute('data-set-destacado-tipo') === tipo;
+      opt.setAttribute('aria-checked', String(active));
+      opt.classList.toggle('is-active', active);
+    });
+  }
+
   async function updatePlato(id, patch) {
     const res = await fetch('/api/update-plato', {
       method: 'POST',
@@ -3364,6 +3383,7 @@
     tr.dataset.platoId = String(plato.id);
     tr.dataset.disponible = plato.disponible ? 'true' : 'false';
     tr.dataset.destacado = plato.destacado ? 'true' : 'false';
+    tr.dataset.destacadoTipo = normalizeDestacadoTipo(plato.destacado_tipo);
     tr.dataset.imagen = plato.imagen_url || '';
     tr.dataset.nombre = plato.nombre;
     tr.dataset.categoria = plato.categoria_nombre || '';
@@ -3451,9 +3471,17 @@
         </div>
       </td>
       <td class="platos-cell platos-cell--destacado px-2 py-3.5 text-center" data-label="Destacado">
+        <div class="dest-control">
         <button type="button" role="switch" aria-checked="${Boolean(plato.destacado)}" data-toggle-destacado title="Destacado" class="ios-toggle ios-toggle--star ${plato.destacado ? 'is-on' : ''}">
           <span class="ios-toggle__knob" aria-hidden="true"></span>
         </button>
+        <div class="dest-tipo" role="radiogroup" aria-label="Tipo de destacado" data-destacado-tipo-picker${plato.destacado ? '' : ' hidden'}>
+          ${DESTACADO_TIPOS.map((tipo) => {
+            const active = tr.dataset.destacadoTipo === tipo;
+            return `<button type="button" role="radio" aria-checked="${active}" data-set-destacado-tipo="${tipo}" title="${DESTACADO_TIPO_LABELS[tipo]}" class="dest-tipo__opt${active ? ' is-active' : ''}">${tipo === 'chef' ? 'Chef' : 'Promo'}</button>`;
+          }).join('')}
+        </div>
+        </div>
       </td>
       <td class="platos-cell platos-cell--disponible px-2 py-3.5 text-center" data-label="Disponible">
         <button type="button" role="switch" aria-checked="${Boolean(plato.disponible)}" data-toggle-disponible title="Disponible" class="ios-toggle ios-toggle--live ${plato.disponible ? 'is-on' : ''}">
@@ -3659,6 +3687,11 @@
         npDestacado.setAttribute('aria-checked', 'false');
         npDestacado.classList.remove('is-on');
       }
+      if (npDestacadoTipo instanceof HTMLElement) {
+        npDestacadoTipo.hidden = true;
+        npDestacadoTipo.dataset.value = 'chef';
+        paintDestacadoTipo(npDestacadoTipo, 'chef');
+      }
       const npCat = document.getElementById('np-categoria');
       if (npCat instanceof HTMLInputElement) {
         // New restaurant / empty menu: auto-select default category
@@ -3693,6 +3726,16 @@
     if (!(npDestacado instanceof HTMLElement)) return;
     const next = npDestacado.getAttribute('aria-checked') !== 'true';
     paintToggle(npDestacado, next);
+    if (npDestacadoTipo instanceof HTMLElement) npDestacadoTipo.hidden = !next;
+  }, { signal });
+
+  npDestacadoTipo?.addEventListener('click', (event) => {
+    if (!(npDestacadoTipo instanceof HTMLElement)) return;
+    const opt = event.target instanceof Element ? event.target.closest('[data-set-destacado-tipo]') : null;
+    if (!(opt instanceof HTMLElement)) return;
+    const tipo = normalizeDestacadoTipo(opt.dataset.setDestacadoTipo);
+    npDestacadoTipo.dataset.value = tipo;
+    paintDestacadoTipo(npDestacadoTipo, tipo);
   }, { signal });
 
   nuevoOpeners.forEach((btn) => {
@@ -3784,6 +3827,10 @@
             descripcion: descripcion || null,
             precio,
             destacado,
+            destacado_tipo:
+              npDestacadoTipo instanceof HTMLElement
+                ? normalizeDestacadoTipo(npDestacadoTipo.dataset.value)
+                : 'chef',
             categoria,
             imagen_url: imagenUrl,
             calorias: fd.get('calorias') || null,
@@ -4010,14 +4057,35 @@
     if (toggleDest instanceof HTMLElement) {
       const next = row.dataset.destacado !== 'true';
       const prev = !next;
+      const picker = row.querySelector('[data-destacado-tipo-picker]');
       row.dataset.destacado = next ? 'true' : 'false';
       paintToggle(toggleDest, next);
+      if (picker instanceof HTMLElement) picker.hidden = !next;
       try {
         await updatePlato(id, { destacado: next });
         applySearchFilter();
       } catch (err) {
         row.dataset.destacado = prev ? 'true' : 'false';
         paintToggle(toggleDest, prev);
+        if (picker instanceof HTMLElement) picker.hidden = !prev;
+        alert(err instanceof Error ? err.message : 'Error al actualizar');
+      }
+      return;
+    }
+
+    const tipoOpt = target.closest('[data-set-destacado-tipo]');
+    if (tipoOpt instanceof HTMLElement) {
+      const next = normalizeDestacadoTipo(tipoOpt.dataset.setDestacadoTipo);
+      const prev = normalizeDestacadoTipo(row.dataset.destacadoTipo);
+      if (next === prev) return;
+      const picker = tipoOpt.closest('[data-destacado-tipo-picker]');
+      row.dataset.destacadoTipo = next;
+      paintDestacadoTipo(picker, next);
+      try {
+        await updatePlato(id, { destacado_tipo: next });
+      } catch (err) {
+        row.dataset.destacadoTipo = prev;
+        paintDestacadoTipo(picker, prev);
         alert(err instanceof Error ? err.message : 'Error al actualizar');
       }
     }
