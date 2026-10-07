@@ -94,6 +94,8 @@ const ICONS = {
   pin: 'M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   wifi: 'M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',
   whatsapp: 'M4 20l1.3-3.9A8 8 0 1 1 8 18.8zM9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1a4 4 0 0 1-2-2l1-1-1-2z',
+  bag: 'M5 8h14l-1.2 12.5H6.2zM9 10.5V7a3 3 0 0 1 6 0v3.5',
+  gift: 'M4 11h16v9.5H4zM3 7.5h18V11H3zM12 7.5v13M12 7.5C10.5 4.5 7 4 7 6.2c0 1.3 2 1.3 5 1.3zM12 7.5c1.5-3 5-3.5 5-1.3 0 1.3-2 1.3-5 1.3z',
   spark: 'M10 3.5l1.6 4.4 4.4 1.6-4.4 1.6L10 15.5l-1.6-4.4L4 9.5l4.4-1.6zM17.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z',
 } as const;
 
@@ -103,7 +105,7 @@ const pains = [
     unit: 's',
     visual: 'channels',
     title: 'Abre al instante.',
-    body: 'Con el QR o el NFC de la mesa, o un link en tu Instagram. Sin zoom ni descargas.',
+    body: 'Con el QR o el NFC de la mesa, o a través de tus redes sociales. Sin zoom ni descargas.',
   },
   {
     stat: '1',
@@ -150,25 +152,25 @@ const included = [
     more: 'Dólares, bolívares a tasa BCV y euros. La tasa se actualiza sola cada día.',
   },
   {
-    title: 'Perfil del local',
-    hook: 'Lo que preguntan, ya resuelto.',
-    detail: 'Horarios, Wi-Fi, ubicación y reservas',
-    visual: 'place',
-    more: 'Abierto o cerrado, horario, Wi-Fi, cómo llegar y reservas por WhatsApp.',
-  },
-  {
     title: 'Banner de eventos',
     hook: 'Cada evento, a la vista.',
-    detail: 'Catas, promos y especiales',
+    detail: 'Promos, especiales y eventos',
     visual: 'banner',
-    more: 'Un flyer al abrir el menú para catas o promos. Se quita solo al vencer.',
+    more: 'Lo primero que ven al abrir el menú. Tú eliges cuándo sale y cuánto dura: más ventas sin esfuerzo.',
   },
   {
     title: 'Métricas en vivo',
     hook: 'Decide con datos, no con intuición.',
     detail: 'Visitas, platos estrella y clics',
     visual: 'metrics',
-    more: 'Cuántos abren tu menú, qué platos atraen y quién te escribe.',
+    more: 'Cuántos abren tu menú y qué platos atraen, para ver qué mejorar y dónde hay oportunidades.',
+  },
+  {
+    title: 'Perfil del local',
+    hook: 'Lo que preguntan, ya resuelto.',
+    detail: 'Horarios, Wi-Fi, ubicación y reservas',
+    visual: 'place',
+    more: 'Abierto o cerrado, horario, Wi-Fi, cómo llegar, reservas y redes sociales.',
   },
 ] as const;
 
@@ -181,7 +183,7 @@ const investment = [
     label: 'Implementación',
     amount: setup,
     cadence: 'Pago único',
-    tags: ['Llave en mano', 'Identidad visual', 'Lista para servicio'],
+    tags: ['Llave en mano', 'Identidad visual', 'Menú interactivo', 'Tu historia y contacto', 'Panel privado de gestión'],
   },
   {
     label: 'Licencia cloud',
@@ -218,7 +220,30 @@ const gadgets = [
     body: 'IA que atiende y reserva 24/7, conectada a tu CRM o al sistema que ya usas.',
     action: { dialog: 'ia-dialog', label: 'Ver chat' },
   },
+  {
+    icon: ICONS.bag,
+    title: 'Tienda',
+    body: 'Vende merch, salsas y productos de la casa desde tu propio menú.',
+    action: { dialog: 'shop-dialog', label: 'Ver tienda' },
+  },
+  {
+    icon: ICONS.gift,
+    title: 'Tarjeta de fidelidad',
+    body: 'Sellos digitales que premian cada visita y los hacen volver.',
+    action: { dialog: 'loyalty-dialog', label: 'Ver tarjeta' },
+  },
 ];
+
+/* print: zona imprimible de cada foto, en % de la imagen cuadrada (left, top, width, height). */
+const shopDemo = [
+  { img: '/propuesta/tienda/camiseta.webp', name: 'Camiseta', price: 22, print: [37, 33, 26, 16] },
+  { img: '/propuesta/tienda/taza.webp', name: 'Taza de la casa', price: 14, print: [35, 43, 26, 20] },
+  { img: '/propuesta/tienda/salsa.webp', name: 'Salsa picante', price: 9, print: [41, 49, 18, 20] },
+  { img: '/propuesta/tienda/tote.webp', name: 'Tote bag', price: 18, print: [35, 52, 30, 24] },
+];
+
+const loyaltyStamps = 10;
+const loyaltyFilled = 7;
 
 const nutriDemo = {
   name: 'Risotto de hongos',
@@ -349,7 +374,7 @@ const glass =
 
   <main data-palette={palette} data-propuesta-id={propuestaId} class="font-blacksushi relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-5 pt-12 text-zinc-200 sm:px-8 sm:pt-20 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
     <header class="mx-auto flex max-w-3xl flex-col items-center text-center">
-      <p data-collide class="inline-flex items-center rounded-full border border-white/10 bg-zinc-900/40 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.28em] text-zinc-400 shadow-2xl backdrop-blur-xl">
+      <p data-collide class="inline-flex items-center rounded-full border border-white/10 bg-zinc-900/40 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.16em] whitespace-nowrap text-zinc-400 min-[400px]:tracking-[0.28em] shadow-2xl backdrop-blur-xl">
         Propuesta privada de exclusividad
       </p>
 
@@ -412,27 +437,28 @@ const glass =
         {
           pains.map((pain) => (
             <div class="bento__card">
-              <div class:list={['bento__stage', pain.visual !== 'toggle' && 'bento__stage--bare']} data-collide aria-hidden="true">
+              <div class="bento__stage" data-collide aria-hidden="true">
                 {pain.visual === 'channels' && (
                   <div class="bn-open">
-                    <span class="bn-open__sources">
-                      <span class="bn-open__qr">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                          <path d={ICONS.qr} />
-                        </svg>
-                        <i class="bn-open__scan" />
-                      </span>
-                      <span class="bn-open__nfc">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-                          <path d="M7.5 8.2a5.2 5.2 0 0 1 0 7.6" />
-                          <path d="M10.6 5.6a8.4 8.4 0 0 1 0 12.8" />
-                          <path d="M13.7 3.2a11.4 11.4 0 0 1 0 17.6" />
-                          <circle cx="4.6" cy="12" r="1.2" fill="currentColor" stroke="none" />
-                        </svg>
-                        <b>NFC</b>
-                      </span>
+                    <span class="bn-open__social">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z" />
+                        <path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1A12 12 0 0 0 12 24z" />
+                        <path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.7V6.6H1.4a12 12 0 0 0 0 10.8l4-3z" />
+                        <path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1c.9-2.8 3.5-4.9 6.6-4.9z" />
+                      </svg>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d={ICONS.instagram} />
+                      </svg>
                     </span>
-                    <span class="bn-open__arrow" />
+                    <span class="bn-open__link bn-open__link--top" />
+                    <span class="bn-open__src bn-open__qr">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d={ICONS.qr} />
+                      </svg>
+                      <i class="bn-open__scan" />
+                    </span>
+                    <span class="bn-open__link" />
                     <span class="feat-ev__phone bn-open__phone">
                       <span class="feat-ev__screen bn-open__screen">
                         <span class="feat-ev__status">9:41</span>
@@ -444,6 +470,16 @@ const glass =
                           <i />
                         </span>
                       </span>
+                    </span>
+                    <span class="bn-open__link bn-open__link--rev" />
+                    <span class="bn-open__src bn-open__nfc">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                        <path d="M7.5 8.2a5.2 5.2 0 0 1 0 7.6" />
+                        <path d="M10.6 5.6a8.4 8.4 0 0 1 0 12.8" />
+                        <path d="M13.7 3.2a11.4 11.4 0 0 1 0 17.6" />
+                        <circle cx="4.6" cy="12" r="1.2" fill="currentColor" stroke="none" />
+                      </svg>
+                      <b>NFC</b>
                     </span>
                   </div>
                 )}
@@ -532,7 +568,7 @@ const glass =
             <PhoneSync domain={domain} />
           </div>
 
-          <ul class="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ul class="feat-carousel mt-10 sm:grid sm:grid-cols-2 sm:gap-3" data-feat-carousel>
             {
               included.map((item, index) => (
                 <li class:list={['feat-flip', isWideFeature(index) && 'feat--wide sm:col-span-2']}>
@@ -547,7 +583,7 @@ const glass =
                   <span class="feat-flip__hint" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" /></svg>
                   </span>
-                  <div class="feat__stage" aria-hidden="true">
+                  <div class:list={['feat__stage', item.visual === 'place' && 'feat__stage--map']} aria-hidden="true">
                     {item.visual === 'domain' && (
                       <p class="feat__domain">
                         <span class="feat__domain-name">{domainName}</span>
@@ -590,11 +626,25 @@ const glass =
                       </div>
                     )}
                     {item.visual === 'place' && (
-                      <div class="feat-open">
-                        <span class="feat-open__dot"></span>
-                        <span>
-                          <b>Abierto ahora</b>
-                          <i>12:00 – 23:00</i>
+                      <div class="feat-map">
+                        <svg class="feat-map__art" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                          <rect width="400" height="140" fill="#efe9df" />
+                          <path d="M-10 118 C 60 100, 110 128, 170 112 S 290 84, 410 100 V 150 H -10 Z" fill="#bcdcec" />
+                          <rect x="250" y="10" width="92" height="52" rx="10" fill="#d3e6c6" />
+                          <rect x="28" y="22" width="56" height="34" rx="6" fill="#e4ddd1" />
+                          <rect x="118" y="20" width="70" height="38" rx="6" fill="#e4ddd1" />
+                          <g stroke="#fff" stroke-linecap="round" fill="none">
+                            <path d="M-10 72 H 410" stroke-width="9" />
+                            <path d="M100 -10 V 150 M 222 -10 V 104 M 362 -10 V 96" stroke-width="6" />
+                            <path d="M-10 14 H 410 M 20 72 L 60 -10 M 300 72 L 330 150" stroke-width="4" />
+                          </g>
+                          <path d="M-10 72 H 410" stroke="#f3d48a" stroke-width="3" stroke-linecap="round" />
+                          <text x="112" y="66" font-size="8" font-weight="600" fill="#a8a29e" letter-spacing=".06em">AV. PRINCIPAL</text>
+                        </svg>
+                        <span class="feat-map__pin" aria-hidden="true"><span>{initial}</span></span>
+                        <span class="feat-map__chip" aria-hidden="true">
+                          <span class="feat-open__dot" />
+                          Abierto ahora · 12:00–23:00
                         </span>
                       </div>
                     )}
@@ -611,28 +661,28 @@ const glass =
                                 <i></i>
                               </span>
                               <span class="feat-ev__flyer">
-                                <img src="/propuesta/comida-uvas.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
-                                <b>Cata</b>
-                                <em>de vinos</em>
-                                <span class="feat-ev__flyer-date">Vie · 8 p.&nbsp;m.</span>
+                                <img src="/propuesta/comida-limon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
+                                <b>2×1</b>
+                                <em>happy hour</em>
+                                <span class="feat-ev__flyer-date">5–7 p.&nbsp;m.</span>
                               </span>
                             </span>
                           </span>
                           <span class="feat-ev__info">
                             <span class="feat-ev__eyebrow">Al abrir el menú</span>
-                            <strong>Cata de vinos</strong>
-                            <span class="feat-ev__chip">Vie · 8 p.&nbsp;m.</span>
+                            <strong>Happy hour</strong>
+                            <span class="feat-ev__chip">2×1 · 5–7 p.&nbsp;m.</span>
                           </span>
                         </div>
                       </div>
                     )}
                     {item.visual === 'metrics' && (
                       <div class="feat-bars">
-                        <span style="height:38%"></span>
-                        <span style="height:62%"></span>
-                        <span style="height:46%"></span>
-                        <span style="height:100%"></span>
-                        <span style="height:72%"></span>
+                        <span style="height:38%;--bar:#c2410c;animation-delay:0s"></span>
+                        <span style="height:62%;--bar:#d97706;animation-delay:1s"></span>
+                        <span style="height:46%;--bar:#65a30d;animation-delay:2s"></span>
+                        <span style="height:100%;--bar:#059669;animation-delay:3s"></span>
+                        <span style="height:72%;--bar:#0284c7;animation-delay:4s"></span>
                       </div>
                     )}
                   </div>
@@ -654,6 +704,13 @@ const glass =
               ))
             }
           </ul>
+          <div class="feat-dots sm:hidden" data-feat-dots>
+            {
+              included.map((item, index) => (
+                <button type="button" aria-label={`Ver ${item.title}`} aria-current={index === 0 ? 'true' : undefined} data-feat-dot={index} />
+              ))
+            }
+          </div>
         </div>
       </div>
     </section>
@@ -741,7 +798,7 @@ const glass =
           No están incluidos en el plan. Se suman con un costo extra, precio a&nbsp;consultar.
         </p>
       </div>
-      <div class="grid grid-cols-1 gap-3 md:auto-rows-fr md:grid-cols-2 md:gap-4 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-3 md:auto-rows-fr md:grid-cols-2 md:gap-4 lg:grid-cols-3">
         {
           gadgets.map((gadget) => (
             <article class:list={[glass, 'grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5 p-5 md:flex md:flex-col md:gap-4 md:p-6']}>
@@ -895,83 +952,80 @@ const glass =
     </div>
     <ul class="qr-mockups" data-carousel>
       <li>
-        <div class="qr-stage">
-          <div class="mock-tent">
-            <span class="mock-tent__label">Escanea la carta</span>
-            <QrArt url={`https://${domain}`} initial={initial} class="mock-tent__code" accent="#9a3412" />
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/tent.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--tent" style="left:27.1%;top:21%;width:47%;height:55.8%">
+            <span class="qr-print__label">Escanea la carta</span>
+            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" accent="#9a3412" />
           </div>
-          <span class="mock-tent__base"></span>
         </div>
         <p class="qr-mockups__title">Soporte de mesa</p>
         <p class="qr-mockups__sub">Acrílico con base de madera</p>
       </li>
       <li>
-        <div class="qr-stage">
-          <div class="mock-nfc">
-            <svg class="mock-nfc__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-              <path d="M7.5 8.2a5.2 5.2 0 0 1 0 7.6" />
-              <path d="M10.6 5.6a8.4 8.4 0 0 1 0 12.8" />
-              <path d="M13.7 3.2a11.4 11.4 0 0 1 0 17.6" />
-              <circle cx="4.6" cy="12" r="1" fill="currentColor" stroke="none" />
-            </svg>
-            <span class="mock-nfc__name">{para}</span>
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/nfc.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--nfc" style="left:23%;top:24.2%;width:54.7%;height:54.8%">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <path d="M7.5 8.2a5.2 5.2 0 0 1 0 7.6" />
+                <path d="M10.6 5.6a8.4 8.4 0 0 1 0 12.8" />
+                <path d="M13.7 3.2a11.4 11.4 0 0 1 0 17.6" />
+                <circle cx="4.6" cy="12" r="1" fill="currentColor" stroke="none" />
+              </svg>
+            <span class="qr-print__name">{para}</span>
           </div>
         </div>
         <p class="qr-mockups__title">Tag NFC</p>
         <p class="qr-mockups__sub">Acerca el teléfono y abre la carta</p>
       </li>
       <li>
-        <div class="qr-stage">
-          <div class="mock-coaster">
-            <QrArt
-              url={`https://${domain}`}
-              initial={initial}
-              class="mock-coaster__code"
-              ink="#3b2a1a"
-              paper="transparent"
-            />
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/coaster.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--coaster" style="left:18.5%;top:19.5%;width:61.7%;height:62.5%">
+            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#4a2f17" paper="transparent" />
           </div>
         </div>
         <p class="qr-mockups__title">Posavasos grabado</p>
         <p class="qr-mockups__sub">Madera grabada con láser</p>
       </li>
       <li>
-        <div class="qr-stage qr-stage--glass">
-          <div class="mock-sticker">
-            <QrArt url={`https://${domain}`} initial={initial} class="mock-sticker__code" ink="#f5f0e8" paper="#18181b" accent="#d9c29a" />
-            <span class="mock-sticker__label">Menú digital</span>
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/vinyl.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--vinyl" style="left:24.2%;top:20.7%;width:51.6%;height:53.7%">
+            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#f5f0e8" paper="#0c0c0d" accent="#d9c29a" />
+            <span class="qr-print__label">Menú digital</span>
           </div>
         </div>
         <p class="qr-mockups__title">Vinilo de vitrina</p>
         <p class="qr-mockups__sub">Para puerta, barra o estantes</p>
       </li>
       <li>
-        <div class="qr-stage">
-          <div class="mock-plate">
-            <span class="mock-plate__number">07</span>
-            <QrArt url={`https://${domain}`} initial={initial} class="mock-plate__code" ink="#18181b" accent="#b08d57" />
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/plate.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--plate" style="left:21.1%;top:34.5%;width:58.9%;height:36%">
+            <span class="qr-print__number">07</span>
+            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#18181b" accent="#b08d57" />
           </div>
         </div>
         <p class="qr-mockups__title">Placa numerada</p>
         <p class="qr-mockups__sub">Número de mesa y QR en una pieza</p>
       </li>
       <li>
-        <div class="qr-stage">
-          <div class="mock-display">
-            <QrArt url={`https://${domain}`} initial={initial} class="mock-display__code" ink="#2a1f12" paper="#e9d3a6" accent="#2a1f12" />
-            <span class="mock-display__label">{para}</span>
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/display.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--display" style="left:30.3%;top:24%;width:38.8%;height:53.2%">
+            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#2a1f12" accent="#2a1f12" />
+            <span class="qr-print__name">{para}</span>
           </div>
-          <span class="mock-display__stand"></span>
         </div>
         <p class="qr-mockups__title">Display de barra</p>
         <p class="qr-mockups__sub">Metal dorado para caja o recepción</p>
       </li>
       <li>
-        <div class="qr-stage">
-          <div class="mock-bag">
-            <span class="mock-bag__sticker">
-              <QrArt url={`https://${domain}`} initial={initial} class="mock-bag__code" accent="#9a3412" />
-            </span>
+        <div class="qr-photo">
+          <img src="/propuesta/formatos/bag.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
+          <div class="qr-print qr-print--bag" style="left:37.3%;top:52.2%;width:24.8%;height:25.2%">
+            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" accent="#9a3412" />
           </div>
         </div>
         <p class="qr-mockups__title">Sticker delivery</p>
@@ -1031,6 +1085,135 @@ const glass =
       </div>
     </div>
     <p class="demo-dialog__hint">Responde, reserva y guarda cada cliente para invitarlo a volver, sin depender de apps de delivery.</p>
+  </dialog>
+
+  <dialog id="shop-dialog" class="demo-dialog" aria-labelledby="shop-dialog-title">
+    <div class="demo-dialog__head">
+      <div>
+        <p id="shop-dialog-title" class="demo-dialog__title">Tienda</p>
+        <p class="ia-chat__sub">Una sección más de tu menú, lista para vender.</p>
+      </div>
+      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+    </div>
+    <div class="shop" data-shop>
+      <div class="shop__bar">
+        <span class="shop__avatar" aria-hidden="true">{initial}</span>
+        <p class="shop__name">{para}</p>
+        <span class="shop__cart" aria-live="polite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d={ICONS.bag} />
+          </svg>
+          <b data-shop-count hidden>0</b>
+        </span>
+      </div>
+      <div class="shop__tabs" aria-hidden="true">
+        <span>Menú</span>
+        <span class="is-active">Tienda</span>
+        <span>Nosotros</span>
+      </div>
+      <ul class="shop__grid">
+        {
+          shopDemo.map((product) => (
+            <li class="shop__item">
+              <div class="shop__photo">
+                <div class="shop__art">
+                  <img src={product.img} alt={product.name} width="400" height="400" loading="lazy" decoding="async" />
+                  <span
+                    class="shop__print"
+                    style={`left:${product.print[0]}%;top:${product.print[1]}%;width:${product.print[2]}%;height:${product.print[3]}%`}
+                    aria-hidden="true"
+                  >
+                    {logo ? (
+                      <>
+                        <img
+                          src={logo}
+                          alt=""
+                          decoding="async"
+                          referrerpolicy="no-referrer"
+                          onerror="this.nextElementSibling.hidden=false;this.remove();"
+                        />
+                        <span class="shop__brand" hidden>{para}</span>
+                      </>
+                    ) : (
+                      <span class="shop__brand">{para}</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+              <p class="shop__item-name">{product.name}</p>
+              <div class="shop__item-row">
+                <span class="shop__price">${product.price}</span>
+                <button type="button" class="shop__add" data-shop-add={product.price} aria-label={`Agregar ${product.name}`}>+</button>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+      <div class="shop__checkout" data-shop-checkout>
+        <span>Ver carrito</span>
+        <b data-shop-total>$0</b>
+      </div>
+    </div>
+    <p class="demo-dialog__hint">Cobra por Pago Móvil, transferencia o en caja. El stock lo manejas desde tu panel.</p>
+  </dialog>
+
+  <dialog id="loyalty-dialog" class="demo-dialog" aria-labelledby="loyalty-dialog-title">
+    <div class="demo-dialog__head">
+      <div>
+        <p id="loyalty-dialog-title" class="demo-dialog__title">Tarjeta de fidelidad</p>
+        <p class="ia-chat__sub">Vive en el teléfono del cliente, sin cartón ni apps.</p>
+      </div>
+      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+    </div>
+    <div class="loyal" data-loyal>
+      <div class="loyal__scene">
+        <div class="loyal__card">
+          <div class="loyal__top">
+            <div class="min-w-0">
+              <p class="loyal__club">Club de clientes</p>
+              <p class="loyal__name">{para}</p>
+            </div>
+            <p class="loyal__member">Ana<br /><span>Nº 0427</span></p>
+          </div>
+          <ol class="loyal__stamps" aria-label={`${loyaltyFilled} de ${loyaltyStamps} sellos`}>
+            {
+              Array.from({ length: loyaltyStamps }, (_, i) => (
+                <li class:list={['loyal__stamp', i < loyaltyFilled && 'is-on', i === loyaltyStamps - 1 && 'loyal__stamp--prize']}>
+                  {i === loyaltyStamps - 1 ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d={ICONS.gift} />
+                    </svg>
+                  ) : logo ? (
+                    <>
+                      <img
+                        src={logo}
+                        alt=""
+                        decoding="async"
+                        referrerpolicy="no-referrer"
+                        onerror="this.nextElementSibling.hidden=false;this.remove();"
+                      />
+                      <span class="loyal__mark" hidden>{initial}</span>
+                    </>
+                  ) : (
+                    <span class="loyal__mark">{initial}</span>
+                  )}
+                </li>
+              ))
+            }
+          </ol>
+          <p class="loyal__status" data-loyal-status aria-live="polite">
+            Te faltan <b>{loyaltyStamps - loyaltyFilled}</b> visitas para tu postre gratis
+          </p>
+        </div>
+      </div>
+      <button type="button" class="loyal__btn" data-loyal-stamp>Sellar visita</button>
+    </div>
+    <ul class="loyal__perks">
+      <li>Nunca se pierde ni se queda en casa</li>
+      <li>Tu equipo la sella escaneando su QR, sin trampas</li>
+      <li>Le avisa de premios y promos en su teléfono</li>
+      <li>Tú ves quién vuelve y cuánto gasta</li>
+    </ul>
   </dialog>
 </Layout>
 
@@ -1342,6 +1525,54 @@ const glass =
     'ia-dialog': 'ia',
   };
 
+  const shop = document.querySelector<HTMLElement>('[data-shop]');
+  if (shop) {
+    const count = shop.querySelector<HTMLElement>('[data-shop-count]');
+    const total = shop.querySelector<HTMLElement>('[data-shop-total]');
+    let items = 0;
+    let sum = 0;
+    for (const btn of shop.querySelectorAll<HTMLElement>('[data-shop-add]')) {
+      btn.addEventListener('click', () => {
+        items += 1;
+        sum += Number(btn.dataset.shopAdd) || 0;
+        if (count) {
+          count.hidden = false;
+          count.textContent = String(items);
+          count.classList.remove('is-bump');
+          void count.offsetWidth;
+          count.classList.add('is-bump');
+        }
+        if (total) total.textContent = `$${sum}`;
+        shop.classList.add('has-items');
+      });
+    }
+  }
+
+  const loyal = document.querySelector<HTMLElement>('[data-loyal]');
+  if (loyal) {
+    const stamps = [...loyal.querySelectorAll<HTMLElement>('.loyal__stamp')];
+    const status = loyal.querySelector<HTMLElement>('[data-loyal-status]');
+    const btn = loyal.querySelector<HTMLButtonElement>('[data-loyal-stamp]');
+    const render = () => {
+      const on = stamps.filter((s) => s.classList.contains('is-on')).length;
+      const left = stamps.length - on;
+      loyal.classList.toggle('is-done', left === 0);
+      if (status) {
+        status.innerHTML =
+          left === 0
+            ? '<b>¡Postre gratis desbloqueado!</b> Muéstralo en caja'
+            : `Te faltan <b>${left}</b> ${left === 1 ? 'visita' : 'visitas'} para tu postre gratis`;
+      }
+      if (btn) btn.textContent = left === 0 ? 'Canjear y empezar de nuevo' : 'Sellar visita';
+    };
+    btn?.addEventListener('click', () => {
+      const next = stamps.find((s) => !s.classList.contains('is-on'));
+      if (next) next.classList.add('is-on', 'is-new');
+      else stamps.forEach((s) => s.classList.remove('is-on', 'is-new'));
+      render();
+    });
+  }
+
   for (const btn of document.querySelectorAll<HTMLElement>('[data-dialog-open]')) {
     const dialog = document.getElementById(btn.dataset.dialogOpen ?? '');
     if (!(dialog instanceof HTMLDialogElement)) continue;
@@ -1384,7 +1615,34 @@ const glass =
     initCurrencyEngine(demo, { persist: false });
     // Probar el selector no debe girar la tarjeta.
     demo.addEventListener('click', (event) => event.stopPropagation());
-    demo.addEventListener('keydown', (event) => event.stopPropagation());
+    demo.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+    });
+  }
+
+  const featCarousel = document.querySelector<HTMLElement>('[data-feat-carousel]');
+  const featDots = [...document.querySelectorAll<HTMLButtonElement>('[data-feat-dot]')];
+  if (featCarousel && featDots.length) {
+    const slides = [...featCarousel.children] as HTMLElement[];
+    const center = (slide: HTMLElement) => slide.offsetLeft + slide.offsetWidth / 2 - featCarousel.clientWidth / 2;
+    let frame = 0;
+    featCarousel.addEventListener(
+      'scroll',
+      () => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          let active = 0;
+          slides.forEach((slide, n) => {
+            if (Math.abs(center(slide) - featCarousel.scrollLeft) < Math.abs(center(slides[active]) - featCarousel.scrollLeft)) active = n;
+          });
+          featDots.forEach((dot, n) => dot.toggleAttribute('aria-current', n === active));
+        });
+      },
+      { passive: true },
+    );
+    featDots.forEach((dot, n) => {
+      dot.addEventListener('click', () => featCarousel.scrollTo({ left: center(slides[n]), behavior: 'smooth' }));
+    });
   }
 
   for (const card of document.querySelectorAll<HTMLElement>('[data-feat-flip]')) {
@@ -1646,78 +1904,92 @@ const glass =
     width: 100%;
     max-width: 300px;
     height: 150px;
-    overflow: hidden;
-    border-radius: 22px;
-    background: #f6f3ee;
     color: #1c1917;
-    box-shadow: 0 18px 40px -28px rgba(28, 25, 23, 0.45);
   }
 
-  /* QR que se escanea y abre el menú en el teléfono. */
+  /* Tres caminos al menú: QR a un lado, NFC al otro y Google o redes arriba. */
   .bn-open {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 18px;
-    padding-top: 10px;
+    gap: clamp(4px, 2%, 8px);
+    padding-top: 46px;
     overflow: hidden;
   }
 
-  .bn-open__sources {
-    display: grid;
-    gap: 10px;
-  }
-
-  .bn-open__qr,
-  .bn-open__nfc {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    overflow: hidden;
-    border-radius: 15px;
+  .bn-open__src,
+  .bn-open__social {
+    border-radius: 14px;
     background: #fff;
     color: #1c1917;
     box-shadow:
       0 0 0 1px rgba(28, 25, 23, 0.05),
       0 10px 20px -10px rgba(28, 25, 23, 0.45);
+    animation: bn-src 4.8s ease-in-out infinite;
+  }
+
+  .bn-open__src {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    overflow: hidden;
   }
 
   .bn-open__qr svg {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
   }
 
   .bn-open__nfc {
     align-content: center;
     gap: 1px;
+    animation-delay: 1.6s;
   }
 
   .bn-open__nfc svg {
-    width: 24px;
-    height: 24px;
+    width: 21px;
+    height: 21px;
   }
 
   .bn-open__nfc path {
-    animation: bn-nfc 3.2s ease-in-out infinite;
+    animation: bn-nfc 4.8s ease-in-out 1.6s infinite;
   }
 
   .bn-open__nfc path:nth-of-type(2) {
-    animation-delay: 0.15s;
+    animation-delay: 1.75s;
   }
 
   .bn-open__nfc path:nth-of-type(3) {
-    animation-delay: 0.3s;
+    animation-delay: 1.9s;
   }
 
   .bn-open__nfc b {
     color: #78716c;
-    font-size: 7.5px;
+    font-size: 7px;
     font-weight: 700;
     letter-spacing: 0.14em;
+  }
+
+  .bn-open__social {
+    position: absolute;
+    top: 3px;
+    left: 50%;
+    display: flex;
+    gap: 7px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    translate: -50% 0;
+    animation-delay: 3.2s;
+  }
+
+  .bn-open__social svg {
+    width: 15px;
+    height: 15px;
   }
 
   .bn-open__scan {
@@ -1731,21 +2003,61 @@ const glass =
     animation: bn-scan 3.2s ease-in-out infinite;
   }
 
-  .bn-open__arrow {
-    width: 26px;
+  .bn-open__link {
+    flex: none;
+    width: clamp(10px, 5%, 16px);
     height: 2px;
-    background: repeating-linear-gradient(90deg, #a8a29e 0 4px, transparent 4px 8px);
-    background-size: 16px 2px;
+    background: repeating-linear-gradient(90deg, #a8a29e 0 4px, transparent 4px 8px) 0 0 / 8px 2px;
     animation: bn-dash 0.8s linear infinite;
   }
 
+  .bn-open__link--rev {
+    animation-direction: reverse;
+  }
+
+  .bn-open__link--top {
+    position: absolute;
+    top: 32px;
+    left: 50%;
+    width: 2px;
+    height: 36px;
+    background: repeating-linear-gradient(180deg, #a8a29e 0 4px, transparent 4px 8px) 0 0 / 2px 8px;
+    translate: -50% 0;
+    animation-name: bn-dash-y;
+  }
+
   .bn-open__phone {
+    flex: none;
     align-self: flex-end;
-    width: 88px;
-    height: 152px;
-    margin-bottom: -44px;
-    -webkit-mask-image: linear-gradient(#000 38%, transparent 70%);
-    mask-image: linear-gradient(#000 38%, transparent 70%);
+    width: 84px;
+    height: 150px;
+    margin-bottom: -46px;
+    -webkit-mask-image: linear-gradient(#000 40%, transparent 68%);
+    mask-image: linear-gradient(#000 40%, transparent 68%);
+  }
+
+  @keyframes bn-src {
+    0%,
+    30%,
+    100% {
+      scale: 1;
+      box-shadow:
+        0 0 0 1px rgba(28, 25, 23, 0.05),
+        0 10px 20px -10px rgba(28, 25, 23, 0.45);
+    }
+    8%,
+    22% {
+      scale: 1.07;
+      box-shadow:
+        0 0 0 3px rgba(154, 107, 63, 0.28),
+        0 12px 22px -10px rgba(28, 25, 23, 0.5);
+    }
+  }
+
+  @keyframes bn-dash-y {
+    to {
+      background-position: 0 8px;
+    }
   }
 
   .bn-open__screen::after {
@@ -1820,8 +2132,11 @@ const glass =
   }
 
   @keyframes bn-dash {
+    from {
+      background-position: 0 0;
+    }
     to {
-      background-position: 16px 0;
+      background-position: 8px 0;
     }
   }
 
@@ -1837,12 +2152,6 @@ const glass =
   }
 
   /* Ecosistema: el local al centro, conectado a todo lo que el cliente necesita. */
-  .bento__stage--bare {
-    overflow: visible;
-    background: none;
-    box-shadow: none;
-  }
-
   .bn-eco {
     position: absolute;
     top: 50%;
@@ -2188,7 +2497,9 @@ const glass =
   @media (prefers-reduced-motion: reduce) {
     .bn-open__scan,
     .bn-open__nfc path,
-    .bn-open__arrow,
+    .bn-open__src,
+    .bn-open__social,
+    .bn-open__link,
     .bn-open__menu i,
     .bn-eco__orbit,
     .bn-eco__node,
@@ -2486,128 +2797,146 @@ const glass =
     scroll-snap-align: start;
   }
 
-  .mock-plate {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border-radius: 4px;
-    background: linear-gradient(165deg, #f8f6f2, #ddd6cb 58%, #f3efe8);
-    box-shadow:
-      inset 0 1px 0 #fff,
-      inset 0 0 0 1px rgba(24, 24, 27, 0.08),
-      0 16px 18px -14px rgba(0, 0, 0, 0.5);
-    transform: perspective(520px) rotateX(10deg);
-  }
-
-  .mock-plate__number {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 34px;
-    font-weight: 700;
-    line-height: 1;
-  }
-
-  .mock-plate :global(.mock-plate__code) {
-    width: 58px;
-    height: 58px;
-  }
-
-  .mock-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 10px 8px;
-    border-radius: 2px;
-    background: linear-gradient(160deg, #f6e7c4 0%, #d7b56a 42%, #c6a15a 100%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.55),
-      inset 0 0 0 1px rgba(90, 64, 24, 0.25),
-      0 14px 18px -12px rgba(0, 0, 0, 0.55);
-  }
-
-  .mock-display :global(.mock-display__code) {
-    width: 72px;
-    height: 72px;
-  }
-
-  .mock-display__label {
-    max-width: 80px;
-    overflow: hidden;
-    color: #2a1f12;
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 10px;
-    font-weight: 700;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .mock-display__stand {
-    width: 46px;
-    height: 7px;
-    border-radius: 0 0 2px 2px;
-    background: linear-gradient(90deg, #8d6b39, #f0ddb0 48%, #8d6b39);
-    box-shadow: 0 8px 10px -8px rgba(0, 0, 0, 0.6);
-  }
-
-  .mock-bag {
+  /* Fotos reales de cada formato; el QR y el nombre del local se imprimen encima. */
+  .qr-photo {
     position: relative;
-    width: 86px;
-    height: 104px;
-    margin-top: 22px;
-    border-radius: 2px 2px 4px 4px;
-    background: linear-gradient(90deg, #c9a67a 0 8px, #e0c39a 8px 78px, #c9a67a 78px);
-    box-shadow:
-      inset 0 0 0 1px rgba(90, 60, 30, 0.12),
-      0 16px 18px -14px rgba(0, 0, 0, 0.5);
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #e7e2da;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.05);
+    container-type: inline-size;
   }
 
-  .mock-bag::before {
-    content: '';
-    position: absolute;
-    top: -16px;
-    left: 18px;
-    width: 50px;
-    height: 22px;
-    border: 3px solid #b89268;
-    border-bottom: 0;
-    border-radius: 18px 18px 0 0;
-  }
-
-  .mock-bag__sticker {
-    position: absolute;
-    top: 34px;
-    left: 50%;
-    padding: 4px;
-    border-radius: 9px;
-    background: #fff;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-    transform: translateX(-50%) rotate(-6deg);
-  }
-
-  .mock-bag__sticker :global(.mock-bag__code) {
+  .qr-photo img {
     display: block;
-    width: 62px;
-    height: 62px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
-  .qr-stage {
+  .qr-print {
+    position: absolute;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 170px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #efece7 0%, #efece7 62%, #d9d1c5 62%, #cfc5b6 100%);
-    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.05);
-    overflow: hidden;
+    gap: 3cqw;
+    padding: 4cqw;
+    text-align: center;
   }
 
-  .qr-stage--glass {
-    background:
-      linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 42%, transparent 54%),
-      linear-gradient(180deg, #b9c6cc, #8e9ea6);
+  .qr-print :global(.qr-print__code) {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    flex: 1;
   }
+
+  .qr-print__label,
+  .qr-print__name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 3.4cqw;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .qr-print--tent,
+  .qr-print--coaster,
+  .qr-print--display,
+  .qr-print--bag,
+  .qr-print--plate {
+    mix-blend-mode: multiply;
+  }
+
+  .qr-print--tent {
+    padding: 6cqw 5cqw;
+    color: #1c1917;
+  }
+
+  .qr-print--tent .qr-print__label {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 3.4cqw;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .qr-print--nfc {
+    gap: 5cqw;
+    color: #efe8dc;
+    opacity: 0.9;
+  }
+
+  .qr-print--nfc svg {
+    width: 34%;
+    height: auto;
+  }
+
+  .qr-print--coaster {
+    padding: 13cqw;
+    opacity: 0.82;
+  }
+
+  .qr-print--vinyl {
+    padding: 5cqw;
+    color: #d9c29a;
+  }
+
+  .qr-print--plate {
+    flex-direction: row;
+    gap: 6cqw;
+    padding: 3.5cqw 6cqw;
+    color: #18181b;
+  }
+
+  .qr-print--plate .qr-print__number {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 17cqw;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .qr-print--plate :global(.qr-print__code) {
+    width: auto;
+    height: 100%;
+    flex: none;
+    aspect-ratio: 1;
+  }
+
+  .qr-print--display {
+    padding: 5cqw 4cqw;
+    color: #2a1f12;
+  }
+
+  .qr-print--display .qr-print__name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 3.6cqw;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .qr-print--bag {
+    padding: 2.5cqw;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   .qr-mockups__title {
     margin-top: 8px;
@@ -2622,125 +2951,17 @@ const glass =
     line-height: 1.35;
   }
 
-  .mock-tent {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    width: 96px;
-    margin-top: 4px;
-    padding: 12px 8px 10px;
-    border-radius: 2px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
-    box-shadow:
-      inset 1px 0 0 #fff,
-      inset -1px 0 0 rgba(24, 24, 27, 0.06),
-      0 16px 20px -14px rgba(0, 0, 0, 0.45);
-    transform: perspective(560px) rotateY(-10deg);
-  }
 
-  .mock-tent__label {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
 
-  .mock-tent :global(.mock-tent__code) {
-    width: 70px;
-    height: 70px;
-  }
 
-  .mock-nfc {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 96px;
-    height: 120px;
-    border-radius: 16px;
-    background: linear-gradient(165deg, #2c2c30, #121214 72%);
-    color: #f6f1e8;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      0 16px 18px -14px rgba(0, 0, 0, 0.55);
-  }
 
-  .mock-nfc__mark {
-    width: 36px;
-    height: 36px;
-  }
 
-  .mock-nfc__name {
-    max-width: 78px;
-    overflow: hidden;
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
 
-  .mock-tent__base {
-    width: 112px;
-    height: 9px;
-    margin-top: -1px;
-    border-radius: 1px;
-    background: linear-gradient(180deg, #d2b48c, #8d6844 42%, #6d4d30);
-    box-shadow: 0 8px 10px -7px rgba(0, 0, 0, 0.5);
-  }
 
-  .mock-coaster {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 112px;
-    height: 112px;
-    margin-top: 10px;
-    border-radius: 999px;
-    background: radial-gradient(circle at 32% 28%, #ead3b0, #c79a66 48%, #a67c49);
-    box-shadow:
-      inset 0 0 0 7px rgba(92, 60, 30, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4),
-      0 18px 16px -14px rgba(0, 0, 0, 0.55);
-    transform: perspective(480px) rotateX(20deg);
-  }
 
-  .mock-coaster :global(.mock-coaster__code) {
-    width: 78px;
-    height: 78px;
-    opacity: 0.85;
-  }
 
-  .mock-sticker {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 8px 7px;
-    border-radius: 4px;
-    background: rgba(16, 16, 18, 0.92);
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.35),
-      0 12px 18px -12px rgba(0, 0, 0, 0.55);
-  }
 
-  .mock-sticker :global(.mock-sticker__code) {
-    width: 82px;
-    height: 82px;
-  }
 
-  .mock-sticker__label {
-    color: #d9c29a;
-    font-size: 8px;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
 
   @media (max-width: 480px) {
     .qr-hero {
@@ -2894,6 +3115,495 @@ const glass =
     font-weight: 500;
   }
 
+  .shop {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06);
+  }
+
+  .shop__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px 8px;
+  }
+
+  .shop__avatar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: #18181b;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .shop__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shop__cart {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: #f4f4f5;
+  }
+
+  .shop__cart svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .shop__cart b {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #c2410c;
+    color: #fff;
+    font-size: 10.5px;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  .shop__cart b.is-bump {
+    animation: shop-bump 0.35s ease;
+  }
+
+  @keyframes shop-bump {
+    40% {
+      scale: 1.35;
+    }
+  }
+
+  .shop__tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px 14px 12px;
+    border-bottom: 1px solid rgba(24, 24, 27, 0.06);
+  }
+
+  .shop__tabs span {
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: #71717a;
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+
+  .shop__tabs .is-active {
+    background: #18181b;
+    color: #fff;
+  }
+
+  .shop__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 12px 12px 14px;
+    list-style: none;
+  }
+
+  .shop__photo {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    background: #f4f1ec;
+  }
+
+  @media (max-height: 760px) {
+    .shop__photo {
+      aspect-ratio: 4 / 3;
+    }
+  }
+
+  /* Siempre cuadrada: las zonas de impresión se miden sobre la foto completa. */
+  .shop__art {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    aspect-ratio: 1;
+    container-type: inline-size;
+    translate: 0 -50%;
+  }
+
+  .shop__art > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .shop__print {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    mix-blend-mode: multiply;
+  }
+
+  .shop__print img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    opacity: 0.9;
+  }
+
+  .shop__brand {
+    color: #1c1917;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 4.2cqw;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.05;
+    text-align: center;
+    text-transform: uppercase;
+    text-wrap: balance;
+    opacity: 0.88;
+  }
+
+  .shop__item-name {
+    margin-top: 7px;
+    overflow: hidden;
+    font-size: 12.5px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shop__item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+  }
+
+  .shop__price {
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .shop__add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #18181b;
+    color: #fff;
+    font-size: 17px;
+    line-height: 1;
+    transition: scale 0.15s ease;
+  }
+
+  .shop__add:active {
+    scale: 0.88;
+  }
+
+  .shop__checkout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 12px;
+    padding: 0 16px;
+    height: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #18181b;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    opacity: 0;
+    transition:
+      height 0.3s ease,
+      margin 0.3s ease,
+      opacity 0.3s ease;
+  }
+
+  .shop.has-items .shop__checkout {
+    height: 46px;
+    margin-bottom: 12px;
+    opacity: 1;
+  }
+
+  .loyal {
+    display: grid;
+    gap: 12px;
+  }
+
+  .loyal__scene {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 22px 16px;
+    border-radius: 24px;
+    background:
+      radial-gradient(70% 55% at 18% 8%, rgba(255, 255, 255, 0.95), transparent 65%),
+      radial-gradient(65% 70% at 95% 95%, rgba(14, 165, 233, 0.55), transparent 70%),
+      radial-gradient(60% 60% at 0% 100%, rgba(45, 212, 191, 0.45), transparent 70%),
+      linear-gradient(165deg, #e6f7fb, #a9dcef 55%, #6bbbdc);
+  }
+
+  /* Reflejos de luz en el agua: ruido SVG umbralizado que se desplaza lento. */
+  .loyal__scene::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0125 0.025' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 10 -4.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+    opacity: 0.55;
+    animation: loyal-water 26s linear infinite;
+  }
+
+  @keyframes loyal-water {
+    to {
+      background-position: 320px 160px;
+    }
+  }
+
+  .loyal__card {
+    position: relative;
+    overflow: hidden;
+    padding: 18px 18px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 20px;
+    background:
+      linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.35) 45%, transparent 60%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.2));
+    color: #0f2a3d;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.35),
+      0 24px 44px -22px rgba(12, 74, 110, 0.55);
+    backdrop-filter: blur(14px) saturate(170%);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+  }
+
+  .loyal__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .loyal__club {
+    color: rgba(15, 42, 61, 0.55);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .loyal__name {
+    margin-top: 2px;
+    overflow: hidden;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .loyal__member {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: right;
+  }
+
+  .loyal__member span {
+    color: rgba(15, 42, 61, 0.5);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+  }
+
+  .loyal__stamps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px 8px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .loyal__stamp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    color: rgba(15, 42, 61, 0.16);
+  }
+
+  .loyal__stamp img {
+    max-width: 94%;
+    max-height: 74%;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.13;
+    mix-blend-mode: multiply;
+    transition:
+      opacity 0.3s ease,
+      filter 0.3s ease;
+  }
+
+  .loyal__mark {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .loyal__stamp.is-on {
+    color: #12395c;
+  }
+
+  .loyal__stamp.is-on img {
+    filter: none;
+    opacity: 0.92;
+  }
+
+  .loyal__stamp.is-on:nth-child(3n + 1) {
+    rotate: -9deg;
+  }
+
+  .loyal__stamp.is-on:nth-child(3n + 2) {
+    rotate: 6deg;
+  }
+
+  .loyal__stamp.is-on:nth-child(3n) {
+    rotate: -3deg;
+  }
+
+  .loyal__stamp.is-new {
+    animation: loyal-stamp 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+
+  @keyframes loyal-stamp {
+    from {
+      scale: 1.7;
+      opacity: 0;
+    }
+  }
+
+  .loyal__stamp--prize {
+    color: rgba(180, 83, 9, 0.45);
+  }
+
+  .loyal__stamp--prize svg {
+    width: 52%;
+    height: 52%;
+  }
+
+  .loyal__stamp--prize.is-on {
+    color: #b45309;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.55));
+  }
+
+  .loyal__status {
+    position: relative;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(15, 42, 61, 0.12);
+    color: rgba(15, 42, 61, 0.72);
+    font-size: 13px;
+  }
+
+  .loyal__status :global(b) {
+    color: #0f2a3d;
+    font-weight: 600;
+  }
+
+  .loyal.is-done .loyal__status :global(b) {
+    color: #b45309;
+  }
+
+  .loyal__btn {
+    height: 46px;
+    border-radius: 14px;
+    background: #18181b;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    transition: scale 0.15s ease;
+  }
+
+  .loyal__btn:active {
+    scale: 0.98;
+  }
+
+  .loyal__perks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+    margin: 0;
+    padding: 14px 6px 4px;
+    list-style: none;
+  }
+
+  @media (max-width: 420px) {
+    .loyal__perks {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+  }
+
+  .loyal__perks li {
+    position: relative;
+    padding-left: 20px;
+    color: #52525b;
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+
+  .loyal__perks li::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 0;
+    width: 13px;
+    height: 13px;
+    border-radius: 999px;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E")
+        center / 9px no-repeat,
+      #0369a1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shop__cart b.is-bump,
+    .loyal__scene::before,
+    .loyal__stamp.is-new {
+      animation: none;
+    }
+  }
+
   .feat {
     display: flex;
     flex-direction: column;
@@ -2902,6 +3612,75 @@ const glass =
     border-radius: 22px;
     border: 1px solid color-mix(in oklab, var(--color-white) 10%, transparent);
     background: color-mix(in oklab, var(--color-white) 4%, transparent);
+  }
+
+  /* En móvil las funciones van en carrusel con imán; asoma la siguiente tarjeta. */
+  @media (max-width: 639px) {
+    .feat-carousel {
+      --bleed: 16px;
+      display: flex;
+      gap: 12px;
+      margin-inline: calc(var(--bleed) * -1);
+      padding: 4px var(--bleed) 56px;
+      margin-bottom: -46px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-padding-inline: var(--bleed);
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+    }
+
+    .feat-carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .feat-carousel > li {
+      flex: 0 0 84%;
+      scroll-snap-align: center;
+    }
+  }
+
+  @media (min-width: 400px) and (max-width: 639px) {
+    .feat-carousel {
+      --bleed: 24px;
+    }
+  }
+
+  .feat-dots {
+    position: relative;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  @media (max-width: 639px) {
+    .feat-dots {
+      display: flex;
+    }
+  }
+
+  .feat-dots button {
+    position: relative;
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-zinc-500) 45%, transparent);
+    transition:
+      width 0.3s ease,
+      background-color 0.3s ease;
+  }
+
+  .feat-dots button::after {
+    content: '';
+    position: absolute;
+    inset: -10px -4px;
+  }
+
+  .feat-dots button[aria-current] {
+    width: 18px;
+    background: var(--color-zinc-300);
   }
 
   /* Tarjeta que gira: las dos caras ocupan la misma celda, así mide lo que la más alta. */
@@ -3280,35 +4059,107 @@ const glass =
     z-index: 5;
   }
 
-  .feat-open {
+  .feat__stage--map {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .feat-map {
+    position: relative;
+    width: 100%;
+    height: 112px;
+  }
+
+  @media (min-width: 640px) {
+    .feat-map {
+      height: 140px;
+    }
+  }
+
+  .feat-map__art {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .feat-map__pin {
+    position: absolute;
+    top: 46%;
+    left: 56%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-  }
-
-  .feat-open b {
-    display: block;
-    font-weight: 600;
-  }
-
-  .feat-open i {
-    display: block;
-    margin-top: 3px;
-    color: #78716c;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    background: #c2410c;
+    box-shadow: 0 8px 16px -6px rgba(124, 45, 18, 0.6);
+    color: #fff;
     font-size: 12px;
-    font-style: normal;
-    font-weight: 500;
+    font-weight: 700;
+    rotate: -45deg;
+    translate: -50% -100%;
+  }
+
+  .feat-map__pin > span {
+    rotate: 45deg;
+  }
+
+  .feat-map__pin::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: -6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(194, 65, 12, 0.35);
+    animation: feat-map-pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes feat-map-pulse {
+    from {
+      scale: 0.6;
+      opacity: 1;
+    }
+    to {
+      scale: 2.4;
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feat-map__pin::after {
+      animation: none;
+    }
+  }
+
+  .feat-map__chip {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px 5px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 6px 14px -8px rgba(28, 25, 23, 0.45);
+    color: #1c1917;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    pointer-events: none;
   }
 
   .feat-open__dot {
-    width: 8px;
-    height: 8px;
+    flex: none;
+    width: 7px;
+    height: 7px;
     border-radius: 999px;
     background: #059669;
-    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.16);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18);
   }
 
   /* Flyer del banner en un teléfono que asoma desde el borde inferior: aparece al abrir el menú, en bucle. */
@@ -3460,10 +4311,11 @@ const glass =
   }
 
   .feat-ev__flyer b {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
     line-height: 1;
+    text-transform: none;
   }
 
   .feat-ev__flyer em {
@@ -3518,7 +4370,8 @@ const glass =
   }
 
   .feat-ev__eyebrow,
-  .feat-ev__info strong {
+  .feat-ev__info strong,
+  .feat-ev__chip {
     white-space: nowrap;
   }
 
@@ -3530,8 +4383,12 @@ const glass =
     }
 
     .feat-ev__eyebrow {
-      font-size: 8.5px;
-      letter-spacing: 0.1em;
+      font-size: 8px;
+      letter-spacing: 0.06em;
+    }
+
+    .feat-ev__chip {
+      font-size: 9px;
     }
 
     .feat-ev__info strong {
@@ -3583,14 +4440,33 @@ const glass =
     height: 56px;
   }
 
+  /* Cada barra toma su color por turnos, se quedan encendidas y vuelven al gris para repetir. */
   .feat-bars span {
     flex: 1;
     border-radius: 6px 6px 2px 2px;
     background: #e4dfd8;
+    animation: feat-bar 10s ease-in-out infinite;
   }
 
-  .feat-bars span:nth-child(4) {
-    background: #059669;
+  @keyframes feat-bar {
+    0% {
+      background: #e4dfd8;
+    }
+    10%,
+    50% {
+      background: var(--bar);
+    }
+    60%,
+    100% {
+      background: #e4dfd8;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feat-bars span {
+      animation: none;
+      background: var(--bar);
+    }
   }
 
   .world {
