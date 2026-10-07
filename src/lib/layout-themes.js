@@ -8,6 +8,7 @@ export const HOME_THEME_IDS = /** @type {const} */ ([
   'sheet',     // Bottom Glass Sheet
   'split',     // Split Architecture
   'cards',     // Showcase Cards
+  'pergamino', // Pergamino Hanji
 ]);
 export const NOSOTROS_THEME_IDS = /** @type {const} */ ([
   'editorial',
@@ -28,10 +29,14 @@ export const DEFAULT_UBICACION_THEME = 'modal';
  * Normaliza home_theme DB/Admin → 4 IDs canónicos.
  * Aliases: cinematic/minimal → sheet · bento/hero → cards · split-stage → split.
  * @param {unknown} theme
- * @returns {'editorial' | 'sheet' | 'split' | 'cards'}
+ * @returns {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino'}
  */
 export function normalizeTheme(theme) {
   const clean = String(theme || '').toLowerCase().trim();
+
+  if (clean.includes('pergamino') || clean.includes('hanji') || clean.includes('scroll')) {
+    return 'pergamino';
+  }
 
   if (
     clean === 'sheet' ||
@@ -104,6 +109,7 @@ export const HOME_THEME_MAP = Object.freeze({
   sheet: 'sheet',
   split: 'split',
   cards: 'cards',
+  pergamino: 'pergamino',
   cinematic: 'sheet',
   hamburguesa: 'sheet',
   minimal: 'sheet',
@@ -141,11 +147,18 @@ export const HOME_LAYOUT_OPTIONS = Object.freeze([
     hint: 'Bento gastronómico con cards de cristal',
     navBadge: '⊞ Cards',
   },
+  {
+    id: 'pergamino-hanji',
+    theme: 'pergamino',
+    label: 'Pergamino Hanji',
+    hint: 'Pintura de tinta + rollo de papel con el índice',
+    navBadge: '卷 Rollo',
+  },
 ]);
 
 /**
  * @param {unknown} value
- * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards'}
+ * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji'}
  */
 export function normalizeHomeLayout(value) {
   const clean = String(value || '')
@@ -153,6 +166,9 @@ export function normalizeHomeLayout(value) {
     .toLowerCase()
     .replace(/[_\s]+/g, '-');
 
+  if (clean.includes('pergamino') || clean.includes('hanji') || clean.includes('scroll')) {
+    return 'pergamino-hanji';
+  }
   if (clean === 'grand-editorial' || clean === 'hero-editorial' || clean.includes('editorial')) {
     return 'grand-editorial';
   }
@@ -196,7 +212,7 @@ export function normalizeHomeLayout(value) {
 
 /**
  * @param {unknown} layoutOrTheme
- * @returns {'editorial' | 'sheet' | 'split' | 'cards'}
+ * @returns {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino'}
  */
 export function homeLayoutToTheme(layoutOrTheme) {
   const layout = normalizeHomeLayout(layoutOrTheme);
@@ -204,18 +220,20 @@ export function homeLayoutToTheme(layoutOrTheme) {
   if (layout === 'bottom-glass-sheet') return 'sheet';
   if (layout === 'split-architecture') return 'split';
   if (layout === 'showcase-cards') return 'cards';
-  return /** @type {'editorial' | 'sheet' | 'split' | 'cards'} */ (normalizeTheme(layoutOrTheme));
+  if (layout === 'pergamino-hanji') return 'pergamino';
+  return /** @type {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino'} */ (normalizeTheme(layoutOrTheme));
 }
 
 /**
  * @param {unknown} theme
- * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards'}
+ * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji'}
  */
 export function homeThemeToLayout(theme) {
   const t = normalizeTheme(theme);
   if (t === 'sheet') return 'bottom-glass-sheet';
   if (t === 'split') return 'split-architecture';
   if (t === 'cards') return 'showcase-cards';
+  if (t === 'pergamino') return 'pergamino-hanji';
   return 'grand-editorial';
 }
 
@@ -224,8 +242,8 @@ export function homeThemeToLayout(theme) {
  * @param {unknown} homeThemeRaw
  * @param {unknown} estiloNavRaw
  * @returns {{
- *   homeTheme: 'editorial' | 'sheet' | 'split' | 'cards',
- *   layout: 'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards',
+ *   homeTheme: 'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino',
+ *   layout: 'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji',
  *   estiloNavegacion: 'frontal' | 'hamburguesa' | 'app_tabs',
  * }}
  */

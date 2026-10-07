@@ -9,6 +9,7 @@ import GadgetFloatingButton from './GadgetFloatingButton.astro';
 import WelcomePopup from './WelcomePopup.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
 import HomeSheet from '../themes/home/HomeSheet.astro';
+import HomePergamino from '../themes/home/HomePergamino.astro';
 import HomeSplit from '../themes/home/HomeSplit.astro';
 import HomeCards from '../themes/home/HomeCards.astro';
 import UbicacionModal from '../themes/ubicacion/UbicacionModal.astro';
@@ -83,6 +84,8 @@ const resolvedHome = resolveHomeThemeAndNav(
     uiEstilo?.home?.nav_style,
 );
 let homeTheme = resolvedHome.homeTheme;
+/** Pergamino lleva el Wi‑Fi dentro del rollo: no duplicarlo en el botón flotante. */
+const floatingGadgets = homeTheme === 'pergamino' ? { ...gadgets, wifi: false } : gadgets;
 const estiloNavegacion = resolvedHome.estiloNavegacion;
 const ubicacionTheme = normalizeUbicacionTheme(
   ubicacionThemeProp ?? restaurante?.ubicacionTheme ?? restaurante?.ubicacion_theme,
@@ -231,6 +234,8 @@ let homeProps = {
   reservas_subtitulo:
     reservas?.subtitulo || reservas?.subtitle || 'EXPERIENCIA PREMIUM',
   reservas_link: reservas?.href || '#',
+  wifiActivo: showWifi,
+  wifiRed: restaurante?.wifi?.ssid || '',
   estiloNavegacion,
   hideCentralNav,
 };
@@ -383,6 +388,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             }
             if (homeTheme === 'split') {
               return <HomeSplit {...homeProps} />;
+            }
+            if (homeTheme === 'pergamino') {
+              return <HomePergamino {...homeProps} />;
             }
             if (homeTheme === 'cards' || homeTheme === 'bento' || homeTheme === 'hero') {
               return <HomeCards {...homeProps} />;
@@ -632,10 +640,10 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     }
 
     {
-      hasOperationalFloating ? (
+      hasOperationalGadgets(floatingGadgets) ? (
         <GadgetFloatingButton
           style={gadgetServiciosEstilo}
-          gadgets={gadgets}
+          gadgets={floatingGadgets}
           fabClass={fabOffsetClass}
         />
       ) : null
@@ -684,13 +692,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
           </svg>
         </button>
 
-        <div class="relative aspect-[4/3] max-h-[42vh] shrink-0 overflow-hidden bg-black/50 md:aspect-auto md:max-h-none md:min-h-[22rem] md:w-[46%]" data-detalle-media-std>
+        <div class="detalle-modal__media relative aspect-square max-h-[50vh] shrink-0 overflow-hidden bg-black/50 md:aspect-auto md:max-h-none md:min-h-[24rem] md:w-[50%]" data-detalle-media-std>
           <div class="detalle-modal__handle hidden" aria-hidden="true"></div>
           <img
             data-detalle-img
             src=""
             alt=""
-            class="absolute inset-0 hidden size-full object-cover object-center"
+            class="absolute inset-0 z-[1] hidden size-full object-contain object-center"
           />
           <video
             data-detalle-video
@@ -814,6 +822,18 @@ const cssAvanzadoScoped = scopeCssAvanzado(
     .detalle-modal.is-open .detalle-modal__card {
       transform: scale(1);
     }
+  }
+
+  /* La foto se ve entera (contain); el hueco sobrante se rellena con la misma foto desenfocada. */
+  .detalle-modal__media::before {
+    content: '';
+    position: absolute;
+    inset: -12%;
+    background-image: var(--detalle-img-bg, none);
+    background-size: cover;
+    background-position: center;
+    filter: blur(22px) saturate(1.15) brightness(0.7);
+    transform: scale(1.05);
   }
 
   .detalle-modal__handle {

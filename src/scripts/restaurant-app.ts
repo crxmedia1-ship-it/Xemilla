@@ -306,6 +306,9 @@
       imgEl.removeAttribute('src');
       imgEl.alt = '';
     }
+    if (mediaStdEl instanceof HTMLElement) {
+      mediaStdEl.style.removeProperty('--detalle-img-bg');
+    }
     if (videoEl instanceof HTMLVideoElement) {
       videoEl.pause();
       videoEl.classList.add('hidden');
@@ -586,6 +589,9 @@
       imgEl.src = url;
       imgEl.alt = title || 'Plato';
       imgEl.classList.remove('hidden');
+      if (mediaStdEl instanceof HTMLElement) {
+        mediaStdEl.style.setProperty('--detalle-img-bg', `url("${url.replace(/"/g, '%22')}")`);
+      }
     }
 
     modal.classList.add('is-open');
@@ -810,7 +816,12 @@
           return;
         }
 
-        const detalleBtn = target.closest('[data-open-detalle]');
+        const tapCard = target.closest('.menu-plato-item--grid-tap');
+        const detalleBtn =
+          target.closest('[data-open-detalle]') ??
+          (tapCard && !target.closest('a, button, input, select, textarea')
+            ? tapCard.querySelector('[data-open-detalle]')
+            : null);
         if (detalleBtn instanceof HTMLElement) {
           const url = detalleBtn.dataset.mediaUrl?.trim() || '';
           const title = detalleBtn.dataset.mediaTitle || 'Plato';

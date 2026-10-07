@@ -837,6 +837,8 @@
     return `$${intFormatted}.${decPart}`;
   }
 
+  const CURRENCY_STORAGE_KEY = 'xemilla:divisa';
+
   function initCurrencyEngine(panel: HTMLElement) {
     const TASA_BCV = 36.5;
     const TASA_EUR = 0.92;
@@ -863,6 +865,10 @@
       if (trigger instanceof HTMLButtonElement) trigger.dataset.currencyFace = face;
       if (triggerLabel instanceof HTMLElement) {
         triggerLabel.textContent = currency === 'BS' ? 'Bs' : currency === 'EUR' ? '€' : '$';
+        triggerLabel.getAnimations?.().forEach((a) => {
+          a.cancel();
+          a.play();
+        });
       }
       if (triggerWord instanceof HTMLElement) {
         triggerWord.textContent = currency === 'BS' ? 'VES' : currency === 'EUR' ? 'EUR' : 'USD';
@@ -928,10 +934,23 @@
 
       convertAll(currency);
       setMenuOpen(false);
+      try {
+        localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+      } catch {
+        /* almacenamiento bloqueado (modo privado) */
+      }
     };
 
     setRateHint('USD');
     syncTriggerLabel('USD');
+
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    } catch {
+      saved = null;
+    }
+    if (saved === 'BS' || saved === 'EUR') selectCurrency(saved);
 
     document.addEventListener('click', (e) => {
       if (!(e.target instanceof Node) || !switcher.contains(e.target)) {

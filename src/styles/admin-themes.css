@@ -4334,26 +4334,28 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass {
   box-shadow: none !important;
 }
 
-html.admin-panel .super-admin-dash .super-hub-card__mark:has(img[src$='.svg']) {
+/* Centrado real en la comanda; el margen lateral simétrico deja libre el botón «…». */
+html.admin-panel .super-admin-dash .super-hub-card__mark:has(img) {
   place-items: center;
   width: 100%;
-  padding-right: 1.85rem;
+  padding: 0.45rem 1.6rem 0.1rem;
   box-sizing: border-box;
 }
 
-html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img[src$='.svg']) {
+html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img) {
   width: 100%;
   height: 100%;
   max-height: 7.4rem;
 }
 
-.hub-modal .hub-ficha-stage__mark:has(img[src$='.svg']) {
-  width: min(94%, 20rem);
-  height: 72%;
+.hub-modal .hub-ficha-stage__mark:has(img) {
+  width: min(86%, 20rem);
+  height: 62%;
+  margin-top: 6%;
 }
 
 html.admin-panel .super-admin-dash .super-hub-card__mark:has(img[src$='sanza.svg']) {
-  padding-right: 0.35rem;
+  padding-inline: 0.35rem;
 }
 
 html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img[src$='sanza.svg']) {
@@ -4362,6 +4364,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img[src$='san
   max-height: none;
 }
 
+/* Isotipos cuadrados: a igual altura que un wordmark quedarían diminutos. */
+html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img.is-square-logo) {
+  height: 4.9rem;
+  max-height: none;
+}
+
+html.admin-panel .super-admin-dash .super-hub-card__face:has(img.is-square-logo) .super-hub-card__meta,
 html.admin-panel .super-admin-dash .super-hub-card__face:has(img[src$='sanza.svg']) .super-hub-card__meta {
   gap: 0;
   margin-top: 0;
@@ -4520,6 +4529,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .hub-modal .hub-ficha-stage {
   display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   aspect-ratio: 1.62 / 1;
   overflow: hidden;
@@ -4529,6 +4539,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   position: relative;
   z-index: 1;
   display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   width: min(78%, 16rem);
   height: 52%;

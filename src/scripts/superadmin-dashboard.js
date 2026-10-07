@@ -1542,6 +1542,9 @@
    */
   function inkLightLogo(img) {
     if (!(img instanceof HTMLImageElement) || !img.currentSrc) return;
+    if (img.naturalWidth && img.naturalHeight) {
+      img.classList.toggle('is-square-logo', img.naturalWidth / img.naturalHeight < 1.5);
+    }
     const probe = new Image();
     probe.crossOrigin = 'anonymous';
     probe.onload = () => {

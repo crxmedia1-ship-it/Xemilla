@@ -125,8 +125,8 @@ const reservasIsExternal = reservasLink !== '#';
 /** Subtítulos universales — sirven a cualquier restaurante (no contenido de bloque/dirección). */
 const navNosotrosLabel = 'NOSOTROS';
 const navNosotrosSubtitle = 'NUESTRA HISTORIA';
-const navUbicacionLabel = 'HORARIOS Y UBICACIÓN';
-const navUbicacionSubtitle = 'HORARIO · MAPA · REDES';
+const navUbicacionLabel = 'UBICACIÓN';
+const navUbicacionSubtitle = 'HORARIOS · MAPA · REDES';
 
 const horariosRows = Array.isArray(props?.horariosRows)
   ? props.horariosRows
@@ -367,9 +367,8 @@ const reelCopies = [0, 1, 2] as const;
         data-home-live-status
         data-ubicacion-panel
         data-horarios={horariosJson}
-        data-live-badge
       >
-        <div class="home-editorial__live inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-black/20 px-2.5 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-white/50 backdrop-blur-sm md:px-3 md:py-1.5 md:text-[0.6rem] md:tracking-[0.18em]">
+        <div data-live-badge class="home-editorial__live inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-black/20 px-2.5 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-white/50 backdrop-blur-sm md:px-3 md:py-1.5 md:text-[0.6rem] md:tracking-[0.18em]">
           <span
             class="h-1 w-1 rounded-full bg-emerald-400/70"
             data-live-dot
@@ -768,30 +767,6 @@ const reelCopies = [0, 1, 2] as const;
       padding-bottom: 0.25rem;
     }
 
-    .home-editorial__foot[data-open='true'] .home-editorial__live,
-    .home-editorial__foot.is-open .home-editorial__live {
-      color: rgba(255, 255, 255, 0.48);
-    }
-
-    .home-editorial__foot[data-open='true'] [data-live-dot],
-    .home-editorial__foot.is-open [data-live-dot] {
-      background: rgba(52, 211, 153, 0.65);
-      box-shadow: none;
-      animation: none;
-    }
-
-    .home-editorial__foot[data-open='false'] .home-editorial__live,
-    .home-editorial__foot.is-closed .home-editorial__live {
-      color: rgba(255, 255, 255, 0.42);
-      border-color: rgba(255, 255, 255, 0.05);
-    }
-
-    .home-editorial__foot[data-open='false'] [data-live-dot],
-    .home-editorial__foot.is-closed [data-live-dot] {
-      background: rgba(251, 113, 133, 0.55);
-      animation: none;
-    }
-
     .editorial-reel {
       align-self: stretch;
       width: 100%;
@@ -801,6 +776,23 @@ const reelCopies = [0, 1, 2] as const;
       padding-top: 0.35rem;
       background: transparent;
     }
+  }
+
+  .home-editorial__live[data-open='true'] {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .home-editorial__live[data-open='true'] [data-live-dot] {
+    background: rgb(52, 211, 153);
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
+  }
+
+  .home-editorial__live[data-open='false'] {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .home-editorial__live[data-open='false'] [data-live-dot] {
+    background: rgb(251, 113, 133);
   }
 
   @media (min-width: 768px) {

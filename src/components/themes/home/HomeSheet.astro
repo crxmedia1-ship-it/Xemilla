@@ -28,10 +28,12 @@ const r =
     ? (props.restaurante as Record<string, unknown>)
     : props;
 
-const { nombre, logoText, logoLetter, logoUrl, tagline, reservasCta, homeUi } =
+const { nombre, logoText, logoLetter, logoUrl, tagline, taglineSuperior, reservasCta, homeUi } =
   resolveSafeHomeProps(props);
 
-const { estiloNavegacion, efectoEntrada } = resolveHomePxSizes(homeUi || props?.homeUi);
+const { logoSizePx, estiloNavegacion, efectoEntrada } = resolveHomePxSizes(homeUi || props?.homeUi);
+const logoPx = Math.min(Math.max(logoSizePx || 160, 120), 220);
+const eyebrow = String(taglineSuperior || props?.tagline_superior || r?.taglineSuperior || '').trim();
 
 const navFrontal = estiloNavegacion === 'frontal';
 const navAppTabs = estiloNavegacion === 'app_tabs';
@@ -46,8 +48,15 @@ const taglineDisplay = String(tagline || props?.eslogan || r?.eslogan || '').tri
 const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
 const reservasIsExternal = reservasLink !== '#';
 
+const horariosRows = Array.isArray(props?.horariosRows)
+  ? props.horariosRows
+  : Array.isArray(r?.horariosRows)
+    ? r.horariosRows
+    : [];
+const horariosJson = JSON.stringify(horariosRows);
+
 const dockClass =
-  'sheet-dock truncate cursor-pointer rounded-xl border border-white/15 bg-black/40 px-2 py-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-200 backdrop-blur-xl transition-all hover:border-white/30 hover:bg-black/60 hover:text-white active:scale-[0.97] focus:outline-none sm:text-[11px]';
+  'sheet-dock flex min-h-[3.25rem] cursor-pointer items-center justify-center truncate rounded-2xl border border-white/15 bg-black/40 px-2 text-center font-mono text-[10.5px] uppercase tracking-[0.16em] text-zinc-200 backdrop-blur-xl transition-all hover:border-white/30 hover:bg-black/60 hover:text-white active:scale-[0.97] focus:outline-none sm:text-[11px]';
 ---
 
 <div
@@ -59,55 +68,71 @@ const dockClass =
   data-home-theme="sheet"
   data-estilo-navegacion={estiloNavegacion}
 >
-  {/* 50% superior — atmósfera libre */}
-  <div class="flex min-h-0 flex-1 flex-col" aria-hidden="true" />
+  {/* Portada: identidad centrada sobre la atmósfera */}
+  <header
+    class:list={[
+      'sheet-hero flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-6 pt-[max(2.5rem,env(safe-area-inset-top))] text-center',
+      hasEntrance && 'home-enter home-enter--logo',
+    ]}
+    style={`--sheet-logo: ${logoPx}px;`}
+    data-home-header
+  >
+    {
+      eyebrow ? (
+        <p class="sheet-hero__eyebrow mb-5 font-mono text-[10px] uppercase tracking-[0.32em] text-white/70">
+          {eyebrow}
+        </p>
+      ) : null
+    }
+    <div class="sheet-hero__logo flex items-center justify-center" data-home-logo>
+      {
+        logoUrl ? (
+          <img src={logoUrl} alt={brandName} class="h-full w-full object-contain" data-home-logo />
+        ) : (
+          <span class="font-serif text-5xl font-semibold tracking-widest text-white/90" data-home-logo-fallback>
+            {logoLetter || brandName.slice(0, 1)}
+          </span>
+        )
+      }
+    </div>
+    <h1
+      class="sheet-hero__title mt-6 font-serif font-medium uppercase text-white"
+      data-home-titulo
+    >
+      {brandName}
+    </h1>
+    {
+      taglineDisplay ? (
+        <p class="mt-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-white/65 sm:text-xs" data-home-eslogan>
+          {taglineDisplay}
+        </p>
+      ) : null
+    }
+  </header>
 
-  {/* 50% inferior — glass sheet */}
+  {/* Bandeja de acciones */}
   {
     navFrontal ? (
       <div
         class:list={[
-          'mx-auto w-full max-w-lg',
+          'mx-auto w-full max-w-lg sm:px-4 sm:pb-6',
           hasEntrance && 'home-enter home-enter--botones',
         ]}
         data-home-menu
       >
-        <div class="flex w-full flex-col gap-4 rounded-t-[2.5rem] border-t border-white/20 bg-zinc-950/75 p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl sm:rounded-3xl sm:border sm:p-8">
-          {/* Header interno */}
-          <div class="flex items-center gap-3" data-home-header>
-            <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 sm:h-12 sm:w-12"
-              data-home-logo
-            >
-              {
-                logoUrl ? (
-                  <img src={logoUrl} alt={brandName} class="h-full w-full object-contain p-1" data-home-logo />
-                ) : (
-                  <span class="text-xs font-semibold tracking-widest text-white/80" data-home-logo-fallback>
-                    {logoLetter || brandName.slice(0, 1)}
-                  </span>
-                )
-              }
-            </div>
-            <div class="min-w-0 flex-1">
-              <p
-                class="truncate font-serif text-sm font-medium uppercase tracking-[0.18em] text-white sm:text-base"
-                data-home-titulo
+        <div class="sheet-tray flex w-full flex-col gap-3.5 rounded-t-[2rem] border-t border-white/20 bg-zinc-950/75 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl sm:rounded-3xl sm:border sm:p-7">
+          <span class="sheet-tray__handle mx-auto h-1 w-10 rounded-full bg-white/25 sm:hidden" aria-hidden="true" />
+          <div class="flex items-center justify-between gap-3">
+            <p class="font-mono text-[10px] uppercase tracking-[0.24em] text-white/55">Bienvenido</p>
+            <div class="shrink-0" data-home-live-status data-horarios={horariosJson}>
+              <span
+                class="sheet-live inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] tracking-[0.12em]"
+                data-live-badge
               >
-                {brandName}
-              </p>
-              {
-                taglineDisplay ? (
-                  <p class="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400" data-home-eslogan>
-                    {taglineDisplay}
-                  </p>
-                ) : null
-              }
+                <span class="sheet-live__dot h-1.5 w-1.5 rounded-full" data-live-dot aria-hidden="true" />
+                <span data-live-label>HORARIO</span>
+              </span>
             </div>
-            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-[10px] text-emerald-400">
-              <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />
-              ABIERTO
-            </span>
           </div>
 
           {/* CTA Menú */}
@@ -115,7 +140,7 @@ const dockClass =
             type="button"
             data-tab-trigger="menu"
             data-open-section="menu"
-            class="sheet-cta flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/25 bg-white/10 px-6 py-4 font-serif text-sm uppercase tracking-[0.2em] text-white shadow-lg transition-all hover:bg-white/20 focus:outline-none active:scale-[0.97] active:bg-white/25"
+            class="sheet-cta flex min-h-[3.75rem] w-full cursor-pointer items-center justify-between rounded-2xl border border-white/25 bg-white/10 px-6 font-serif text-[0.95rem] uppercase tracking-[0.2em] text-white shadow-lg transition-all hover:bg-white/20 focus:outline-none active:scale-[0.97] active:bg-white/25"
           >
             <span>EL MENÚ</span>
             <span aria-hidden="true">↗</span>
@@ -162,10 +187,93 @@ const dockClass =
   }
 </div>
 
+<script>
+  import { refreshUbicacionLiveStatus } from '../../../lib/ubicacion-live-client.js';
+
+  function initSheetLiveStatus() {
+    document.querySelectorAll('.home-sheet [data-home-live-status]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      refreshUbicacionLiveStatus(el);
+      if (el.dataset.liveInterval === '1') return;
+      el.dataset.liveInterval = '1';
+      window.setInterval(() => refreshUbicacionLiveStatus(el), 60_000);
+    });
+  }
+
+  initSheetLiveStatus();
+  document.addEventListener('astro:page-load', initSheetLiveStatus);
+</script>
+
 <style>
+  .sheet-hero__logo {
+    width: min(var(--sheet-logo, 168px), 46vw, 26dvh);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.55));
+  }
+
+  .sheet-hero__title {
+    font-size: clamp(1.9rem, 1.3rem + 3.2vw, 3.2rem);
+    letter-spacing: 0.22em;
+    margin-right: -0.22em;
+    line-height: 1.05;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  }
+
+  .sheet-hero__eyebrow {
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+  }
+
+  @media (max-height: 640px) {
+    .sheet-hero__title {
+      margin-top: 0.75rem;
+      font-size: 1.6rem;
+    }
+    .sheet-hero__eyebrow {
+      margin-bottom: 0.75rem;
+    }
+  }
+
   .sheet-cta,
   .sheet-dock {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .sheet-live {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .sheet-live__dot {
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  .sheet-live[data-open='true'] {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.1);
+    color: rgb(52, 211, 153);
+  }
+
+  .sheet-live[data-open='true'] .sheet-live__dot {
+    opacity: 1;
+    animation: sheet-live-pulse 2s ease-in-out infinite;
+  }
+
+  .sheet-live[data-open='false'] {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+    color: rgb(248, 113, 113);
+  }
+
+  .sheet-live[data-open='false'] .sheet-live__dot {
+    opacity: 1;
+  }
+
+  @keyframes sheet-live-pulse {
+    50% {
+      opacity: 0.35;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .sheet-cta,
