@@ -86,16 +86,15 @@ const featured: NavItem = {
 
 const tiles: NavItem[] = [
   ...(showReservas
-    ? [{ id: 'reservas', label: 'Pedidos y reservas', ko: '주문', subtitle: 'Delivery · mesa', img: `${ICO}/ico-pedidos-alpha.png`, kind: 'reservas' as const }]
+    ? [{ id: 'reservas', label: 'Pedidos y reservas', ko: '주문·예약', subtitle: 'Delivery · mesa', img: `${ICO}/ico-pedidos-alpha.png`, kind: 'reservas' as const }]
     : []),
   { id: 'nosotros', label: 'Nosotros', ko: '이야기', subtitle: 'Nuestra historia', img: `${ICO}/ico-nosotros-alpha.png`, kind: 'section' },
   { id: 'ubicacion', label: 'Ubicación', ko: '오시는 길', subtitle: 'Horarios · mapa', img: `${ICO}/ico-ubicacion-alpha.png`, kind: 'section' },
   ...(showWifi
-    ? [{ id: 'wifi', label: 'Wi‑Fi', ko: '와이파이', subtitle: wifiRed || 'Conéctate', kind: 'section' as const }]
+    ? [{ id: 'wifi', label: 'Wi‑Fi', ko: '와이파이', subtitle: wifiRed || 'Conéctate', img: `${ICO}/ico-wifi-alpha.png`, kind: 'section' as const }]
     : []),
 ];
 
-const tileCols = tiles.length === 3 ? 3 : Math.min(tiles.length, 2);
 
 const koGlyphs = Array.from(
   new Set(['영업마감안내', featured.ko, ...tiles.map((t) => t.ko)].join('').replace(/\s/g, '')),
@@ -137,7 +136,12 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
         </p>
       ) : null
     }
-    <div class="perg-hero__logo" data-home-logo>
+    <div
+      class:list={['perg-hero__logo', logoUrl && 'perg-hero__logo--lit']}
+      style={logoUrl ? `--perg-logo-mask: url('${logoUrl}');` : undefined}
+      data-home-logo
+    >
+      {logoUrl ? <img src={logoUrl} alt="" aria-hidden="true" class="perg-hero__glow" /> : null}
       {
         logoUrl ? (
           <img src={logoUrl} alt={brandName} class="relative z-[1] h-full w-full object-contain" data-home-logo />
@@ -171,7 +175,18 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
   {
     navFrontal ? (
       <nav class="perg-scroll" aria-label={`Navegación ${brandName}`} data-home-menu>
-        <span class="perg-rod perg-rod--top" aria-hidden="true" />
+        <div class="perg-cord" aria-hidden="true">
+          <svg class="perg-cord__line" viewBox="0 0 100 20" preserveAspectRatio="none">
+            <path class="perg-cord__base" d="M0 20 L50 1.2 L100 20" />
+            <path class="perg-cord__twist" d="M0 20 L50 1.2 L100 20" />
+          </svg>
+          <span class="perg-nail" />
+        </div>
+        <div class="perg-hang">
+        <span class="perg-knot perg-knot--l" aria-hidden="true" />
+        <span class="perg-knot perg-knot--r" aria-hidden="true" />
+        <span class="perg-tassel perg-tassel--l" aria-hidden="true" />
+        <span class="perg-tassel perg-tassel--r" aria-hidden="true" />
         <div class="perg-mount">
           <div class="perg-paper">
             <button
@@ -196,7 +211,8 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
               <circle cx="150" cy="7" r="3.2" />
             </svg>
 
-            <ul class="perg-tiles" style={`--perg-cols: ${tileCols};`}>
+            <div class="perg-carousel" data-perg-carousel>
+            <ul class="perg-tiles" data-perg-track>
               {tiles.map((item) => {
                 const inner = (
                   <>
@@ -249,10 +265,24 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
                 );
               })}
             </ul>
+            {tiles.length > 1 ? (
+              <div class="perg-dots" role="tablist" aria-label="Secciones">
+                {tiles.map((item, i) => (
+                  <button
+                    type="button"
+                    class="perg-dot"
+                    data-perg-dot={i}
+                    aria-label={item.label}
+                    aria-selected={i === 0 ? 'true' : 'false'}
+                  />
+                ))}
+              </div>
+            ) : null}
+            </div>
 
           </div>
         </div>
-        <span class="perg-rod perg-rod--bottom" aria-hidden="true" />
+        </div>
       </nav>
     ) : null
   }
@@ -271,8 +301,78 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     });
   }
 
-  initPergaminoLiveStatus();
-  document.addEventListener('astro:page-load', initPergaminoLiveStatus);
+  function initPergaminoCarousel() {
+    document.querySelectorAll('.home-pergamino [data-perg-carousel]').forEach((root) => {
+      if (!(root instanceof HTMLElement) || root.dataset.ready === '1') return;
+      root.dataset.ready = '1';
+      const track = root.querySelector('[data-perg-track]');
+      if (!(track instanceof HTMLElement)) return;
+      const slides = Array.from(track.children) as HTMLElement[];
+      const dots = Array.from(root.querySelectorAll<HTMLElement>('[data-perg-dot]'));
+
+      const setActive = (index: number) => {
+        slides.forEach((slide, i) => slide.classList.toggle('is-active', i === index));
+        dots.forEach((dot, i) => dot.setAttribute('aria-selected', i === index ? 'true' : 'false'));
+      };
+
+      const nearest = () => {
+        const center = track.scrollLeft + track.clientWidth / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        slides.forEach((slide, i) => {
+          const dist = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = i;
+          }
+        });
+        return best;
+      };
+
+      const goTo = (index: number, behavior: ScrollBehavior = 'smooth') => {
+        const slide = slides[index];
+        if (!slide) return;
+        track.scrollTo({ left: slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2, behavior });
+        setActive(index);
+      };
+
+      let raf = 0;
+      track.addEventListener(
+        'scroll',
+        () => {
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(() => setActive(nearest()));
+        },
+        { passive: true },
+      );
+
+      dots.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
+
+      /* Un toque en una tarjeta lateral la centra en vez de abrir la sección. */
+      slides.forEach((slide, i) => {
+        slide.addEventListener(
+          'click',
+          (event) => {
+            if (slide.classList.contains('is-active')) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            goTo(i);
+          },
+          { capture: true },
+        );
+      });
+
+      goTo(0, 'instant');
+    });
+  }
+
+  function initPergamino() {
+    initPergaminoLiveStatus();
+    initPergaminoCarousel();
+  }
+
+  initPergamino();
+  document.addEventListener('astro:page-load', initPergamino);
 </script>
 
 <style is:global>
@@ -290,7 +390,9 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     --perg-ink: #1c1915;
     --perg-red: var(--color-primario, #b3191c);
     --perg-gold: #d8bd7a;
-    --perg-rod-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_900/v1791357775/xemilla/themes/pergamino/rodillo.png');
+    --perg-cord-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_900/v1791364986/xemilla/themes/pergamino/perg-cord.png');
+    --perg-knot-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_120/v1791364985/xemilla/themes/pergamino/perg-knot.png');
+    --perg-tassel-src: url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_120/v1791364984/xemilla/themes/pergamino/perg-tassel.png');
     --perg-silk-src: var(
       --perg-silk-img,
       url('https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_520/v1791357777/xemilla/themes/pergamino/seda.jpg')
@@ -323,22 +425,48 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     aspect-ratio: 1;
   }
 
-  .perg-hero__logo::before {
-    content: '';
+  /* Resplandor en los propios colores del logo: copia desenfocada detrás */
+  .perg-hero__glow {
     position: absolute;
-    inset: -40%;
-    border-radius: 50%;
-    background: radial-gradient(
-      circle,
-      color-mix(in srgb, var(--perg-gold) 28%, transparent) 0%,
-      color-mix(in srgb, var(--perg-gold) 9%, transparent) 42%,
-      transparent 68%
-    );
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: blur(16px) saturate(2.4) brightness(1.7);
+    opacity: 0.75;
+    transform: scale(1.15);
+    mix-blend-mode: screen;
     pointer-events: none;
+    animation: perg-glow 4.8s ease-in-out infinite;
   }
 
-  .perg-hero__logo img {
-    filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.55));
+  .perg-hero__logo img[data-home-logo] {
+    filter: brightness(1.1) saturate(1.2) drop-shadow(0 0 5px rgba(255, 255, 255, 0.28))
+      drop-shadow(0 10px 22px rgba(0, 0, 0, 0.5));
+  }
+
+  /* Luz interior: un núcleo claro recortado con la silueta del logo */
+  .perg-hero__logo--lit::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: radial-gradient(circle at 50% 42%, rgba(255, 252, 240, 0.75), rgba(255, 252, 240, 0.12) 46%, transparent 70%);
+    -webkit-mask: var(--perg-logo-mask) center / contain no-repeat;
+    mask: var(--perg-logo-mask) center / contain no-repeat;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+    animation: perg-glow 4.8s ease-in-out infinite;
+  }
+
+  @keyframes perg-glow {
+    0%,
+    100% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 0.95;
+    }
   }
 
   .perg-hero__title {
@@ -378,22 +506,113 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     filter: drop-shadow(0 28px 30px rgba(0, 0, 0, 0.6)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
   }
 
-  .perg-rod {
+  /* Cordón de seda roja colgado de un clavo de latón (sin varillas) */
+  .perg-cord {
     position: relative;
     z-index: 3;
-    display: block;
     flex-shrink: 0;
-    margin: 0 -0.35rem;
-    aspect-ratio: 1220 / 97;
-    background: var(--perg-rod-src) center / 100% 100% no-repeat;
+    align-self: center;
+    width: calc(100% - 1.5rem);
+    height: clamp(1.5rem, 4.6svh, 2.3rem);
+    margin-bottom: -1px;
   }
 
-  .perg-rod--top {
-    margin: 0 0.4rem -0.35rem;
+  .perg-cord__line {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
-  .perg-rod--bottom {
-    margin-top: -0.55rem;
+  .perg-cord__base {
+    stroke: color-mix(in srgb, var(--perg-red) 78%, #000);
+    stroke-width: 1.2px;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.85;
+  }
+
+  .perg-cord__twist {
+    stroke: color-mix(in srgb, var(--perg-red) 55%, #fff);
+    stroke-width: 0.5px;
+    stroke-dasharray: 1.5 2.5;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.45;
+  }
+
+  /* Clavo de cabeza abombada; el cordón cuelga de él */
+  .perg-nail {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 0.62rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    translate: -50% -42%;
+    background:
+      radial-gradient(circle at 34% 30%, #fff6d6 0 8%, transparent 26%),
+      radial-gradient(circle at 50% 50%, #c9a25a 0, #8d6a2c 55%, #4a3512 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 240, 200, 0.15) inset,
+      0 2px 3px rgba(0, 0, 0, 0.65),
+      0 0 0 1px rgba(0, 0, 0, 0.35);
+  }
+
+  .perg-hang {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0 0.75rem clamp(2.2rem, 7svh, 3.4rem);
+  }
+
+  /* Nudos maedeup en las esquinas superiores, donde se amarra el cordón */
+  .perg-knot {
+    position: absolute;
+    z-index: 4;
+    top: -1.05rem;
+    width: 1.1rem;
+    aspect-ratio: 101 / 160;
+    background: var(--perg-knot-src) center / contain no-repeat;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+  }
+
+  .perg-knot--l {
+    left: 0;
+    transform: translateX(-50%);
+  }
+
+  .perg-knot--r {
+    right: 0;
+    transform: translateX(50%);
+  }
+
+  /* Borlas rojas colgando de las esquinas inferiores */
+  .perg-tassel {
+    position: absolute;
+    z-index: 4;
+    top: calc(100% - 0.7rem);
+    height: clamp(3.2rem, 10svh, 5rem);
+    aspect-ratio: 260 / 1112;
+    background: var(--perg-tassel-src) center top / contain no-repeat;
+    filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.45));
+    transform-origin: 50% 0;
+  }
+
+  .perg-tassel--l {
+    left: 0;
+    translate: -50% 0;
+    rotate: 2deg;
+  }
+
+  .perg-tassel--r {
+    right: 0;
+    translate: 50% 0;
+    rotate: -2deg;
   }
 
   /* Montura de seda (jangjeong): bandas arriba/abajo + bordes laterales finos */
@@ -403,7 +622,6 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     flex: 1 1 auto;
     flex-direction: column;
     min-height: 0;
-    margin: 0 0.75rem;
     padding: clamp(0.9rem, 3svh, 2.2rem) 0.55rem clamp(1rem, 3.4svh, 2.4rem);
     container: perg-mount / size;
     background:
@@ -498,7 +716,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
   }
 
   .perg-feature__img {
-    height: clamp(2.2rem, 19cqh, 8.5rem);
+    height: clamp(2.6rem, 21cqh, 8.5rem);
     width: auto;
     max-width: 70%;
   }
@@ -568,14 +786,53 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     fill: var(--perg-red);
   }
 
-  .perg-tiles {
-    container-type: inline-size;
-    display: grid;
-    grid-template-columns: repeat(var(--perg-cols, 3), minmax(0, 1fr));
-    align-items: start;
-    gap: clamp(0.5rem, 2.4cqh, 1.1rem) 0.3rem;
-    width: 100%;
+  /* Carrusel: una sección grande al centro y las vecinas asomando */
+  .perg-carousel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.35rem, 1.6cqh, 0.7rem);
+    width: calc(100% + 1.9rem);
+    margin-inline: -0.95rem;
     flex-shrink: 0;
+  }
+
+  .perg-tiles {
+    position: relative;
+    container-type: inline-size;
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  }
+
+  .perg-tiles::-webkit-scrollbar {
+    display: none;
+  }
+
+  .perg-tiles::before,
+  .perg-tiles::after {
+    content: '';
+    flex: 0 0 27%;
+  }
+
+  .perg-tiles > li {
+    flex: 0 0 46%;
+    scroll-snap-align: center;
+    opacity: 0.55;
+    transform: scale(0.82);
+    transition:
+      opacity 0.35s ease,
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .perg-tiles > li.is-active {
+    opacity: 1;
+    transform: none;
   }
 
   .perg-tile {
@@ -584,8 +841,28 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
   }
 
   .perg-tile__img {
-    height: clamp(2.4rem, 19cqh, 6.5rem);
+    height: clamp(2.8rem, 24cqh, 8rem);
     width: 100%;
+  }
+
+  .perg-dots {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .perg-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: rgba(28, 25, 21, 0.28);
+    transition:
+      width 0.3s ease,
+      background-color 0.3s ease;
+  }
+
+  .perg-dot[aria-selected='true'] {
+    width: 1.2rem;
+    background: var(--perg-red);
   }
 
   .perg-tile__svg {
@@ -613,13 +890,12 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
 
   .perg-tile__label {
     max-width: 100%;
-    font-size: clamp(0.6rem, 4.4cqi, 1rem);
+    font-size: clamp(0.7rem, 5cqi, 1.1rem);
     font-weight: 600;
     line-height: 1.2;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     text-wrap: balance;
-    min-height: 2.4em;
   }
 
   @container perg-mount (max-height: 330px) {
@@ -718,8 +994,8 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     animation: perg-unroll 1.1s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .home-pergamino--anim .perg-rod--bottom {
-    animation: perg-drop 1.1s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  .home-pergamino--anim .perg-tassel {
+    animation: perg-sway 1.6s 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .home-pergamino--anim .perg-paper > * {
@@ -735,13 +1011,17 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     }
   }
 
-  @keyframes perg-drop {
+  @keyframes perg-sway {
     from {
       opacity: 0;
-      transform: translateY(-40svh);
+      transform: rotate(9deg);
     }
-    12% {
+    35% {
       opacity: 1;
+      transform: rotate(-5deg);
+    }
+    65% {
+      transform: rotate(2deg);
     }
     to {
       opacity: 1;
@@ -763,7 +1043,9 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
   @media (prefers-reduced-motion: reduce) {
     .home-pergamino--anim .perg-hero,
     .home-pergamino--anim .perg-mount,
-    .home-pergamino--anim .perg-rod--bottom,
+    .home-pergamino--anim .perg-tassel,
+    .perg-hero__glow,
+    .perg-hero__logo--lit::after,
     .home-pergamino--anim .perg-paper > * {
       animation: none;
     }

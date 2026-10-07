@@ -21,6 +21,7 @@ function escapeWifiField(value: string) {
   return String(value || '').replace(/([\\;,:"])/g, '\\$1');
 }
 
+const hasNetwork = Boolean(String(ssid || '').trim());
 const wifiPayload = `WIFI:S:${escapeWifiField(ssid)};T:WPA;P:${escapeWifiField(password)};;`;
 const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data=${encodeURIComponent(wifiPayload)}`;
 ---
@@ -39,10 +40,17 @@ const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6
     <h2 class={`mt-1 text-lg font-semibold tracking-tight md:mt-2 md:text-xl ${textColor}`}>
       Conéctate
     </h2>
-    <p class={`mt-1 hidden text-sm leading-relaxed md:mt-1.5 md:block ${mutedColor}`}>
-      Escanea el código con la cámara para unirte a la red.
-    </p>
+    {hasNetwork ? (
+      <p class={`mt-1 hidden text-sm leading-relaxed md:mt-1.5 md:block ${mutedColor}`}>
+        Escanea el código con la cámara para unirte a la red.
+      </p>
+    ) : (
+      <p class={`mt-2 text-sm leading-relaxed md:mt-3 ${mutedColor}`} data-wifi-empty>
+        Pídele la red y la clave a nuestro personal y con gusto te conectamos.
+      </p>
+    )}
 
+    {hasNetwork && (
     <div class="wifi-gadget__body mt-4 md:mt-6">
       <div class="flex flex-col items-center">
         <div
@@ -85,10 +93,13 @@ const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6
         </div>
       </dl>
     </div>
+    )}
 
-    <button type="button" data-wifi-copy class="glass-btn wifi-gadget__copy mt-3 md:mt-5">
-      <span data-wifi-copy-label>Copiar Clave</span>
-    </button>
+    {hasNetwork && (
+      <button type="button" data-wifi-copy class="glass-btn wifi-gadget__copy mt-3 md:mt-5">
+        <span data-wifi-copy-label>Copiar Clave</span>
+      </button>
+    )}
   </div>
 </section>
 
