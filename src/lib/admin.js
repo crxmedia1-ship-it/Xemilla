@@ -253,7 +253,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       .order('categoria_id', { ascending: true })
       .order('id', { ascending: true });
 
-  const [{ data: platosRaw, error: platosError }, catResult, sucursalesResult, agotadosResult] =
+  const [{ data: platosRaw, error: platosError }, catResult, sucursalesResult, agotadosResult, gerentesResult] =
     await Promise.all([
       loadPlatos(platosSelect),
       readClient
@@ -274,11 +274,20 @@ export async function getAdminDashboardData(ctx, opts = {}) {
         .eq('restaurante_id', restaurante.id)
         .eq('agotado', true)
         .or(`agotado_hasta.is.null,agotado_hasta.gt.${new Date().toISOString()}`),
+      isSuper
+        ? readClient
+            .from('sucursal_gerentes')
+            .select('user_id, sucursal_id, email')
+            .eq('restaurante_id', restaurante.id)
+            .order('email', { ascending: true })
+        : Promise.resolve({ data: [] }),
     ]);
 
   if (sucursalesResult.error) console.error('[admin] sucursales:', sucursalesResult.error.message);
   if (agotadosResult.error) console.error('[admin] plato_sucursal:', agotadosResult.error.message);
+  if (gerentesResult.error) console.error('[admin] sucursal_gerentes:', gerentesResult.error.message);
   const sucursales = sucursalesResult.data ?? [];
+  const sucursalGerentes = gerentesResult.data ?? [];
   /** @type {Record<string, Record<string, string | null>>} sucursal_id → plato_id → agotado_hasta */
   const agotadosPorSucursal = {};
   for (const r of agotadosResult.data ?? []) {
@@ -368,6 +377,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     platos: platosMapped,
     categorias: categoriasMapped,
     sucursales,
+    sucursalGerentes,
     agotadosPorSucursal,
     isSuperAdmin: isSuper,
     role: role || ADMIN_ROLE_OPERATIVO,

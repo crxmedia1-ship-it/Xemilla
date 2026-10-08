@@ -14,7 +14,11 @@ const {
   data: { user },
 } = await supabase.auth.getUser();
 
-if (user) {
+const suspendido =
+  Boolean(user?.banned_until && new Date(user.banned_until).getTime() > Date.now()) ||
+  Astro.url.searchParams.has('suspendido');
+
+if (user && !suspendido) {
   return Astro.redirect(getAdminPostLoginPath(user));
 }
 
@@ -105,10 +109,10 @@ const xemillaWordmark =
 
         <p
           id="login-error"
-          class="mt-3 hidden text-center text-xs leading-relaxed text-rose-700"
+          class:list={['mt-3 text-center text-xs leading-relaxed text-rose-700', !suspendido && 'hidden']}
           role="alert"
           aria-live="polite"
-        ></p>
+        >{suspendido ? 'Tu acceso está suspendido. Contacta a Xemilla.' : ''}</p>
 
         <button
           type="submit"
@@ -416,7 +420,9 @@ const xemillaWordmark =
       });
 
       if (error) {
-        errorEl.textContent = 'Email o contraseña incorrectos.';
+        errorEl.textContent = /banned/i.test(error.message || '')
+          ? 'Tu acceso está suspendido. Contacta a Xemilla.'
+          : 'Email o contraseña incorrectos.';
         errorEl.classList.remove('hidden');
         submitBtn.disabled = false;
         submitBtn.textContent = 'ENTRAR AL PANEL';

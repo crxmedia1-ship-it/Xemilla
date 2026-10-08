@@ -605,7 +605,7 @@ function resolveMapsEmbed(direccion) {
               const tieneAcceso =
                 localesConAcceso.has(String(r.id)) ||
                 localesConAcceso.has(String(r.slug));
-              const ctaLabel = tieneAcceso ? 'ACTUALIZAR CLAVE' : 'CREAR ACCESO';
+              const ctaLabel = 'AGREGAR USUARIO';
               const logoUrl = resolveLogoUrl(r);
               const phone = resolvePhone(r);
               const waHref = resolveWaHref(r.whatsapp_url, r.whatsapp_num);
@@ -675,8 +675,8 @@ function resolveMapsEmbed(direccion) {
                           <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </span>
                         <span class="super-card-menu__copy">
-                          <span class="super-card-menu__label">Credenciales</span>
-                          <span class="super-card-menu__hint">Acceso operativo</span>
+                          <span class="super-card-menu__label">Usuarios</span>
+                          <span class="super-card-menu__hint">Ver, agregar, suspender</span>
                         </span>
                       </button>
                       <div class="super-card-menu__divider" aria-hidden="true"></div>
@@ -906,35 +906,68 @@ function resolveMapsEmbed(direccion) {
                 {/* Credenciales */}
                 <div class="hub-modal" data-creds-panel data-restaurante-host={r.id} hidden>
                   <button type="button" class="hub-modal__backdrop" data-close-creds aria-label="Cerrar"></button>
-                  <div class="hub-modal__dialog" role="dialog" aria-modal="true" aria-labelledby={`creds-title-${r.id}`}>
+                  <div class="hub-modal__dialog hub-users-dialog" role="dialog" aria-modal="true" aria-labelledby={`creds-title-${r.id}`}>
                     <div class="hub-modal__header">
-                      <p class="hub-modal__title" id={`creds-title-${r.id}`}>Credenciales operativas</p>
+                      <div class="hub-users-head">
+                        <p class="hub-users-head__eyebrow">{nombre || r.slug}</p>
+                        <p class="hub-modal__title" id={`creds-title-${r.id}`}>
+                          Usuarios del local
+                          <em class="hub-users-head__count" data-usuarios-count hidden></em>
+                        </p>
+                      </div>
                       <button type="button" class="hub-modal__close" data-close-creds aria-label="Cerrar">×</button>
                     </div>
-                    <p class="hub-modal__hint">Acceso del equipo al Studio de {nombre || r.slug}.</p>
+                    <div class="hub-users" data-usuarios-list data-restaurante-id={r.id}>
+                      <p class="hub-users__empty">Cargando usuarios…</p>
+                    </div>
                     <form
-                      class="space-y-3"
+                      class="hub-users-add"
                       data-operativo-form
                       data-restaurante-id={r.id}
                       data-restaurante-nombre={nombre}
                       data-has-access={tieneAcceso ? 'true' : 'false'}
                       novalidate
                     >
-                      <label class="block">
-                        <span>Email</span>
-                        <input type="email" name="email" required autocomplete="off" placeholder="admin@local.com" />
+                      <p class="hub-users-add__title">Agregar usuario</p>
+                      <div class="hub-role" role="radiogroup" aria-label="Rol">
+                        <label class="hub-role__opt">
+                          <input type="radio" name="rol" value="admin" checked />
+                          <svg class="hub-role__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                          <strong>Admin del local</strong>
+                          <small>Todo el Studio: menú, precios y perfil</small>
+                        </label>
+                        <label class="hub-role__opt" data-role-gerente>
+                          <input type="radio" name="rol" value="gerente" />
+                          <svg class="hub-role__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          <strong>Gerente de sede</strong>
+                          <small data-role-gerente-hint>Solo agota platos en su sede</small>
+                        </label>
+                      </div>
+                      <label class="block" data-sede-field hidden>
+                        <span>Sede</span>
+                        <select name="sucursal_id" class="hub-users-add__select" data-sede-select></select>
                       </label>
-                      <label class="block">
-                        <span>Contraseña</span>
-                        <input
-                          type="password"
-                          name="password"
-                          required
-                          minlength="8"
-                          autocomplete="new-password"
-                          placeholder="Mín. 8 caracteres"
-                        />
-                      </label>
+                      <div class="hub-users-add__grid">
+                        <label class="block">
+                          <span>Email</span>
+                          <input type="email" name="email" required autocomplete="off" placeholder="nombre@local.com" />
+                        </label>
+                        <label class="block">
+                          <span>Contraseña</span>
+                          <div class="hub-pass">
+                            <input
+                              type="text"
+                              name="password"
+                              required
+                              minlength="8"
+                              autocomplete="new-password"
+                              spellcheck="false"
+                              placeholder="Mín. 8 caracteres"
+                            />
+                            <button type="button" class="hub-pass__gen" data-gen-pass>Generar</button>
+                          </div>
+                        </label>
+                      </div>
                       <p class="hidden text-[0.75rem] leading-relaxed" data-operativo-feedback role="status" aria-live="polite"></p>
                       <button type="submit" data-operativo-submit class="super-card-sheet__submit">{ctaLabel}</button>
                     </form>

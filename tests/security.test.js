@@ -3,8 +3,10 @@ import { jsonForScript } from '../src/lib/safe-json.js';
 import { sanitizeCssAvanzado } from '../src/lib/secciones-ui.js';
 import { escapeHtml, renderBodyHtml, renderTitleHtml } from '../src/lib/nosotros-layout.js';
 import {
+  getAdminPostLoginPath,
   getAssignedRestauranteId,
   getUserAdminRole,
+  isGerenteSedeUser,
   isSuperAdminUser,
 } from '../src/config/superadmin.js';
 
@@ -84,5 +86,18 @@ describe('roles de admin', () => {
   it('sin usuario no hay privilegios', () => {
     expect(isSuperAdminUser(null)).toBe(false);
     expect(getAssignedRestauranteId(null)).toBeNull();
+  });
+
+  it('el gerente de sede va a /admin/sede y no tiene restaurante asignado', () => {
+    const gerente = { email: 'g@example.com', app_metadata: { role: 'gerente_sede', sucursal_id: 's-1' } };
+    expect(isGerenteSedeUser(gerente)).toBe(true);
+    expect(getUserAdminRole(gerente)).toBe('gerente_sede');
+    expect(getAssignedRestauranteId(gerente)).toBeNull();
+    expect(getAdminPostLoginPath(gerente)).toBe('/admin/sede');
+  });
+
+  it('el rol de gerente no se otorga desde user_metadata', () => {
+    const atacante = { email: 'g@example.com', app_metadata: {}, user_metadata: { role: 'gerente_sede' } };
+    expect(isGerenteSedeUser(atacante)).toBe(false);
   });
 });

@@ -31,6 +31,8 @@ export function initSucursales({ root, tbody, signal, paintToggle, applySearchFi
   let sucursales = parseJson(root.dataset.sucursales, []);
   /** @type {Record<string, Record<string, string | null>>} */
   const agotados = parseJson(root.dataset.agotadosSucursal, {});
+  /** @type {Array<{ user_id: string, sucursal_id: string, email: string }>} */
+  let gerentes = parseJson(root.dataset.sucursalGerentes, []);
   const storageKey = `xemilla:panel-sede:${restauranteId}`;
   const hint = document.getElementById('sucursal-hint');
   const scroller = document.getElementById('sucursal-scroll');
@@ -199,6 +201,17 @@ export function initSucursales({ root, tbody, signal, paintToggle, applySearchFi
     return json;
   }
 
+  async function callGerentes(body) {
+    const res = await fetch('/api/sucursal-gerentes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'No se pudo guardar.');
+    return json;
+  }
+
   function field(label, name, value, { wide = false, placeholder = '' } = {}) {
     return `<label class="${wide ? 'is-wide' : ''}">${label}<input class="sede-input" name="${name}" value="${escapeHtml(value ?? '')}" placeholder="${escapeHtml(placeholder)}" /></label>`;
   }
@@ -218,14 +231,37 @@ export function initSucursales({ root, tbody, signal, paintToggle, applySearchFi
     }
   }
 
+  function gerentesHtml(s) {
+    if (!isSuper) return '';
+    const items = gerentes
+      .filter((g) => g.sucursal_id === s.id)
+      .map(
+        (g) => `<li><span>${escapeHtml(g.email)}</span><button type="button" class="sede-card__danger" data-gerente-delete="${escapeHtml(g.user_id)}">Quitar</button></li>`,
+      )
+      .join('');
+    return `
+        <div class="sede-gerentes">
+          <p class="sede-gerentes__title">Gerentes de esta sede<span>Entran en /admin/login y solo pueden agotar platos aquí.</span></p>
+          ${items ? `<ul class="sede-gerentes__list">${items}</ul>` : ''}
+          <form class="sede-gerentes__form" data-gerente-create>
+            <input class="sede-input" name="email" type="email" required placeholder="Email del gerente" autocomplete="off" />
+            <input class="sede-input" name="password" type="text" required minlength="8" placeholder="Contraseña (mín. 8)" autocomplete="off" />
+            <button type="submit" class="menu-cmd-btn">Agregar</button>
+          </form>
+        </div>`;
+  }
+
   function renderList() {
     paintCupo();
     if (!(list instanceof HTMLElement)) return;
     const origin = location.origin;
+    const abiertas = new Set(
+      Array.from(list.querySelectorAll('details[open]')).map((d) => d.getAttribute('data-sucursal-id')),
+    );
     list.innerHTML = sucursales
       .map(
         (s) => `
-      <details class="sede-card" data-sucursal-id="${escapeHtml(s.id)}">
+      <details class="sede-card" data-sucursal-id="${escapeHtml(s.id)}" ${abiertas.has(s.id) ? 'open' : ''}>
         <summary class="sede-card__summary">
           <span class="sede-card__name">${escapeHtml(s.nombre)}
             <span class="sede-card__url">${escapeHtml(`${origin}/${publicSlug}/${s.slug}`)}</span>
@@ -247,6 +283,7 @@ export function initSucursales({ root, tbody, signal, paintToggle, applySearchFi
             <button type="submit" class="menu-cmd-btn menu-cmd-btn--primary">Guardar</button>
           </div>
         </form>
+        ${gerentesHtml(s)}
       </details>`,
       )
       .join('');
@@ -272,6 +309,20 @@ export function initSucursales({ root, tbody, signal, paintToggle, applySearchFi
       if (!(target instanceof Element)) return;
       if (target === dialog || target.closest('[data-sucursales-close]')) {
         if (dialog instanceof HTMLDialogElement) dialog.close();
+        return;
+      }
+      const quitar = target.closest('[data-gerente-delete]');
+      if (quitar instanceof HTMLElement) {
+        const g = gerentes.find((x) => x.user_id === quitar.dataset.gerenteDelete);
+        if (!g || !confirm(`¿Quitar a ${g.email}? Su cuenta se borra y deja de poder entrar.`)) return;
+        try {
+          await callGerentes({ action: 'delete', user_id: g.user_id });
+          gerentes = gerentes.filter((x) => x.user_id !== g.user_id);
+          renderList();
+          setStatus(`${g.email} ya no es gerente.`);
+        } catch (err) {
+          setStatus(err instanceof Error ? err.message : 'Error', true);
+        }
         return;
       }
       const del = target.closest('[data-sucursal-delete]');
@@ -310,6 +361,25 @@ export function initSucursales({ root, tbody, signal, paintToggle, applySearchFi
       const card = form.closest('[data-sucursal-id]');
       const s = card instanceof HTMLElement ? sede(card.dataset.sucursalId) : null;
       if (!s) return;
+
+      if (form.hasAttribute('data-gerente-create')) {
+        const email = String(data.get('email') || '').trim().toLowerCase();
+        try {
+          const json = await callGerentes({
+            action: 'create',
+            sucursal_id: s.id,
+            email,
+            password: String(data.get('password') || ''),
+          });
+          gerentes = [...gerentes.filter((g) => g.user_id !== json.gerente.user_id), json.gerente];
+          renderList();
+          setStatus(`${email} ya puede entrar como gerente de ${s.nombre}.`);
+        } catch (err) {
+          setStatus(err instanceof Error ? err.message : 'Error', true);
+        }
+        return;
+      }
+
       const body = { action: 'update', id: s.id };
       for (const key of ['nombre', 'slug', 'direccion', 'horarios', 'whatsapp_num', 'coordenadas_maps']) {
         body[key] = String(data.get(key) ?? '');

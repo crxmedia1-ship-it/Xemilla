@@ -793,6 +793,15 @@ CREATE TABLE IF NOT EXISTS public.plato_sucursal (
   PRIMARY KEY (sucursal_id, plato_id)
 );
 
+-- Gerente de sede: solo agota/reactiva platos en su sucursal (private.can_manage_sucursal).
+CREATE TABLE IF NOT EXISTS public.sucursal_gerentes (
+  user_id uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  sucursal_id uuid NOT NULL REFERENCES public.sucursales (id) ON DELETE CASCADE,
+  restaurante_id uuid NOT NULL REFERENCES public.restaurantes (id) ON DELETE CASCADE,
+  email text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- =============================================================================
 -- Notas de uso
 -- =============================================================================

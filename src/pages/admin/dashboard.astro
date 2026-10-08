@@ -15,11 +15,7 @@ import {
   getSuperAdminWriteClient,
 } from '../../lib/superadmin.js';
 import { parseBoutiqueConfig } from '../../lib/boutique.js';
-import {
-  DESTACADO_TIPOS,
-  DESTACADO_TIPO_LABELS,
-  destacadoPickerHtml,
-} from '../../lib/destacado-tipo.js';
+import { destacadoPickerHtml } from '../../lib/destacado-tipo.js';
 import {
   normalizeNosotrosTheme,
   normalizeUbicacionTheme,
@@ -112,6 +108,7 @@ const {
   platos: platosLoaded = [],
   categorias = [],
   sucursales = [],
+  sucursalGerentes = [],
   agotadosPorSucursal = {},
   managingAsSuperAdmin,
   user,
@@ -161,6 +158,7 @@ const publicWebAppUrl = publicSlug ? `https://xemilla.app/${publicSlug}` : '';
 const categoriasJson = JSON.stringify(categorias);
 const sucursalesJson = JSON.stringify(sucursales);
 const agotadosSucursalJson = JSON.stringify(agotadosPorSucursal);
+const sucursalGerentesJson = JSON.stringify(sucursalGerentes);
 const sucursalesActivas = sucursales.filter((s) => s.activo);
 const gadgetSucursales = Boolean(restaurante?.gadget_sucursales);
 const sucursalesCupo = Math.max(1, Number(restaurante?.sucursales_cupo) || 1);
@@ -900,6 +898,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           data-categorias={categoriasJson}
           data-sucursales={sucursalesJson}
           data-agotados-sucursal={agotadosSucursalJson}
+          data-sucursal-gerentes={sucursalGerentesJson}
           data-gadget-sucursales={gadgetSucursales ? 'true' : 'false'}
           data-sucursales-cupo={sucursalesCupo}
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
@@ -4517,37 +4516,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               class="precio-input w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm tabular-nums text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25 focus:ring-2 focus:ring-white/10"
             />
           </div>
-          <div class="flex flex-col justify-end pb-1">
-            <div class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5">
-              <span class="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Destacado
-              </span>
-              <div class="dest-control dest-control--row">
-                <div class="dest-tipo" role="radiogroup" aria-label="Tipo de destacado" id="np-destacado-tipo" hidden>
-                  {DESTACADO_TIPOS.map((tipo) => (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={tipo === 'chef'}
-                      data-set-destacado-tipo={tipo}
-                      title={DESTACADO_TIPO_LABELS[tipo]}
-                      class:list={['dest-tipo__opt', tipo === 'chef' && 'is-active']}
-                    >
-                      {tipo === 'chef' ? 'Chef' : 'Promo'}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  id="np-destacado"
-                  role="switch"
-                  aria-checked="false"
-                  class="ios-toggle"
-                  title="Destacado"
-                >
-                  <span class="ios-toggle__knob" aria-hidden="true"></span>
-                </button>
-              </div>
+          <div class="min-w-0">
+            <span class="mb-1.5 block text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Destacado
+            </span>
+            <div id="np-destacado" class="np-destacado">
+              <Fragment set:html={destacadoPickerHtml({ destacado: false })} />
             </div>
           </div>
         </div>
@@ -5250,53 +5224,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   .ios-toggle.is-on .ios-toggle__knob {
     transform: translateX(1.2rem);
-  }
-
-  .dest-control {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .dest-control--row {
-    flex-direction: row;
-  }
-
-  .dest-tipo {
-    display: inline-flex;
-    padding: 0.12rem;
-    border-radius: 9999px;
-    background: color-mix(in srgb, var(--overlay-soft, rgba(255, 255, 255, 0.06)) 100%, transparent);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  }
-
-  .dest-tipo[hidden] {
-    display: none;
-  }
-
-  .dest-tipo__opt {
-    border: 0;
-    border-radius: 9999px;
-    padding: 0.18rem 0.5rem;
-    background: transparent;
-    color: var(--text-muted, #a1a1aa);
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background-color 160ms ease-out, color 160ms ease-out;
-  }
-
-  .dest-tipo__opt[data-set-destacado-tipo='chef'].is-active {
-    background: #c9a227;
-    color: #1a1406;
-  }
-
-  .dest-tipo__opt[data-set-destacado-tipo='promocion'].is-active {
-    background: #e11d48;
-    color: #fff;
   }
 
   .ios-toggle:active .ios-toggle__knob {

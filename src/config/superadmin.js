@@ -9,11 +9,12 @@ export const SUPERADMIN_EMAIL = String(
   .trim()
   .toLowerCase();
 
-/** @typedef {'superadmin' | 'admin_operativo' | 'mesonero'} AdminRole */
+/** @typedef {'superadmin' | 'admin_operativo' | 'mesonero' | 'gerente_sede'} AdminRole */
 
 export const ADMIN_ROLE_SUPER = 'superadmin';
 export const ADMIN_ROLE_OPERATIVO = 'admin_operativo';
 export const ADMIN_ROLE_MESONERO = 'mesonero';
+export const ADMIN_ROLE_GERENTE = 'gerente_sede';
 
 /**
  * Lee `role` solo desde app_metadata.
@@ -49,6 +50,14 @@ export function isMesoneroUser(user) {
 }
 
 /**
+ * Gerente de sede: solo agota platos en su sucursal (permiso real en `sucursal_gerentes`).
+ */
+export function isGerenteSedeUser(user) {
+  if (!user || isSuperAdminUser(user)) return false;
+  return readMetaRole(user) === ADMIN_ROLE_GERENTE;
+}
+
+/**
  * Rol efectivo del usuario autenticado.
  * Fuente de verdad: `isSuperAdminUser` (allowlist + role en app_metadata).
  *
@@ -59,6 +68,7 @@ export function getUserAdminRole(user) {
   if (!user) return ADMIN_ROLE_OPERATIVO;
   if (isSuperAdminUser(user)) return ADMIN_ROLE_SUPER;
   if (isMesoneroUser(user)) return ADMIN_ROLE_MESONERO;
+  if (isGerenteSedeUser(user)) return ADMIN_ROLE_GERENTE;
   return ADMIN_ROLE_OPERATIVO;
 }
 
@@ -89,6 +99,7 @@ export function getAdminPostLoginPath(user) {
   if (getUserAdminRole(user) === ADMIN_ROLE_SUPER) {
     return '/admin/super/dashboard';
   }
+  if (isGerenteSedeUser(user)) return '/admin/sede';
   const assigned = getAssignedRestauranteId(user);
   if (assigned) {
     return `/admin/dashboard?restaurante=${encodeURIComponent(assigned)}`;

@@ -33,8 +33,310 @@
     });
   }
 
-  const DEFAULT_CTA = 'CREAR ACCESO';
-  const ACTIVE_CTA = 'ACTUALIZAR CLAVE';
+  const DEFAULT_CTA = 'AGREGAR USUARIO';
+  const ACTIVE_CTA = 'AGREGAR USUARIO';
+
+  /** @param {unknown} value */
+  function escUser(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  }
+
+  /** @param {string | null} iso */
+  function ultimoIngresoLabel(iso) {
+    if (!iso) return 'Nunca ha entrado';
+    const d = new Date(iso);
+    const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (dias <= 0) return 'Entró hoy';
+    if (dias === 1) return 'Entró ayer';
+    if (dias < 30) return `Entró hace ${dias} días`;
+    return `Entró el ${d.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  }
+
+  /**
+   * @param {string} restauranteId
+   * @param {boolean} hasActive
+   */
+  function paintAccessBadge(restauranteId, hasActive) {
+    const badge = document.querySelector(
+      `li.super-hub-card[data-restaurante-id="${restauranteId}"] [data-access-badge]`,
+    );
+    if (!(badge instanceof HTMLElement)) return;
+    badge.className = `super-hub-card__state${hasActive ? ' super-hub-card__state--on' : ''}`;
+    badge.innerHTML = `<span class="super-hub-card__dot" aria-hidden="true"></span>${hasActive ? 'Acceso activo' : 'Sin acceso'}`;
+  }
+
+  /**
+   * Lista de usuarios del local dentro del modal "Usuarios".
+   * @param {Element | null | undefined} list
+   */
+  async function loadUsuarios(list) {
+    if (!(list instanceof HTMLElement)) return;
+    const restauranteId = list.dataset.restauranteId || '';
+    if (!list.querySelector('.hub-user')) {
+      list.innerHTML = '<p class="hub-users__empty">Cargando usuarios…</p>';
+    }
+    try {
+      const res = await fetch(`/api/restaurante-usuarios?restaurante_id=${encodeURIComponent(restauranteId)}`, {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la lista.');
+      /** @type {Array<{ id: string, email: string, rol: string, sede: string | null, suspendido: boolean, ultimo_ingreso: string | null }>} */
+      const usuarios = data.usuarios || [];
+      paintAccessBadge(restauranteId, usuarios.some((u) => !u.suspendido));
+      paintRolePicker(list, Boolean(data.gadget_sucursales), data.sedes || []);
+      const count = list.closest('.hub-modal__dialog')?.querySelector('[data-usuarios-count]');
+      if (count instanceof HTMLElement) {
+        count.hidden = usuarios.length === 0;
+        count.textContent = String(usuarios.length);
+      }
+      if (!usuarios.length) {
+        list.innerHTML = '<p class="hub-users__empty">Este local todavía no tiene usuarios. Agrega el primero abajo.</p>';
+        return;
+      }
+      list.innerHTML = usuarios
+        .map((u) => {
+          const gerente = u.rol === 'gerente';
+          const rol = gerente ? `Gerente · ${escUser(u.sede || 'Sede')}` : 'Admin';
+          const inicial = escUser((u.email || '?').charAt(0).toUpperCase());
+          return `
+          <div class="hub-user${u.suspendido ? ' is-suspended' : ''}" data-user-id="${escUser(u.id)}" data-user-email="${escUser(u.email)}">
+            <i class="hub-user__avatar${gerente ? ' is-gerente' : ''}" aria-hidden="true">${inicial}</i>
+            <div class="hub-user__info">
+              <p class="hub-user__email">${escUser(u.email)}</p>
+              <p class="hub-user__meta">
+                <em class="hub-user__pill${gerente ? ' is-gerente' : ''}">${rol}</em>
+                <em class="hub-user__state"><b aria-hidden="true"></b>${u.suspendido ? 'Suspendido' : 'Activo'}</em>
+                <em class="hub-user__seen">${escUser(ultimoIngresoLabel(u.ultimo_ingreso))}</em>
+              </p>
+            </div>
+            <div class="hub-user__actions">
+              <button type="button" class="hub-user__btn" data-user-action="${u.suspendido ? 'activate' : 'suspend'}">${u.suspendido ? 'Activar' : 'Suspender'}</button>
+              <button type="button" class="hub-user__btn" data-user-action="password">Clave</button>
+              <button type="button" class="hub-user__btn hub-user__btn--danger" data-user-action="delete">Eliminar</button>
+            </div>
+            <div class="hub-user__panel" data-user-panel hidden></div>
+          </div>`;
+        })
+        .join('');
+    } catch (err) {
+      list.innerHTML = `<p class="hub-users__empty is-error">${escUser(err instanceof Error ? err.message : 'Error')}</p>`;
+    }
+  }
+
+  /**
+   * Rol "Gerente de sede" solo con el gadget Sucursales y al menos una sede activa.
+   * @param {HTMLElement} list
+   * @param {boolean} gadget
+   * @param {Array<{ id: string, nombre: string, es_principal: boolean }>} sedes
+   */
+  function paintRolePicker(list, gadget, sedes) {
+    const form = list.closest('.hub-modal__dialog')?.querySelector('[data-operativo-form]');
+    if (!(form instanceof HTMLFormElement)) return;
+    const opt = form.querySelector('[data-role-gerente]');
+    const radio = opt?.querySelector('input');
+    const hint = form.querySelector('[data-role-gerente-hint]');
+    const select = form.querySelector('[data-sede-select]');
+    const available = gadget && sedes.length > 0;
+    if (radio instanceof HTMLInputElement) {
+      radio.disabled = !available;
+      if (!available && radio.checked) {
+        const admin = form.querySelector('input[name="rol"][value="admin"]');
+        if (admin instanceof HTMLInputElement) admin.checked = true;
+      }
+    }
+    opt?.classList.toggle('is-disabled', !available);
+    if (hint) hint.textContent = available ? 'Solo agota platos en su sede' : 'Requiere el gadget Sucursales';
+    if (select instanceof HTMLSelectElement) {
+      const prev = select.value;
+      select.innerHTML = sedes
+        .map((s) => `<option value="${escUser(s.id)}" data-nombre="${escUser(s.nombre)}">${escUser(s.nombre)}${s.es_principal ? ' (principal)' : ''}</option>`)
+        .join('');
+      if (sedes.some((s) => s.id === prev)) select.value = prev;
+    }
+    syncRoleFields(form);
+  }
+
+  /** @param {HTMLFormElement} form */
+  function syncRoleFields(form) {
+    const gerente = form.querySelector('input[name="rol"]:checked')?.getAttribute('value') === 'gerente';
+    const field = form.querySelector('[data-sede-field]');
+    if (field instanceof HTMLElement) field.hidden = !gerente;
+  }
+
+  function generarClave() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    return Array.from(bytes, (n) => chars[n % chars.length]).join('');
+  }
+
+  function initUsuarios() {
+    if (document.documentElement.dataset.hubUsersBound === 'true') return;
+    document.documentElement.dataset.hubUsersBound = 'true';
+    document.addEventListener('change', (event) => {
+      const radio = event.target;
+      if (!(radio instanceof HTMLInputElement) || radio.name !== 'rol') return;
+      const form = radio.closest('[data-operativo-form]');
+      if (form instanceof HTMLFormElement) syncRoleFields(form);
+    });
+    document.addEventListener('click', (event) => {
+      const gen = event.target instanceof Element ? event.target.closest('[data-gen-pass]') : null;
+      if (!(gen instanceof HTMLButtonElement)) return;
+      event.preventDefault();
+      const input = gen.parentElement?.querySelector('input[name="password"]');
+      if (input instanceof HTMLInputElement) {
+        input.value = generarClave();
+        input.select();
+      }
+    });
+    document.addEventListener('click', async (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const row = target?.closest('[data-user-id]');
+      const list = target?.closest('[data-usuarios-list]');
+      if (!(row instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
+      const panel = row.querySelector('[data-user-panel]');
+      if (!(panel instanceof HTMLElement)) return;
+      const email = escUser(row.dataset.userEmail || '');
+
+      if (target?.closest('[data-user-cancel]')) {
+        closeUserPanel(row);
+        return;
+      }
+
+      const confirmBtn = target?.closest('[data-user-confirm]');
+      if (confirmBtn instanceof HTMLButtonElement) {
+        await runUserAction(row, list, panel, confirmBtn.dataset.userConfirm || '');
+        return;
+      }
+
+      const btn = target?.closest('[data-user-action]');
+      if (!(btn instanceof HTMLButtonElement)) return;
+      const action = btn.dataset.userAction || '';
+      const wasOpen = !panel.hidden && panel.dataset.action === action;
+      list.querySelectorAll('[data-user-id]').forEach((r) => {
+        if (r instanceof HTMLElement) closeUserPanel(r);
+      });
+      if (wasOpen) return;
+
+      if (action === 'activate') {
+        panel.hidden = false;
+        panel.innerHTML = '<p class="hub-user__panel-msg" data-panel-msg></p>';
+        await runUserAction(row, list, panel, action);
+        return;
+      }
+
+      panel.dataset.action = action;
+      btn.classList.add('is-on');
+      if (action === 'password') {
+        panel.innerHTML = `
+          <p class="hub-user__panel-title">Nueva clave para ${email}</p>
+          <div class="hub-user__panel-row">
+            <div class="hub-pass">
+              <input type="text" name="password" minlength="8" autocomplete="new-password" spellcheck="false" placeholder="Mín. 8 caracteres" />
+              <button type="button" class="hub-pass__gen" data-gen-pass>Generar</button>
+            </div>
+            <button type="button" class="hub-user__cta" data-user-confirm="password">Guardar clave</button>
+            <button type="button" class="hub-user__btn" data-user-cancel>Cancelar</button>
+          </div>
+          <p class="hub-user__panel-msg" data-panel-msg></p>`;
+      } else {
+        const copy =
+          action === 'delete'
+            ? { text: `¿Eliminar a ${email}? Su cuenta se borra y deja de poder entrar.`, cta: 'Sí, eliminar', danger: true }
+            : { text: `¿Suspender a ${email}? No podrá entrar hasta que lo actives.`, cta: 'Sí, suspender', danger: false };
+        panel.innerHTML = `
+          <p class="hub-user__panel-title">${copy.text}</p>
+          <div class="hub-user__panel-row">
+            <button type="button" class="hub-user__cta${copy.danger ? ' is-danger' : ''}" data-user-confirm="${action}">${copy.cta}</button>
+            <button type="button" class="hub-user__btn" data-user-cancel>Cancelar</button>
+          </div>
+          <p class="hub-user__panel-msg" data-panel-msg></p>`;
+      }
+      panel.hidden = false;
+      const input = panel.querySelector('input');
+      if (input instanceof HTMLInputElement) input.focus();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement) || !input.closest('[data-user-panel]')) return;
+      event.preventDefault();
+      input.closest('[data-user-panel]')?.querySelector('[data-user-confirm]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+  }
+
+  /**
+   * @param {HTMLElement} row
+   * @param {HTMLElement} list
+   * @param {HTMLElement} panel
+   * @param {string} action
+   */
+  async function runUserAction(row, list, panel, action) {
+    const email = escUser(row.dataset.userEmail || '');
+    /** @type {Record<string, unknown>} */
+    const body = { action, user_id: row.dataset.userId, restaurante_id: list.dataset.restauranteId };
+    if (action === 'password') {
+      const input = panel.querySelector('input[name="password"]');
+      const password = input instanceof HTMLInputElement ? input.value.trim() : '';
+      if (password.length < 8) {
+        setPanelMsg(panel, 'La clave debe tener al menos 8 caracteres.', true);
+        if (input instanceof HTMLInputElement) input.focus();
+        return;
+      }
+      body.password = password;
+    }
+    const controls = () => panel.querySelectorAll('button, input');
+    controls().forEach((el) => {
+      if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) el.disabled = true;
+    });
+    setPanelMsg(panel, 'Guardando…');
+    try {
+      const res = await fetch('/api/restaurante-usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'No se pudo completar la acción.');
+      if (action === 'password') {
+        panel.innerHTML = `<p class="hub-user__panel-msg is-ok">Clave cambiada. ${email} ya entra con <strong>${escUser(body.password)}</strong> (la anterior dejó de funcionar).</p>
+          <div class="hub-user__panel-row"><button type="button" class="hub-user__btn" data-user-cancel>Listo</button></div>`;
+        return;
+      }
+      await loadUsuarios(list);
+    } catch (err) {
+      controls().forEach((el) => {
+        if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) el.disabled = false;
+      });
+      setPanelMsg(panel, err instanceof Error ? err.message : 'Error', true);
+    }
+  }
+
+  /** @param {HTMLElement} row */
+  function closeUserPanel(row) {
+    const panel = row.querySelector('[data-user-panel]');
+    if (panel instanceof HTMLElement) {
+      panel.hidden = true;
+      panel.innerHTML = '';
+      delete panel.dataset.action;
+    }
+    row.querySelectorAll('[data-user-action].is-on').forEach((b) => b.classList.remove('is-on'));
+  }
+
+  /**
+   * @param {HTMLElement} panel
+   * @param {string} msg
+   * @param {boolean} [isError]
+   */
+  function setPanelMsg(panel, msg, isError = false) {
+    const el = panel.querySelector('[data-panel-msg]');
+    if (!(el instanceof HTMLElement)) return;
+    el.textContent = msg;
+    el.classList.toggle('is-error', isError);
+  }
 
   /**
    * @param {HTMLFormElement} form
@@ -264,6 +566,7 @@
             toggleOverlayPanel(fichaPanel instanceof HTMLElement ? fichaPanel : null, false);
             toggleOverlayPanel(infoPanel instanceof HTMLElement ? infoPanel : null, false);
             toggleOverlayPanel(credsPanel instanceof HTMLElement ? credsPanel : null, true);
+            void loadUsuarios(credsPanel?.querySelector('[data-usuarios-list]'));
           });
         });
         root.querySelectorAll('[data-open-ficha]').forEach((btn) => {
@@ -724,30 +1027,43 @@
         submitBtn.disabled = true;
         submitBtn.textContent = 'Creando...';
 
+        const rolGerente =
+          form.querySelector('input[name="rol"]:checked')?.getAttribute('value') === 'gerente';
+        const sedeSelect = form.querySelector('[data-sede-select]');
+        const sucursalId = sedeSelect instanceof HTMLSelectElement ? sedeSelect.value : '';
+
         try {
           const send = (confirmarReasignacion) =>
-            fetch('/api/create-admin-user', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-              body: JSON.stringify({
-                email,
-                password,
-                restaurante_id: restauranteId,
-                confirmar_reasignacion: confirmarReasignacion,
-              }),
-            });
-          let res = await send(false);
+            rolGerente
+              ? fetch('/api/sucursal-gerentes', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                  body: JSON.stringify({ action: 'create', sucursal_id: sucursalId, email, password }),
+                })
+              : fetch('/api/create-admin-user', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                  body: JSON.stringify({
+                    email,
+                    password,
+                    restaurante_id: restauranteId,
+                    confirmar_reasignacion: confirmarReasignacion,
+                  }),
+                });
+          const reasignar = form.dataset.reassignEmail === email.toLowerCase();
+          delete form.dataset.reassignEmail;
+          const res = await send(reasignar);
           /** @type {{ ok?: boolean, error?: string, code?: string, email?: string, reused?: boolean }} */
-          let data = await res.json().catch(() => ({}));
+          const data = await res.json().catch(() => ({}));
 
           if (res.status === 409 && data.code === 'REASSIGN_REQUIRED') {
-            if (!window.confirm(`${data.error}\n\n¿Continuar?`)) {
-              submitBtn.disabled = false;
-              submitBtn.textContent = idleLabel;
-              return;
-            }
-            res = await send(true);
-            data = await res.json().catch(() => ({}));
+            form.dataset.reassignEmail = email.toLowerCase();
+            feedback.textContent = `${data.error} Pulsa de nuevo para confirmar.`;
+            feedback.classList.add('text-rose-400');
+            feedback.classList.remove('hidden');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'CONFIRMAR REASIGNACIÓN';
+            return;
           }
 
           if (!res.ok || !data.ok) {
@@ -759,17 +1075,21 @@
             return;
           }
 
-          feedback.textContent = data.reused
-            ? `Actualizado: ${data.email || email} (Admin Operativo).`
-            : `Creado: ${data.email || email} (Admin Operativo).`;
+          const sedeNombre =
+            sedeSelect instanceof HTMLSelectElement ? sedeSelect.selectedOptions[0]?.dataset.nombre || '' : '';
+          feedback.textContent = `Listo: ${data.email || email} entra como ${
+            rolGerente ? `gerente de ${sedeNombre}` : 'admin del local'
+          } con la clave ${password}. Compártela con el usuario.`;
           feedback.classList.add('text-emerald-400');
           feedback.classList.remove('hidden');
-          submitBtn.textContent = '¡Credenciales Listas!';
+          submitBtn.textContent = '¡Usuario agregado!';
           if (passwordInput instanceof HTMLInputElement) passwordInput.value = '';
+          if (emailInput instanceof HTMLInputElement) emailInput.value = '';
           markAccessActive(form);
+          void loadUsuarios(form.closest('.hub-modal')?.querySelector('[data-usuarios-list]'));
           submitBtn.disabled = false;
           window.setTimeout(() => {
-            if (submitBtn.textContent === '¡Credenciales Listas!') {
+            if (submitBtn.textContent === '¡Usuario agregado!') {
               submitBtn.textContent = ACTIVE_CTA;
             }
           }, 2500);
@@ -1675,6 +1995,7 @@
     initCardMenus();
     initFichaForms();
     initOperativoForms();
+    initUsuarios();
     initNuevoRestModal();
     initSuperNetTimeframe();
     initPropuestas();

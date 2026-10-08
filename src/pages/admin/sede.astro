@@ -1,0 +1,522 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import { getAdminPostLoginPath, isGerenteSedeUser } from '../../config/superadmin.js';
+import { isAgotadoVigente } from '../../lib/sucursales.js';
+import { createSupabaseServerClient } from '../../lib/supabase/server.js';
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) return Astro.redirect('/admin/login');
+if (!isGerenteSedeUser(user)) return Astro.redirect(getAdminPostLoginPath(user));
+
+const { data: asignacion } = await supabase
+  .from('sucursal_gerentes')
+  .select('sucursal_id')
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+const { data: sucursal } = asignacion
+  ? await supabase
+      .from('sucursales')
+      .select('id, nombre, slug, activo, restaurante_id, restaurantes(nombre_comercial, slug, logo_url)')
+      .eq('id', asignacion.sucursal_id)
+      .maybeSingle()
+  : { data: null };
+
+const restaurante = sucursal?.restaurantes ?? null;
+
+/** @type {Array<{ nombre: string, platos: Array<{ id: number, nombre: string, precio: number | null, imagen_url: string | null, agotado: boolean }> }>} */
+let grupos = [];
+let agotadosCount = 0;
+
+if (sucursal) {
+  const [{ data: platos }, { data: categorias }, { data: overrides }] = await Promise.all([
+    supabase
+      .from('platos')
+      .select('id, nombre, precio, imagen_url, categoria_id')
+      .eq('restaurante_id', sucursal.restaurante_id)
+      .eq('disponible', true)
+      .order('id', { ascending: true }),
+    supabase
+      .from('categorias')
+      .select('id, nombre, orden')
+      .eq('restaurante_id', sucursal.restaurante_id)
+      .order('orden', { ascending: true }),
+    supabase
+      .from('plato_sucursal')
+      .select('plato_id, agotado, agotado_hasta')
+      .eq('sucursal_id', sucursal.id),
+  ]);
+
+  const agotados = new Set(
+    (overrides ?? []).filter((r) => isAgotadoVigente(r)).map((r) => String(r.plato_id)),
+  );
+  const porCategoria = new Map((categorias ?? []).map((c) => [c.id, { nombre: c.nombre, platos: [] }]));
+  const otros = { nombre: 'Otros', platos: [] };
+  for (const p of platos ?? []) {
+    const agotado = agotados.has(String(p.id));
+    if (agotado) agotadosCount += 1;
+    (porCategoria.get(p.categoria_id) ?? otros).platos.push({ ...p, agotado });
+  }
+  grupos = [...porCategoria.values(), otros].filter((g) => g.platos.length > 0);
+}
+
+const precioFmt = (n) => (n == null ? '' : `$${Number(n).toFixed(2)}`);
+const titulo = sucursal ? `${sucursal.nombre} · ${restaurante?.nombre_comercial ?? 'Xemilla'}` : 'Sede · Xemilla';
+---
+
+<Layout title={titulo} theme="crx" themeColor="#f6f3ee" description="Disponibilidad de platos de la sede">
+  <main class="sede-app">
+    <header class="sede-app__header">
+      <div class="sede-app__brand">
+        {restaurante?.logo_url ? <img src={restaurante.logo_url} alt="" class="sede-app__logo" /> : null}
+        <div class="sede-app__titles">
+          <p class="sede-app__rest">{restaurante?.nombre_comercial ?? 'Xemilla'}</p>
+          <h1 class="sede-app__sede">{sucursal?.nombre ?? 'Sin sede asignada'}</h1>
+        </div>
+      </div>
+      <form method="POST" action="/api/admin-logout">
+        <button type="submit" class="sede-app__logout" aria-label="Cerrar sesión" title="Cerrar sesión">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"></path>
+            <path d="M10 17l-5-5 5-5"></path>
+            <path d="M5 12h11"></path>
+          </svg>
+          <span>Salir</span>
+        </button>
+      </form>
+    </header>
+
+    {
+      !sucursal ? (
+        <p class="sede-app__empty">Tu cuenta ya no tiene una sede asignada. Pídele a Xemilla que te la vuelva a asignar.</p>
+      ) : (
+        <div id="sede-app" data-sucursal-id={sucursal.id} class="sede-app__body">
+          <p class="sede-app__hint">
+            Toca un plato para marcarlo <strong>agotado</strong> solo en esta sede. Vuelve a estar disponible solo mañana a las 5:00, o antes si lo tocas otra vez.
+          </p>
+
+          <div class="sede-app__bar">
+            <input id="sede-search" type="search" class="sede-app__search" placeholder="Buscar plato…" autocomplete="off" />
+            <span class="sede-app__count" id="sede-count" data-count={agotadosCount}>
+              {agotadosCount === 1 ? '1 agotado' : `${agotadosCount} agotados`}
+            </span>
+          </div>
+
+          {restaurante?.slug ? (
+            <a class="sede-app__link" href={`/${restaurante.slug}/${sucursal.slug}`} target="_blank" rel="noopener">
+              Ver el menú de esta sede ↗
+            </a>
+          ) : null}
+
+          {grupos.length === 0 ? <p class="sede-app__empty">Todavía no hay platos en el menú.</p> : null}
+
+          {grupos.map((g) => (
+            <section class="sede-app__group" data-group>
+              <h2 class="sede-app__group-title">{g.nombre}</h2>
+              <ul class="sede-app__list">
+                {g.platos.map((p) => (
+                  <li data-plato-row data-search={p.nombre.toLowerCase()}>
+                    <button
+                      type="button"
+                      class:list={['sede-plato', p.agotado && 'is-off']}
+                      data-plato-id={p.id}
+                      aria-pressed={p.agotado ? 'true' : 'false'}
+                    >
+                      {p.imagen_url ? (
+                        <img src={p.imagen_url} alt="" loading="lazy" class="sede-plato__img" />
+                      ) : (
+                        <span class="sede-plato__img sede-plato__img--empty" aria-hidden="true" />
+                      )}
+                      <span class="sede-plato__info">
+                        <span class="sede-plato__name">{p.nombre}</span>
+                        <span class="sede-plato__price">{precioFmt(p.precio)}</span>
+                      </span>
+                      <span class="sede-plato__state" data-state>
+                        {p.agotado ? 'Agotado' : 'Disponible'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+
+          <p class="sede-app__toast" id="sede-toast" role="status" aria-live="polite" />
+        </div>
+      )
+    }
+  </main>
+</Layout>
+
+<style>
+  .sede-app {
+    min-height: 100vh;
+    background: #f6f3ee;
+    color: #18181b;
+    padding-bottom: 4rem;
+  }
+
+  .sede-app__header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem max(1rem, env(safe-area-inset-left)) 0.85rem max(1rem, env(safe-area-inset-right));
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid rgba(24, 24, 27, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .sede-app__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+  }
+
+  .sede-app__logo {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.7rem;
+    object-fit: contain;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(24, 24, 27, 0.08);
+  }
+
+  .sede-app__titles {
+    min-width: 0;
+  }
+
+  .sede-app__rest {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #71717a;
+  }
+
+  .sede-app__sede {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .sede-app__logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(24, 24, 27, 0.12);
+    border-radius: 9999px;
+    background: #fff;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #3f3f46;
+    cursor: pointer;
+  }
+
+  .sede-app__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .sede-app__hint {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: #52525b;
+  }
+
+  .sede-app__bar {
+    position: sticky;
+    top: 4.4rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .sede-app__search {
+    flex: 1;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(24, 24, 27, 0.12);
+    border-radius: 0.9rem;
+    background: #fff;
+    font: inherit;
+    font-size: 0.95rem;
+    outline: none;
+  }
+
+  .sede-app__search:focus {
+    border-color: #18181b;
+  }
+
+  .sede-app__count {
+    flex-shrink: 0;
+    padding: 0.45rem 0.75rem;
+    border-radius: 9999px;
+    background: #fff1f2;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #be123c;
+  }
+
+  .sede-app__count[data-count='0'] {
+    background: #f4f4f5;
+    color: #71717a;
+  }
+
+  .sede-app__link {
+    justify-self: start;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #3f3f46;
+  }
+
+  .sede-app__group-title {
+    margin: 0.5rem 0 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #71717a;
+  }
+
+  .sede-app__list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sede-plato {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.6rem 0.75rem 0.6rem 0.6rem;
+    border: 1px solid rgba(24, 24, 27, 0.08);
+    border-radius: 1rem;
+    background: #fff;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color 160ms ease-out, border-color 160ms ease-out, transform 120ms ease-out;
+  }
+
+  .sede-plato:active {
+    transform: scale(0.985);
+  }
+
+  .sede-plato__img {
+    flex-shrink: 0;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    background: #f4f4f5;
+  }
+
+  .sede-plato__info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .sede-plato__name {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.25;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .sede-plato__price {
+    font-size: 0.8rem;
+    color: #71717a;
+  }
+
+  .sede-plato__state {
+    flex-shrink: 0;
+    padding: 0.4rem 0.7rem;
+    border-radius: 9999px;
+    background: #ecfdf5;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #047857;
+  }
+
+  .sede-plato.is-off {
+    background: #fff7f8;
+    border-color: rgba(225, 29, 72, 0.25);
+  }
+
+  .sede-plato.is-off .sede-plato__img,
+  .sede-plato.is-off .sede-plato__info {
+    opacity: 0.55;
+  }
+
+  .sede-plato.is-off .sede-plato__state {
+    background: #e11d48;
+    color: #fff;
+  }
+
+  .sede-plato:disabled {
+    cursor: progress;
+  }
+
+  .sede-app__empty {
+    max-width: 30rem;
+    margin: 3rem auto;
+    padding: 0 1rem;
+    text-align: center;
+    color: #52525b;
+  }
+
+  .sede-app__toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(1.25rem, env(safe-area-inset-bottom));
+    z-index: 20;
+    max-width: calc(100vw - 2rem);
+    margin: 0;
+    padding: 0.65rem 1rem;
+    border-radius: 9999px;
+    background: #18181b;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.5rem);
+    transition: opacity 180ms ease-out, transform 180ms ease-out;
+  }
+
+  .sede-app__toast.is-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  .sede-app__toast.is-error {
+    background: #be123c;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sede-plato,
+    .sede-app__toast {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  function bindSedeApp() {
+    const app = document.getElementById('sede-app');
+    if (!(app instanceof HTMLElement) || app.dataset.bound === '1') return;
+    app.dataset.bound = '1';
+
+    const sucursalId = app.dataset.sucursalId;
+    const search = document.getElementById('sede-search');
+    const count = document.getElementById('sede-count');
+    const toast = document.getElementById('sede-toast');
+    let toastTimer = 0;
+
+    const showToast = (msg, isError = false) => {
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.classList.toggle('is-error', isError);
+      toast.classList.add('is-on');
+      clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove('is-on'), 2600);
+    };
+
+    const paint = (btn, agotado) => {
+      btn.classList.toggle('is-off', agotado);
+      btn.setAttribute('aria-pressed', String(agotado));
+      const state = btn.querySelector('[data-state]');
+      if (state) state.textContent = agotado ? 'Agotado' : 'Disponible';
+    };
+
+    const paintCount = () => {
+      if (!count) return;
+      const n = app.querySelectorAll('.sede-plato.is-off').length;
+      count.dataset.count = String(n);
+      count.textContent = n === 1 ? '1 agotado' : `${n} agotados`;
+    };
+
+    app.addEventListener('click', async (event) => {
+      const btn = event.target instanceof Element ? event.target.closest('[data-plato-id]') : null;
+      if (!(btn instanceof HTMLButtonElement) || btn.disabled) return;
+      const next = btn.getAttribute('aria-pressed') !== 'true';
+      const nombre = btn.querySelector('.sede-plato__name')?.textContent ?? 'El plato';
+      paint(btn, next);
+      paintCount();
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/plato-sucursal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sucursal_id: sucursalId,
+            plato_id: Number(btn.dataset.platoId),
+            agotado: next,
+            hasta: 'hoy',
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'No se pudo guardar.');
+        showToast(next ? `${nombre}: agotado hasta mañana` : `${nombre}: disponible otra vez`);
+      } catch (err) {
+        paint(btn, !next);
+        paintCount();
+        showToast(err instanceof Error ? err.message : 'No se pudo guardar.', true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    search?.addEventListener('input', () => {
+      const q = search instanceof HTMLInputElement ? search.value.trim().toLowerCase() : '';
+      app.querySelectorAll('[data-group]').forEach((group) => {
+        let visible = 0;
+        group.querySelectorAll('[data-plato-row]').forEach((row) => {
+          const show = !q || (row.getAttribute('data-search') || '').includes(q);
+          row.toggleAttribute('hidden', !show);
+          if (show) visible += 1;
+        });
+        group.toggleAttribute('hidden', visible === 0);
+      });
+    });
+  }
+
+  bindSedeApp();
+  document.addEventListener('astro:page-load', bindSedeApp);
+</script>

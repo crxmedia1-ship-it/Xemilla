@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { isSuperAdminUser } from './config/superadmin.js';
+import { isGerenteSedeUser, isSuperAdminUser } from './config/superadmin.js';
 import { createSupabaseServerClient } from './lib/supabase/server.js';
 
 /**
@@ -39,8 +39,31 @@ export const onRequest = defineMiddleware(async (context, next) => {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (user?.banned_until && new Date(user.banned_until).getTime() > Date.now()) {
+    await supabase.auth.signOut();
+    if (pathname.startsWith('/api/')) {
+      return new Response(JSON.stringify({ error: 'Acceso suspendido' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (!pathname.startsWith('/admin/login')) return context.redirect('/admin/login?suspendido=1');
+    context.locals.user = null;
+    context.locals.supabase = supabase;
+    return next();
+  }
+
   context.locals.user = user ?? null;
   context.locals.supabase = supabase;
+
+  if (
+    isGerenteSedeUser(user) &&
+    pathname.startsWith('/admin') &&
+    !pathname.startsWith('/admin/sede') &&
+    !pathname.startsWith('/admin/login')
+  ) {
+    return context.redirect('/admin/sede');
+  }
 
   if (pathname.startsWith('/admin/super')) {
     if (!user) {

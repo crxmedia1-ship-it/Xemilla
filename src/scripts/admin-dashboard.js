@@ -319,8 +319,7 @@
   const nuevoForm = document.getElementById('nuevo-plato-form');
   const nuevoSubmit = document.getElementById('nuevo-plato-submit');
   const nuevoError = document.getElementById('nuevo-plato-error');
-  const npDestacado = document.getElementById('np-destacado');
-  const npDestacadoTipo = document.getElementById('np-destacado-tipo');
+  const npDestacadoPicker = document.querySelector('#np-destacado [data-destacado-picker]');
   const npCategoriasList = document.getElementById('np-categorias-list');
 
   /** @type {{ id: number, nombre: string }[]} */
@@ -2336,19 +2335,6 @@
 
   /**
    * @param {Element | null} picker
-   * @param {string} tipo
-   */
-  function paintDestacadoTipo(picker, tipo) {
-    if (!(picker instanceof HTMLElement)) return;
-    picker.querySelectorAll('[data-set-destacado-tipo]').forEach((opt) => {
-      const active = opt.getAttribute('data-set-destacado-tipo') === tipo;
-      opt.setAttribute('aria-checked', String(active));
-      opt.classList.toggle('is-active', active);
-    });
-  }
-
-  /**
-   * @param {Element | null} picker
    * @param {'none' | 'chef' | 'promocion'} value
    */
   function paintDestacadoPicker(picker, value) {
@@ -3690,15 +3676,7 @@
       if (!requireRestauranteId()) return;
       fillCategoriasDatalist();
       if (nuevoForm instanceof HTMLFormElement) nuevoForm.reset();
-      if (npDestacado instanceof HTMLElement) {
-        npDestacado.setAttribute('aria-checked', 'false');
-        npDestacado.classList.remove('is-on');
-      }
-      if (npDestacadoTipo instanceof HTMLElement) {
-        npDestacadoTipo.hidden = true;
-        npDestacadoTipo.dataset.value = 'chef';
-        paintDestacadoTipo(npDestacadoTipo, 'chef');
-      }
+      paintDestacadoPicker(npDestacadoPicker, 'none');
       const npCat = document.getElementById('np-categoria');
       if (npCat instanceof HTMLInputElement) {
         // New restaurant / empty menu: auto-select default category
@@ -3729,20 +3707,11 @@
     closeOverlay(nuevoModal, undefined, { timerRef: 'nuevo' });
   }
 
-  npDestacado?.addEventListener('click', () => {
-    if (!(npDestacado instanceof HTMLElement)) return;
-    const next = npDestacado.getAttribute('aria-checked') !== 'true';
-    paintToggle(npDestacado, next);
-    if (npDestacadoTipo instanceof HTMLElement) npDestacadoTipo.hidden = !next;
-  }, { signal });
-
-  npDestacadoTipo?.addEventListener('click', (event) => {
-    if (!(npDestacadoTipo instanceof HTMLElement)) return;
-    const opt = event.target instanceof Element ? event.target.closest('[data-set-destacado-tipo]') : null;
+  npDestacadoPicker?.addEventListener('click', (event) => {
+    const opt = event.target instanceof Element ? event.target.closest('[data-set-destacado]') : null;
     if (!(opt instanceof HTMLElement)) return;
-    const tipo = normalizeDestacadoTipo(opt.dataset.setDestacadoTipo);
-    npDestacadoTipo.dataset.value = tipo;
-    paintDestacadoTipo(npDestacadoTipo, tipo);
+    const value = opt.dataset.setDestacado === 'none' ? 'none' : normalizeDestacadoTipo(opt.dataset.setDestacado);
+    paintDestacadoPicker(npDestacadoPicker, value);
   }, { signal });
 
   nuevoOpeners.forEach((btn) => {
@@ -3775,9 +3744,9 @@
       const descripcion = String(fd.get('descripcion') || '').trim();
       const categoria = String(fd.get('categoria') || '').trim() || 'General';
       const precio = Number(String(fd.get('precio') || '').replace(',', '.'));
-      const destacado =
-        npDestacado instanceof HTMLElement &&
-        npDestacado.getAttribute('aria-checked') === 'true';
+      const destacadoValue =
+        npDestacadoPicker instanceof HTMLElement ? npDestacadoPicker.dataset.value || 'none' : 'none';
+      const destacado = destacadoValue !== 'none';
       const fileInput = document.getElementById('np-imagen');
       const file =
         fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
@@ -3834,10 +3803,7 @@
             descripcion: descripcion || null,
             precio,
             destacado,
-            destacado_tipo:
-              npDestacadoTipo instanceof HTMLElement
-                ? normalizeDestacadoTipo(npDestacadoTipo.dataset.value)
-                : 'chef',
+            destacado_tipo: normalizeDestacadoTipo(destacadoValue),
             categoria,
             imagen_url: imagenUrl,
             calorias: fd.get('calorias') || null,
