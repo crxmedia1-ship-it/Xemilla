@@ -50,6 +50,7 @@ const tiles: NavItem[] = [
 const glyphs = Array.from(
   new Set(['菜單', '營業', '休息', '時間', ...tiles.map((t) => t.zh)].join('').replace(/\s/g, '')),
 ).join('');
+const balusters = Array.from({ length: 17 }, (_, i) => `M${72 + i * 16} 27 L${72 + i * 16} 37`).join(' ');
 const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&text=${encodeURIComponent(glyphs)}&display=swap`;
 ---
 
@@ -147,6 +148,16 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
               <stop offset="0" class="luna-stop--hull-a" />
               <stop offset="1" class="luna-stop--hull-b" />
             </linearGradient>
+            <linearGradient id="luna-panel-shade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffdcb0" stop-opacity="0.16" />
+              <stop offset="0.55" stop-color="#000" stop-opacity="0" />
+              <stop offset="1" stop-color="#000" stop-opacity="0.34" />
+            </linearGradient>
+            <linearGradient id="luna-sail-light" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#000" stop-opacity="0.3" />
+              <stop offset="0.45" stop-color="#fff" stop-opacity="0.05" />
+              <stop offset="1" stop-color="#000" stop-opacity="0.18" />
+            </linearGradient>
             <clipPath id="luna-sail-clip">
               <path d="M12 16 L86 2 Q100 66 95 134 Q50 139 6 136 Q9 74 12 16 Z" />
             </clipPath>
@@ -157,17 +168,36 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
         </svg>
 
         <div class="luna-ship">
+          <svg class="luna-rig" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M51 0 L1 100 M51 0 L99 100 M23 16 L1 100 M79 16 L99 100 M23 16 L51 30 M79 16 L51 30" />
+          </svg>
           <ul class="luna-sails" style={`--luna-cols: ${tiles.length};`}>
             {tiles.map((item) => {
               const inner = (
                 <>
                   <svg class="luna-sail__cloth" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true">
                     <path class="luna-sail__fill" d="M12 16 L86 2 Q100 66 95 134 Q50 139 6 136 Q9 74 12 16 Z" />
-                    <g class="luna-sail__battens" clip-path="url(#luna-sail-clip)">
-                      <path d="M0 44 Q50 40 100 26" />
-                      <path d="M0 70 Q50 68 100 56" />
-                      <path d="M0 95 Q50 95 100 86" />
-                      <path d="M0 118 Q50 120 100 114" />
+                    <g clip-path="url(#luna-sail-clip)">
+                      <g class="luna-sail__panels">
+                        <path d="M0 0 L100 0 L100 26 Q50 40 0 44 Z" />
+                        <path d="M0 44 Q50 40 100 26 L100 56 Q50 68 0 70 Z" />
+                        <path d="M0 70 Q50 68 100 56 L100 86 Q50 95 0 95 Z" />
+                        <path d="M0 95 Q50 95 100 86 L100 114 Q50 120 0 118 Z" />
+                        <path d="M0 118 Q50 120 100 114 L100 140 L0 140 Z" />
+                      </g>
+                      <rect class="luna-sail__light" x="0" y="0" width="100" height="140" />
+                      <g class="luna-sail__battens-shadow">
+                        <path d="M0 46 Q50 42 100 28" />
+                        <path d="M0 72 Q50 70 100 58" />
+                        <path d="M0 97 Q50 97 100 88" />
+                        <path d="M0 120 Q50 122 100 116" />
+                      </g>
+                      <g class="luna-sail__battens">
+                        <path d="M0 44 Q50 40 100 26" />
+                        <path d="M0 70 Q50 68 100 56" />
+                        <path d="M0 95 Q50 95 100 86" />
+                        <path d="M0 118 Q50 120 100 114" />
+                      </g>
                     </g>
                     <path class="luna-sail__edge" d="M12 16 L86 2 Q100 66 95 134 Q50 139 6 136 Q9 74 12 16 Z" />
                   </svg>
@@ -221,11 +251,15 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
               <g class="luna-hull__planks" clip-path="url(#luna-hull-clip)">
                 <path d="M0 74 Q40 80 72 80 L330 80 Q366 76 400 62" />
               </g>
+              <path class="luna-hull__cabin" d="M334 25 L334 9 L374 3 L374 20" />
+              <path class="luna-hull__cabin-roof" d="M330 10 Q352 4 378 1" />
+              <path class="luna-hull__balusters" d={balusters} />
               <path class="luna-hull__rail" d="M10 30 Q34 36 64 38 L328 38 Q364 34 391 20" />
               <path class="luna-hull__edge" d="M4 14 Q30 22 60 26 L330 26 Q366 22 396 4 L388 38 Q372 82 330 92 L70 92 Q28 86 12 52 Z" />
               <path class="luna-hull__deck" d="M4 14 Q30 22 60 26 L330 26 Q366 22 396 4" />
             </svg>
             <span class="luna-hull__eye" aria-hidden="true" />
+            <span class="luna-hull__lamp" aria-hidden="true" />
             <span class="luna-hull__zh" lang="zh-Hant" aria-hidden="true">菜單</span>
             <span class="luna-hull__main">
               <span class="luna-hull__title">Menú</span>
@@ -528,6 +562,16 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     flex-shrink: 0;
     width: min(100%, 26rem);
     padding-top: clamp(0.4rem, 1.6svh, 1.2rem);
+    padding-bottom: clamp(0.6rem, 2svh, 1.1rem);
+  }
+
+  .luna-nav::before {
+    content: '';
+    position: absolute;
+    inset: -12% -14% -6%;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(ellipse 50% 50% at 50% 58%, rgba(22, 5, 10, 0.62), rgba(22, 5, 10, 0.28) 60%, transparent 100%);
   }
 
   .luna-defs {
@@ -551,6 +595,9 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
   }
 
   .luna-ship {
+    --sail-side: clamp(5rem, 14svh, 8rem);
+    --sail-main: clamp(6rem, 17.5svh, 9.6rem);
+    --hull-h: clamp(4.3rem, 11svh, 6.3rem);
     position: relative;
     transform-origin: 50% 100%;
     animation: luna-bob 7s ease-in-out infinite;
@@ -572,18 +619,18 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
   .luna-sails > li {
     position: relative;
     display: flex;
-    height: var(--sail-h, clamp(6.2rem, 15svh, 8rem));
+    height: var(--sail-h, var(--sail-side));
   }
 
   .luna-sails > li:nth-child(2):not(:last-child) {
-    --sail-h: clamp(7.4rem, 18.5svh, 9.6rem);
+    --sail-h: var(--sail-main);
   }
 
   .luna-mast {
     position: absolute;
     left: 50%;
     top: -0.7rem;
-    bottom: calc(-1 * clamp(1.1rem, 3svh, 1.5rem));
+    bottom: calc(-1 * var(--hull-h) * 0.32);
     width: 3px;
     translate: -50% 0;
     border-radius: 2px;
@@ -655,10 +702,45 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     fill: url(#luna-sail-fill);
   }
 
-  .luna-sail__battens path {
+  .luna-sail__panels path {
+    fill: url(#luna-panel-shade);
+  }
+
+  .luna-sail__light {
+    fill: url(#luna-sail-light);
+  }
+
+  .luna-sail__battens path,
+  .luna-sail__battens-shadow path {
     fill: none;
-    stroke: color-mix(in srgb, var(--luna-gold) 70%, transparent);
-    stroke-width: 1.2;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+
+  .luna-sail__battens path {
+    stroke: color-mix(in srgb, var(--luna-gold) 85%, #fff 10%);
+  }
+
+  .luna-sail__battens-shadow path {
+    stroke: rgba(10, 0, 4, 0.55);
+    stroke-width: 2.2;
+  }
+
+  /* Jarcia: cabos dorados del palo mayor a proa y popa */
+  .luna-rig {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -0.55rem;
+    width: 100%;
+    height: calc(100% + 0.55rem - var(--hull-h) * 0.73 - 7px);
+    pointer-events: none;
+  }
+
+  .luna-rig path {
+    fill: none;
+    stroke: rgba(226, 185, 106, 0.42);
+    stroke-width: 0.8;
   }
 
   .luna-sail__edge {
@@ -678,15 +760,27 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
   }
 
   .luna-sail__label {
-    padding: 0.18rem 0.45rem;
-    border-radius: 3px;
+    position: relative;
+    padding-top: 0.35rem;
     font-family: Cinzel, ui-serif, Georgia, serif;
     font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.14em;
     margin-right: -0.14em;
     text-transform: uppercase;
-    background: rgba(20, 4, 8, 0.35);
+    color: #fbefd2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.6);
+  }
+
+  .luna-sail__label::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 1.4rem;
+    height: 1px;
+    translate: -50% 0;
+    background: linear-gradient(90deg, transparent, var(--luna-gold), transparent);
   }
 
   /* Casco lacado: el menú */
@@ -699,8 +793,8 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     align-items: center;
     gap: 0.85rem;
     width: 100%;
-    height: clamp(5rem, 12.5svh, 6.3rem);
-    padding: clamp(1.35rem, 3.3svh, 1.7rem) 2.4rem 0.45rem 3.1rem;
+    height: var(--hull-h);
+    padding: calc(var(--hull-h) * 0.27) 2.4rem 0.4rem 3.1rem;
     color: var(--luna-cream);
     text-align: left;
     -webkit-tap-highlight-color: transparent;
@@ -716,6 +810,37 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     fill: none;
     stroke: rgba(226, 185, 106, 0.22);
     stroke-width: 1;
+  }
+
+  .luna-hull__cabin {
+    fill: #2c0d10;
+    stroke: color-mix(in srgb, var(--luna-gold) 85%, transparent);
+    stroke-width: 1.2;
+  }
+
+  .luna-hull__cabin-roof {
+    fill: none;
+    stroke: var(--luna-gold);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+
+  .luna-hull__balusters {
+    fill: none;
+    stroke: rgba(226, 185, 106, 0.38);
+    stroke-width: 1;
+  }
+
+  .luna-hull__lamp {
+    position: absolute;
+    right: 1.5%;
+    top: -0.75rem;
+    width: 0.55rem;
+    height: 0.65rem;
+    border-radius: 45%;
+    background: radial-gradient(circle at 50% 45%, #ffd27a, #e0503a 55%, #7a0f1c);
+    box-shadow: 0 0 10px rgba(255, 128, 60, 0.75), 0 0 22px rgba(255, 90, 40, 0.35);
+    animation: luna-flicker 3.2s ease-in-out infinite;
   }
 
   .luna-hull__rail {
@@ -843,6 +968,29 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     }
     .luna-hull:hover .luna-hull__go {
       background: rgba(226, 185, 106, 0.18);
+    }
+  }
+
+  @media (max-height: 740px) {
+    .luna-sail__zh {
+      font-size: clamp(0.9rem, 2.6svh, 1.2rem);
+    }
+    .luna-sail {
+      gap: 0.25rem;
+    }
+  }
+
+  @media (max-height: 620px) {
+    .luna-ship {
+      --sail-side: 13.5svh;
+      --sail-main: 16.5svh;
+      --hull-h: 11.5svh;
+    }
+    .luna-sail__label {
+      font-size: 0.55rem;
+    }
+    .luna-slogan {
+      margin-top: 0.45rem;
     }
   }
 
@@ -987,6 +1135,16 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
       luna-waves 6s 1.5s linear infinite;
   }
 
+  .home-luna--anim .luna-rig {
+    animation: luna-fade 0.8s 1.35s ease both;
+  }
+
+  @keyframes luna-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
   .home-luna--anim .luna-sails > li {
     transform-origin: 50% 100%;
     animation: luna-hoist 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1051,10 +1209,12 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     .home-luna--anim .luna-eyebrow,
     .luna-ship,
     .luna-sail,
+    .luna-hull__lamp,
     .luna-water,
     .luna-mast::after,
     .home-luna--anim .luna-hull,
     .home-luna--anim .luna-water,
+    .home-luna--anim .luna-rig,
     .home-luna--anim .luna-sails > li {
       animation: none;
     }
