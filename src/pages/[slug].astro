@@ -1,20 +1,8 @@
 ---
 export const prerender = false;
 
-import Layout from '../layouts/Layout.astro';
-import RestaurantApp from '../components/app/RestaurantApp.astro';
+import RestaurantPage from '../components/app/RestaurantPage.astro';
 import { getRestauranteBySlug } from '../lib/restaurantes.js';
-import { normalizeBrandSlug } from '../config/brand.js';
-import { DEFAULT_THEME } from '../lib/theme.js';
-import { designThemes, DEFAULT_DESIGN_DNA } from '../config/themes.js';
-import {
-  sanitizeTheme,
-  normalizeUbicacionTheme,
-  normalizeNosotrosTheme,
-  DEFAULT_UBICACION_THEME,
-  DEFAULT_NOSOTROS_THEME,
-} from '../lib/layout-themes.js';
-import { buildRestaurantPwa } from '../lib/pwa.js';
 
 const { slug } = Astro.params;
 let restauranteRaw = null;
@@ -25,90 +13,9 @@ try {
   restauranteRaw = null;
 }
 
-const homeThemeRawDb = restauranteRaw?.home_theme ?? null;
-const sanitizedHomeTheme = sanitizeTheme(homeThemeRawDb);
-const nosotrosThemeResolved = normalizeNosotrosTheme(
-  restauranteRaw?.nosotros_theme ??
-    restauranteRaw?.uiEstilo?.nosotros?.theme ??
-    DEFAULT_NOSOTROS_THEME,
-);
-const ubicacionThemeResolved = normalizeUbicacionTheme(
-  restauranteRaw?.ubicacion_theme ?? DEFAULT_UBICACION_THEME,
-);
-
-/**
- * Home y Ubicación son plantillas independientes.
- * home_theme se deja RAW; el sanitize controla solo el componente montado.
- */
-const restaurante = restauranteRaw
-  ? {
-      ...restauranteRaw,
-      home_theme: homeThemeRawDb,
-      homeTheme: sanitizedHomeTheme,
-      nosotrosTheme: nosotrosThemeResolved,
-      nosotros_theme:
-        restauranteRaw.nosotros_theme ?? nosotrosThemeResolved,
-      ubicacionTheme: ubicacionThemeResolved,
-      ubicacion_theme:
-        restauranteRaw.ubicacion_theme ?? ubicacionThemeResolved,
-    }
-  : null;
-
-if (!restaurante) {
+if (!restauranteRaw) {
   Astro.response.status = 404;
 }
-
-const brandKey = normalizeBrandSlug(slug ?? '');
-const layoutTheme = (brandKey === 'sanza' || brandKey === 'blacksushi' ? brandKey : 'crx') as
-  | 'blacksushi'
-  | 'sanza'
-  | 'crx';
-
-const brandTheme = restaurante?.theme ?? DEFAULT_THEME;
-const dna =
-  brandTheme.design ??
-  designThemes[(brandTheme.designDnaId as keyof typeof designThemes) || DEFAULT_DESIGN_DNA] ??
-  designThemes[DEFAULT_DESIGN_DNA];
-
-const ogImage = restaurante?.shareImageUrl || restaurante?.logoUrl || '';
-const pwa = restaurante ? buildRestaurantPwa(restaurante) : null;
-const appIcon = pwa?.appleIcon || restaurante?.appIconUrl || restaurante?.logoUrl || '';
-const siteOrigin = Astro.url.origin;
-const ogUrl = restaurante ? `${siteOrigin}/${restaurante.slug}` : '';
 ---
 
-{
-  !restaurante ? (
-    <Layout title="No encontrado · CRX" theme="crx" themeColor="#09090b">
-      <main class="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center text-white">
-        <p class="text-[0.62rem] font-semibold uppercase tracking-[0.35em] text-neutral-500">CRX</p>
-        <h1 class="mt-4 font-blacksushi-display text-3xl font-semibold tracking-tight">404</h1>
-        <p class="mt-3 max-w-[18rem] text-sm leading-relaxed text-neutral-400">
-          Este menú no está disponible. Revisá el enlace con el restaurante.
-        </p>
-        <p class="mt-10 text-[10px] uppercase tracking-[0.28em] text-zinc-600">Acceso restringido</p>
-      </main>
-    </Layout>
-  ) : (
-    <Layout
-      title={restaurante.nombre || 'Menú'}
-      description={`${restaurante.nombre || 'Restaurante'} · ${restaurante.tagline || ''}`}
-      theme={layoutTheme}
-      themeColor={brandTheme.colorFondo}
-      fontHref={brandTheme.googleFontsHref || dna.fonts.googleHref}
-      customCss=""
-      ogImage={ogImage}
-      appIcon={appIcon}
-      manifestHref={pwa ? `/${pwa.slug}/manifest.webmanifest` : ''}
-      appName={pwa?.shortName || ''}
-      ogUrl={ogUrl}
-    >
-      <RestaurantApp
-        restaurante={restaurante}
-        homeTheme={sanitizedHomeTheme}
-        nosotrosTheme={nosotrosThemeResolved}
-        ubicacionTheme={ubicacionThemeResolved}
-      />
-    </Layout>
-  )
-}
+<RestaurantPage slug={slug ?? ''} restauranteRaw={restauranteRaw} />

@@ -3,11 +3,12 @@ export const prerender = false;
 import { getRestauranteBySlug } from '../../lib/restaurantes.js';
 import { buildRestaurantPwa } from '../../lib/pwa.js';
 
-export async function GET({ params }) {
+export async function GET({ params, url }) {
   const slug = String(params.slug || '').trim();
+  const sucursal = url.searchParams.get('sucursal');
   let restaurante = null;
   try {
-    restaurante = await getRestauranteBySlug(slug);
+    restaurante = await getRestauranteBySlug(slug, { sucursal });
   } catch (err) {
     console.error('[manifest] getRestauranteBySlug crash:', err);
   }

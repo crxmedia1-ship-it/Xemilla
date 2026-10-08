@@ -1,0 +1,21 @@
+---
+export const prerender = false;
+
+import RestaurantPage from '../../components/app/RestaurantPage.astro';
+import { getRestauranteBySlug } from '../../lib/restaurantes.js';
+
+const { slug, sucursal } = Astro.params;
+let restauranteRaw = null;
+try {
+  restauranteRaw = await getRestauranteBySlug(slug ?? '', { sucursal: sucursal ?? '' });
+} catch (err) {
+  console.error('[slug/sucursal] getRestauranteBySlug crash:', err);
+  restauranteRaw = null;
+}
+
+if (!restauranteRaw) {
+  Astro.response.status = 404;
+}
+---
+
+<RestaurantPage slug={slug ?? ''} restauranteRaw={restauranteRaw} />

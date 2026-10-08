@@ -754,6 +754,46 @@ EXCEPTION
 END $$;
 
 -- =============================================================================
+-- Sucursales (sedes de una marca) y agotado por sede
+-- Definición completa, triggers y RLS: migrations/20261007140000_sucursales.sql
+-- Gadget de pago: migrations/20261007150000_gadget_sucursales.sql
+-- =============================================================================
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS gadget_sucursales boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS sucursales_cupo smallint NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS public.sucursales (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  restaurante_id uuid NOT NULL REFERENCES public.restaurantes (id) ON DELETE CASCADE,
+  slug text NOT NULL,
+  nombre text NOT NULL,
+  direccion text,
+  horarios text,
+  whatsapp_num text,
+  coordenadas_maps text,
+  zona_horaria text NOT NULL DEFAULT 'America/Caracas',
+  es_principal boolean NOT NULL DEFAULT false,
+  activo boolean NOT NULL DEFAULT true,
+  orden integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT sucursales_slug_formato CHECK (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  CONSTRAINT sucursales_slug_reservado CHECK (slug NOT IN ('menu', 'admin', 'api')),
+  CONSTRAINT sucursales_nombre_no_vacio CHECK (length(btrim(nombre)) > 0),
+  CONSTRAINT sucursales_slug_unico UNIQUE (restaurante_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS public.plato_sucursal (
+  sucursal_id uuid NOT NULL REFERENCES public.sucursales (id) ON DELETE CASCADE,
+  plato_id bigint NOT NULL REFERENCES public.platos (id) ON DELETE CASCADE,
+  restaurante_id uuid NOT NULL REFERENCES public.restaurantes (id) ON DELETE CASCADE,
+  agotado boolean NOT NULL DEFAULT true,
+  agotado_hasta timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (sucursal_id, plato_id)
+);
+
+-- =============================================================================
 -- Notas de uso
 -- =============================================================================
 -- 1. Pegar este archivo en Supabase → SQL → New query → Run.

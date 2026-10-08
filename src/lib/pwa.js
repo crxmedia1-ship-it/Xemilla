@@ -29,6 +29,8 @@ export function buildRestaurantPwa(restaurante) {
   const iconMaskable = squareAppIconUrl(source, { size: 512, background, padding: 0.22 });
   const description =
     String(restaurante?.tagline || '').trim() || `${name} · menú y experiencia`;
+  const sucursalSlug = restaurante?.multiSucursal ? String(restaurante?.sucursal?.slug || '') : '';
+  const startPath = sucursalSlug ? `/${slug}/${sucursalSlug}` : `/${slug}`;
 
   return {
     slug,
@@ -36,12 +38,13 @@ export function buildRestaurantPwa(restaurante) {
     shortName,
     themeColor: background,
     appleIcon,
+    manifestHref: `/${slug}/manifest.webmanifest${sucursalSlug ? `?sucursal=${sucursalSlug}` : ''}`,
     manifest: {
-      id: `/${slug}`,
+      id: startPath,
       name,
       short_name: shortName,
       description,
-      start_url: `/${slug}`,
+      start_url: startPath,
       scope: `/${slug}`,
       display: 'standalone',
       background_color: background,

@@ -39,6 +39,8 @@ const RESTAURANTE_ADMIN_SELECT = [
   'gadget_boutique',
   'gadget_nutricion',
   'gadget_ar',
+  'gadget_sucursales',
+  'sucursales_cupo',
   'config_wifi',
   'config_reservas',
   'config_boutique',
@@ -251,14 +253,37 @@ export async function getAdminDashboardData(ctx, opts = {}) {
       .order('categoria_id', { ascending: true })
       .order('id', { ascending: true });
 
-  const [{ data: platosRaw, error: platosError }, catResult] = await Promise.all([
-    loadPlatos(platosSelect),
-    readClient
-      .from('categorias')
-      .select('id, nombre, orden, bg_type, bg_valor')
-      .eq('restaurante_id', restaurante.id)
-      .order('orden', { ascending: true }),
-  ]);
+  const [{ data: platosRaw, error: platosError }, catResult, sucursalesResult, agotadosResult] =
+    await Promise.all([
+      loadPlatos(platosSelect),
+      readClient
+        .from('categorias')
+        .select('id, nombre, orden, bg_type, bg_valor')
+        .eq('restaurante_id', restaurante.id)
+        .order('orden', { ascending: true }),
+      readClient
+        .from('sucursales')
+        .select('id, slug, nombre, direccion, horarios, whatsapp_num, coordenadas_maps, es_principal, activo, orden')
+        .eq('restaurante_id', restaurante.id)
+        .order('es_principal', { ascending: false })
+        .order('orden', { ascending: true })
+        .order('nombre', { ascending: true }),
+      readClient
+        .from('plato_sucursal')
+        .select('sucursal_id, plato_id, agotado, agotado_hasta')
+        .eq('restaurante_id', restaurante.id)
+        .eq('agotado', true)
+        .or(`agotado_hasta.is.null,agotado_hasta.gt.${new Date().toISOString()}`),
+    ]);
+
+  if (sucursalesResult.error) console.error('[admin] sucursales:', sucursalesResult.error.message);
+  if (agotadosResult.error) console.error('[admin] plato_sucursal:', agotadosResult.error.message);
+  const sucursales = sucursalesResult.data ?? [];
+  /** @type {Record<string, Record<string, string | null>>} sucursal_id → plato_id → agotado_hasta */
+  const agotadosPorSucursal = {};
+  for (const r of agotadosResult.data ?? []) {
+    (agotadosPorSucursal[r.sucursal_id] ??= {})[String(r.plato_id)] = r.agotado_hasta ?? null;
+  }
 
   let platos = platosRaw;
   let platosLoadError = platosError;
@@ -342,6 +367,8 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     restaurante,
     platos: platosMapped,
     categorias: categoriasMapped,
+    sucursales,
+    agotadosPorSucursal,
     isSuperAdmin: isSuper,
     role: role || ADMIN_ROLE_OPERATIVO,
     assignedRestauranteId,

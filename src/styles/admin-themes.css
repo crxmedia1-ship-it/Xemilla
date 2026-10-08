@@ -6073,7 +6073,7 @@ html.admin-panel[data-theme='organico'] .studio-search-input {
   background: color-mix(in srgb, var(--border-subtle, rgba(255, 255, 255, 0.12)) 100%, transparent);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .studio-status-bento,
   .studio-macro-row,
   .studio-subcat-row:not([hidden]):not(.is-empty) {
@@ -6138,10 +6138,375 @@ html.admin-panel[data-theme='organico'] .studio-search-input {
   }
 }
 
-@media (min-width: 561px) and (max-width: 768px) {
+@media (min-width: 561px) and (max-width: 1023px) {
   .macro-filter-pill {
     flex: 0 0 auto;
     min-width: 0;
   }
 }
 
+
+/* ── Sucursales: selector de sede en Menú + diálogo de gestión ── */
+.sede-block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sede-block__manage {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0.1rem 0.15rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #52525b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.sede-block__manage:hover {
+  color: #18181b;
+}
+
+.sede-block__hint {
+  margin: 0;
+  padding-left: 0.15rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #71717a;
+}
+
+.sede-block.is-sede .sede-block__hint {
+  color: #b45309;
+}
+
+.platos-row[data-agotado-marca='true'] [data-toggle-disponible] {
+  opacity: 0.45;
+}
+
+.sede-dialog {
+  width: min(40rem, calc(100vw - 1.5rem));
+  max-height: min(48rem, calc(100dvh - 1.5rem));
+  margin: auto;
+  padding: 0;
+  border: 1px solid rgba(24, 24, 27, 0.08);
+  border-radius: 1.25rem;
+  background: #fff;
+  color: #18181b;
+  box-shadow: 0 30px 80px -20px rgba(24, 24, 27, 0.35);
+}
+
+.sede-dialog::backdrop {
+  background: rgba(24, 24, 27, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.sede-dialog__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.35rem;
+}
+
+.sede-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sede-dialog__kicker {
+  margin: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #71717a;
+}
+
+.sede-dialog__title {
+  margin: 0.35rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.sede-dialog__lead {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #52525b;
+}
+
+.sede-dialog__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid rgba(24, 24, 27, 0.1);
+  border-radius: 999px;
+  background: #fff;
+  color: #3f3f46;
+  cursor: pointer;
+}
+
+.sede-dialog__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.sede-card {
+  border: 1px solid rgba(24, 24, 27, 0.08);
+  border-radius: 1rem;
+  background: #f7f7f9;
+}
+
+.sede-card[open] {
+  background: #fff;
+}
+
+.sede-card__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.sede-card__summary::-webkit-details-marker {
+  display: none;
+}
+
+.sede-card__name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sede-card__url {
+  overflow: hidden;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #71717a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sede-card__badge {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: #e4e4e7;
+  color: #3f3f46;
+}
+
+.sede-card__badge--off {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.sede-card__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0 1rem 1rem;
+}
+
+.sede-card__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #52525b;
+}
+
+.sede-card__form .is-wide {
+  grid-column: 1 / -1;
+}
+
+.sede-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+  padding-top: 0.25rem;
+}
+
+.sede-card__actions .is-push {
+  margin-left: auto;
+}
+
+.sede-card__check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.45rem !important;
+}
+
+.sede-card__danger {
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #be123c;
+  cursor: pointer;
+}
+
+.sede-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(24, 24, 27, 0.12);
+  border-radius: 0.7rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #18181b;
+  outline: none;
+}
+
+.sede-input:focus {
+  border-color: #18181b;
+}
+
+.sede-dialog__new {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(24, 24, 27, 0.08);
+}
+
+.sede-dialog__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sede-dialog__status {
+  min-height: 1rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #52525b;
+}
+
+.sede-dialog__status.is-error {
+  color: #be123c;
+}
+
+@media (max-width: 520px) {
+  .sede-card__form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sede-dialog__row {
+    flex-direction: column;
+  }
+}
+
+/* ── Destacado: una pulsación — sin destacar | Chef | Promo ── */
+.dest-pick {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dest-pick__seg {
+  display: inline-flex;
+  gap: 0.15rem;
+  padding: 0.18rem;
+  border-radius: 9999px;
+  background: #eceef2;
+  box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.06);
+}
+
+.dest-pick__opt {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.dest-pick__opt:hover {
+  color: #3f3f46;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.dest-pick__opt:active {
+  transform: scale(0.92);
+}
+
+.dest-pick__opt:focus-visible {
+  outline: 2px solid #18181b;
+  outline-offset: 1px;
+}
+
+.dest-pick__opt.is-active[data-set-destacado='none'] {
+  background: #fff;
+  color: #52525b;
+  box-shadow: 0 1px 2px rgba(24, 24, 27, 0.12);
+}
+
+.dest-pick__opt.is-active[data-set-destacado='chef'] {
+  background: #c9a227;
+  color: #fff;
+  box-shadow: 0 2px 8px -2px rgba(201, 162, 39, 0.7);
+}
+
+.dest-pick__opt.is-active[data-set-destacado='chef'] svg {
+  fill: currentColor;
+}
+
+.dest-pick__opt.is-active[data-set-destacado='promocion'] {
+  background: #e11d48;
+  color: #fff;
+  box-shadow: 0 2px 8px -2px rgba(225, 29, 72, 0.7);
+}
+
+.dest-pick__label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a1a1aa;
+  white-space: nowrap;
+}
+
+.dest-pick[data-value='chef'] .dest-pick__label {
+  color: #a16207;
+}
+
+.dest-pick[data-value='promocion'] .dest-pick__label {
+  color: #e11d48;
+}
+
+@media (max-width: 1023px) {
+  .platos-cell--destacado .dest-pick {
+    flex-direction: row-reverse;
+    gap: 0.5rem;
+  }
+}

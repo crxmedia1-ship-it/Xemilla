@@ -1,0 +1,151 @@
+---
+import { DEFAULT_THEME } from '../../lib/theme.js';
+
+interface Props {
+  restaurante: any;
+}
+
+const { restaurante } = Astro.props;
+const theme = restaurante?.theme ?? DEFAULT_THEME;
+const sucursales: Array<{ slug: string; nombre: string; direccion: string }> =
+  restaurante?.sucursales ?? [];
+const nombre = restaurante?.nombre || 'Restaurante';
+const logoUrl = restaurante?.logoUrl || '';
+---
+
+<main
+  class="sede-picker"
+  style={`--sp-bg:${theme.colorFondo || DEFAULT_THEME.colorFondo};--sp-fg:${theme.colorTexto || DEFAULT_THEME.colorTexto};--sp-accent:${theme.colorPrimario || DEFAULT_THEME.colorPrimario};`}
+>
+  <header class="sede-picker__head">
+    {logoUrl ? (
+      <img class="sede-picker__logo" src={logoUrl} alt={nombre} width="160" height="160" decoding="async" />
+    ) : (
+      <p class="sede-picker__name">{nombre}</p>
+    )}
+    <h1 class="sede-picker__title">Elegí tu sede</h1>
+  </header>
+
+  <ul class="sede-picker__list" role="list">
+    {sucursales.map((s) => (
+      <li>
+        <a class="sede-picker__item" href={`/${restaurante.slug}/${s.slug}`} data-sede={s.slug}>
+          <span class="sede-picker__text">
+            <span class="sede-picker__sede">{s.nombre}</span>
+            {s.direccion && <span class="sede-picker__dir">{s.direccion}</span>}
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </a>
+      </li>
+    ))}
+  </ul>
+</main>
+
+<script>
+  document.querySelectorAll<HTMLAnchorElement>('.sede-picker__item').forEach((a) => {
+    a.addEventListener('click', () => {
+      try {
+        localStorage.setItem(`xemilla:sede:${location.pathname}`, a.dataset.sede || '');
+      } catch {
+        /* almacenamiento bloqueado */
+      }
+    });
+  });
+  try {
+    const last = localStorage.getItem(`xemilla:sede:${location.pathname}`);
+    const item = last && document.querySelector(`.sede-picker__item[data-sede="${CSS.escape(last)}"]`);
+    if (item) item.classList.add('is-last');
+  } catch {
+    /* almacenamiento bloqueado */
+  }
+</script>
+
+<style>
+  .sede-picker {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 3rem 1.25rem;
+    background: var(--sp-bg);
+    color: var(--sp-fg);
+  }
+  .sede-picker__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    text-align: center;
+  }
+  .sede-picker__logo {
+    width: 7.5rem;
+    height: 7.5rem;
+    object-fit: contain;
+  }
+  .sede-picker__name {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .sede-picker__title {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .sede-picker__list {
+    width: 100%;
+    max-width: 26rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .sede-picker__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--sp-fg) 14%, transparent);
+    background: color-mix(in srgb, var(--sp-fg) 5%, transparent);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  .sede-picker__item:hover,
+  .sede-picker__item:focus-visible {
+    border-color: var(--sp-accent);
+    background: color-mix(in srgb, var(--sp-accent) 12%, transparent);
+    transform: translateY(-1px);
+  }
+  .sede-picker__item.is-last {
+    border-color: color-mix(in srgb, var(--sp-accent) 70%, transparent);
+  }
+  .sede-picker__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+  .sede-picker__sede {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .sede-picker__dir {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>

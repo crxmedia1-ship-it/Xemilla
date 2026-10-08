@@ -15,7 +15,11 @@ import {
   getSuperAdminWriteClient,
 } from '../../lib/superadmin.js';
 import { parseBoutiqueConfig } from '../../lib/boutique.js';
-import { DESTACADO_TIPOS, DESTACADO_TIPO_LABELS } from '../../lib/destacado-tipo.js';
+import {
+  DESTACADO_TIPOS,
+  DESTACADO_TIPO_LABELS,
+  destacadoPickerHtml,
+} from '../../lib/destacado-tipo.js';
 import {
   normalizeNosotrosTheme,
   normalizeUbicacionTheme,
@@ -107,6 +111,8 @@ const {
   restaurante,
   platos: platosLoaded = [],
   categorias = [],
+  sucursales = [],
+  agotadosPorSucursal = {},
   managingAsSuperAdmin,
   user,
   assignedRestauranteId: sessionAssignedId,
@@ -153,6 +159,14 @@ if (isSuperAdmin && restId) {
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
 const publicWebAppUrl = publicSlug ? `https://xemilla.app/${publicSlug}` : '';
 const categoriasJson = JSON.stringify(categorias);
+const sucursalesJson = JSON.stringify(sucursales);
+const agotadosSucursalJson = JSON.stringify(agotadosPorSucursal);
+const sucursalesActivas = sucursales.filter((s) => s.activo);
+const gadgetSucursales = Boolean(restaurante?.gadget_sucursales);
+const sucursalesCupo = Math.max(1, Number(restaurante?.sucursales_cupo) || 1);
+/** Solo con el gadget contratado; SuperAdmin lo ve sin 2.ª sede para poder crearla. */
+const showSucursales =
+  gadgetSucursales && (sucursalesActivas.length > 1 || (isSuperAdmin && sucursales.length > 0));
 const opsHorario = String(restaurante?.horarios || '').trim();
 const horarioSemana = parseHorarioSemana(opsHorario);
 const horarioHoy = previewHorarioHoy(horarioSemana);
@@ -546,6 +560,8 @@ const marca = {
   gadget_boutique: Boolean(restaurante?.gadget_boutique),
   gadget_nutricion: Boolean(restaurante?.gadget_nutricion),
   gadget_ar: Boolean(restaurante?.gadget_ar),
+  gadget_sucursales: gadgetSucursales,
+  sucursales_cupo: sucursalesCupo,
   boutique_titulo: boutiqueConfig.titulo || 'Boutique',
   boutique_catalogo_url: boutiqueConfig.catalogo_url || '',
   gadget_ar_modo_vista: uiEstiloRaw?.gadgets?.ar?.modo_vista || 'rotacion_360',
@@ -770,9 +786,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
         ) : null
       }
 
-      <form method="POST" action="/api/admin-logout" class="hidden sm:block">
-        <button type="submit" class="admin-studio-header__link" title="Cerrar sesión">
-          Salir
+      <form method="POST" action="/api/admin-logout">
+        <button type="submit" class="admin-studio-header__link inline-flex items-center" title="Cerrar sesión" aria-label="Cerrar sesión">
+          <svg class="size-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"></path>
+            <path d="M10 17l-5-5 5-5"></path>
+            <path d="M5 12h11"></path>
+          </svg>
+          <span class="hidden sm:inline">Salir</span>
         </button>
       </form>
     </div>
@@ -781,7 +802,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     {
       restaurante ? (
         <nav
-          class="admin-studio-header__nav hidden w-full items-center justify-center overflow-x-auto scrollbar-hide sm:absolute sm:left-1/2 sm:order-2 sm:flex sm:w-auto sm:-translate-x-1/2"
+          class="admin-studio-header__nav hidden w-full items-center justify-center overflow-x-auto scrollbar-hide lg:absolute lg:left-1/2 lg:order-2 lg:flex lg:w-auto lg:-translate-x-1/2"
           role="tablist"
           aria-label="Secciones del panel"
           data-admin-top-nav
@@ -877,6 +898,10 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           class="w-full min-w-0 max-w-none"
           data-slug={publicSlug}
           data-categorias={categoriasJson}
+          data-sucursales={sucursalesJson}
+          data-agotados-sucursal={agotadosSucursalJson}
+          data-gadget-sucursales={gadgetSucursales ? 'true' : 'false'}
+          data-sucursales-cupo={sucursalesCupo}
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
           data-gadget-nutricion={marca.gadget_nutricion ? 'true' : 'false'}
           data-gadget-ar={marca.gadget_ar ? 'true' : 'false'}
@@ -1085,11 +1110,76 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             )
           }
 
+          {
+            showSucursales && (
+              <dialog id="sucursales-dialog" class="sede-dialog" aria-labelledby="sucursales-dialog-title">
+                <div class="sede-dialog__panel">
+                  <header class="sede-dialog__head">
+                    <div>
+                      <p class="sede-dialog__kicker">Sucursales</p>
+                      <h2 id="sucursales-dialog-title" class="sede-dialog__title">Sedes de {nombre}</h2>
+                      <p class="sede-dialog__lead">
+                        Cada sede tiene su enlace y su QR. El menú es el mismo; cada sede agota sus platos por separado.
+                        Los datos vacíos se toman del perfil del restaurante.
+                      </p>
+                    </div>
+                    <button type="button" class="sede-dialog__close" data-sucursales-close aria-label="Cerrar">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                  </header>
+                  <div class="sede-dialog__list" data-sucursales-list />
+                  {isSuperAdmin && (
+                    <form class="sede-dialog__new" data-sucursal-create>
+                      <p class="sede-dialog__kicker">Nueva sede · <span data-sucursales-cupo-label /></p>
+                      <div class="sede-dialog__row">
+                        <input name="nombre" required maxlength="60" placeholder="Nombre (ej. Las Mercedes)" class="sede-input" />
+                        <button type="submit" class="menu-cmd-btn menu-cmd-btn--primary">Añadir sede</button>
+                      </div>
+                    </form>
+                  )}
+                  <p class="sede-dialog__status" data-sucursales-status role="status" />
+                </div>
+              </dialog>
+            )
+          }
+
           <section class="w-full min-w-0">
             <div
               id="platos-toolbar"
               class:list={['platos-toolbar mb-4 w-full space-y-2 sm:mb-5', platos.length === 0 && 'hidden']}
             >
+              {
+                showSucursales && (
+                  <div class="menu-filter-block sede-block" data-sucursal-block>
+                    <div class="sede-block__head">
+                      <span class="menu-filter-block__kicker">Sede</span>
+                      <button type="button" class="sede-block__manage" data-sucursales-open>
+                        Gestionar sedes
+                      </button>
+                    </div>
+                    <div
+                      id="sucursal-scroll"
+                      class="studio-macro-row scrollbar-hide"
+                      role="toolbar"
+                      aria-label="Elegir sede"
+                    >
+                      <button type="button" data-sucursal-filter="" aria-pressed="true" class="macro-filter-pill is-on">
+                        Todas las sedes
+                      </button>
+                      {sucursalesActivas.map((s) => (
+                        <button type="button" data-sucursal-filter={s.id} aria-pressed="false" class="macro-filter-pill">
+                          {s.nombre}
+                        </button>
+                      ))}
+                    </div>
+                    <p class="sede-block__hint" id="sucursal-hint" aria-live="polite">
+                      Agotar un plato aquí lo quita del menú de todas las sedes.
+                    </p>
+                  </div>
+                )
+              }
               <div class="menu-filter-block">
                 <span class="menu-filter-block__kicker">Estado</span>
                 <div
@@ -1408,32 +1498,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             </div>
                           </td>
                           <td class="platos-cell platos-cell--destacado px-3 py-3.5 text-center" data-label="Destacado">
-                            <div class="dest-control">
-                              <button
-                                type="button"
-                                role="switch"
-                                aria-checked={plato.destacado}
-                                data-toggle-destacado
-                                title="Destacado"
-                                class:list={['ios-toggle', 'ios-toggle--star', plato.destacado && 'is-on']}
-                              >
-                                <span class="ios-toggle__knob" aria-hidden="true" />
-                              </button>
-                              <div class="dest-tipo" role="radiogroup" aria-label="Tipo de destacado" data-destacado-tipo-picker hidden={!plato.destacado}>
-                                {DESTACADO_TIPOS.map((tipo) => (
-                                  <button
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={plato.destacado_tipo === tipo}
-                                    data-set-destacado-tipo={tipo}
-                                    title={DESTACADO_TIPO_LABELS[tipo]}
-                                    class:list={['dest-tipo__opt', plato.destacado_tipo === tipo && 'is-active']}
-                                  >
-                                    {tipo === 'chef' ? 'Chef' : 'Promo'}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                            <Fragment set:html={destacadoPickerHtml(plato)} />
                           </td>
                           <td class="platos-cell platos-cell--disponible px-3 py-3.5 text-center" data-label="Disponible">
                             <button
@@ -3691,6 +3756,45 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
+                      {/* 5. Sucursales (de pago, con cupo de sedes) */}
+                      <article
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
+                          marca.gadget_sucursales && 'gadget-card--on',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="sucursales"
+                      >
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 20.5h17M5 20.5V9.5l4-2.5 4 2.5v11M13 20.5V12l3.5-2 3.5 2v8.5M8 12.5h2M8 16h2" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Sucursales</h4>
+                              <p class="text-xs text-neutral-500">Varias sedes, cada una agota lo suyo</p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer" title="Activar Sucursales">
+                            <input type="checkbox" id="marca-gadget-sucursales" name="gadget_sucursales" checked={marca.gadget_sucursales} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_sucursales ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_sucursales && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-sucursales" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+                        <div class:list={['gadget-card__config', marca.gadget_sucursales && 'is-open']} data-gadget-config aria-hidden={marca.gadget_sucursales ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner mt-4 grid gap-3 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Sedes contratadas (incluye la principal)</span>
+                              <input type="number" id="marca-sucursales-cupo" name="sucursales_cupo" min="1" max="50" step="1" inputmode="numeric" value={marca.sucursales_cupo} class={gadgetFieldClass} />
+                            </label>
+                            <p class="text-xs leading-relaxed text-neutral-500">
+                              Sedes creadas ahora: {sucursales.length}. Al guardar aparece el selector de sede en Menú; desde ahí se crean y editan.
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+
                     </div>
                   </div>
 
@@ -4702,7 +4806,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   }
 
   /* Squarespace / Wix: thumb + identity grouped; controls tight on the right */
-  @media (min-width: 769px) {
+  @media (min-width: 1024px) {
     .platos-table {
       table-layout: fixed;
       width: 100%;
@@ -4909,6 +5013,51 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   }
 
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .platos-table th:nth-child(3),
+    .platos-table td.platos-cell--cat {
+      width: 8rem;
+    }
+
+    .platos-table th:nth-child(4),
+    .platos-table td.platos-cell--precio {
+      width: 8rem;
+    }
+
+    .platos-table th:nth-child(5),
+    .platos-table td.platos-cell--destacado,
+    .platos-table th:nth-child(6),
+    .platos-table td.platos-cell--disponible {
+      width: 6.5rem;
+    }
+
+    .platos-cell--cat {
+      padding-left: 0.85rem;
+      white-space: normal;
+    }
+
+    .platos-cell--precio,
+    .platos-cell--destacado,
+    .platos-cell--disponible {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+
+    .platos-cell--precio .precio-input {
+      width: 5.75rem;
+    }
+
+    .platos-cell--dish {
+      grid-template-columns: 7rem minmax(0, 1fr);
+      column-gap: 1rem;
+      padding-right: 1rem;
+    }
+
+    .dish-thumb-slot {
+      width: 7rem;
+    }
+  }
+
   .dish-thumb,
   .dish-thumb--empty {
     position: relative;
@@ -5082,10 +5231,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
   .ios-toggle--live {
     --toggle-on: #059669;
-  }
-
-  .ios-toggle--star {
-    --toggle-on: #c9a227;
   }
 
   .ios-toggle__knob {
@@ -5634,7 +5779,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     display: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1023px) {
     .studio-dock {
       position: fixed;
       left: 50%;
@@ -5887,8 +6032,8 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       grid-template-areas:
-        'dish dest'
-        'meta meta'
+        'dish dish'
+        'meta dest'
         'price avail';
       gap: 0.45rem 0.65rem;
       align-items: start;
@@ -5971,6 +6116,18 @@ Postres | Tres leches | Coco | 9.00 | SI |`
       width: 8.5rem;
       aspect-ratio: 4 / 3;
       height: auto;
+    }
+
+    @media (max-width: 480px) {
+      .dish-identity {
+        gap: 0.85rem;
+        padding-right: 0;
+      }
+
+      .dish-thumb-slot {
+        flex-basis: 6.25rem;
+        width: 6.25rem;
+      }
     }
 
     .dish-thumb,
@@ -6117,26 +6274,11 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
     .platos-cell--destacado {
       grid-area: dest;
-      align-self: start;
+      align-self: center;
       justify-self: end;
       width: auto;
+      padding: 0 !important;
       z-index: 5;
-    }
-
-    .platos-cell--destacado .ios-toggle {
-      width: 2.7rem;
-      height: 1.55rem;
-    }
-
-    .platos-cell--destacado .ios-toggle__knob {
-      width: 1.22rem;
-      height: 1.22rem;
-      top: 0.16rem;
-      left: 0.16rem;
-    }
-
-    .platos-cell--destacado .ios-toggle.is-on .ios-toggle__knob {
-      transform: translateX(1.1rem);
     }
 
     .platos-cell--cat {
@@ -6318,7 +6460,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
     }
   }
 
-  @media (min-width: 769px) {
+  @media (min-width: 1024px) {
     .status-filter-pill {
       min-height: 0;
       font-size: 0.875rem;

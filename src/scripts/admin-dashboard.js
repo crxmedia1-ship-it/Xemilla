@@ -6,11 +6,12 @@
     subSortIndex,
   } from '../config/menu-macros.js';
   import {
-    DESTACADO_TIPOS,
-    DESTACADO_TIPO_LABELS,
+    destacadoPickerHtml,
+    destacadoPickerLabel,
     normalizeDestacadoTipo,
   } from '../lib/destacado-tipo.js';
   import { previewMenuBulkText } from '../lib/menu-bulk.js';
+  import { initSucursales } from './admin-sucursales.js';
   import {
     cropPlatoImage,
     isCroppableImageFile,
@@ -2346,6 +2347,22 @@
     });
   }
 
+  /**
+   * @param {Element | null} picker
+   * @param {'none' | 'chef' | 'promocion'} value
+   */
+  function paintDestacadoPicker(picker, value) {
+    if (!(picker instanceof HTMLElement)) return;
+    picker.dataset.value = value;
+    picker.querySelectorAll('[data-set-destacado]').forEach((opt) => {
+      const active = opt.getAttribute('data-set-destacado') === value;
+      opt.setAttribute('aria-checked', String(active));
+      opt.classList.toggle('is-active', active);
+    });
+    const label = picker.querySelector('[data-destacado-label]');
+    if (label) label.textContent = destacadoPickerLabel(value);
+  }
+
   async function updatePlato(id, patch) {
     const res = await fetch('/api/update-plato', {
       method: 'POST',
@@ -3471,17 +3488,7 @@
         </div>
       </td>
       <td class="platos-cell platos-cell--destacado px-2 py-3.5 text-center" data-label="Destacado">
-        <div class="dest-control">
-        <button type="button" role="switch" aria-checked="${Boolean(plato.destacado)}" data-toggle-destacado title="Destacado" class="ios-toggle ios-toggle--star ${plato.destacado ? 'is-on' : ''}">
-          <span class="ios-toggle__knob" aria-hidden="true"></span>
-        </button>
-        <div class="dest-tipo" role="radiogroup" aria-label="Tipo de destacado" data-destacado-tipo-picker${plato.destacado ? '' : ' hidden'}>
-          ${DESTACADO_TIPOS.map((tipo) => {
-            const active = tr.dataset.destacadoTipo === tipo;
-            return `<button type="button" role="radio" aria-checked="${active}" data-set-destacado-tipo="${tipo}" title="${DESTACADO_TIPO_LABELS[tipo]}" class="dest-tipo__opt${active ? ' is-active' : ''}">${tipo === 'chef' ? 'Chef' : 'Promo'}</button>`;
-          }).join('')}
-        </div>
-        </div>
+        ${destacadoPickerHtml(plato)}
       </td>
       <td class="platos-cell platos-cell--disponible px-2 py-3.5 text-center" data-label="Disponible">
         <button type="button" role="switch" aria-checked="${Boolean(plato.disponible)}" data-toggle-disponible title="Disponible" class="ios-toggle ios-toggle--live ${plato.disponible ? 'is-on' : ''}">
@@ -3974,6 +3981,15 @@
     }
   }, { signal });
 
+  const sucursalesPanel = initSucursales({
+    root,
+    tbody,
+    signal,
+    paintToggle,
+    applySearchFilter,
+    showToast,
+  });
+
   tbody?.addEventListener('click', async (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -4037,6 +4053,7 @@
 
     const toggleDisp = target.closest('[data-toggle-disponible]');
     if (toggleDisp instanceof HTMLElement) {
+      if (sucursalesPanel.handleToggle(row)) return;
       const next = row.dataset.disponible !== 'true';
       const prev = !next;
       row.dataset.disponible = next ? 'true' : 'false';
@@ -4053,39 +4070,27 @@
       return;
     }
 
-    const toggleDest = target.closest('[data-toggle-destacado]');
-    if (toggleDest instanceof HTMLElement) {
-      const next = row.dataset.destacado !== 'true';
-      const prev = !next;
-      const picker = row.querySelector('[data-destacado-tipo-picker]');
-      row.dataset.destacado = next ? 'true' : 'false';
-      paintToggle(toggleDest, next);
-      if (picker instanceof HTMLElement) picker.hidden = !next;
-      try {
-        await updatePlato(id, { destacado: next });
-        applySearchFilter();
-      } catch (err) {
-        row.dataset.destacado = prev ? 'true' : 'false';
-        paintToggle(toggleDest, prev);
-        if (picker instanceof HTMLElement) picker.hidden = !prev;
-        alert(err instanceof Error ? err.message : 'Error al actualizar');
-      }
-      return;
-    }
-
-    const tipoOpt = target.closest('[data-set-destacado-tipo]');
-    if (tipoOpt instanceof HTMLElement) {
-      const next = normalizeDestacadoTipo(tipoOpt.dataset.setDestacadoTipo);
-      const prev = normalizeDestacadoTipo(row.dataset.destacadoTipo);
+    const destOpt = target.closest('[data-set-destacado]');
+    if (destOpt instanceof HTMLElement) {
+      const picker = destOpt.closest('[data-destacado-picker]');
+      const next = destOpt.dataset.setDestacado === 'none' ? 'none' : normalizeDestacadoTipo(destOpt.dataset.setDestacado);
+      const prev = row.dataset.destacado === 'true' ? normalizeDestacadoTipo(row.dataset.destacadoTipo) : 'none';
       if (next === prev) return;
-      const picker = tipoOpt.closest('[data-destacado-tipo-picker]');
-      row.dataset.destacadoTipo = next;
-      paintDestacadoTipo(picker, next);
+      const apply = (value) => {
+        row.dataset.destacado = value === 'none' ? 'false' : 'true';
+        if (value !== 'none') row.dataset.destacadoTipo = value;
+        paintDestacadoPicker(picker, value);
+      };
+      apply(next);
+      applySearchFilter();
       try {
-        await updatePlato(id, { destacado_tipo: next });
+        await updatePlato(
+          id,
+          next === 'none' ? { destacado: false } : { destacado: true, destacado_tipo: next },
+        );
       } catch (err) {
-        row.dataset.destacadoTipo = prev;
-        paintDestacadoTipo(picker, prev);
+        apply(prev);
+        applySearchFilter();
         alert(err instanceof Error ? err.message : 'Error al actualizar');
       }
     }
@@ -4253,7 +4258,7 @@
       ticking = true;
       requestAnimationFrame(() => {
         ticking = false;
-        if (window.matchMedia('(min-width: 769px)').matches) {
+        if (window.matchMedia('(min-width: 1024px)').matches) {
           setCompact(false);
           lastY = window.scrollY || 0;
           return;
@@ -6345,6 +6350,8 @@
           gadget_boutique: checked('marca-gadget-boutique'),
           gadget_nutricion: checked('marca-gadget-nutricion'),
           gadget_ar: checked('marca-gadget-ar'),
+          gadget_sucursales: checked('marca-gadget-sucursales'),
+          sucursales_cupo: Number(val('marca-sucursales-cupo')) || 1,
           gadget_ar_modo_vista: 'rotacion_360',
           gadget_ar_intensidad: '70',
           gadget_nut_filtro_gluten_free: checked('marca-gadget-nut-gluten'),
@@ -6399,6 +6406,14 @@
       }
       markMarcaSaved();
       syncLocalOps('marca');
+      if (
+        root instanceof HTMLElement &&
+        document.getElementById('marca-gadget-sucursales') &&
+        (root.dataset.gadgetSucursales !== String(checked('marca-gadget-sucursales')) ||
+          root.dataset.sucursalesCupo !== String(Number(val('marca-sucursales-cupo')) || 1))
+      ) {
+        window.setTimeout(() => window.location.reload(), 900);
+      }
       return true;
     } catch (err) {
       let msg = err instanceof Error ? err.message : 'Error al guardar';

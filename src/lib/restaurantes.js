@@ -450,13 +450,16 @@ function buildIdentity(row, brand, hasBrandProfile) {
 
 /**
  * Carga restaurante + menú. Contenido/tema: prioridad absoluta Supabase.
+ * Con varias sedes activas y sin `opts.sucursal`, devuelve `requiereSucursal: true`
+ * (la página muestra el selector de sede).
  *
  * @param {string} slug
+ * @param {{ sucursal?: string | null }} [opts]
  * @returns {Promise<object | null>}
  */
-export async function getRestauranteBySlug(slug) {
+export async function getRestauranteBySlug(slug, opts = {}) {
   try {
-    return await loadRestauranteBySlug(slug);
+    return await loadRestauranteBySlug(slug, opts);
   } catch (err) {
     console.error('[getRestauranteBySlug] crash:', err);
     return null;
@@ -464,10 +467,65 @@ export async function getRestauranteBySlug(slug) {
 }
 
 /**
+ * Sedes activas del restaurante (principal primero). Sin tabla → [].
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {string} restauranteId
+ */
+async function loadSucursalesActivas(client, restauranteId) {
+  const { data, error } = await client
+    .from('sucursales')
+    .select('id, slug, nombre, direccion, horarios, whatsapp_num, coordenadas_maps, es_principal, orden')
+    .eq('restaurante_id', restauranteId)
+    .eq('activo', true)
+    .order('es_principal', { ascending: false })
+    .order('orden', { ascending: true })
+    .order('nombre', { ascending: true });
+  if (error) {
+    console.error('[supabase] sucursales:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * IDs de platos agotados ahora mismo en la sede.
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {string} sucursalId
+ */
+async function loadAgotadosSucursal(client, sucursalId) {
+  const { data, error } = await client
+    .from('plato_sucursal')
+    .select('plato_id')
+    .eq('sucursal_id', sucursalId)
+    .eq('agotado', true)
+    .or(`agotado_hasta.is.null,agotado_hasta.gt.${new Date().toISOString()}`);
+  if (error) {
+    console.error('[supabase] plato_sucursal:', error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((r) => Number(r.plato_id)));
+}
+
+/** Campos de la sede que, si tienen valor, reemplazan los del restaurante. */
+function applySucursalOverrides(row, sucursal) {
+  if (!sucursal) return row;
+  const out = { ...row };
+  if (hasContent(sucursal.direccion)) out.direccion = sucursal.direccion;
+  if (hasContent(sucursal.horarios)) out.horarios = sucursal.horarios;
+  if (hasContent(sucursal.coordenadas_maps)) out.coordenadas_maps = sucursal.coordenadas_maps;
+  if (hasContent(sucursal.whatsapp_num)) {
+    out.whatsapp_num = sucursal.whatsapp_num;
+    out.whatsapp_url = null;
+  }
+  return out;
+}
+
+/**
  * @param {string} slug
+ * @param {{ sucursal?: string | null }} [opts] slug de la sede; sin él se usa la única sede activa
  * @returns {Promise<object | null>}
  */
-async function loadRestauranteBySlug(slug) {
+async function loadRestauranteBySlug(slug, opts = {}) {
   if (!slug) return null;
   if (!supabase) {
     console.error('[getRestauranteBySlug] cliente Supabase no disponible');
@@ -499,6 +557,25 @@ async function loadRestauranteBySlug(slug) {
   // Local desactivado (impago / pausa): no exponer WebApp pública
   if (row.activo === false) return null;
 
+  const dataClient = createSupabaseServiceClient() || supabase;
+  const gadgetSucursales = row.gadget_sucursales === true;
+  const sucursales = (await loadSucursalesActivas(dataClient, row.id)).filter(
+    (s) => gadgetSucursales || s.es_principal,
+  );
+  const sucursalSlug = String(opts.sucursal || '').trim().toLowerCase();
+  let sucursal = null;
+  if (sucursalSlug) {
+    sucursal = sucursales.find((s) => s.slug === sucursalSlug) ?? null;
+    if (!sucursal) return null;
+  } else if (sucursales.length === 1) {
+    sucursal = sucursales[0];
+  }
+  const requiereSucursal = !sucursal && sucursales.length > 1;
+  const agotados =
+    sucursal && gadgetSucursales ? await loadAgotadosSucursal(dataClient, sucursal.id) : new Set();
+  const direccionMarca = asText(row.direccion);
+  row = applySucursalOverrides(row, sucursal);
+
   let categoriasRaw = [];
   let catError = null;
   let platosResult = { data: [], error: null };
@@ -509,7 +586,7 @@ async function loadRestauranteBySlug(slug) {
         .select('id, nombre, orden, bg_type, bg_valor')
         .eq('restaurante_id', row.id)
         .order('orden', { ascending: true }),
-      (createSupabaseServiceClient() || supabase)
+      dataClient
         .from('platos')
         .select(
           'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
@@ -547,6 +624,7 @@ async function loadRestauranteBySlug(slug) {
   const catNombreById = new Map((categorias ?? []).map((c) => [c.id, c.nombre]));
 
   for (const plato of platos ?? []) {
+    if (agotados.has(Number(plato.id))) continue;
     const key = plato.categoria_id;
     if (!platosByCategoria.has(key)) platosByCategoria.set(key, []);
     const imagenUrl =
@@ -752,5 +830,20 @@ async function loadRestauranteBySlug(slug) {
     popupBanner,
     popup_banner: popupBanner,
     popupBannerActive: popupBannerIsRenderable(popupBanner),
+    sucursal: sucursal
+      ? {
+          id: sucursal.id,
+          slug: sucursal.slug,
+          nombre: sucursal.nombre,
+          esPrincipal: Boolean(sucursal.es_principal),
+        }
+      : null,
+    sucursales: sucursales.map((s) => ({
+      slug: s.slug,
+      nombre: s.nombre,
+      direccion: asText(s.direccion) || (s.es_principal ? direccionMarca : ''),
+    })),
+    multiSucursal: sucursales.length > 1,
+    requiereSucursal,
   };
 }

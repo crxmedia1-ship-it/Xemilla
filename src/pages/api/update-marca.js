@@ -359,6 +359,16 @@ async function handleUpdateMarca({ request, cookies }) {
   if (raw.gadget_ar !== undefined) {
     patch.gadget_ar = toBool(raw.gadget_ar);
   }
+  if (raw.gadget_sucursales !== undefined) {
+    patch.gadget_sucursales = toBool(raw.gadget_sucursales);
+  }
+  if (raw.sucursales_cupo !== undefined) {
+    const cupo = Math.round(Number(raw.sucursales_cupo));
+    if (!Number.isFinite(cupo) || cupo < 1 || cupo > 50) {
+      return json({ error: 'El número de sedes debe estar entre 1 y 50' }, 400);
+    }
+    patch.sucursales_cupo = cupo;
+  }
 
   const wifiTouched =
     raw.gadget_wifi !== undefined ||
@@ -494,6 +504,8 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
     // Fallback amplio solo si el mensaje es genérico de schema cache
     if (/schema cache|column|does not exist/i.test(msg) && attempt < 6) {
       const optional = [
+        'gadget_sucursales',
+        'sucursales_cupo',
         'gadget_ar',
         'gadget_nutricion',
         'gadget_boutique',
