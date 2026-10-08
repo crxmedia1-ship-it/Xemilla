@@ -11,6 +11,7 @@ import WelcomePopup from './WelcomePopup.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
 import HomeSheet from '../themes/home/HomeSheet.astro';
 import HomePergamino from '../themes/home/HomePergamino.astro';
+import HomePuertaLuna from '../themes/home/HomePuertaLuna.astro';
 import HomeSplit from '../themes/home/HomeSplit.astro';
 import HomeCards from '../themes/home/HomeCards.astro';
 import UbicacionModal from '../themes/ubicacion/UbicacionModal.astro';
@@ -89,8 +90,9 @@ const resolvedHome = resolveHomeThemeAndNav(
     uiEstilo?.home?.nav_style,
 );
 let homeTheme = resolvedHome.homeTheme;
-/** Pergamino lleva el Wi‑Fi dentro del rollo: no duplicarlo en el botón flotante. */
-const floatingGadgets = homeTheme === 'pergamino' ? { ...gadgets, wifi: false } : gadgets;
+/** Pergamino y Puerta de Luna llevan el Wi‑Fi en su navegación: no duplicarlo en el botón flotante. */
+const floatingGadgets =
+  homeTheme === 'pergamino' || homeTheme === 'luna' ? { ...gadgets, wifi: false } : gadgets;
 const estiloNavegacion = resolvedHome.estiloNavegacion;
 const ubicacionTheme = normalizeUbicacionTheme(
   ubicacionThemeProp ?? restaurante?.ubicacionTheme ?? restaurante?.ubicacion_theme,
@@ -396,6 +398,9 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             }
             if (homeTheme === 'pergamino') {
               return <HomePergamino {...homeProps} />;
+            }
+            if (homeTheme === 'luna') {
+              return <HomePuertaLuna {...homeProps} />;
             }
             if (homeTheme === 'cards' || homeTheme === 'bento' || homeTheme === 'hero') {
               return <HomeCards {...homeProps} />;

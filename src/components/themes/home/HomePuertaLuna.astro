@@ -1,0 +1,1062 @@
+---
+/**
+ * HomePuertaLuna — Puerta de Luna (月門).
+ * Logo dentro de una puerta circular con celosía dorada, faroles encendidos
+ * y la navegación como un junco cantonés: velas para las secciones y casco para el menú.
+ */
+import { resolveSafeHomeProps } from '../../../lib/home-safe-props.js';
+import { resolveHomePxSizes } from '../../../lib/secciones-ui.js';
+
+const props = Astro.props as Record<string, unknown>;
+const r =
+  props?.restaurante && typeof props.restaurante === 'object'
+    ? (props.restaurante as Record<string, unknown>)
+    : props;
+
+const { nombre, logoText, logoLetter, logoUrl, tagline, taglineSuperior, reservasCta, homeUi } =
+  resolveSafeHomeProps(props);
+
+const { estiloNavegacion, efectoEntrada } = resolveHomePxSizes(homeUi || props?.homeUi);
+const navFrontal = estiloNavegacion === 'frontal';
+const navAppTabs = estiloNavegacion === 'app_tabs';
+const hasEntrance = Boolean(efectoEntrada) && efectoEntrada !== 'none';
+
+const brandName = String(nombre || logoText || 'Restaurante').trim();
+const taglineDisplay = String(tagline || props?.eslogan || r?.eslogan || '').trim();
+const eyebrow = String(taglineSuperior || props?.tagline_superior || r?.taglineSuperior || '').trim();
+
+const showReservas = Boolean(props?.showReservas ?? props?.reservas_activo ?? reservasCta);
+const reservasLink = String(props?.reservas_link || r?.reservas_link || reservasCta?.href || '#').trim() || '#';
+const reservasIsExternal = reservasLink !== '#';
+
+const horariosRows = Array.isArray(props?.horariosRows)
+  ? props.horariosRows
+  : Array.isArray(r?.horariosRows)
+    ? r.horariosRows
+    : [];
+const showStatus = horariosRows.length > 0;
+
+const showWifi = Boolean(props?.wifiActivo);
+
+type NavItem = { id: string; label: string; zh: string; kind: 'section' | 'reservas' };
+
+const tiles: NavItem[] = [
+  ...(showReservas ? [{ id: 'reservas', label: 'Pedidos', zh: '訂座', kind: 'reservas' as const }] : []),
+  { id: 'nosotros', label: 'Nosotros', zh: '故事', kind: 'section' },
+  { id: 'ubicacion', label: 'Ubicación', zh: '地址', kind: 'section' },
+  ...(showWifi ? [{ id: 'wifi', label: 'Wi‑Fi', zh: '上網', kind: 'section' as const }] : []),
+];
+
+const glyphs = Array.from(
+  new Set(['菜單', '營業', '休息', '時間', ...tiles.map((t) => t.zh)].join('').replace(/\s/g, '')),
+).join('');
+const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&text=${encodeURIComponent(glyphs)}&display=swap`;
+---
+
+<link rel="stylesheet" href={zhFontHref} />
+
+<div
+  class:list={[
+    'home-luna linktree-home relative z-10 flex h-[100svh] w-full select-none flex-col items-center overflow-hidden px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] font-[family-name:var(--font-body,var(--fuente-principal))] lg:h-auto lg:min-h-[100svh] lg:flex-row lg:justify-center lg:gap-[clamp(3rem,7vw,8rem)] lg:overflow-visible lg:px-12 lg:py-10',
+    hasEntrance && 'home-luna--anim',
+    navAppTabs && 'pb-24',
+  ]}
+  data-linktree-home
+  data-home-theme="luna"
+  data-estilo-navegacion={estiloNavegacion}
+>
+  <header class="luna-hero flex min-h-0 flex-1 flex-col items-center justify-center text-center lg:flex-none" data-home-header>
+    {
+      eyebrow ? (
+        <p class="luna-eyebrow uppercase" data-home-tagline-superior>
+          {eyebrow}
+        </p>
+      ) : null
+    }
+
+    <div class="luna-stage">
+      <span class="luna-lantern luna-lantern--l" aria-hidden="true">
+        <span class="luna-lantern__cord" />
+        <span class="luna-lantern__cap" />
+        <span class="luna-lantern__body" />
+        <span class="luna-lantern__cap luna-lantern__cap--b" />
+        <span class="luna-lantern__tassel" />
+      </span>
+
+      <div class="luna-gate" data-home-logo>
+        <span class="luna-gate__halo" aria-hidden="true" />
+        <span class="luna-gate__lattice" aria-hidden="true" />
+        <span class="luna-gate__ring" aria-hidden="true" />
+        <span class="luna-gate__disc" aria-hidden="true" />
+        {
+          logoUrl ? (
+            <img src={logoUrl} alt={brandName} class="luna-gate__logo" data-home-logo />
+          ) : (
+            <span class="luna-gate__letter" data-home-logo-fallback>
+              {logoLetter || brandName.slice(0, 1)}
+            </span>
+          )
+        }
+      </div>
+
+      <span class="luna-lantern luna-lantern--r" aria-hidden="true">
+        <span class="luna-lantern__cord" />
+        <span class="luna-lantern__cap" />
+        <span class="luna-lantern__body" />
+        <span class="luna-lantern__cap luna-lantern__cap--b" />
+        <span class="luna-lantern__tassel" />
+      </span>
+    </div>
+
+    <h1 class="luna-title uppercase" data-home-titulo>{brandName}</h1>
+    {
+      taglineDisplay ? (
+        <p class="luna-slogan uppercase" data-home-eslogan>
+          <span class="luna-slogan__rule" aria-hidden="true" />
+          {taglineDisplay}
+          <span class="luna-slogan__rule" aria-hidden="true" />
+        </p>
+      ) : null
+    }
+    {
+      showStatus ? (
+        <div class="luna-status" data-home-live-status data-horarios={JSON.stringify(horariosRows)}>
+          <span class="luna-seal" data-live-badge>
+            <span class="luna-seal__stamp" aria-hidden="true">
+              <span class="luna-seal__zh luna-seal__zh--open" lang="zh-Hant">營業</span>
+              <span class="luna-seal__zh luna-seal__zh--closed" lang="zh-Hant">休息</span>
+              <span class="luna-seal__zh luna-seal__zh--unknown" lang="zh-Hant">時間</span>
+            </span>
+            <span class="luna-seal__label" data-live-label>HORARIO</span>
+          </span>
+        </div>
+      ) : null
+    }
+  </header>
+
+  {
+    navFrontal ? (
+      <nav class="luna-nav" aria-label={`Navegación ${brandName}`} data-home-menu>
+        <svg class="luna-defs" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="luna-sail-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" class="luna-stop--sail-a" />
+              <stop offset="1" class="luna-stop--sail-b" />
+            </linearGradient>
+            <linearGradient id="luna-hull-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" class="luna-stop--hull-a" />
+              <stop offset="1" class="luna-stop--hull-b" />
+            </linearGradient>
+            <clipPath id="luna-sail-clip">
+              <path d="M12 16 L86 2 Q100 66 95 134 Q50 139 6 136 Q9 74 12 16 Z" />
+            </clipPath>
+            <clipPath id="luna-hull-clip">
+              <path d="M4 14 Q30 22 60 26 L330 26 Q366 22 396 4 L388 38 Q372 82 330 92 L70 92 Q28 86 12 52 Z" />
+            </clipPath>
+          </defs>
+        </svg>
+
+        <div class="luna-ship">
+          <ul class="luna-sails" style={`--luna-cols: ${tiles.length};`}>
+            {tiles.map((item) => {
+              const inner = (
+                <>
+                  <svg class="luna-sail__cloth" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="luna-sail__fill" d="M12 16 L86 2 Q100 66 95 134 Q50 139 6 136 Q9 74 12 16 Z" />
+                    <g class="luna-sail__battens" clip-path="url(#luna-sail-clip)">
+                      <path d="M0 44 Q50 40 100 26" />
+                      <path d="M0 70 Q50 68 100 56" />
+                      <path d="M0 95 Q50 95 100 86" />
+                      <path d="M0 118 Q50 120 100 114" />
+                    </g>
+                    <path class="luna-sail__edge" d="M12 16 L86 2 Q100 66 95 134 Q50 139 6 136 Q9 74 12 16 Z" />
+                  </svg>
+                  <span class="luna-sail__zh" lang="zh-Hant" aria-hidden="true">{item.zh}</span>
+                  <span class="luna-sail__label">{item.label}</span>
+                </>
+              );
+              if (item.kind === 'reservas') {
+                return (
+                  <li>
+                    <span class="luna-mast" aria-hidden="true" />
+                    {reservasIsExternal ? (
+                      <a
+                        href={reservasLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="luna-sail"
+                        data-tab-trigger="reservas"
+                        data-reservas-home-cta
+                      >
+                        {inner}
+                      </a>
+                    ) : (
+                      <button type="button" class="luna-sail" data-tab-trigger="reservas" data-reservas-home-cta>
+                        {inner}
+                      </button>
+                    )}
+                  </li>
+                );
+              }
+              return (
+                <li>
+                  <span class="luna-mast" aria-hidden="true" />
+                  <button
+                    type="button"
+                    class="luna-sail"
+                    data-tab-trigger={item.id}
+                    data-open-section={item.id}
+                    data-open-ubicacion={item.id === 'ubicacion' ? 'true' : undefined}
+                  >
+                    {inner}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <button type="button" class="luna-hull" data-tab-trigger="menu" data-open-section="menu">
+            <svg class="luna-hull__wood" viewBox="0 0 400 96" preserveAspectRatio="none" aria-hidden="true">
+              <path class="luna-hull__fill" d="M4 14 Q30 22 60 26 L330 26 Q366 22 396 4 L388 38 Q372 82 330 92 L70 92 Q28 86 12 52 Z" />
+              <g class="luna-hull__planks" clip-path="url(#luna-hull-clip)">
+                <path d="M0 74 Q40 80 72 80 L330 80 Q366 76 400 62" />
+              </g>
+              <path class="luna-hull__rail" d="M10 30 Q34 36 64 38 L328 38 Q364 34 391 20" />
+              <path class="luna-hull__edge" d="M4 14 Q30 22 60 26 L330 26 Q366 22 396 4 L388 38 Q372 82 330 92 L70 92 Q28 86 12 52 Z" />
+              <path class="luna-hull__deck" d="M4 14 Q30 22 60 26 L330 26 Q366 22 396 4" />
+            </svg>
+            <span class="luna-hull__eye" aria-hidden="true" />
+            <span class="luna-hull__zh" lang="zh-Hant" aria-hidden="true">菜單</span>
+            <span class="luna-hull__main">
+              <span class="luna-hull__title">Menú</span>
+              <span class="luna-hull__sub">Carta de la casa</span>
+            </span>
+            <span class="luna-hull__go" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
+            </span>
+          </button>
+
+          <span class="luna-water" aria-hidden="true" />
+        </div>
+      </nav>
+    ) : null
+  }
+</div>
+
+<script>
+  import { refreshUbicacionLiveStatus } from '../../../lib/ubicacion-live-client.js';
+
+  function initLunaLiveStatus() {
+    document.querySelectorAll('.home-luna [data-home-live-status]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      refreshUbicacionLiveStatus(el);
+      if (el.dataset.liveInterval === '1') return;
+      el.dataset.liveInterval = '1';
+      window.setInterval(() => refreshUbicacionLiveStatus(el), 60_000);
+    });
+  }
+
+  initLunaLiveStatus();
+  document.addEventListener('astro:page-load', initLunaLiveStatus);
+</script>
+
+<style is:global>
+  @media (max-width: 1023px) {
+    html:has(.home-luna):not(.drawer-open),
+    body:has(.home-luna):not(:has(.has-drawer-open)) {
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+  }
+</style>
+
+<style>
+  .home-luna {
+    --luna-gold: #e2b96a;
+    --luna-gold-dk: #a8833a;
+    --luna-cream: #f6e3b4;
+    --luna-lacquer: var(--color-primario, #6a1f33);
+    --luna-red: #b3192c;
+    --luna-zh: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+    --luna-gate: min(54vw, 30svh, 19rem);
+  }
+
+  /* ── Marca ── */
+  .luna-eyebrow {
+    margin-bottom: clamp(0.4rem, 1.6svh, 1.1rem);
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    margin-right: -0.4em;
+    color: color-mix(in srgb, var(--luna-gold) 80%, #fff);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  }
+
+  .luna-stage {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(0.6rem, 4vw, 2rem);
+  }
+
+  /* Puerta de luna: halo, celosía giratoria, aro doble y disco de laca */
+  .luna-gate {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--luna-gate);
+    aspect-ratio: 1;
+  }
+
+  .luna-gate > span {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .luna-gate__halo {
+    inset: -18%;
+    background: radial-gradient(circle, rgba(255, 214, 150, 0.28) 0%, rgba(226, 185, 106, 0.1) 42%, transparent 68%);
+    animation: luna-breathe 5.5s ease-in-out infinite;
+  }
+
+  .luna-gate__lattice {
+    inset: 0;
+    background: repeating-conic-gradient(from 0deg, var(--luna-gold) 0 1.6deg, transparent 1.6deg 7.5deg);
+    -webkit-mask: radial-gradient(circle closest-side, transparent 0 81.5%, #000 82% 97.5%, transparent 98%);
+    mask: radial-gradient(circle closest-side, transparent 0 81.5%, #000 82% 97.5%, transparent 98%);
+    opacity: 0.55;
+    animation: luna-spin 140s linear infinite;
+  }
+
+  .luna-gate__ring {
+    inset: 0;
+    border: 2px solid var(--luna-gold);
+    box-shadow:
+      inset 0 0 0 calc(var(--luna-gate) * 0.095) transparent,
+      0 0 24px rgba(226, 185, 106, 0.35),
+      inset 0 0 18px rgba(226, 185, 106, 0.25);
+  }
+
+  .luna-gate__ring::after {
+    content: '';
+    position: absolute;
+    inset: 9.5%;
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--luna-gold) 85%, transparent);
+  }
+
+  .luna-gate__disc {
+    inset: 11%;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(255, 225, 170, 0.16), transparent 58%),
+      radial-gradient(circle, color-mix(in srgb, var(--luna-lacquer) 55%, transparent) 0%, rgba(30, 6, 12, 0.72) 100%);
+    box-shadow: inset 0 6px 20px rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+
+  .luna-gate__logo {
+    position: relative;
+    z-index: 1;
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(226, 185, 106, 0.35)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+  }
+
+  .luna-gate__letter {
+    position: relative;
+    z-index: 1;
+    font-family: Cinzel, ui-serif, Georgia, serif;
+    font-size: calc(var(--luna-gate) * 0.32);
+    color: var(--luna-gold);
+  }
+
+  /* Faroles de seda encendidos */
+  .luna-lantern {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: calc(var(--luna-gate) * 0.24);
+    min-width: 2.3rem;
+    margin-top: calc(var(--luna-gate) * -0.08);
+    transform-origin: 50% 0;
+    animation: luna-sway 6s ease-in-out infinite;
+  }
+
+  .luna-lantern--r {
+    animation-delay: -3s;
+  }
+
+  .luna-lantern__cord {
+    width: 1px;
+    height: calc(var(--luna-gate) * 0.22);
+    background: linear-gradient(180deg, transparent, var(--luna-gold));
+  }
+
+  .luna-lantern__cap {
+    width: 58%;
+    height: 0.32rem;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #f3d48e, var(--luna-gold-dk));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .luna-lantern__body {
+    width: 100%;
+    aspect-ratio: 1 / 1.08;
+    border-radius: 46% / 50%;
+    background:
+      repeating-linear-gradient(90deg, rgba(60, 0, 8, 0.35) 0 1px, transparent 1px 22%),
+      radial-gradient(circle at 50% 50%, #ffd27a 0%, #ff8a3d 26%, #c8202c 58%, #6e0c18 100%);
+    box-shadow:
+      0 0 22px rgba(255, 128, 60, 0.55),
+      0 0 60px rgba(255, 90, 40, 0.25),
+      inset 0 -6px 10px rgba(60, 0, 8, 0.45);
+    animation: luna-flicker 3.8s ease-in-out infinite;
+  }
+
+  .luna-lantern__tassel {
+    width: 3px;
+    height: calc(var(--luna-gate) * 0.16);
+    border-radius: 0 0 2px 2px;
+    background: linear-gradient(180deg, var(--luna-gold), var(--luna-red) 30%, #7a0f1c);
+  }
+
+  .luna-title {
+    margin-top: clamp(0.7rem, 2.2svh, 1.5rem);
+    font-family: Cinzel, ui-serif, Georgia, serif;
+    font-size: clamp(1.75rem, 1.2rem + 2.6vw, 3.2rem);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.2em;
+    margin-right: -0.2em;
+    color: var(--luna-cream);
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+  }
+
+  .luna-slogan {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.7rem;
+    font-size: 10px;
+    letter-spacing: 0.34em;
+    color: var(--luna-gold);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  }
+
+  .luna-slogan__rule {
+    position: relative;
+    width: clamp(1.2rem, 6vw, 2.4rem);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--luna-gold));
+  }
+
+  .luna-slogan__rule:last-child {
+    transform: scaleX(-1);
+  }
+
+  .luna-slogan__rule::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: -2px;
+    width: 5px;
+    height: 5px;
+    rotate: 45deg;
+    background: var(--luna-gold);
+  }
+
+  /* Sello redondo de estado */
+  .luna-status {
+    margin-top: clamp(0.5rem, 1.6svh, 1rem);
+  }
+
+  .luna-seal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .luna-seal__stamp {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--luna-red);
+    box-shadow:
+      inset 0 0 0 2px var(--luna-red),
+      inset 0 0 0 3px rgba(255, 238, 220, 0.9),
+      0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .luna-seal__zh {
+    display: none;
+    grid-area: 1 / 1;
+    writing-mode: vertical-rl;
+    font-family: var(--luna-zh);
+    font-size: 0.62rem;
+    font-weight: 900;
+    line-height: 1;
+    color: #fff3e2;
+  }
+
+  .luna-seal:not([data-open='true']):not([data-open='false']) .luna-seal__zh--unknown,
+  .luna-seal[data-open='true'] .luna-seal__zh--open,
+  .luna-seal[data-open='false'] .luna-seal__zh--closed {
+    display: block;
+  }
+
+  .luna-seal[data-open='false'] .luna-seal__stamp {
+    filter: saturate(0.6) brightness(0.8);
+  }
+
+  .luna-seal__label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: rgba(255, 240, 220, 0.82);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  }
+
+  /* ── Junco cantonés: velas = secciones, casco = menú ── */
+  .luna-nav {
+    position: relative;
+    flex-shrink: 0;
+    width: min(100%, 26rem);
+    padding-top: clamp(0.4rem, 1.6svh, 1.2rem);
+  }
+
+  .luna-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .luna-stop--sail-a {
+    stop-color: color-mix(in srgb, var(--luna-lacquer) 80%, #e8a070 12%);
+  }
+  .luna-stop--sail-b {
+    stop-color: color-mix(in srgb, var(--luna-lacquer) 62%, #000);
+  }
+  .luna-stop--hull-a {
+    stop-color: #4a1a1c;
+  }
+  .luna-stop--hull-b {
+    stop-color: #1e0909;
+  }
+
+  .luna-ship {
+    position: relative;
+    transform-origin: 50% 100%;
+    animation: luna-bob 7s ease-in-out infinite;
+  }
+
+  .luna-ship svg path {
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* Velas de junco con sables dorados */
+  .luna-sails {
+    display: grid;
+    grid-template-columns: repeat(var(--luna-cols, 3), minmax(0, 1fr));
+    align-items: end;
+    gap: clamp(0.5rem, 2.4vw, 0.9rem);
+    padding: 0 7% 0 9%;
+  }
+
+  .luna-sails > li {
+    position: relative;
+    display: flex;
+    height: var(--sail-h, clamp(6.2rem, 15svh, 8rem));
+  }
+
+  .luna-sails > li:nth-child(2):not(:last-child) {
+    --sail-h: clamp(7.4rem, 18.5svh, 9.6rem);
+  }
+
+  .luna-mast {
+    position: absolute;
+    left: 50%;
+    top: -0.7rem;
+    bottom: calc(-1 * clamp(1.1rem, 3svh, 1.5rem));
+    width: 3px;
+    translate: -50% 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #2a1208, #7a4a22 50%, #2a1208);
+    box-shadow: 0 0 0 0.5px rgba(226, 185, 106, 0.35);
+  }
+
+  .luna-mast::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -3px;
+    width: 7px;
+    height: 7px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff2c8, var(--luna-gold-dk));
+  }
+
+  .luna-sails > li:nth-child(2):not(:last-child) .luna-mast::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0;
+    width: 1.1rem;
+    height: 0.65rem;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    background: linear-gradient(90deg, var(--luna-red), #e0503a);
+    transform-origin: 0 50%;
+    animation: luna-flag 1.6s ease-in-out infinite;
+  }
+
+  .luna-sail {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.35rem, 1.2svh, 0.6rem);
+    padding: 0.9rem 0.25rem 0.5rem;
+    color: var(--luna-cream);
+    transform-origin: 0 50%;
+    -webkit-tap-highlight-color: transparent;
+    filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.55));
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: luna-billow 5.5s ease-in-out infinite;
+  }
+
+  .luna-sails > li:nth-child(2) .luna-sail {
+    animation-delay: -1.8s;
+  }
+  .luna-sails > li:nth-child(3) .luna-sail {
+    animation-delay: -3.6s;
+  }
+
+  .luna-sail__cloth,
+  .luna-hull__wood {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .luna-sail__fill {
+    fill: url(#luna-sail-fill);
+  }
+
+  .luna-sail__battens path {
+    fill: none;
+    stroke: color-mix(in srgb, var(--luna-gold) 70%, transparent);
+    stroke-width: 1.2;
+  }
+
+  .luna-sail__edge {
+    fill: none;
+    stroke: var(--luna-gold);
+    stroke-width: 1.5;
+  }
+
+  .luna-sail__zh {
+    font-family: var(--luna-zh);
+    font-size: clamp(1.05rem, 3svh, 1.35rem);
+    font-weight: 900;
+    writing-mode: vertical-rl;
+    letter-spacing: 0.12em;
+    color: var(--luna-gold);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 0 14px rgba(226, 185, 106, 0.3);
+  }
+
+  .luna-sail__label {
+    padding: 0.18rem 0.45rem;
+    border-radius: 3px;
+    font-family: Cinzel, ui-serif, Georgia, serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    margin-right: -0.14em;
+    text-transform: uppercase;
+    background: rgba(20, 4, 8, 0.35);
+  }
+
+  /* Casco lacado: el menú */
+  .luna-hull {
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    height: clamp(5rem, 12.5svh, 6.3rem);
+    padding: clamp(1.35rem, 3.3svh, 1.7rem) 2.4rem 0.45rem 3.1rem;
+    color: var(--luna-cream);
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+    filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.6));
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .luna-hull__fill {
+    fill: url(#luna-hull-fill);
+  }
+
+  .luna-hull__planks path {
+    fill: none;
+    stroke: rgba(226, 185, 106, 0.22);
+    stroke-width: 1;
+  }
+
+  .luna-hull__rail {
+    fill: none;
+    stroke: color-mix(in srgb, var(--luna-gold) 60%, transparent);
+    stroke-width: 1;
+  }
+
+  .luna-hull__edge {
+    fill: none;
+    stroke: color-mix(in srgb, var(--luna-gold) 80%, transparent);
+    stroke-width: 1.2;
+  }
+
+  .luna-hull__deck {
+    fill: none;
+    stroke: var(--luna-gold);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  /* Ojo pintado en la proa, como en los juncos de Cantón */
+  .luna-hull__eye {
+    position: absolute;
+    left: 6.5%;
+    top: 50%;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    background: radial-gradient(circle, #120404 0 32%, #f6e3b4 36% 52%, var(--luna-red) 56%);
+    box-shadow: 0 0 0 1.5px var(--luna-gold);
+  }
+
+  .luna-hull__zh {
+    padding-right: 0.85rem;
+    font-family: var(--luna-zh);
+    font-size: clamp(1rem, 2.8svh, 1.25rem);
+    font-weight: 900;
+    writing-mode: vertical-rl;
+    letter-spacing: 0.1em;
+    color: var(--luna-gold);
+    border-right: 1px solid color-mix(in srgb, var(--luna-gold) 45%, transparent);
+    text-shadow: 0 0 14px rgba(226, 185, 106, 0.3);
+  }
+
+  .luna-hull__main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+  }
+
+  .luna-hull__title {
+    font-family: Cinzel, ui-serif, Georgia, serif;
+    font-size: clamp(1.25rem, 3.4svh, 1.65rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .luna-hull__sub {
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--luna-cream) 65%, transparent);
+  }
+
+  .luna-hull__go {
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--luna-gold) 70%, transparent);
+    color: var(--luna-gold);
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .luna-hull__go svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Olas doradas bajo el casco */
+  .luna-water {
+    display: block;
+    height: 14px;
+    margin: -7px -4% 0;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='14' viewBox='0 0 48 14'%3E%3Cpath d='M0 5 Q6 1 12 5 T24 5 T36 5 T48 5' fill='none' stroke='%23e2b96a' stroke-opacity='.55' stroke-width='1.2'/%3E%3C/svg%3E") 0 0 / 48px 14px repeat-x,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='14' viewBox='0 0 64 14'%3E%3Cpath d='M0 10 Q8 6 16 10 T32 10 T48 10 T64 10' fill='none' stroke='%23e2b96a' stroke-opacity='.3' stroke-width='1'/%3E%3C/svg%3E") 0 0 / 64px 14px repeat-x;
+    -webkit-mask: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+    mask: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+    animation: luna-waves 6s linear infinite;
+  }
+
+  .luna-sail:focus-visible,
+  .luna-hull:focus-visible {
+    outline: 2px solid var(--luna-gold);
+    outline-offset: 3px;
+  }
+
+  .luna-sail:active {
+    transform: scale(0.95);
+  }
+  .luna-hull:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) {
+    .luna-sail:hover {
+      transform: translateY(-4px) scaleX(1.05);
+    }
+    .luna-sail:hover .luna-sail__edge,
+    .luna-hull:hover .luna-hull__deck {
+      stroke: #f3d898;
+    }
+    .luna-hull:hover {
+      transform: translateY(-2px);
+    }
+    .luna-hull:hover .luna-hull__go {
+      background: rgba(226, 185, 106, 0.18);
+    }
+  }
+
+  @media (max-height: 680px) {
+    .luna-eyebrow {
+      display: none;
+    }
+    .home-luna {
+      --luna-gate: min(56vw, 26svh, 19rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .home-luna {
+      --luna-gate: min(40vh, 22rem);
+    }
+    .luna-nav {
+      width: 28rem;
+      padding-top: 0;
+    }
+  }
+
+  /* ── Animaciones ── */
+  @keyframes luna-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes luna-breathe {
+    0%,
+    100% {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+
+  @keyframes luna-sway {
+    0%,
+    100% {
+      transform: rotate(2.5deg);
+    }
+    50% {
+      transform: rotate(-2.5deg);
+    }
+  }
+
+  @keyframes luna-flicker {
+    0%,
+    100% {
+      filter: brightness(1);
+    }
+    40% {
+      filter: brightness(1.12);
+    }
+    55% {
+      filter: brightness(0.94);
+    }
+    70% {
+      filter: brightness(1.06);
+    }
+  }
+
+  @keyframes luna-bob {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-0.7deg);
+    }
+    50% {
+      transform: translateY(-5px) rotate(0.7deg);
+    }
+  }
+
+  @keyframes luna-billow {
+    0%,
+    100% {
+      transform: scaleX(1);
+    }
+    50% {
+      transform: scaleX(1.035) skewY(-0.6deg);
+    }
+  }
+
+  @keyframes luna-flag {
+    0%,
+    100% {
+      transform: scaleX(1) skewY(0deg);
+    }
+    50% {
+      transform: scaleX(0.82) skewY(6deg);
+    }
+  }
+
+  @keyframes luna-waves {
+    to {
+      background-position:
+        48px 0,
+        -64px 0;
+    }
+  }
+
+  @keyframes luna-hoist {
+    from {
+      opacity: 0;
+      transform: translateY(30%) scaleY(0.3);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .home-luna--anim .luna-gate {
+    animation: luna-gate-in 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-luna--anim .luna-lantern {
+    animation:
+      luna-drop 1.2s 0.35s cubic-bezier(0.33, 1.4, 0.6, 1) both,
+      luna-sway 6s 1.55s ease-in-out infinite;
+  }
+
+  .home-luna--anim .luna-title,
+  .home-luna--anim .luna-slogan,
+  .home-luna--anim .luna-status,
+  .home-luna--anim .luna-eyebrow {
+    animation: luna-rise 0.9s 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-luna--anim .luna-hull,
+  .home-luna--anim .luna-water {
+    animation: luna-rise 0.8s 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-luna--anim .luna-water {
+    animation:
+      luna-rise 0.8s 0.7s cubic-bezier(0.22, 1, 0.36, 1) both,
+      luna-waves 6s 1.5s linear infinite;
+  }
+
+  .home-luna--anim .luna-sails > li {
+    transform-origin: 50% 100%;
+    animation: luna-hoist 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-luna--anim .luna-sails > li:nth-child(1) {
+    animation-delay: 0.95s;
+  }
+  .home-luna--anim .luna-sails > li:nth-child(2) {
+    animation-delay: 1.08s;
+  }
+  .home-luna--anim .luna-sails > li:nth-child(3) {
+    animation-delay: 1.21s;
+  }
+  .home-luna--anim .luna-sails > li:nth-child(4) {
+    animation-delay: 1.34s;
+  }
+
+  @keyframes luna-gate-in {
+    from {
+      opacity: 0;
+      transform: scale(0.82) rotate(-12deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes luna-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-40px) rotate(8deg);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(2.5deg);
+    }
+  }
+
+  @keyframes luna-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .luna-gate__halo,
+    .luna-gate__lattice,
+    .luna-lantern,
+    .luna-lantern__body,
+    .home-luna--anim .luna-gate,
+    .home-luna--anim .luna-lantern,
+    .home-luna--anim .luna-title,
+    .home-luna--anim .luna-slogan,
+    .home-luna--anim .luna-status,
+    .home-luna--anim .luna-eyebrow,
+    .luna-ship,
+    .luna-sail,
+    .luna-water,
+    .luna-mast::after,
+    .home-luna--anim .luna-hull,
+    .home-luna--anim .luna-water,
+    .home-luna--anim .luna-sails > li {
+      animation: none;
+    }
+  }
+</style>

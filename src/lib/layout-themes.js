@@ -9,13 +9,17 @@ export const DEFAULT_UBICACION_THEME = 'modal';
  * Normaliza home_theme DB/Admin → 4 IDs canónicos.
  * Aliases: cinematic/minimal → sheet · bento/hero → cards · split-stage → split.
  * @param {unknown} theme
- * @returns {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino'}
+ * @returns {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino' | 'luna'}
  */
 export function normalizeTheme(theme) {
   const clean = String(theme || '').toLowerCase().trim();
 
   if (clean.includes('pergamino') || clean.includes('hanji') || clean.includes('scroll')) {
     return 'pergamino';
+  }
+
+  if (clean.includes('luna') || clean.includes('moon')) {
+    return 'luna';
   }
 
   if (
@@ -121,11 +125,18 @@ export const HOME_LAYOUT_OPTIONS = Object.freeze([
     hint: 'Pintura de tinta + rollo de papel con el índice',
     navBadge: '卷 Rollo',
   },
+  {
+    id: 'puerta-luna',
+    theme: 'luna',
+    label: 'Puerta de Luna',
+    hint: 'Puerta circular, faroles y letreros lacados',
+    navBadge: '月 Luna',
+  },
 ]);
 
 /**
  * @param {unknown} value
- * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji'}
+ * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji' | 'puerta-luna'}
  */
 export function normalizeHomeLayout(value) {
   const clean = String(value || '')
@@ -135,6 +146,9 @@ export function normalizeHomeLayout(value) {
 
   if (clean.includes('pergamino') || clean.includes('hanji') || clean.includes('scroll')) {
     return 'pergamino-hanji';
+  }
+  if (clean.includes('luna') || clean.includes('moon')) {
+    return 'puerta-luna';
   }
   if (clean === 'grand-editorial' || clean === 'hero-editorial' || clean.includes('editorial')) {
     return 'grand-editorial';
@@ -179,7 +193,7 @@ export function normalizeHomeLayout(value) {
 
 /**
  * @param {unknown} layoutOrTheme
- * @returns {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino'}
+ * @returns {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino' | 'luna'}
  */
 export function homeLayoutToTheme(layoutOrTheme) {
   const layout = normalizeHomeLayout(layoutOrTheme);
@@ -188,12 +202,13 @@ export function homeLayoutToTheme(layoutOrTheme) {
   if (layout === 'split-architecture') return 'split';
   if (layout === 'showcase-cards') return 'cards';
   if (layout === 'pergamino-hanji') return 'pergamino';
-  return /** @type {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino'} */ (normalizeTheme(layoutOrTheme));
+  if (layout === 'puerta-luna') return 'luna';
+  return /** @type {'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino' | 'luna'} */ (normalizeTheme(layoutOrTheme));
 }
 
 /**
  * @param {unknown} theme
- * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji'}
+ * @returns {'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji' | 'puerta-luna'}
  */
 export function homeThemeToLayout(theme) {
   const t = normalizeTheme(theme);
@@ -201,6 +216,7 @@ export function homeThemeToLayout(theme) {
   if (t === 'split') return 'split-architecture';
   if (t === 'cards') return 'showcase-cards';
   if (t === 'pergamino') return 'pergamino-hanji';
+  if (t === 'luna') return 'puerta-luna';
   return 'grand-editorial';
 }
 
@@ -209,8 +225,8 @@ export function homeThemeToLayout(theme) {
  * @param {unknown} homeThemeRaw
  * @param {unknown} estiloNavRaw
  * @returns {{
- *   homeTheme: 'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino',
- *   layout: 'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji',
+ *   homeTheme: 'editorial' | 'sheet' | 'split' | 'cards' | 'pergamino' | 'luna',
+ *   layout: 'grand-editorial' | 'bottom-glass-sheet' | 'split-architecture' | 'showcase-cards' | 'pergamino-hanji' | 'puerta-luna',
  *   estiloNavegacion: 'frontal' | 'hamburguesa' | 'app_tabs',
  * }}
  */
