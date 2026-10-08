@@ -66,6 +66,36 @@ const wifiRed = String(props?.wifiRed || '').trim();
 
 const ICO = 'https://res.cloudinary.com/wdmzaemi/image/upload/f_auto,q_auto,w_360/xemilla/themes/pergamino';
 
+const GLYPHS = {
+  ko: {
+    lang: 'ko',
+    font: 'Nanum Myeongjo',
+    fallback: "'AppleMyungjo', 'Batang', serif",
+    menu: '차림표',
+    reservas: '주문·예약',
+    nosotros: '이야기',
+    ubicacion: '오시는 길',
+    wifi: '와이파이',
+    open: '영업',
+    closed: '마감',
+    unknown: '안내',
+  },
+  zh: {
+    lang: 'zh-Hant',
+    font: 'Noto Serif TC',
+    fallback: "'Songti TC', 'PMingLiU', serif",
+    menu: '菜單',
+    reservas: '外賣·訂座',
+    nosotros: '故事',
+    ubicacion: '地址',
+    wifi: '上網',
+    open: '營業',
+    closed: '休息',
+    unknown: '時間',
+  },
+} as const;
+const glyphs = (homeUi as Record<string, unknown> | undefined)?.pergamino_idioma === 'zh' ? GLYPHS.zh : GLYPHS.ko;
+
 type NavItem = {
   id: string;
   label: string;
@@ -78,7 +108,7 @@ type NavItem = {
 const featured: NavItem = {
   id: 'menu',
   label: 'Menú',
-  ko: '차림표',
+  ko: glyphs.menu,
   subtitle: 'Carta de la casa',
   img: `${ICO}/ico-menu-alpha.png`,
   kind: 'section',
@@ -86,12 +116,12 @@ const featured: NavItem = {
 
 const tiles: NavItem[] = [
   ...(showReservas
-    ? [{ id: 'reservas', label: 'Pedidos y reservas', ko: '주문·예약', subtitle: 'Delivery · mesa', img: `${ICO}/ico-pedidos-alpha.png`, kind: 'reservas' as const }]
+    ? [{ id: 'reservas', label: 'Pedidos y reservas', ko: glyphs.reservas, subtitle: 'Delivery · mesa', img: `${ICO}/ico-pedidos-alpha.png`, kind: 'reservas' as const }]
     : []),
-  { id: 'nosotros', label: 'Nosotros', ko: '이야기', subtitle: 'Nuestra historia', img: `${ICO}/ico-nosotros-alpha.png`, kind: 'section' },
-  { id: 'ubicacion', label: 'Ubicación', ko: '오시는 길', subtitle: 'Horarios · mapa', img: `${ICO}/ico-ubicacion-alpha.png`, kind: 'section' },
+  { id: 'nosotros', label: 'Nosotros', ko: glyphs.nosotros, subtitle: 'Nuestra historia', img: `${ICO}/ico-nosotros-alpha.png`, kind: 'section' },
+  { id: 'ubicacion', label: 'Ubicación', ko: glyphs.ubicacion, subtitle: 'Horarios · mapa', img: `${ICO}/ico-ubicacion-alpha.png`, kind: 'section' },
   ...(showWifi
-    ? [{ id: 'wifi', label: 'Wi‑Fi', ko: '와이파이', subtitle: wifiRed || 'Conéctate', img: `${ICO}/ico-wifi-alpha.png`, kind: 'section' as const }]
+    ? [{ id: 'wifi', label: 'Wi‑Fi', ko: glyphs.wifi, subtitle: wifiRed || 'Conéctate', img: `${ICO}/ico-wifi-alpha.png`, kind: 'section' as const }]
     : []),
 ];
 
@@ -99,9 +129,9 @@ const tiles: NavItem[] = [
 const slides: NavItem[] = [featured, ...tiles];
 
 const koGlyphs = Array.from(
-  new Set(['영업마감안내', featured.ko, ...tiles.map((t) => t.ko)].join('').replace(/\s/g, '')),
+  new Set([glyphs.open, glyphs.closed, glyphs.unknown, featured.ko, ...tiles.map((t) => t.ko)].join('').replace(/\s/g, '')),
 ).join('');
-const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@800&text=${encodeURIComponent(koGlyphs)}&display=swap`;
+const koFontHref = `https://fonts.googleapis.com/css2?family=${glyphs.font.replace(/ /g, '+')}:wght@800&text=${encodeURIComponent(koGlyphs)}&display=swap`;
 ---
 
 <link rel="stylesheet" href={koFontHref} />
@@ -112,7 +142,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     hasEntrance && 'home-pergamino--anim',
     navAppTabs && 'pb-24',
   ]}
-  style={`--perg-logo: ${logoPx}px;`}
+  style={`--perg-logo: ${logoPx}px; --perg-glyph-font: '${glyphs.font}', ${glyphs.fallback};`}
   data-linktree-home
   data-home-theme="pergamino"
   data-estilo-navegacion={estiloNavegacion}
@@ -165,9 +195,9 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     <div class="perg-status" data-home-live-status data-horarios={horariosJson}>
       <span class="perg-seal" data-live-badge>
         <span class="perg-seal__stamp" aria-hidden="true">
-          <span class="perg-seal__ko perg-seal__ko--open" lang="ko">영업</span>
-          <span class="perg-seal__ko perg-seal__ko--closed" lang="ko">마감</span>
-          <span class="perg-seal__ko perg-seal__ko--unknown" lang="ko">안내</span>
+          <span class="perg-seal__ko perg-seal__ko--open" lang={glyphs.lang}>{glyphs.open}</span>
+          <span class="perg-seal__ko perg-seal__ko--closed" lang={glyphs.lang}>{glyphs.closed}</span>
+          <span class="perg-seal__ko perg-seal__ko--unknown" lang={glyphs.lang}>{glyphs.unknown}</span>
         </span>
         <span class="perg-seal__label font-mono" data-live-label>HORARIO</span>
       </span>
@@ -196,7 +226,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
                 {slides.map((item, i) => {
                   const inner = (
                     <>
-                      <span class="perg-slide__ko" lang="ko" aria-hidden="true">{item.ko}</span>
+                      <span class="perg-slide__ko" lang={glyphs.lang} aria-hidden="true">{item.ko}</span>
                       {item.img ? (
                         <img
                           class="perg-ink-img perg-slide__img"
@@ -887,7 +917,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     top: 0;
     right: 1.15rem;
     writing-mode: vertical-rl;
-    font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Batang', serif;
+    font-family: var(--perg-glyph-font);
     font-size: clamp(0.8rem, 3.4cqh, 1rem);
     font-weight: 800;
     letter-spacing: 0.18em;
@@ -1034,7 +1064,7 @@ const koFontHref = `https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght
     display: none;
     grid-area: 1 / 1;
     writing-mode: vertical-rl;
-    font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Batang', serif;
+    font-family: var(--perg-glyph-font);
     font-size: 0.74rem;
     font-weight: 800;
     line-height: 1;

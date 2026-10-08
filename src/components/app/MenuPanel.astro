@@ -47,6 +47,8 @@ interface Props {
   showNutricion?: boolean;
   /** Gadget AR activo — si true, emite data-plato-modelo3d-url en cada botón */
   showAr?: boolean;
+  /** Gadget Pedidos activo — botón «Agregar» en cada plato */
+  showPedidos?: boolean;
   /** VES por 1 USD (BCV) — fallback visual si no hay tasa en vivo */
   tasaBcv?: number;
   /** EUR por 1 USD — fallback visual */
@@ -91,6 +93,7 @@ const {
   cinematicCategoryBg = false,
   showNutricion = false,
   showAr = false,
+  showPedidos = false,
   tasaBcv = 36.5,
   tasaEurUsd = 0.92,
   tasaEur = 0,
@@ -663,6 +666,8 @@ function hubCardStyle(
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && 'menu-plato-item--bento-plain',
                     platosLayout === 'bento' && !hasMedia(mediaUrl) && showDetalleBtn && 'menu-plato-item--bento-compact',
                     platosLayout === 'grid' && showDetalleBtn && 'menu-plato-item--grid-tap',
+                    showPedidos && 'menu-plato-item--cart',
+                    showPedidos && !showDetalleBtn && 'menu-plato-item--cart-solo',
                   ]}
                   data-reveal
                   data-plato-id={plato.id}
@@ -744,6 +749,21 @@ function hubCardStyle(
                       ) : (
                         'Ver más'
                       )}
+                    </button>
+                  ) : null}
+
+                  {showPedidos ? (
+                    <button
+                      type="button"
+                      class="menu-cart-add"
+                      data-cart-add
+                      data-plato-id={plato.id}
+                      aria-label={`Agregar ${plato.nombre} al pedido`}
+                    >
+                      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      </svg>
+                      Agregar
                     </button>
                   ) : null}
                 </li>
@@ -1398,6 +1418,66 @@ function hubCardStyle(
     text-align: center;
     font-family: var(--menu-font-body, inherit);
     box-shadow: none;
+  }
+
+  .menu-cart-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    height: 2rem;
+    padding: 0 0.85rem 0 0.7rem;
+    border: 1px solid color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 75%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 18%, transparent);
+    color: var(--menu-texto-color, var(--color-texto));
+    font-family: var(--menu-font-body, inherit);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    transition:
+      transform 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .menu-cart-add:active {
+    transform: scale(0.95);
+    background: color-mix(in srgb, var(--menu-accent-color, var(--color-primario)) 40%, transparent);
+  }
+
+  .menu-cart-add svg {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  /* Lista: el botón ocupa la esquina inferior derecha, alineado con «Ver más». */
+  .menu-panel:not([data-platos-layout='grid']) .menu-plato-item--cart:not(.menu-plato-item--bento-media) {
+    position: relative;
+  }
+
+  .menu-panel:not([data-platos-layout='grid']) .menu-plato-item--cart:not(.menu-plato-item--bento-media) > .menu-cart-add {
+    position: absolute !important;
+    right: 1rem;
+    bottom: 0.95rem;
+    z-index: 2;
+  }
+
+  .menu-panel:not([data-platos-layout='grid']) .menu-plato-item--cart-solo:not(.menu-plato-item--bento-media) {
+    padding-bottom: 3.6rem;
+  }
+
+  .menu-panel[data-platos-layout='grid'] .menu-plato-item--cart > .menu-cart-add {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    justify-self: stretch;
+    margin-top: 0.6rem;
+  }
+
+  .menu-panel[data-platos-layout='bento'] .menu-plato-item--bento-media > .menu-cart-add {
+    order: 5;
+    align-self: stretch;
+    margin: 0.5rem 0.3rem 0;
   }
 
   .menu-card,

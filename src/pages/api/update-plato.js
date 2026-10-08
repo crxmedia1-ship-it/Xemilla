@@ -2,6 +2,7 @@ import { isSuperAdminUser } from '../../config/superadmin.js';
 import { normalizeDestacadoTipo } from '../../lib/destacado-tipo.js';
 import { uploadPlatoImage } from '../../lib/platos-admin.js';
 import { applyNutricionPatch } from '../../lib/platos-nutricion.js';
+import { normalizePlatoOpciones } from '../../lib/pedidos.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
 
@@ -129,6 +130,10 @@ export async function POST({ request, cookies }) {
 
   applyNutricionPatch(raw, patch);
 
+  if ('opciones' in raw) {
+    patch.opciones = normalizePlatoOpciones(raw.opciones);
+  }
+
   if (imagenFile) {
     let restauranteId = String(raw.restaurante_id ?? '').trim();
     if (!restauranteId) {
@@ -159,7 +164,7 @@ export async function POST({ request, cookies }) {
     .update(patch)
     .eq('id', id)
     .select(
-      'id, nombre, descripcion, precio, disponible, destacado, destacado_tipo, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
+      'id, nombre, descripcion, precio, disponible, destacado, destacado_tipo, imagen_url, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, opciones',
     )
     .maybeSingle();
 

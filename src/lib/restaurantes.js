@@ -27,6 +27,7 @@ import { resolveMediaUrl } from './cloudinary.js';
 import { createSupabaseServiceClient } from './supabase/service.js';
 import { normalizeAlergias } from '../config/nutricion.js';
 import { normalizeDestacadoTipo } from './destacado-tipo.js';
+import { normalizeConfigPedidos, normalizePlatoOpciones } from './pedidos.js';
 
 /**
  * Formatea el precio NUMERIC de Postgres para la UI móvil.
@@ -589,7 +590,7 @@ async function loadRestauranteBySlug(slug, opts = {}) {
       dataClient
         .from('platos')
         .select(
-          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url',
+          'id, categoria_id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, opciones',
         )
         .eq('restaurante_id', row.id)
         .eq('disponible', true)
@@ -637,6 +638,8 @@ async function loadRestauranteBySlug(slug, opts = {}) {
       nombre: plato.nombre,
       descripcion: plato.descripcion ?? '',
       precio: formatPrecio(plato.precio),
+      precioUsd: Number(plato.precio) || 0,
+      opciones: normalizePlatoOpciones(plato.opciones),
       imagenUrl,
       destacado: Boolean(plato.destacado),
       destacadoTipo: normalizeDestacadoTipo(plato.destacado_tipo),
@@ -809,7 +812,9 @@ async function loadRestauranteBySlug(slug, opts = {}) {
       boutique: Boolean(row.gadget_boutique),
       nutricion: Boolean(row.gadget_nutricion),
       ar: Boolean(row.gadget_ar),
+      pedidos: Boolean(row.gadget_pedidos),
     },
+    pedidos: normalizeConfigPedidos(row.config_pedidos),
     wifi: {
       ssid: wifiSsid,
       password: wifiPassword,

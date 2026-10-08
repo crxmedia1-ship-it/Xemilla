@@ -802,6 +802,36 @@ CREATE TABLE IF NOT EXISTS public.sucursal_gerentes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Gadget de pago "Pedidos": migrations/20261008050000_gadget_pedidos.sql
+ALTER TABLE public.restaurantes
+  ADD COLUMN IF NOT EXISTS gadget_pedidos boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS config_pedidos jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE public.platos
+  ADD COLUMN IF NOT EXISTS opciones jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- Solo el servidor (service role) inserta; gestores leen y cambian el estado.
+CREATE TABLE IF NOT EXISTS public.pedidos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo text NOT NULL,
+  restaurante_id uuid NOT NULL REFERENCES public.restaurantes (id) ON DELETE CASCADE,
+  sucursal_id uuid REFERENCES public.sucursales (id) ON DELETE SET NULL,
+  modo text NOT NULL CHECK (modo IN ('mesa', 'delivery', 'pickup')),
+  mesa text,
+  cliente jsonb NOT NULL DEFAULT '{}'::jsonb,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  total_usd numeric(10, 2) NOT NULL CHECK (total_usd >= 0),
+  tasa_bcv numeric(14, 4),
+  total_bs numeric(16, 2),
+  metodo_pago text,
+  referencia_pago text,
+  notas text,
+  estado text NOT NULL DEFAULT 'nuevo'
+    CHECK (estado IN ('nuevo', 'confirmado', 'listo', 'entregado', 'cancelado')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- =============================================================================
 -- Notas de uso
 -- =============================================================================

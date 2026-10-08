@@ -70,6 +70,13 @@ import {
   normalizeMenuLayout,
 } from '../../lib/secciones-ui.js';
 import { hasOperationalGadgets } from '../../lib/gadgets.js';
+import {
+  METODO_PAGO_TIPOS,
+  OPCIONES_PREVIEW_VACIO,
+  formatOpcionesPreview,
+  normalizeConfigPedidos,
+  waNumero,
+} from '../../lib/pedidos.js';
 import { normalizeUbicacionGridEstilo } from '../../lib/ubicacion-theme-data.js';
 import {
   TYPOGRAPHY_COMBO_OPTIONS,
@@ -560,6 +567,8 @@ const marca = {
   gadget_ar: Boolean(restaurante?.gadget_ar),
   gadget_sucursales: gadgetSucursales,
   sucursales_cupo: sucursalesCupo,
+  gadget_pedidos: Boolean(restaurante?.gadget_pedidos),
+  config_pedidos: normalizeConfigPedidos(restaurante?.config_pedidos),
   boutique_titulo: boutiqueConfig.titulo || 'Boutique',
   boutique_catalogo_url: boutiqueConfig.catalogo_url || '',
   gadget_ar_modo_vista: uiEstiloRaw?.gadgets?.ar?.modo_vista || 'rotacion_360',
@@ -634,6 +643,9 @@ const fieldClass =
 const identidadFieldClass = fieldClass;
 /** Campos Gadgets / QR — misma matriz Light/Dark */
 const gadgetFieldClass = fieldClass;
+const pedidosTieneWhatsapp = Boolean(
+  waNumero(restaurante?.whatsapp_num) || waNumero(restaurante?.whatsapp_url) || waNumero(marca.whatsapp_url),
+);
 const labelClass = 'text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-500';
 const gadgetLabelClass = 'block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5';
 /** Selectores de plantilla — activo esmeralda */
@@ -904,6 +916,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           data-is-super-admin={isSuperAdmin ? 'true' : 'false'}
           data-gadget-nutricion={marca.gadget_nutricion ? 'true' : 'false'}
           data-gadget-ar={marca.gadget_ar ? 'true' : 'false'}
+          data-gadget-pedidos={marca.gadget_pedidos ? 'true' : 'false'}
         >
           <div
             id="panel-menu"
@@ -1322,6 +1335,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           data-alergias={JSON.stringify(plato.alergias || [])}
                           data-ingredientes-detalle={plato.ingredientes_detalle || ''}
                           data-modelo3d-url={plato.modelo_3d_url || ''}
+                          data-opciones={JSON.stringify(plato.opciones || [])}
                           data-search={`${plato.nombre} ${plato.categoria_nombre} ${plato.descripcion || ''}`.toLowerCase()}
                         >
                           <td class="platos-cell platos-cell--order px-2 py-3.5 text-center" data-label="#">
@@ -1473,6 +1487,33 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                                   ]}
                                 >
                                   {formatNutricionPreview(plato)}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                data-edit-opciones
+                                data-shows-when-pedidos
+                                hidden={!marca.gadget_pedidos}
+                                class:list={[
+                                  'nut-edit-btn',
+                                  !marca.gadget_pedidos && 'hidden',
+                                ]}
+                                title="Opciones y extras del plato"
+                              >
+                                <span class="nut-edit-btn__top">
+                                  <span class="nut-edit-btn__title">Opciones</span>
+                                  <span class="nut-edit-btn__go" aria-hidden="true">›</span>
+                                </span>
+                                <span
+                                  data-opciones-preview
+                                  class:list={[
+                                    'nut-edit-btn__preview',
+                                    formatOpcionesPreview(plato.opciones) !== OPCIONES_PREVIEW_VACIO
+                                      ? 'is-filled'
+                                      : 'is-empty',
+                                  ]}
+                                >
+                                  {formatOpcionesPreview(plato.opciones)}
                                 </span>
                               </button>
                               </div>
@@ -3794,6 +3835,111 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
+                      {/* 6. Pedidos (carrito + WhatsApp, de pago) */}
+                      <article
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
+                          marca.gadget_pedidos && 'gadget-card--on',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="pedidos"
+                      >
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6.2M10 20.5h.01M17 20.5h.01" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Pedidos</h4>
+                              <p class="text-xs text-neutral-500">Carrito en la carta con envío por WhatsApp</p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer" title="Activar Pedidos">
+                            <input type="checkbox" id="marca-gadget-pedidos" name="gadget_pedidos" checked={marca.gadget_pedidos} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_pedidos ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_pedidos && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-pedidos" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+                        <div class:list={['gadget-card__config', marca.gadget_pedidos && 'is-open']} data-gadget-config aria-hidden={marca.gadget_pedidos ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner mt-4 grid gap-4 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            {!pedidosTieneWhatsapp && (
+                              <p class="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                                Falta el número de WhatsApp del restaurante: sin él el carrito no aparece en la carta.
+                              </p>
+                            )}
+                            <fieldset>
+                              <legend class={gadgetLabelClass}>Cómo puede pedir el cliente</legend>
+                              <div class="flex flex-wrap gap-3">
+                                <label class="inline-flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+                                  <input type="checkbox" id="marca-pedidos-modo-mesa" checked={marca.config_pedidos.modos.mesa} class="h-4 w-4 accent-emerald-600" />
+                                  En la mesa
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+                                  <input type="checkbox" id="marca-pedidos-modo-delivery" checked={marca.config_pedidos.modos.delivery} class="h-4 w-4 accent-emerald-600" />
+                                  Delivery
+                                </label>
+                                <label class="inline-flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+                                  <input type="checkbox" id="marca-pedidos-modo-pickup" checked={marca.config_pedidos.modos.pickup} class="h-4 w-4 accent-emerald-600" />
+                                  Para retirar
+                                </label>
+                              </div>
+                            </fieldset>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Cédula del cliente (delivery y retiro)</span>
+                              <select id="marca-pedidos-cedula" class={gadgetFieldClass}>
+                                <option value="no" selected={marca.config_pedidos.cedula === 'no'}>No pedirla</option>
+                                <option value="opcional" selected={marca.config_pedidos.cedula === 'opcional'}>Opcional</option>
+                                <option value="obligatoria" selected={marca.config_pedidos.cedula === 'obligatoria'}>Obligatoria</option>
+                              </select>
+                            </label>
+                            <div class="min-w-0">
+                              <span class={gadgetLabelClass}>Métodos de pago</span>
+                              <div class="grid gap-2" data-pedidos-metodos>
+                                {marca.config_pedidos.metodos_pago.map((m) => (
+                                  <div class="grid min-w-0 gap-2 rounded-xl border border-zinc-200 p-2.5 dark:border-zinc-800" data-pedidos-metodo-row>
+                                    <input type="hidden" data-pm-id value={m.id} />
+                                    <div class="flex min-w-0 items-center gap-1.5">
+                                      <select data-pm-tipo class={`${gadgetFieldClass} min-w-0 flex-1`}>
+                                        {METODO_PAGO_TIPOS.map((t) => (
+                                          <option value={t.id} selected={t.id === m.tipo}>{t.label}</option>
+                                        ))}
+                                      </select>
+                                      <button type="button" data-pm-remove class="shrink-0 rounded-lg px-2 py-1 text-zinc-400 hover:text-rose-600" title="Quitar método" aria-label="Quitar método">✕</button>
+                                    </div>
+                                    <input type="text" data-pm-nombre value={m.nombre} maxlength="40" placeholder="Nombre visible (opcional)" class={`${gadgetFieldClass} min-w-0`} />
+                                    <textarea data-pm-datos rows="3" maxlength="300" placeholder="Datos: banco, teléfono, cédula/RIF, correo…" class={`${gadgetFieldClass} min-w-0`}>{m.datos}</textarea>
+                                  </div>
+                                ))}
+                              </div>
+                              <template id="pedidos-metodo-template">
+                                <div class="grid min-w-0 gap-2 rounded-xl border border-zinc-200 p-2.5 dark:border-zinc-800" data-pedidos-metodo-row>
+                                  <input type="hidden" data-pm-id value="" />
+                                  <div class="flex min-w-0 items-center gap-1.5">
+                                    <select data-pm-tipo class={`${gadgetFieldClass} min-w-0 flex-1`}>
+                                      {METODO_PAGO_TIPOS.map((t) => (
+                                        <option value={t.id}>{t.label}</option>
+                                      ))}
+                                    </select>
+                                    <button type="button" data-pm-remove class="shrink-0 rounded-lg px-2 py-1 text-zinc-400 hover:text-rose-600" title="Quitar método" aria-label="Quitar método">✕</button>
+                                  </div>
+                                  <input type="text" data-pm-nombre value="" maxlength="40" placeholder="Nombre visible (opcional)" class={`${gadgetFieldClass} min-w-0`} />
+                                  <textarea data-pm-datos rows="3" maxlength="300" placeholder="Datos: banco, teléfono, cédula/RIF, correo…" class={`${gadgetFieldClass} min-w-0`}></textarea>
+                                </div>
+                              </template>
+                              <button type="button" data-pedidos-metodo-add class="mt-2 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-400">+ Agregar método de pago</button>
+                            </div>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Nota para el cliente (opcional)</span>
+                              <textarea id="marca-pedidos-nota" rows="2" maxlength="280" placeholder="Ej: Delivery solo en Chacao y Altamira. Pedido mínimo $10." class={gadgetFieldClass}>{marca.config_pedidos.nota}</textarea>
+                            </label>
+                            <p class="text-xs leading-relaxed text-neutral-500">
+                              Los precios se recalculan en el servidor y cada pedido queda guardado con su código. Las opciones de cada plato (tamaños, extras) se editan en Menú.
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+
                     </div>
                   </div>
 
@@ -4368,6 +4514,47 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               class="admin-action-btn nut-save-btn"
             >
               Guardar nutrición
+            </button>
+          </div>
+        </div>
+      </div>
+
+  <div
+        id="opciones-modal"
+        class="modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 sm:p-6 backdrop-blur-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="opciones-modal-title"
+        data-open="false"
+        aria-hidden="true"
+      >
+        <div data-modal-card class={`modal-card glass-panel ${bounceWallClass} w-full max-w-xl overflow-hidden p-0 shadow-2xl`}>
+          <div class="nutricion-modal__head flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5 sm:px-5 sm:py-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-[0.55rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Opciones del plato
+              </p>
+              <h3 id="opciones-modal-title" class="mt-1 truncate font-blacksushi-display text-lg font-semibold sm:text-xl">
+                Plato
+              </h3>
+            </div>
+            <button
+              type="button"
+              id="opciones-modal-close"
+              class="shrink-0 rounded-lg px-3 py-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 transition hover:bg-white/5 hover:text-white"
+            >
+              Cerrar
+            </button>
+          </div>
+          <div class="nutricion-modal__body max-h-[min(72vh,36rem)] space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+            <p class="text-xs leading-relaxed text-zinc-500">
+              Grupos como «Tamaño», «Término» o «Extras». El precio de cada opción se suma al del plato (0 si no cambia el precio).
+            </p>
+            <div id="opciones-grupos" class="space-y-3"></div>
+            <button type="button" id="opciones-add-grupo" class="opc-add-btn">+ Agregar grupo</button>
+            <p id="opciones-modal-error" class="hidden text-xs text-rose-400" role="alert"></p>
+            <button type="button" id="opciones-modal-save" class="admin-action-btn nut-save-btn">
+              Guardar opciones
             </button>
           </div>
         </div>
@@ -5372,6 +5559,89 @@ Postres | Tres leches | Coco | 9.00 | SI |`
   html.admin-panel[data-theme='light'] .nut-save-btn {
     background: #18181b;
     color: #fafafa;
+  }
+
+  #opciones-grupos :global(.opc-grupo) {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fafafa) 12%, transparent);
+    background: color-mix(in srgb, var(--text-primary, #fafafa) 4%, transparent);
+  }
+
+  #opciones-grupos :global(.opc-row) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  #opciones-grupos :global(.opc-input) {
+    min-width: 0;
+    flex: 1 1 8rem;
+    border-radius: 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--text-primary, #fafafa) 14%, transparent);
+    background: transparent;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.82rem;
+    color: var(--text-primary, #fafafa);
+    outline: none;
+  }
+
+  #opciones-grupos :global(.opc-input:focus) {
+    border-color: color-mix(in srgb, var(--text-primary, #fafafa) 40%, transparent);
+  }
+
+  #opciones-grupos :global(.opc-input--precio) {
+    flex: 0 0 5.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #opciones-grupos :global(.opc-input--max) {
+    flex: 0 0 4rem;
+    text-align: center;
+  }
+
+  #opciones-grupos :global(.opc-meta) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--text-soft, #71717a);
+  }
+
+  #opciones-grupos :global(.opc-x) {
+    flex: 0 0 auto;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-soft, #71717a);
+  }
+
+  #opciones-grupos :global(.opc-x:hover) {
+    color: #f43f5e;
+  }
+
+  #opciones-grupos :global(.opc-ops) {
+    display: grid;
+    gap: 0.4rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid color-mix(in srgb, var(--text-primary, #fafafa) 10%, transparent);
+  }
+
+  .opc-add-btn,
+  #opciones-grupos :global(.opc-add-btn) {
+    justify-self: start;
+    font-size: 0.75rem;
+    font-weight: 650;
+    color: #10b981;
+  }
+
+  .opc-add-btn:hover,
+  #opciones-grupos :global(.opc-add-btn:hover) {
+    text-decoration: underline;
   }
 
   @media (prefers-reduced-motion: reduce) {

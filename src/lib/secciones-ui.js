@@ -1340,6 +1340,7 @@ export function parseUiEstilo(value) {
           home.gadgetServiciosEstilo ??
           raw.home_gadget_servicios_estilo,
       ),
+      pergamino_idioma: String(home.pergamino_idioma ?? '').trim().toLowerCase() === 'zh' ? 'zh' : 'ko',
     },
     menu: normalizeMenuUi(
       /** @type {Record<string, unknown>} */ (raw.menu || {}),

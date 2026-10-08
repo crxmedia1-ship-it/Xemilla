@@ -23,6 +23,12 @@
     serializeHorarioSemana,
   } from '../lib/horarios-semana.js';
   import { googleMapsEmbedSrc, mapsOpenHref, normalizeMapsStorage } from '../lib/maps-preview.js';
+  import {
+    OPCIONES_PREVIEW_VACIO,
+    PEDIDO_LIMITES,
+    formatOpcionesPreview,
+    normalizePlatoOpciones,
+  } from '../lib/pedidos.js';
 
   const MACRO_ID_ORDER = [...MENU_MACROS.map((m) => m.id), 'otros'];
   const PLATOS_COLSPAN = 7;
@@ -41,6 +47,8 @@
   let nutricionCloseTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let arCloseTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let opcionesCloseTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let opsAutoSaveTimer = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
@@ -2451,7 +2459,7 @@
   /**
    * @param {HTMLElement | null} overlay
    * @param {() => void} [after]
-   * @param {{ timerRef: 'modal' | 'desc' | 'nombre' | 'nuevo' | 'nutricion' | 'ar' }} opts
+   * @param {{ timerRef: 'modal' | 'desc' | 'nombre' | 'nuevo' | 'nutricion' | 'ar' | 'opciones' }} opts
    */
   function closeOverlay(overlay, after, opts) {
     if (!(overlay instanceof HTMLElement)) return;
@@ -2484,6 +2492,10 @@
         clearTimeout(arCloseTimer);
         arCloseTimer = null;
       }
+      if (opts.timerRef === 'opciones' && opcionesCloseTimer) {
+        clearTimeout(opcionesCloseTimer);
+        opcionesCloseTimer = null;
+      }
     };
     clearExisting();
 
@@ -2494,6 +2506,7 @@
       else if (opts.timerRef === 'nombre') nombreCloseTimer = null;
       else if (opts.timerRef === 'nuevo') nuevoCloseTimer = null;
       else if (opts.timerRef === 'nutricion') nutricionCloseTimer = null;
+      else if (opts.timerRef === 'opciones') opcionesCloseTimer = null;
       else arCloseTimer = null;
     }, 220);
 
@@ -2502,6 +2515,7 @@
     else if (opts.timerRef === 'nombre') nombreCloseTimer = timer;
     else if (opts.timerRef === 'nuevo') nuevoCloseTimer = timer;
     else if (opts.timerRef === 'nutricion') nutricionCloseTimer = timer;
+    else if (opts.timerRef === 'opciones') opcionesCloseTimer = timer;
     else arCloseTimer = timer;
   }
 
@@ -3114,6 +3128,201 @@
     }
   }, { signal });
 
+  /* —— Opciones por plato (gadget Pedidos) —— */
+  const opcionesModal = document.getElementById('opciones-modal');
+  const opcionesModalTitle = document.getElementById('opciones-modal-title');
+  const opcionesGrupos = document.getElementById('opciones-grupos');
+  const opcionesModalSave = document.getElementById('opciones-modal-save');
+  const opcionesModalError = document.getElementById('opciones-modal-error');
+  /** @type {HTMLElement | null} */
+  let activeOpcionesRow = null;
+
+  function isPedidosGadgetOn() {
+    const sw = document.getElementById('marca-gadget-pedidos');
+    if (sw instanceof HTMLInputElement) return sw.checked;
+    return root instanceof HTMLElement && root.dataset.gadgetPedidos === 'true';
+  }
+
+  const opcId = () => Math.random().toString(36).slice(2, 9);
+
+  /** @param {{ id?: string, nombre?: string, precio?: number }} [op] */
+  function opcionRowHtml(op = {}) {
+    const precio = op.precio ? String(op.precio) : '';
+    return `<div class="opc-row" data-opc-op data-id="${escapeHtml(op.id || opcId())}">
+      <input type="text" class="opc-input" data-opc-op-nombre maxlength="60" placeholder="Opción (ej: Grande)" value="${escapeHtml(op.nombre || '')}" />
+      <input type="number" class="opc-input opc-input--precio" data-opc-op-precio min="0" step="0.01" inputmode="decimal" placeholder="+$0" value="${escapeHtml(precio)}" />
+      <button type="button" class="opc-x" data-opc-op-remove title="Quitar opción" aria-label="Quitar opción">✕</button>
+    </div>`;
+  }
+
+  /** @param {{ id?: string, nombre?: string, requerido?: boolean, max?: number, opciones?: Array<{ id?: string, nombre?: string, precio?: number }> }} [g] */
+  function grupoHtml(g = {}) {
+    const ops = g.opciones?.length ? g.opciones : [{}, {}];
+    return `<div class="opc-grupo" data-opc-grupo data-id="${escapeHtml(g.id || opcId())}">
+      <div class="opc-row">
+        <input type="text" class="opc-input" data-opc-grupo-nombre maxlength="60" placeholder="Grupo (ej: Tamaño, Extras)" value="${escapeHtml(g.nombre || '')}" />
+        <button type="button" class="opc-x" data-opc-grupo-remove title="Quitar grupo" aria-label="Quitar grupo">✕</button>
+      </div>
+      <div class="opc-row">
+        <label class="opc-meta"><input type="checkbox" data-opc-requerido ${g.requerido ? 'checked' : ''} /> Obligatorio</label>
+        <label class="opc-meta">Máx. a elegir <input type="number" class="opc-input opc-input--max" data-opc-max min="1" max="${PEDIDO_LIMITES.opcionesPorGrupo}" step="1" value="${Number(g.max) || 1}" /></label>
+      </div>
+      <div class="opc-ops" data-opc-ops>${ops.map((o) => opcionRowHtml(o)).join('')}</div>
+      <button type="button" class="opc-add-btn" data-opc-add-op>+ Opción</button>
+    </div>`;
+  }
+
+  /** @param {HTMLElement} row */
+  function readRowOpciones(row) {
+    try {
+      return normalizePlatoOpciones(JSON.parse(row.dataset.opciones || '[]'));
+    } catch {
+      return [];
+    }
+  }
+
+  /** @param {HTMLElement} row */
+  function syncOpcionesPreview(row) {
+    const preview = row.querySelector('[data-opciones-preview]');
+    if (!(preview instanceof HTMLElement)) return;
+    const text = formatOpcionesPreview(row.dataset.opciones || '[]');
+    preview.textContent = text;
+    const filled = text !== OPCIONES_PREVIEW_VACIO;
+    preview.classList.toggle('is-filled', filled);
+    preview.classList.toggle('is-empty', !filled);
+  }
+
+  /** @returns {{ ok: true, grupos: ReturnType<typeof normalizePlatoOpciones> } | { ok: false, error: string }} */
+  function collectOpciones() {
+    if (!(opcionesGrupos instanceof HTMLElement)) return { ok: true, grupos: [] };
+    const raw = [];
+    for (const g of opcionesGrupos.querySelectorAll('[data-opc-grupo]')) {
+      if (!(g instanceof HTMLElement)) continue;
+      const nombreEl = g.querySelector('[data-opc-grupo-nombre]');
+      const nombre = nombreEl instanceof HTMLInputElement ? nombreEl.value.trim() : '';
+      const opciones = [...g.querySelectorAll('[data-opc-op]')]
+        .map((op) => {
+          if (!(op instanceof HTMLElement)) return null;
+          const n = op.querySelector('[data-opc-op-nombre]');
+          const p = op.querySelector('[data-opc-op-precio]');
+          const opNombre = n instanceof HTMLInputElement ? n.value.trim() : '';
+          if (!opNombre) return null;
+          const precio = p instanceof HTMLInputElement ? Number(p.value.replace(',', '.')) : 0;
+          return { id: op.dataset.id, nombre: opNombre, precio: Number.isFinite(precio) ? precio : 0 };
+        })
+        .filter(Boolean);
+      if (!nombre && !opciones.length) continue;
+      if (!nombre) return { ok: false, error: 'Hay un grupo con opciones pero sin nombre.' };
+      if (!opciones.length) return { ok: false, error: `El grupo «${nombre}» no tiene opciones.` };
+      const req = g.querySelector('[data-opc-requerido]');
+      const max = g.querySelector('[data-opc-max]');
+      raw.push({
+        id: g.dataset.id,
+        nombre,
+        requerido: req instanceof HTMLInputElement && req.checked,
+        max: max instanceof HTMLInputElement ? Number(max.value) || 1 : 1,
+        opciones,
+      });
+    }
+    return { ok: true, grupos: normalizePlatoOpciones(raw) };
+  }
+
+  /** @param {HTMLElement} row */
+  function openOpcionesModal(row) {
+    if (!(opcionesModal instanceof HTMLElement) || !(opcionesGrupos instanceof HTMLElement)) return;
+    activeOpcionesRow = row;
+    if (opcionesModalTitle) opcionesModalTitle.textContent = getRowNombre(row);
+    const grupos = readRowOpciones(row);
+    opcionesGrupos.innerHTML = grupos.length ? grupos.map((g) => grupoHtml(g)).join('') : '';
+    opcionesModalError?.classList.add('hidden');
+    if (opcionesCloseTimer) {
+      clearTimeout(opcionesCloseTimer);
+      opcionesCloseTimer = null;
+    }
+    openOverlay(opcionesModal);
+  }
+
+  function closeOpcionesModal() {
+    closeOverlay(
+      opcionesModal,
+      () => {
+        activeOpcionesRow = null;
+      },
+      { timerRef: 'opciones' },
+    );
+  }
+
+  document.getElementById('opciones-modal-close')?.addEventListener('click', closeOpcionesModal, { signal });
+  opcionesModal?.addEventListener('click', (e) => {
+    if (e.target === opcionesModal) closeOpcionesModal();
+  }, { signal });
+
+  document.getElementById('opciones-add-grupo')?.addEventListener('click', () => {
+    if (!(opcionesGrupos instanceof HTMLElement)) return;
+    if (opcionesGrupos.querySelectorAll('[data-opc-grupo]').length >= PEDIDO_LIMITES.grupos) return;
+    opcionesGrupos.insertAdjacentHTML('beforeend', grupoHtml());
+    const last = opcionesGrupos.querySelector('[data-opc-grupo]:last-child [data-opc-grupo-nombre]');
+    if (last instanceof HTMLInputElement) last.focus();
+  }, { signal });
+
+  opcionesGrupos?.addEventListener('click', (e) => {
+    const t = e.target instanceof Element ? e.target : null;
+    if (!t) return;
+    const grupo = t.closest('[data-opc-grupo]');
+    if (t.closest('[data-opc-grupo-remove]')) {
+      grupo?.remove();
+      return;
+    }
+    if (t.closest('[data-opc-op-remove]')) {
+      t.closest('[data-opc-op]')?.remove();
+      return;
+    }
+    if (t.closest('[data-opc-add-op]') && grupo) {
+      const ops = grupo.querySelector('[data-opc-ops]');
+      if (!(ops instanceof HTMLElement)) return;
+      if (ops.children.length >= PEDIDO_LIMITES.opcionesPorGrupo) return;
+      ops.insertAdjacentHTML('beforeend', opcionRowHtml());
+      const last = ops.querySelector('[data-opc-op]:last-child [data-opc-op-nombre]');
+      if (last instanceof HTMLInputElement) last.focus();
+    }
+  }, { signal });
+
+  opcionesModalSave?.addEventListener('click', async () => {
+    if (!(activeOpcionesRow instanceof HTMLElement)) return;
+    const row = activeOpcionesRow;
+    const id = Number(row.dataset.platoId);
+    if (!Number.isFinite(id)) return;
+    const result = collectOpciones();
+    if (!result.ok) {
+      if (opcionesModalError) {
+        opcionesModalError.textContent = result.error;
+        opcionesModalError.classList.remove('hidden');
+      }
+      return;
+    }
+    opcionesModalError?.classList.add('hidden');
+    if (opcionesModalSave instanceof HTMLButtonElement) {
+      opcionesModalSave.disabled = true;
+      opcionesModalSave.textContent = 'Guardando…';
+    }
+    try {
+      await updatePlato(id, { opciones: result.grupos });
+      row.dataset.opciones = JSON.stringify(result.grupos);
+      syncOpcionesPreview(row);
+      closeOpcionesModal();
+    } catch (err) {
+      if (opcionesModalError) {
+        opcionesModalError.textContent = err instanceof Error ? err.message : 'Error al guardar';
+        opcionesModalError.classList.remove('hidden');
+      }
+    } finally {
+      if (opcionesModalSave instanceof HTMLButtonElement) {
+        opcionesModalSave.disabled = false;
+        opcionesModalSave.textContent = 'Guardar opciones';
+      }
+    }
+  }, { signal });
+
   document.getElementById('nutricion-bulk-sync')?.addEventListener('click', async () => {
     const textEl = document.getElementById('nutricion-bulk-text');
     const statusEl = document.getElementById('nutricion-bulk-status');
@@ -3401,6 +3610,7 @@
     tr.dataset.alergias = JSON.stringify(Array.isArray(plato.alergias) ? plato.alergias : []);
     tr.dataset.ingredientesDetalle = plato.ingredientes_detalle || '';
     tr.dataset.modelo3dUrl = typeof plato.modelo_3d_url === 'string' ? plato.modelo_3d_url : '';
+    tr.dataset.opciones = JSON.stringify(normalizePlatoOpciones(plato.opciones));
     tr.dataset.search =
       `${plato.nombre} ${plato.categoria_nombre || ''} ${plato.descripcion || ''}`.toLowerCase();
     const precio = Number(plato.precio).toFixed(2);
@@ -3425,7 +3635,10 @@
     const arBtn = isSuper
       ? `<button type="button" data-edit-ar data-shows-when-ar class="ar-chip${arUrl ? ' is-on' : ''}${arOn ? '' : ' hidden'}"${arOn ? '' : ' hidden'} title="${arUrl ? 'Editar modelo AR' : 'Cargar URL de AR'}" aria-label="Modelo AR 3D">AR</button>`
       : '';
-    const gadgetStack = `<div class="dish-gadget-stack">${nutBtn}</div>`;
+    const pedOn = isPedidosGadgetOn();
+    const opcPreview = formatOpcionesPreview(tr.dataset.opciones || '[]');
+    const opcBtn = `<button type="button" data-edit-opciones data-shows-when-pedidos class="nut-edit-btn${pedOn ? '' : ' hidden'}"${pedOn ? '' : ' hidden'} title="Opciones y extras del plato"><span class="nut-edit-btn__top"><span class="nut-edit-btn__title">Opciones</span><span class="nut-edit-btn__go" aria-hidden="true">›</span></span><span data-opciones-preview class="nut-edit-btn__preview ${opcPreview !== OPCIONES_PREVIEW_VACIO ? 'is-filled' : 'is-empty'}">${escapeHtml(opcPreview)}</span></button>`;
+    const gadgetStack = `<div class="dish-gadget-stack">${nutBtn}${opcBtn}</div>`;
 
     tr.innerHTML = `
       <td class="platos-cell platos-cell--order px-2 py-3.5 text-center" data-label="#">
@@ -3966,6 +4179,16 @@
         event.preventDefault();
         event.stopPropagation();
         openNutricionModal(nutRow);
+      }
+      return;
+    }
+    const opcBtn = target.closest('[data-edit-opciones]');
+    if (opcBtn) {
+      const opcRow = opcBtn.closest('tr[data-plato-id]');
+      if (opcRow instanceof HTMLElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        openOpcionesModal(opcRow);
       }
       return;
     }
@@ -5811,6 +6034,66 @@
     }
   }
 
+  function collectConfigPedidos() {
+    const isOn = (/** @type {string} */ id) => {
+      const el = document.getElementById(id);
+      return el instanceof HTMLInputElement && el.checked;
+    };
+    const fieldVal = (/** @type {string} */ id) => {
+      const el = document.getElementById(id);
+      return el instanceof HTMLInputElement ||
+        el instanceof HTMLSelectElement ||
+        el instanceof HTMLTextAreaElement
+        ? el.value.trim()
+        : '';
+    };
+    const metodos_pago = [...document.querySelectorAll('[data-pedidos-metodos] [data-pedidos-metodo-row]')]
+      .map((row) => {
+        const get = (/** @type {string} */ sel) => {
+          const el = row.querySelector(sel);
+          return el instanceof HTMLInputElement ||
+            el instanceof HTMLSelectElement ||
+            el instanceof HTMLTextAreaElement
+            ? el.value.trim()
+            : '';
+        };
+        return {
+          id: get('[data-pm-id]'),
+          tipo: get('[data-pm-tipo]'),
+          nombre: get('[data-pm-nombre]'),
+          datos: get('[data-pm-datos]'),
+        };
+      });
+    return {
+      modos: {
+        mesa: isOn('marca-pedidos-modo-mesa'),
+        delivery: isOn('marca-pedidos-modo-delivery'),
+        pickup: isOn('marca-pedidos-modo-pickup'),
+      },
+      cedula: fieldVal('marca-pedidos-cedula') || 'opcional',
+      nota: fieldVal('marca-pedidos-nota'),
+      metodos_pago,
+    };
+  }
+
+  document.querySelector('[data-pedidos-metodo-add]')?.addEventListener('click', () => {
+    const list = document.querySelector('[data-pedidos-metodos]');
+    const tpl = document.getElementById('pedidos-metodo-template');
+    if (!(list instanceof HTMLElement) || !(tpl instanceof HTMLTemplateElement)) return;
+    if (list.children.length >= PEDIDO_LIMITES.metodosPago) {
+      showToast(`Máximo ${PEDIDO_LIMITES.metodosPago} métodos de pago`, 'error');
+      return;
+    }
+    list.appendChild(tpl.content.cloneNode(true));
+    const last = list.lastElementChild?.querySelector('[data-pm-datos]');
+    if (last instanceof HTMLTextAreaElement) last.focus();
+  }, { signal });
+
+  document.querySelector('[data-pedidos-metodos]')?.addEventListener('click', (e) => {
+    const btn = e.target instanceof Element ? e.target.closest('[data-pm-remove]') : null;
+    btn?.closest('[data-pedidos-metodo-row]')?.remove();
+  }, { signal });
+
   function collectBoutiqueProductos() {
     return Array.from(document.querySelectorAll('[data-boutique-row]')).map((row, index) => {
       if (!(row instanceof HTMLElement)) {
@@ -6008,6 +6291,15 @@
           wrap.setAttribute('aria-hidden', on ? 'false' : 'true');
         }
         if (fondoGeneral instanceof HTMLElement) fondoGeneral.hidden = on;
+      }
+
+      if (input.id === 'marca-gadget-pedidos') {
+        document.querySelectorAll('[data-shows-when-pedidos]').forEach((el) => {
+          if (!(el instanceof HTMLElement)) return;
+          el.classList.toggle('hidden', !on);
+          el.hidden = !on;
+        });
+        if (root instanceof HTMLElement) root.dataset.gadgetPedidos = on ? 'true' : 'false';
       }
 
       if (input.id === 'marca-gadget-nutricion') {
@@ -6318,6 +6610,8 @@
           gadget_ar: checked('marca-gadget-ar'),
           gadget_sucursales: checked('marca-gadget-sucursales'),
           sucursales_cupo: Number(val('marca-sucursales-cupo')) || 1,
+          gadget_pedidos: checked('marca-gadget-pedidos'),
+          config_pedidos: collectConfigPedidos(),
           gadget_ar_modo_vista: 'rotacion_360',
           gadget_ar_intensidad: '70',
           gadget_nut_filtro_gluten_free: checked('marca-gadget-nut-gluten'),

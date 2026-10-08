@@ -1,0 +1,1103 @@
+---
+/**
+ * Gadget Pedidos: carrito flotante + checkout que envía el pedido al WhatsApp de la sede.
+ * La lógica vive en scripts/cart.ts; aquí solo markup y estilos.
+ */
+import { jsonForScript } from '../../lib/safe-json.js';
+import {
+  PEDIDO_MODO_LABELS,
+  metodoCobraEnBs,
+  metodoPideReferencia,
+  modosActivos,
+} from '../../lib/pedidos.js';
+
+interface Props {
+  slug: string;
+  sucursal?: string;
+  categorias: Array<{ platos: any[] }>;
+  config: import('../../lib/pedidos.js').ConfigPedidos;
+  tasaBcv: number;
+  accentColor?: string;
+  accentText?: string;
+}
+
+const { slug, sucursal = '', categorias = [], config, tasaBcv, accentColor = '', accentText = '' } = Astro.props;
+
+const catalogo: Record<string, unknown> = {};
+for (const cat of categorias) {
+  for (const p of cat.platos || []) {
+    if (p?.id == null) continue;
+    catalogo[String(p.id)] = {
+      n: p.nombre,
+      p: Number(p.precioUsd) || 0,
+      img: p.imagenUrl || '',
+      d: String(p.descripcion || '').slice(0, 220),
+      o: p.opciones || [],
+    };
+  }
+}
+
+const modos = modosActivos(config);
+const metodos = config.metodos_pago.map((m) => ({
+  ...m,
+  bs: metodoCobraEnBs(m.tipo),
+  referencia: metodoPideReferencia(m.tipo),
+}));
+const configCliente = { modos, cedula: config.cedula, metodos };
+
+const MODO_ICON: Record<string, string> = {
+  mesa: '🍽️',
+  delivery: '🛵',
+  pickup: '🛍️',
+};
+
+const rootStyle = [
+  accentColor ? `--xcart-accent:${accentColor}` : '',
+  accentText ? `--xcart-accent-text:${accentText}` : '',
+]
+  .filter(Boolean)
+  .join(';');
+---
+
+<div
+  class="xcart"
+  data-cart-root
+  data-slug={slug}
+  data-sucursal={sucursal}
+  data-tasa-bcv={String(tasaBcv || '')}
+  style={rootStyle || undefined}
+>
+  <script is:inline type="application/json" data-cart-catalog set:html={jsonForScript(catalogo)} />
+  <script is:inline type="application/json" data-cart-config set:html={jsonForScript(configCliente)} />
+
+  <button type="button" class="xcart-pill" data-cart-pill hidden aria-label="Ver pedido">
+    <span class="xcart-pill__count" data-cart-count>0</span>
+    <span class="xcart-pill__label">Ver pedido</span>
+    <span class="xcart-pill__total" data-cart-pill-total>$0.00</span>
+  </button>
+
+  <div class="xcart-toast" data-cart-toast role="status" aria-live="polite"></div>
+
+  {/* —— Opciones del plato —— */}
+  <div class="xcart-layer" data-cart-layer="opciones" aria-hidden="true">
+    <button type="button" class="xcart-backdrop" data-cart-close tabindex="-1" aria-label="Cerrar"></button>
+    <div class="xcart-sheet" role="dialog" aria-modal="true" aria-labelledby="xcart-op-title">
+      <div class="xcart-sheet__grip" aria-hidden="true"></div>
+      <div class="xcart-op-hero" data-op-hero hidden>
+        <img src="" alt="" data-op-img />
+      </div>
+      <header class="xcart-head">
+        <div class="min-w-0">
+          <h3 id="xcart-op-title" class="xcart-title" data-op-title>Plato</h3>
+          <p class="xcart-sub" data-op-desc></p>
+        </div>
+        <button type="button" class="xcart-x" data-cart-close aria-label="Cerrar">✕</button>
+      </header>
+      <div class="xcart-body">
+        <div class="xcart-op-groups" data-op-body></div>
+        <label class="xcart-field">
+          <span class="xcart-label">Nota para este plato</span>
+          <input class="xcart-input" data-op-nota maxlength="140" autocomplete="off" placeholder="Ej. sin cebolla" />
+        </label>
+      </div>
+      <footer class="xcart-foot xcart-foot--row">
+        <div class="xcart-stepper" aria-label="Cantidad">
+          <button type="button" data-op-qty="-1" aria-label="Quitar uno">−</button>
+          <span data-op-qty-value>1</span>
+          <button type="button" data-op-qty="1" aria-label="Agregar uno">+</button>
+        </div>
+        <button type="button" class="xcart-cta" data-op-submit>
+          Agregar <span data-op-total>$0.00</span>
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  {/* —— Carrito / checkout / confirmación —— */}
+  <div class="xcart-layer" data-cart-layer="carrito" aria-hidden="true">
+    <button type="button" class="xcart-backdrop" data-cart-close tabindex="-1" aria-label="Cerrar"></button>
+    <div class="xcart-sheet xcart-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="xcart-cart-title">
+      <div class="xcart-sheet__grip" aria-hidden="true"></div>
+
+      <section class="xcart-view" data-cart-view="carrito">
+        <header class="xcart-head">
+          <div>
+            <p class="xcart-kicker">Tu pedido</p>
+            <h3 id="xcart-cart-title" class="xcart-title" data-cart-summary>0 productos</h3>
+          </div>
+          <button type="button" class="xcart-x" data-cart-close aria-label="Cerrar">✕</button>
+        </header>
+        <div class="xcart-body">
+          <ul class="xcart-list" data-cart-list role="list"></ul>
+          <p class="xcart-empty" data-cart-empty hidden>Tu pedido está vacío. Agrega platos desde el menú.</p>
+        </div>
+        <footer class="xcart-foot">
+          <div class="xcart-total">
+            <span>Total</span>
+            <span class="xcart-total__amounts">
+              <strong data-cart-total-usd>$0.00</strong>
+              <small data-cart-total-bs></small>
+            </span>
+          </div>
+          <button type="button" class="xcart-cta xcart-cta--block" data-cart-go="checkout">Continuar</button>
+        </footer>
+      </section>
+
+      <section class="xcart-view" data-cart-view="checkout" hidden>
+        <header class="xcart-head">
+          <button type="button" class="xcart-back" data-cart-go="carrito" aria-label="Volver al carrito">←</button>
+          <div class="min-w-0 flex-1">
+            <p class="xcart-kicker">Último paso</p>
+            <h3 class="xcart-title">Datos del pedido</h3>
+          </div>
+          <button type="button" class="xcart-x" data-cart-close aria-label="Cerrar">✕</button>
+        </header>
+        <form class="xcart-body xcart-form" data-cart-form novalidate>
+          {
+            modos.length > 1 ? (
+              <fieldset class="xcart-field">
+                <legend class="xcart-label">¿Cómo lo recibes?</legend>
+                <div class="xcart-chips">
+                  {modos.map((m) => (
+                    <label class="xcart-chip">
+                      <input type="radio" name="modo" value={m} class="sr-only" />
+                      <span>{MODO_ICON[m]} {PEDIDO_MODO_LABELS[m]}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : (
+              <input type="hidden" name="modo" value={modos[0]} />
+            )
+          }
+
+          <label class="xcart-field" data-modos="mesa" data-required-modos="mesa">
+            <span class="xcart-label">Número de mesa</span>
+            <input class="xcart-input" name="mesa" inputmode="text" maxlength="16" autocomplete="off" placeholder="Ej. 7" />
+          </label>
+
+          <label class="xcart-field" data-modos="mesa delivery pickup" data-required-modos="delivery pickup">
+            <span class="xcart-label">Tu nombre</span>
+            <input class="xcart-input" name="nombre" maxlength="60" autocomplete="name" placeholder="Nombre y apellido" />
+          </label>
+
+          <label class="xcart-field" data-modos="delivery pickup" data-required-modos="delivery pickup">
+            <span class="xcart-label">Teléfono</span>
+            <input class="xcart-input" name="telefono" type="tel" maxlength="24" autocomplete="tel" placeholder="0414 123 4567" />
+          </label>
+
+          {
+            config.cedula !== 'no' ? (
+              <label
+                class="xcart-field"
+                data-modos="delivery pickup"
+                data-required-modos={config.cedula === 'obligatoria' ? 'delivery pickup' : ''}
+              >
+                <span class="xcart-label">Cédula</span>
+                <input class="xcart-input" name="cedula" maxlength="16" autocomplete="off" placeholder="V-12345678" />
+              </label>
+            ) : null
+          }
+
+          <label class="xcart-field" data-modos="delivery" data-required-modos="delivery">
+            <span class="xcart-label">Dirección de entrega</span>
+            <textarea class="xcart-input" name="direccion" rows="2" maxlength="300" autocomplete="street-address" placeholder="Urbanización, calle, edificio y punto de referencia"></textarea>
+          </label>
+
+          {
+            metodos.length ? (
+              <fieldset class="xcart-field" data-modos="mesa delivery pickup" data-required-modos="delivery pickup">
+                <legend class="xcart-label">Método de pago</legend>
+                <div class="xcart-chips">
+                  {metodos.map((m) => (
+                    <label class="xcart-chip">
+                      <input type="radio" name="metodo_pago" value={m.id} class="sr-only" />
+                      <span>{m.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+                <div class="xcart-pay" data-pay-card hidden>
+                  <div class="xcart-pay__amount">
+                    <span>Monto a pagar</span>
+                    <button type="button" class="xcart-copy" data-pay-amount-copy>
+                      <strong data-pay-amount>$0.00</strong>
+                      <span class="xcart-copy__hint">Copiar</span>
+                    </button>
+                  </div>
+                  <ul class="xcart-pay__lines" data-pay-lines role="list"></ul>
+                  <label class="xcart-field xcart-field--tight" data-pay-ref hidden>
+                    <span class="xcart-label">Número de referencia</span>
+                    <input class="xcart-input" name="referencia" maxlength="40" inputmode="numeric" autocomplete="off" placeholder="Si ya pagaste, escríbelo aquí" />
+                  </label>
+                </div>
+              </fieldset>
+            ) : null
+          }
+
+          <label class="xcart-field">
+            <span class="xcart-label">Notas del pedido</span>
+            <textarea class="xcart-input" name="notas" rows="2" maxlength="300" placeholder="Alergias, sin cebolla, cubiertos…"></textarea>
+          </label>
+
+          {config.nota ? <p class="xcart-note">{config.nota}</p> : null}
+
+          <p class="xcart-error" data-cart-error role="alert" hidden></p>
+        </form>
+        <footer class="xcart-foot">
+          <div class="xcart-total">
+            <span>Total</span>
+            <span class="xcart-total__amounts">
+              <strong data-cart-total-usd>$0.00</strong>
+              <small data-cart-total-bs></small>
+            </span>
+          </div>
+          <button type="button" class="xcart-cta xcart-cta--block xcart-cta--wa" data-cart-submit>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.5 15l-1.4 5.1 5.2-1.4A9.9 9.9 0 1 0 12.04 2Zm5.8 14.1c-.25.7-1.45 1.33-2 1.38-.53.06-1.04.25-3.5-.73-2.95-1.16-4.84-4.17-4.98-4.37-.15-.2-1.2-1.6-1.2-3.05 0-1.45.76-2.17 1.03-2.46.27-.3.6-.37.8-.37h.57c.18 0 .43-.07.67.51.25.6.84 2.05.91 2.2.08.15.13.32.03.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.6.17.3.77 1.27 1.65 2.05 1.13 1.01 2.09 1.32 2.39 1.47.3.15.47.12.64-.07.18-.2.74-.86.94-1.16.2-.3.39-.24.66-.15.27.1 1.72.81 2.02.96.3.15.49.22.56.35.08.12.08.72-.17 1.42Z"/></svg>
+            <span data-cart-submit-label>Enviar pedido por WhatsApp</span>
+          </button>
+        </footer>
+      </section>
+
+      <section class="xcart-view xcart-view--done" data-cart-view="listo" hidden>
+        <header class="xcart-head">
+          <span></span>
+          <button type="button" class="xcart-x" data-cart-close aria-label="Cerrar">✕</button>
+        </header>
+        <div class="xcart-body xcart-done">
+          <div class="xcart-done__check" aria-hidden="true">✓</div>
+          <p class="xcart-kicker">Pedido</p>
+          <h3 class="xcart-title xcart-done__code" data-done-code>#0000</h3>
+          <p class="xcart-done__text">
+            Tu pedido quedó listo en WhatsApp. Solo tienes que tocar <strong>Enviar</strong> en el chat para que el restaurante lo reciba.
+          </p>
+          <a class="xcart-cta xcart-cta--block xcart-cta--wa" data-done-wa href="#" target="_blank" rel="noopener noreferrer">
+            Abrir WhatsApp
+          </a>
+          <button type="button" class="xcart-link" data-cart-close>Volver al menú</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<style>
+  .xcart {
+    --xcart-accent: var(--color-primario, #e11d48);
+    --xcart-accent-text: #fff;
+    --xcart-bg: var(--color-fondo, #0b0b0c);
+    --xcart-fg: var(--color-texto, #f4f4f5);
+    --xcart-line: color-mix(in srgb, var(--xcart-fg) 12%, transparent);
+    --xcart-soft: color-mix(in srgb, var(--xcart-fg) 6%, transparent);
+    --xcart-muted: color-mix(in srgb, var(--xcart-fg) 60%, transparent);
+    color: var(--xcart-fg);
+    font-family: var(--menu-font-body, var(--font-body, var(--fuente-principal, inherit)));
+  }
+
+  .xcart-pill {
+    position: fixed;
+    left: 50%;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: min(20rem, calc(100% - 7rem));
+    min-width: 14.5rem;
+    height: 3.25rem;
+    padding: 0 0.6rem 0 0.45rem;
+    border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+    border-radius: 999px;
+    background: var(--xcart-accent);
+    color: var(--xcart-accent-text);
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transform: translateX(-50%);
+    transition:
+      transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
+      opacity 200ms ease;
+  }
+
+  .xcart-pill[hidden] {
+    display: none;
+  }
+
+  .xcart-pill:active {
+    transform: translateX(-50%) scale(0.97);
+  }
+
+  .xcart-pill.is-bump {
+    animation: xcart-bump 420ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  }
+
+  @keyframes xcart-bump {
+    0% { transform: translateX(-50%) scale(1); }
+    35% { transform: translateX(-50%) scale(1.08); }
+    100% { transform: translateX(-50%) scale(1); }
+  }
+
+  :global([data-estilo-navegacion='app_tabs']) .xcart-pill {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .xcart-pill__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.22);
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .xcart-pill__label {
+    flex: 1;
+    text-align: left;
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+
+  .xcart-pill__total {
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .xcart-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4rem);
+    z-index: 91;
+    max-width: calc(100% - 2rem);
+    padding: 0.55rem 0.95rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--xcart-bg) 88%, #000);
+    color: var(--xcart-fg);
+    font-size: 0.78rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.5rem);
+    transition:
+      opacity 200ms ease,
+      transform 200ms ease;
+  }
+
+  .xcart-toast.is-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  :global([data-estilo-navegacion='app_tabs']) .xcart-toast {
+    bottom: calc(9.25rem + env(safe-area-inset-bottom));
+  }
+
+  .xcart-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .xcart-layer.is-open {
+    pointer-events: auto;
+    visibility: visible;
+  }
+
+  .xcart-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 260ms ease;
+  }
+
+  .xcart-layer.is-open .xcart-backdrop {
+    opacity: 1;
+  }
+
+  .xcart-sheet {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 32rem;
+    max-height: min(88dvh, 46rem);
+    border: 1px solid var(--xcart-line);
+    border-bottom: 0;
+    border-radius: 1.5rem 1.5rem 0 0;
+    background: var(--xcart-bg);
+    box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+    transform: translateY(100%);
+    transition: transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+
+  .xcart-sheet--tall {
+    height: min(88dvh, 46rem);
+  }
+
+  .xcart-layer.is-open .xcart-sheet {
+    transform: translateY(0);
+  }
+
+  @media (min-width: 768px) {
+    .xcart-layer {
+      align-items: center;
+    }
+
+    .xcart-sheet {
+      border-bottom: 1px solid var(--xcart-line);
+      border-radius: 1.5rem;
+      transform: translateY(1.5rem) scale(0.98);
+      opacity: 0;
+      transition:
+        transform 260ms ease,
+        opacity 220ms ease;
+    }
+
+    .xcart-layer.is-open .xcart-sheet {
+      transform: none;
+      opacity: 1;
+    }
+
+    .xcart-sheet__grip {
+      display: none;
+    }
+  }
+
+  .xcart-sheet__grip {
+    flex: none;
+    width: 2.5rem;
+    height: 0.28rem;
+    margin: 0.6rem auto 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--xcart-fg) 25%, transparent);
+  }
+
+  .xcart-op-hero {
+    flex: none;
+    height: 11rem;
+    margin: 0.75rem 1.25rem 0;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: var(--xcart-soft);
+  }
+
+  .xcart-op-hero[hidden] {
+    display: none;
+  }
+
+  .xcart-op-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .xcart-view {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .xcart-view[hidden] {
+    display: none;
+  }
+
+  .xcart-head {
+    display: flex;
+    flex: none;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.9rem 1.25rem 0.75rem;
+  }
+
+  .xcart-kicker {
+    margin: 0;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-title {
+    margin: 0.15rem 0 0;
+    font-family: var(--fuente-display, inherit);
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .xcart-sub {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-sub:empty {
+    display: none;
+  }
+
+  .xcart-x,
+  .xcart-back {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 999px;
+    background: var(--xcart-soft);
+    color: var(--xcart-fg);
+    font-size: 0.9rem;
+  }
+
+  .xcart-body {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem 1.25rem 1rem;
+  }
+
+  .xcart-op-groups:not(:empty) {
+    margin-bottom: 1.1rem;
+  }
+
+  .xcart-foot {
+    flex: none;
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem max(1rem, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--xcart-line);
+    background: color-mix(in srgb, var(--xcart-bg) 94%, #000);
+  }
+
+  .xcart-foot--row {
+    display: flex;
+    align-items: center;
+  }
+
+  .xcart-cta {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1.1rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--xcart-accent);
+    color: var(--xcart-accent-text);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition:
+      transform 150ms ease,
+      opacity 150ms ease;
+  }
+
+  .xcart-cta:active {
+    transform: scale(0.98);
+  }
+
+  .xcart-cta:disabled {
+    opacity: 0.5;
+  }
+
+  .xcart-cta--block {
+    width: 100%;
+  }
+
+  .xcart-cta--wa {
+    background: #1fa855;
+    color: #fff;
+  }
+
+  .xcart-cta svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .xcart-layer :global(.xcart-stepper) {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    height: 3rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 999px;
+    background: var(--xcart-soft);
+  }
+
+  .xcart-layer :global(.xcart-stepper button) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 100%;
+    border: 0;
+    background: none;
+    color: var(--xcart-fg);
+    font-size: 1.15rem;
+  }
+
+  .xcart-layer :global(.xcart-stepper button svg) {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .xcart-layer :global(.xcart-stepper span) {
+    min-width: 1.5rem;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .xcart-layer :global(.xcart-stepper--sm) {
+    height: 2.1rem;
+  }
+
+  .xcart-layer :global(.xcart-stepper--sm button) {
+    width: 2rem;
+    font-size: 1rem;
+  }
+
+  /* Grupos de opciones (render JS) */
+  .xcart-body :global(.xcart-group) {
+    margin: 0 0 1.1rem;
+    padding: 0;
+    border: 0;
+  }
+
+  .xcart-body :global(.xcart-group__head) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .xcart-body :global(.xcart-group__name) {
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .xcart-body :global(.xcart-group__rule) {
+    font-size: 0.68rem;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-body :global(.xcart-badge) {
+    flex: none;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--xcart-soft);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-body :global(.xcart-badge.is-req) {
+    background: color-mix(in srgb, var(--xcart-accent) 22%, transparent);
+    color: var(--xcart-fg);
+  }
+
+  .xcart-body :global(.xcart-group.is-invalid .xcart-badge.is-req) {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .xcart-body :global(.xcart-opt) {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.15rem;
+    border-bottom: 1px solid var(--xcart-line);
+    cursor: pointer;
+  }
+
+  .xcart-body :global(.xcart-opt input) {
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--xcart-accent);
+  }
+
+  .xcart-body :global(.xcart-opt__name) {
+    flex: 1;
+    font-size: 0.86rem;
+  }
+
+  .xcart-body :global(.xcart-opt__price) {
+    font-size: 0.8rem;
+    color: var(--xcart-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Lista del carrito */
+  .xcart-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .xcart-list :global(.xcart-item) {
+    display: grid;
+    grid-template-columns: 3.4rem minmax(0, 1fr);
+    gap: 0.8rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--xcart-line);
+  }
+
+  .xcart-list :global(.xcart-item--noimg) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .xcart-list :global(.xcart-item__img) {
+    width: 3.4rem;
+    height: 3.4rem;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    background: var(--xcart-soft);
+  }
+
+  .xcart-list :global(.xcart-item__name) {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .xcart-list :global(.xcart-item__detail) {
+    margin: 0.2rem 0 0;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-list :global(.xcart-item__row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.55rem;
+  }
+
+  .xcart-list :global(.xcart-item__price) {
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .xcart-empty {
+    padding: 2.5rem 0;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-total__amounts {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .xcart-total__amounts strong {
+    font-size: 1.2rem;
+    color: var(--xcart-fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .xcart-total__amounts small {
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Checkout */
+  .xcart-form {
+    display: grid;
+    align-content: start;
+    gap: 0.95rem;
+  }
+
+  .xcart-field {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  .xcart-field[hidden] {
+    display: none;
+  }
+
+  .xcart-label {
+    padding: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-field.is-required > .xcart-label::after {
+    content: ' *';
+    color: var(--xcart-accent);
+  }
+
+  .xcart-input {
+    width: 100%;
+    min-height: 2.9rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 0.85rem;
+    background: var(--xcart-soft);
+    color: var(--xcart-fg);
+    font: inherit;
+    font-size: 16px;
+    outline: none;
+    resize: vertical;
+  }
+
+  .xcart-input:focus {
+    border-color: color-mix(in srgb, var(--xcart-accent) 70%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--xcart-accent) 22%, transparent);
+  }
+
+  .xcart-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .xcart-chip span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0 0.95rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 999px;
+    background: var(--xcart-soft);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .xcart-chip input:checked + span {
+    border-color: var(--xcart-accent);
+    background: color-mix(in srgb, var(--xcart-accent) 24%, transparent);
+  }
+
+  .xcart-chip input:focus-visible + span {
+    outline: 2px solid var(--xcart-accent);
+    outline-offset: 2px;
+  }
+
+  .xcart-pay {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.35rem;
+    padding: 0.85rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 1rem;
+    background: var(--xcart-soft);
+  }
+
+  .xcart-pay[hidden] {
+    display: none;
+  }
+
+  .xcart-pay__amount {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-pay__amount strong {
+    font-size: 1.05rem;
+    color: var(--xcart-fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .xcart-pay__lines {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .xcart-pay__lines :global(li) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .xcart-pay__lines :global(.xcart-pay__text) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .xcart-copy,
+  .xcart-pay__lines :global(.xcart-copy) {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+    border: 1px solid var(--xcart-line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--xcart-fg);
+    font: inherit;
+  }
+
+  .xcart-copy__hint,
+  .xcart-pay__lines :global(.xcart-copy__hint) {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--xcart-accent) 24%, transparent);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .xcart-field--tight {
+    gap: 0.3rem;
+  }
+
+  .xcart-note {
+    margin: 0;
+    padding: 0.7rem 0.85rem;
+    border-left: 3px solid var(--xcart-accent);
+    border-radius: 0.5rem;
+    background: var(--xcart-soft);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    white-space: pre-line;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-error {
+    margin: 0;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, #dc2626 18%, transparent);
+    color: #fecaca;
+    font-size: 0.8rem;
+  }
+
+  .xcart-error[hidden] {
+    display: none;
+  }
+
+  .xcart-done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding-top: 1.5rem;
+    text-align: center;
+  }
+
+  .xcart-done__check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 0.5rem;
+    border-radius: 999px;
+    background: #1fa855;
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 700;
+    box-shadow: 0 10px 30px color-mix(in srgb, #1fa855 40%, transparent);
+  }
+
+  .xcart-done__code {
+    font-size: 1.8rem;
+    letter-spacing: 0.08em;
+  }
+
+  .xcart-done__text {
+    max-width: 22rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: var(--xcart-muted);
+  }
+
+  .xcart-link {
+    margin-top: 0.25rem;
+    padding: 0.6rem;
+    border: 0;
+    background: none;
+    color: var(--xcart-muted);
+    font: inherit;
+    font-size: 0.82rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  :global(html.xcart-lock) {
+    overflow: hidden;
+  }
+
+  :global(html.has-cart .menu-panel) {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .xcart-sheet,
+    .xcart-backdrop,
+    .xcart-pill,
+    .xcart-toast {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>
+
+<script>
+  import '../../scripts/cart.ts';
+</script>

@@ -9,6 +9,7 @@ import { createSupabaseServiceClient } from './supabase/service.js';
 import { getSuperAdminWriteClient } from './superadmin.js';
 import { normalizeAlergias } from '../config/nutricion.js';
 import { normalizeDestacadoTipo } from './destacado-tipo.js';
+import { normalizePlatoOpciones } from './pedidos.js';
 
 const RESTAURANTE_ADMIN_SELECT = [
   'id',
@@ -41,6 +42,8 @@ const RESTAURANTE_ADMIN_SELECT = [
   'gadget_ar',
   'gadget_sucursales',
   'sucursales_cupo',
+  'gadget_pedidos',
+  'config_pedidos',
   'config_wifi',
   'config_reservas',
   'config_boutique',
@@ -241,9 +244,9 @@ export async function getAdminDashboardData(ctx, opts = {}) {
 
   // Schema actual: platos no tiene `orden` — un solo SELECT evita reintentos SSR.
   const platosSelect =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, categorias(nombre)';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, opciones, categorias(nombre)';
   const platosSelectNoJoin =
-    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url';
+    'id, nombre, descripcion, precio, imagen_url, disponible, destacado, destacado_tipo, categoria_id, calorias, proteinas, carbs, grasas, alergias, ingredientes_detalle, modelo_3d_url, opciones';
 
   const loadPlatos = (select) =>
     readClient
@@ -361,6 +364,7 @@ export async function getAdminDashboardData(ctx, opts = {}) {
     alergias: normalizeAlergias(p.alergias),
     ingredientes_detalle: p.ingredientes_detalle ?? '',
     modelo_3d_url: typeof p.modelo_3d_url === 'string' ? p.modelo_3d_url.trim() : '',
+    opciones: normalizePlatoOpciones(p.opciones),
   }));
 
   platosMapped.sort((a, b) => {

@@ -5,6 +5,7 @@ import NosotrosPanel from './NosotrosPanel.astro';
 import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
+import CartGadget from '../gadgets/CartGadget.astro';
 import GadgetFloatingButton from './GadgetFloatingButton.astro';
 import WelcomePopup from './WelcomePopup.astro';
 import HomeEditorial from '../themes/home/HomeEditorial.astro';
@@ -37,6 +38,7 @@ import {
 import { resolveUbicacionSectionColors } from '../../lib/ubicacion-theme-data.js';
 import { parsePopupBanner } from '../../lib/popup-banner.js';
 import { jsonForScript } from '../../lib/safe-json.js';
+import { normalizeConfigPedidos, waNumero } from '../../lib/pedidos.js';
 
 interface Props {
    
@@ -58,6 +60,9 @@ const showReservas = Boolean(gadgets?.reservas);
 const showBoutique = Boolean(gadgets?.boutique);
 const showNutricion = Boolean(gadgets?.nutricion);
 const showAr = Boolean(gadgets?.ar);
+/** Sin WhatsApp de destino el pedido no tiene a dónde llegar: el carrito no se muestra. */
+const showPedidos = Boolean(gadgets?.pedidos) && Boolean(waNumero(restaurante?.whatsapp));
+const configPedidos = normalizeConfigPedidos(restaurante?.pedidos);
 const hasOperationalFloating = hasOperationalGadgets(gadgets);
 const gadgetServiciosEstilo = normalizeGadgetServiciosEstilo(
   uiEstilo?.home?.gadget_servicios_estilo ?? uiEstilo?.home?.gadgetServiciosEstilo,
@@ -556,6 +561,7 @@ const cssAvanzadoScoped = scopeCssAvanzado(
         cinematicCategoryBg={menuFondosCinematicos}
         showNutricion={showNutricion}
         showAr={showAr}
+        showPedidos={showPedidos}
         tasaBcv={tasasCambio.usdVes}
         tasaEurUsd={
           Number(tasasCambio.usdVes) > 0 && Number(tasasCambio.eurVes) > 0
@@ -649,6 +655,19 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       ) : null
     }
 
+    {
+      showPedidos ? (
+        <CartGadget
+          slug={restaurante?.slug || ''}
+          sucursal={restaurante?.sucursal?.slug || ''}
+          categorias={menu?.categorias || []}
+          config={configPedidos}
+          tasaBcv={tasasCambio.usdVes}
+          accentColor={uiEstilo?.menu?.color_acento || ''}
+        />
+      ) : null
+    }
+
     <WelcomePopup
       restauranteId={restaurante?.id || ''}
       slug={restaurante?.slug || ''}
@@ -722,6 +741,13 @@ const cssAvanzadoScoped = scopeCssAvanzado(
             class="mt-2 hidden text-[0.88rem] leading-relaxed text-[color:color-mix(in_srgb,var(--color-texto)_62%,transparent)]"
             data-detalle-desc
           ></p>
+          {
+            showPedidos ? (
+              <button type="button" class="detalle-cart-add" data-detalle-cart-add hidden>
+                Agregar al pedido
+              </button>
+            ) : null
+          }
           <button
             type="button"
             data-detalle-ar-btn
@@ -799,6 +825,25 @@ const cssAvanzadoScoped = scopeCssAvanzado(
 </div>
 
 <style>
+  .detalle-cart-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 2.9rem;
+    margin-top: 1rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-primario, #e11d48);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .detalle-cart-add[hidden] {
+    display: none;
+  }
+
   .detalle-modal.is-open {
     pointer-events: auto;
     opacity: 1;

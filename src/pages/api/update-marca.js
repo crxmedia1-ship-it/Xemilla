@@ -11,6 +11,7 @@ import {
 } from '../../lib/secciones-ui.js';
 import { buildBoutiqueConfig, parseBoutiqueConfig } from '../../lib/boutique.js';
 import { normalizeMapsStorage } from '../../lib/maps-preview.js';
+import { normalizeConfigPedidos } from '../../lib/pedidos.js';
 import {
   homeLayoutToTheme,
   normalizeHomeTheme,
@@ -369,6 +370,12 @@ async function handleUpdateMarca({ request, cookies }) {
     }
     patch.sucursales_cupo = cupo;
   }
+  if (raw.gadget_pedidos !== undefined) {
+    patch.gadget_pedidos = toBool(raw.gadget_pedidos);
+  }
+  if (raw.config_pedidos !== undefined) {
+    patch.config_pedidos = normalizeConfigPedidos(raw.config_pedidos);
+  }
 
   const wifiTouched =
     raw.gadget_wifi !== undefined ||
@@ -506,6 +513,8 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
       const optional = [
         'gadget_sucursales',
         'sucursales_cupo',
+        'gadget_pedidos',
+        'config_pedidos',
         'gadget_ar',
         'gadget_nutricion',
         'gadget_boutique',
