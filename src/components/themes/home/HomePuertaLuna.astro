@@ -260,13 +260,13 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
             </svg>
             <span class="luna-hull__eye" aria-hidden="true" />
             <span class="luna-hull__lamp" aria-hidden="true" />
-            <span class="luna-hull__zh" lang="zh-Hant" aria-hidden="true">菜單</span>
             <span class="luna-hull__main">
-              <span class="luna-hull__title">Menú</span>
+              <span class="luna-hull__name">
+                <span class="luna-hull__rule" aria-hidden="true" />
+                <span class="luna-hull__title">Menú</span>
+                <span class="luna-hull__rule luna-hull__rule--r" aria-hidden="true" />
+              </span>
               <span class="luna-hull__sub">Carta de la casa</span>
-            </span>
-            <span class="luna-hull__go" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
             </span>
           </button>
 
@@ -290,8 +290,54 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     });
   }
 
+  /** Foco rotativo: una vela crece y brilla por turnos; todas siguen tocables. */
+  function initLunaSailFocus() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll('.home-luna .luna-sails').forEach((ul) => {
+      if (!(ul instanceof HTMLElement) || ul.dataset.focusInit === '1') return;
+      const items = Array.from(ul.children).filter((el): el is HTMLElement => el instanceof HTMLElement);
+      if (items.length < 2) return;
+      ul.dataset.focusInit = '1';
+
+      let index = Math.floor(items.length / 2);
+      let paused = false;
+      const setFocus = (i: number) => {
+        index = i;
+        items.forEach((el, n) => el.classList.toggle('is-focus', n === i));
+      };
+
+      items.forEach((el, n) => {
+        el.addEventListener('pointerenter', (e) => {
+          if (e.pointerType !== 'mouse') return;
+          paused = true;
+          setFocus(n);
+        });
+        el.addEventListener('focusin', () => {
+          paused = true;
+          setFocus(n);
+        });
+      });
+      ul.addEventListener('pointerleave', () => (paused = false));
+      ul.addEventListener('focusout', () => (paused = false));
+
+      window.setTimeout(() => {
+        setFocus(index);
+        ul.dataset.focus = 'on';
+        const timer = window.setInterval(() => {
+          if (!ul.isConnected) return window.clearInterval(timer);
+          if (paused || document.hidden) return;
+          setFocus((index + 1) % items.length);
+        }, 3000);
+      }, 2300);
+    });
+  }
+
   initLunaLiveStatus();
-  document.addEventListener('astro:page-load', initLunaLiveStatus);
+  initLunaSailFocus();
+  document.addEventListener('astro:page-load', () => {
+    initLunaLiveStatus();
+    initLunaSailFocus();
+  });
 </script>
 
 <style is:global>
@@ -312,7 +358,7 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     --luna-lacquer: var(--color-primario, #6a1f33);
     --luna-red: #b3192c;
     --luna-zh: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
-    --luna-gate: min(54vw, 30svh, 19rem);
+    --luna-gate: min(50vw, 24svh, 19rem);
   }
 
   /* ── Marca ── */
@@ -595,8 +641,8 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
   }
 
   .luna-ship {
-    --sail-side: clamp(5rem, 14svh, 8rem);
-    --sail-main: clamp(6rem, 17.5svh, 9.6rem);
+    --sail-side: clamp(6rem, 18svh, 9.5rem);
+    --sail-main: clamp(7.2rem, 22.5svh, 11.5rem);
     --hull-h: clamp(4.3rem, 11svh, 6.3rem);
     position: relative;
     transform-origin: 50% 100%;
@@ -612,14 +658,38 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     display: grid;
     grid-template-columns: repeat(var(--luna-cols, 3), minmax(0, 1fr));
     align-items: end;
-    gap: clamp(0.5rem, 2.4vw, 0.9rem);
-    padding: 0 7% 0 9%;
+    gap: clamp(0.35rem, 1.8vw, 0.8rem);
+    padding: 0 4% 0 6%;
   }
 
   .luna-sails > li {
     position: relative;
     display: flex;
     height: var(--sail-h, var(--sail-side));
+    transform-origin: 50% 100%;
+    transition: scale 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .luna-sails[data-focus='on'] > li:not(.is-focus) {
+    scale: 0.88;
+  }
+
+  .luna-sails[data-focus='on'] > li.is-focus {
+    z-index: 2;
+    scale: 1.07;
+  }
+
+  .luna-sails[data-focus='on'] > li:not(.is-focus) .luna-sail {
+    opacity: 0.58;
+    filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.4)) saturate(0.7);
+  }
+
+  .luna-sails[data-focus='on'] > li.is-focus .luna-sail {
+    filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 16px rgba(243, 207, 126, 0.4));
+  }
+
+  .luna-sails[data-focus='on'] > li.is-focus .luna-sail__edge {
+    stroke: #f6dc9c;
   }
 
   .luna-sails > li:nth-child(2):not(:last-child) {
@@ -677,7 +747,10 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     transform-origin: 0 50%;
     -webkit-tap-highlight-color: transparent;
     filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.55));
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.8s ease,
+      filter 0.8s ease;
     animation: luna-billow 5.5s ease-in-out infinite;
   }
 
@@ -751,25 +824,25 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
 
   .luna-sail__zh {
     font-family: var(--luna-zh);
-    font-size: clamp(1.05rem, 3svh, 1.35rem);
+    font-size: clamp(1.2rem, 3.6svh, 1.65rem);
     font-weight: 900;
     writing-mode: vertical-rl;
-    letter-spacing: 0.12em;
-    color: var(--luna-gold);
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 0 14px rgba(226, 185, 106, 0.3);
+    letter-spacing: 0.1em;
+    color: #f3cf7e;
+    text-shadow: 0 2px 0 rgba(20, 0, 6, 0.85), 0 0 16px rgba(243, 207, 126, 0.35);
   }
 
   .luna-sail__label {
     position: relative;
     padding-top: 0.35rem;
     font-family: Cinzel, ui-serif, Georgia, serif;
-    font-size: 0.6rem;
+    font-size: clamp(0.62rem, 2.8vw, 0.76rem);
     font-weight: 700;
-    letter-spacing: 0.14em;
-    margin-right: -0.14em;
+    letter-spacing: 0.05em;
+    margin-right: -0.05em;
     text-transform: uppercase;
-    color: #fbefd2;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.6);
+    color: #fff6e0;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 1), 0 0 8px rgba(20, 0, 6, 0.9), 0 0 16px rgba(20, 0, 6, 0.6);
   }
 
   .luna-sail__label::before {
@@ -777,7 +850,7 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     position: absolute;
     left: 50%;
     top: 0;
-    width: 1.4rem;
+    width: 1.8rem;
     height: 1px;
     translate: -50% 0;
     background: linear-gradient(90deg, transparent, var(--luna-gold), transparent);
@@ -788,13 +861,12 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     position: relative;
     z-index: 1;
     isolation: isolate;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
-    gap: 0.85rem;
+    justify-content: center;
     width: 100%;
     height: var(--hull-h);
-    padding: calc(var(--hull-h) * 0.27) 2.4rem 0.4rem 3.1rem;
+    padding: calc(var(--hull-h) * 0.3) 2.8rem calc(var(--hull-h) * 0.1);
     color: var(--luna-cream);
     text-align: left;
     -webkit-tap-highlight-color: transparent;
@@ -827,7 +899,7 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
 
   .luna-hull__balusters {
     fill: none;
-    stroke: rgba(226, 185, 106, 0.38);
+    stroke: rgba(226, 185, 106, 0.22);
     stroke-width: 1;
   }
 
@@ -874,59 +946,89 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     box-shadow: 0 0 0 1.5px var(--luna-gold);
   }
 
-  .luna-hull__zh {
-    padding-right: 0.85rem;
-    font-family: var(--luna-zh);
-    font-size: clamp(1rem, 2.8svh, 1.25rem);
-    font-weight: 900;
-    writing-mode: vertical-rl;
-    letter-spacing: 0.1em;
-    color: var(--luna-gold);
-    border-right: 1px solid color-mix(in srgb, var(--luna-gold) 45%, transparent);
-    text-shadow: 0 0 14px rgba(226, 185, 106, 0.3);
-  }
-
+  /* Nombre pintado en el casco, en oro con un destello que lo recorre */
   .luna-hull__main {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 0.28rem;
+    min-width: 0;
+  }
+
+  .luna-hull__name {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .luna-hull__rule {
+    position: relative;
+    width: clamp(1.4rem, 7vw, 2.6rem);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--luna-gold));
+  }
+
+  .luna-hull__rule::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: -2.5px;
+    width: 6px;
+    height: 6px;
+    rotate: 45deg;
+    background: var(--luna-gold);
+    box-shadow: 0 0 6px rgba(226, 185, 106, 0.7);
+  }
+
+  .luna-hull__rule--r {
+    transform: scaleX(-1);
   }
 
   .luna-hull__title {
+    padding: 0.1em 0 0 0.3em;
     font-family: Cinzel, ui-serif, Georgia, serif;
-    font-size: clamp(1.25rem, 3.4svh, 1.65rem);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: 0.28em;
+    font-size: clamp(1.7rem, 4.6svh, 2.4rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
+    background:
+      linear-gradient(100deg, transparent 40%, rgba(255, 252, 240, 0.95) 50%, transparent 60%) -150% 0 / 250% 100% no-repeat,
+      linear-gradient(180deg, #fffaf0 0%, #fbe6b2 30%, #edc879 58%, #d6a955 78%, #f6dc9c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 1.5px 0 rgba(20, 0, 6, 0.95)) drop-shadow(0 0 12px rgba(243, 207, 126, 0.35));
+    animation: luna-shine 5s 2.5s ease-in-out infinite;
   }
 
   .luna-hull__sub {
-    font-size: 9.5px;
-    letter-spacing: 0.28em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-left: 0.18em;
+    font-family: Cinzel, ui-serif, Georgia, serif;
+    font-size: clamp(0.6rem, 2.6vw, 0.72rem);
+    font-weight: 600;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--luna-cream) 65%, transparent);
+    white-space: nowrap;
+    color: rgba(255, 244, 222, 0.88);
+    text-shadow: 0 1px 0 rgba(20, 0, 6, 0.95), 0 0 6px rgba(20, 0, 6, 0.6);
   }
 
-  .luna-hull__go {
-    display: grid;
-    place-items: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--luna-gold) 70%, transparent);
-    color: var(--luna-gold);
-    background: rgba(0, 0, 0, 0.25);
-  }
-
-  .luna-hull__go svg {
-    width: 0.95rem;
-    height: 0.95rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  @keyframes luna-shine {
+    0%,
+    55% {
+      background-position:
+        -150% 0,
+        0 0;
+    }
+    100% {
+      background-position:
+        250% 0,
+        0 0;
+    }
   }
 
   /* Olas doradas bajo el casco */
@@ -966,14 +1068,34 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     .luna-hull:hover {
       transform: translateY(-2px);
     }
-    .luna-hull:hover .luna-hull__go {
-      background: rgba(226, 185, 106, 0.18);
+    .luna-hull:hover .luna-hull__title {
+      filter: drop-shadow(0 1.5px 0 rgba(20, 0, 6, 0.95)) drop-shadow(0 0 18px rgba(243, 207, 126, 0.6));
+    }
+  }
+
+  /* Móvil: junco grande, limitado por el ancho y el alto de la pantalla */
+  @media (max-width: 1023px) {
+    .luna-nav {
+      width: calc(100% + 1rem);
+      max-width: 30rem;
+      margin-inline: -0.5rem;
+    }
+    .luna-ship {
+      --sail-main: min(62vw, 30svh, 18rem);
+      --sail-side: calc(var(--sail-main) * 0.84);
+      --hull-h: clamp(4.6rem, 12.5svh, 6.8rem);
+    }
+    .luna-sail__zh {
+      font-size: clamp(1.25rem, 4svh, 1.9rem);
+    }
+    .luna-sail__label {
+      font-size: clamp(0.64rem, 3vw, 0.8rem);
     }
   }
 
   @media (max-height: 740px) {
     .luna-sail__zh {
-      font-size: clamp(0.9rem, 2.6svh, 1.2rem);
+      font-size: clamp(1.1rem, 3.3svh, 1.45rem);
     }
     .luna-sail {
       gap: 0.25rem;
@@ -982,12 +1104,19 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
 
   @media (max-height: 620px) {
     .luna-ship {
-      --sail-side: 13.5svh;
-      --sail-main: 16.5svh;
-      --hull-h: 11.5svh;
+      --sail-main: min(60vw, 25svh);
+      --sail-side: calc(var(--sail-main) * 0.84);
+      --hull-h: 12svh;
     }
     .luna-sail__label {
-      font-size: 0.55rem;
+      font-size: 0.6rem;
+    }
+    .luna-hull {
+      padding-top: calc(var(--hull-h) * 0.28);
+      padding-bottom: calc(var(--hull-h) * 0.12);
+    }
+    .luna-hull__title {
+      font-size: 1.5rem;
     }
     .luna-slogan {
       margin-top: 0.45rem;
@@ -999,7 +1128,7 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
       display: none;
     }
     .home-luna {
-      --luna-gate: min(56vw, 26svh, 19rem);
+      --luna-gate: min(46vw, 21svh, 19rem);
     }
   }
 
@@ -1210,6 +1339,7 @@ const zhFontHref = `https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@
     .luna-ship,
     .luna-sail,
     .luna-hull__lamp,
+    .luna-hull__title,
     .luna-water,
     .luna-mast::after,
     .home-luna--anim .luna-hull,
