@@ -200,8 +200,7 @@ function chefSignFor(index: number) {
   return CHEF_SIGNS[index % CHEF_SIGNS.length];
 }
 
-const CHIP_BASE =
-  'menu-chip border font-semibold uppercase active:scale-[0.98]';
+const CHIP_BASE = 'menu-chip border font-semibold uppercase';
 
 const globalBgType = fondoGlobal.tipo || 'color';
 const globalBgValor = fondoGlobal.valor || '';
@@ -1395,6 +1394,73 @@ function hubCardStyle(
     background: transparent;
   }
 
+  /* Índice editorial: palabras sueltas y una línea, en vez de pastillas. */
+  .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chips-nav--scroll {
+    padding-top: 0.2rem;
+    padding-bottom: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--menu-texto-color, currentColor) 16%, transparent);
+  }
+
+  .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chips-row--scroll {
+    align-items: flex-end;
+    gap: 1.35rem;
+  }
+
+  .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chip {
+    position: relative;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.8rem 0.05rem 0.7rem;
+    font-family: var(--menu-font-heading, inherit);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: color-mix(in srgb, var(--menu-texto-color, currentColor) 52%, transparent);
+  }
+
+  .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chip:hover {
+    color: var(--menu-texto-color, currentColor);
+    border-color: transparent;
+  }
+
+  .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chip.is-active {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: var(--menu-accent-color, var(--menu-chip-activo, var(--color-primario)));
+  }
+
+  .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chip.is-active::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    background: currentColor;
+  }
+
+  .menu-panel[data-chips-layout='grid'] .menu-chip,
+  .menu-panel[data-chips-layout='grid-3'] .menu-chip,
+  .menu-panel[data-chips-layout='wrap'] .menu-chip {
+    background: transparent;
+    border-color: color-mix(in srgb, var(--menu-texto-color, currentColor) 18%, transparent);
+    box-shadow: none;
+    font-family: var(--menu-font-heading, inherit);
+    font-weight: 500;
+  }
+
+  .menu-panel[data-chips-layout='grid'] .menu-chip.is-active,
+  .menu-panel[data-chips-layout='grid-3'] .menu-chip.is-active,
+  .menu-panel[data-chips-layout='wrap'] .menu-chip.is-active {
+    background: transparent;
+    box-shadow: none;
+    color: var(--menu-accent-color, var(--menu-chip-activo, var(--color-primario)));
+    border-color: var(--menu-accent-color, var(--menu-chip-activo, var(--color-primario)));
+  }
+
   .menu-btn--detalle {
     display: inline-flex;
     align-items: center;
@@ -2377,6 +2443,11 @@ function hubCardStyle(
     .menu-panel .menu-chip {
       font-size: 0.72rem;
       padding: 0.62rem 1.05rem;
+    }
+
+    .menu-panel[data-chips-layout='scroll']:not([data-chips-estilo='cuadrado']) .menu-chip {
+      padding: 0.85rem 0.05rem 0.75rem;
+      font-size: 0.84rem;
     }
 
     .menu-panel [data-destacados] > h3 {
