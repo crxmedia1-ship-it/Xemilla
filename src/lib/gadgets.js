@@ -1,7 +1,7 @@
 /**
  * Gadgets pasivos / valor agregado (FAB: Wi‑Fi + Boutique).
  * Experienciales (nutrición, AR) viven en el detalle del plato.
- * @typedef {{ wifi?: boolean, boutique?: boolean, nutricion?: boolean, ar?: boolean, reservas?: boolean }} GadgetFlags
+ * @typedef {{ wifi?: boolean, boutique?: boolean, nutricion?: boolean, ar?: boolean, reservas?: boolean, fidelidad?: boolean }} GadgetFlags
  */
 
 /** @type {ReadonlySet<string>} */
@@ -24,7 +24,7 @@ export function normalizeGadgetServiciosEstilo(value) {
  */
 export function hasOperationalGadgets(gadgets) {
   if (!gadgets || typeof gadgets !== 'object') return false;
-  return Boolean(gadgets.wifi || gadgets.boutique);
+  return Boolean(gadgets.wifi || gadgets.boutique || gadgets.fidelidad);
 }
 
 /**
@@ -51,6 +51,14 @@ export function buildOperationalGadgetItems(gadgets) {
       label: 'Boutique',
       subtitle: 'Merchandise del local',
       kind: 'boutique',
+    });
+  }
+  if (gadgets?.fidelidad) {
+    items.push({
+      id: 'fidelidad',
+      label: 'Fidelidad',
+      subtitle: 'Tarjeta y puntos',
+      kind: 'section',
     });
   }
 

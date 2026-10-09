@@ -1,0 +1,235 @@
+---
+interface Props {
+  titulo: string;
+  nombre: string;
+  puntos: number;
+  meta: number;
+  premio: string;
+  fondo: string;
+  tinta: string;
+  acento: string;
+  progreso?: number;
+  falta?: string;
+  codigo?: string;
+  qr?: string;
+  preview?: boolean;
+}
+
+const {
+  titulo,
+  nombre,
+  puntos,
+  meta,
+  premio,
+  fondo,
+  tinta,
+  acento,
+  progreso = 0,
+  falta = '',
+  codigo = '',
+  qr = '',
+  preview = false,
+} = Astro.props;
+
+const style = `--fid-fondo:${fondo};--fid-tinta:${tinta};--fid-acento:${acento};`;
+---
+
+<article
+  class="fid-pass"
+  style={style}
+  data-fidelidad-card
+  data-fid-preview={preview ? 'true' : undefined}
+>
+  <header class="fid-pass__top">
+    <p data-fid-titulo>{titulo}</p>
+    <em data-fid-nivel hidden></em>
+    <span aria-hidden="true"></span>
+  </header>
+  <div class="fid-pass__body">
+    <div class="fid-pass__who">
+      <p class="fid-pass__name" data-fidelidad-nombre data-fid-nombre>{nombre}</p>
+      <p class="fid-pass__falta" data-fidelidad-falta data-fid-falta>{falta}</p>
+    </div>
+    <p class="fid-pass__points">
+      <span data-fidelidad-puntos data-fid-puntos>{puntos}</span>
+      <small>puntos</small>
+    </p>
+  </div>
+  <div class="fid-pass__track" aria-hidden="true">
+    <span data-fidelidad-bar data-fid-bar style={`width:${Math.min(100, Math.max(0, progreso))}%`}></span>
+  </div>
+  <footer class="fid-pass__foot">
+    <div>
+      <span>Premio</span>
+      <strong data-fid-premio>{premio}</strong>
+      <em data-fid-meta>{meta} pts</em>
+    </div>
+    {
+      preview ? (
+        <span class="fid-pass__qr fid-pass__qr--ghost" aria-hidden="true"></span>
+      ) : (
+        <img alt="Código de la tarjeta" data-fidelidad-qr src={qr || undefined} />
+      )
+    }
+  </footer>
+  {codigo ? <p class="fid-pass__code" data-fidelidad-codigo>{codigo}</p> : <p class="fid-pass__code" data-fidelidad-codigo hidden></p>}
+</article>
+
+<style>
+  .fid-pass {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.4rem;
+    width: min(100%, 24.5rem);
+    aspect-ratio: 1.7 / 1;
+    margin-inline: auto;
+    padding: 0.95rem 1.05rem 0.8rem;
+    border-radius: 1.25rem;
+    background:
+      radial-gradient(90% 80% at 100% 0%, color-mix(in srgb, var(--fid-acento) 42%, transparent), transparent 58%),
+      var(--fid-fondo);
+    color: var(--fid-tinta);
+    box-shadow: 0 16px 36px -24px rgba(28, 25, 23, 0.45);
+  }
+
+  .fid-pass__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .fid-pass__top p,
+  .fid-pass__top em {
+    margin: 0;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .fid-pass__top em {
+    margin-left: auto;
+    opacity: 0.8;
+  }
+
+  .fid-pass__top span {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    background: var(--fid-acento);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fid-acento) 25%, transparent);
+  }
+
+  .fid-pass__body {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 0;
+  }
+
+  .fid-pass__who {
+    min-width: 0;
+  }
+
+  .fid-pass__name {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+
+  .fid-pass__points {
+    display: grid;
+    justify-items: end;
+    margin: 0;
+    line-height: 0.85;
+  }
+
+  .fid-pass__points span {
+    font-size: clamp(2.15rem, 7vw, 2.7rem);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+  }
+
+  .fid-pass__points small {
+    margin-top: 0.2rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  .fid-pass__track {
+    height: 0.38rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--fid-tinta) 16%, transparent);
+  }
+
+  .fid-pass__track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--fid-acento);
+  }
+
+  .fid-pass__falta {
+    margin: 0.2rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.3;
+    opacity: 0.75;
+  }
+
+  .fid-pass__foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .fid-pass__foot span,
+  .fid-pass__foot em {
+    display: block;
+    font-size: 0.62rem;
+    font-style: normal;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.62;
+  }
+
+  .fid-pass__foot strong {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 1rem;
+  }
+
+  .fid-pass__foot img,
+  .fid-pass__qr {
+    width: 3.15rem;
+    height: 3.15rem;
+    flex: none;
+    border-radius: 0.55rem;
+    background: #fff;
+  }
+
+  .fid-pass__qr--ghost {
+    background:
+      linear-gradient(90deg, #111 1px, transparent 1px) 0 0 / 7px 7px,
+      linear-gradient(#111 1px, transparent 1px) 0 0 / 7px 7px,
+      #fff;
+  }
+
+  .fid-pass__code {
+    margin: 0.35rem 0 0;
+    text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    opacity: 0.7;
+  }
+</style>

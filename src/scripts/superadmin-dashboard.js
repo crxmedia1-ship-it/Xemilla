@@ -1699,6 +1699,8 @@
     const logoFile = form.querySelector('[data-prop-logo-file]');
     const logoClear = form.querySelector('[data-prop-logo-clear]');
     const logoMark = form.querySelector('[data-prop-logo-mark]');
+    const logoField = form.querySelector('[data-prop-logo-field]');
+    const logoHint = form.querySelector('[data-prop-logo-hint]');
     const drop = form.querySelector('[data-prop-drop]');
     const dropTitle = form.querySelector('[data-prop-drop-title]');
     const dropSub = form.querySelector('[data-prop-drop-sub]');
@@ -1713,7 +1715,30 @@
       if (statusEl) statusEl.textContent = text;
     };
 
+    const sinLogo = () =>
+      form.querySelector('[data-prop-logo-mode]:checked')?.getAttribute('value') === 'sin';
+
+    const syncLogoMode = () => {
+      const off = sinLogo();
+      if (logoField instanceof HTMLElement) logoField.dataset.sinLogo = off ? 'true' : 'false';
+      if (logoHint instanceof HTMLElement) logoHint.hidden = !off;
+      if (off && logoInput instanceof HTMLInputElement) logoInput.value = '';
+      if (off) {
+        if (logoMark instanceof HTMLElement) {
+          logoMark.style.backgroundImage = '';
+          logoMark.textContent = '?';
+        }
+        if (dropTitle) dropTitle.textContent = 'Elegir archivo';
+        if (dropSub) dropSub.textContent = DROP_SUB;
+        if (logoClear instanceof HTMLElement) logoClear.hidden = true;
+      }
+    };
+
     const paintLogo = (url, fileName = '') => {
+      if (url) {
+        const con = form.querySelector('[data-prop-logo-mode][value="con"]');
+        if (con instanceof HTMLInputElement) con.checked = true;
+      }
       if (logoMark instanceof HTMLElement) {
         logoMark.style.backgroundImage = url ? `url("${url}")` : '';
         logoMark.textContent = url ? '' : '?';
@@ -1721,6 +1746,7 @@
       if (dropTitle) dropTitle.textContent = url ? 'Cambiar logo' : 'Elegir archivo';
       if (dropSub) dropSub.textContent = url ? fileName || 'Logo listo' : DROP_SUB;
       if (logoClear instanceof HTMLElement) logoClear.hidden = !url;
+      syncLogoMode();
     };
 
     /** @param {File | null | undefined} file */
@@ -1779,6 +1805,11 @@
       paintLogo('');
     });
 
+    form.querySelectorAll('[data-prop-logo-mode]').forEach((radio) => {
+      radio.addEventListener('change', syncLogoMode);
+    });
+    syncLogoMode();
+
     /** Misma regla que la propuesta: «Black Sushi» → blacksushi.com */
     const domainFromName = (name) =>
       name
@@ -1803,6 +1834,108 @@
 
     const isSinPrecio = () =>
       form.querySelector('[data-prop-price-mode]:checked')?.getAttribute('value') === 'consultar';
+
+    /** @param {ParentNode} row */
+    const syncAddonRow = (row, focusPrice = false) => {
+      const mode = row.querySelector('[data-adicional-mode]');
+      const money = row.querySelector('[data-adicional-money]');
+      const input = row.querySelector('[data-adicional]');
+      if (!(mode instanceof HTMLSelectElement) || !(money instanceof HTMLElement) || !(input instanceof HTMLInputElement)) return;
+      const priced = mode.value === 'precio';
+      money.hidden = !priced;
+      input.disabled = !priced;
+      mode.dataset.priced = priced ? 'true' : 'false';
+      if (priced && focusPrice) input.focus();
+    };
+
+    document.querySelectorAll('[data-addon-row]').forEach((row) => syncAddonRow(row));
+    if (document.documentElement.dataset.addonModesBound !== 'true') {
+      document.documentElement.dataset.addonModesBound = 'true';
+      document.addEventListener('change', (event) => {
+        const mode = event.target;
+        if (!(mode instanceof HTMLSelectElement) || !mode.matches('[data-adicional-mode]')) return;
+        const row = mode.closest('[data-addon-row]');
+        if (row) syncAddonRow(row, true);
+      });
+    }
+
+    /** @param {ParentNode} root */
+    const readAdicionales = (root) => {
+      /** @type {Record<string, string>} */
+      const adicionales = {};
+      root.querySelectorAll('[data-adicional]').forEach((input) => {
+        if (!(input instanceof HTMLInputElement) || input.disabled) return;
+        const id = input.dataset.adicional || '';
+        if (id) adicionales[id] = input.value;
+      });
+      return adicionales;
+    };
+
+    const addonField = form.querySelector('[data-addon-defaults]');
+    /** @type {Record<string, string>} */
+    let addonDefaults = {};
+    if (addonField instanceof HTMLElement) {
+      try {
+        const parsed = JSON.parse(addonField.dataset.addonDefaults || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) addonDefaults = parsed;
+      } catch {
+        addonDefaults = {};
+      }
+    }
+
+    /** @param {Record<string, string>} source */
+    const paintAddonPreset = (source) => {
+      if (!(addonField instanceof HTMLElement)) return;
+      addonField.querySelectorAll('[data-addon-row]').forEach((row) => {
+        const mode = row.querySelector('[data-adicional-mode]');
+        const input = row.querySelector('[data-adicional]');
+        if (!(mode instanceof HTMLSelectElement) || !(input instanceof HTMLInputElement)) return;
+        const amount = source[input.dataset.adicional || ''] || '';
+        mode.value = amount ? 'precio' : '';
+        input.value = amount;
+        syncAddonRow(row);
+      });
+    };
+
+    form.querySelectorAll('[data-addon-preset]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (!(radio instanceof HTMLInputElement) || !radio.checked) return;
+        paintAddonPreset(radio.value === 'default' ? addonDefaults : {});
+      });
+    });
+
+    const saveDefaultBtn = form.querySelector('[data-addon-save-default]');
+    const defaultStatus = form.querySelector('[data-addon-default-status]');
+    saveDefaultBtn?.addEventListener('click', async () => {
+      if (!(saveDefaultBtn instanceof HTMLButtonElement) || !(addonField instanceof HTMLElement)) return;
+      saveDefaultBtn.disabled = true;
+      if (defaultStatus) defaultStatus.textContent = 'Guardando…';
+      try {
+        const response = await fetch('/api/propuesta-defaults', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adicionales: readAdicionales(addonField) }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (defaultStatus) defaultStatus.textContent = payload.error || 'No se pudo guardar.';
+          return;
+        }
+        addonDefaults = payload.adicionales && typeof payload.adicionales === 'object' ? payload.adicionales : {};
+        addonField.dataset.addonDefaults = JSON.stringify(addonDefaults);
+        const preset = form.querySelector('[data-addon-preset][value="default"]');
+        if (preset instanceof HTMLInputElement) preset.checked = true;
+        if (defaultStatus) {
+          defaultStatus.textContent = Object.keys(addonDefaults).length
+            ? 'Guardado. Las próximas propuestas pueden usar estos precios.'
+            : 'Guardado sin precios. Predeterminados queda a consultar.';
+        }
+      } catch {
+        if (defaultStatus) defaultStatus.textContent = 'No se pudo guardar.';
+      } finally {
+        saveDefaultBtn.disabled = false;
+      }
+    });
 
     form.querySelectorAll('[data-prop-price-mode]').forEach((radio) =>
       radio.addEventListener('change', () => {
@@ -1879,6 +2012,38 @@
       });
     }
 
+    document.querySelectorAll('[data-prop-addons]').forEach((addonsForm) => {
+      if (!(addonsForm instanceof HTMLFormElement) || addonsForm.dataset.bound === 'true') return;
+      addonsForm.dataset.bound = 'true';
+      addonsForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = addonsForm.querySelector('button[type="submit"]');
+        const status = addonsForm.querySelector('[data-addons-status]');
+        if (button instanceof HTMLButtonElement) button.disabled = true;
+        if (status) status.textContent = 'Guardando…';
+        try {
+          const response = await fetch('/api/propuestas', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: addonsForm.dataset.propAddons || '',
+              adicionales: readAdicionales(addonsForm),
+            }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            if (status) status.textContent = payload.error || 'No se pudieron guardar los precios.';
+            return;
+          }
+          if (status) status.textContent = 'Listo. Esta propuesta ya muestra esos precios.';
+        } catch {
+          if (status) status.textContent = 'No se pudieron guardar los precios.';
+        } finally {
+          if (button instanceof HTMLButtonElement) button.disabled = false;
+        }
+      });
+    });
+
     result?.querySelector('[data-prop-copy]')?.addEventListener('click', async (event) => {
       const button = event.currentTarget;
       const href = resultLink instanceof HTMLAnchorElement ? resultLink.href : '';
@@ -1900,8 +2065,9 @@
             setup: String(data.get('setup') || ''),
             anual: String(data.get('anual') || ''),
             sinPrecio: isSinPrecio(),
-            logoUrl: String(data.get('logo') || ''),
+            logoUrl: sinLogo() ? '' : String(data.get('logo') || ''),
             mundo: String(data.get('mundo') || ''),
+            adicionales: readAdicionales(form),
           }),
         });
         const payload = await response.json().catch(() => ({}));

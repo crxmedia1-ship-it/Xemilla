@@ -4305,6 +4305,7 @@
     if (raw === 'metricas' || raw === 'métricas') return 'metricas';
     if (raw === 'menu' || raw === 'menú') return 'menu';
     if (raw === 'perfil') return 'perfil';
+    if (raw === 'fidelidad') return 'fidelidad';
     return raw || 'menu';
   }
 
@@ -4398,7 +4399,13 @@
     });
 
     // Operativo: always start on Menú. SuperAdmin: restore last tab (Identidad/Gadgets).
+    // Un enlace con ?tab= abre esa sección, también para el local.
     let defaultTab = 'menu';
+    const requestedTab = root instanceof HTMLElement ? root.dataset.requestedTab || '' : '';
+    if (requestedTab) {
+      switchTab(requestedTab);
+      return;
+    }
     if (canUseIdentidad) {
       try {
         defaultTab = sessionStorage.getItem('xemilla-admin-tab') || 'menu';
@@ -5448,6 +5455,41 @@
   // Sub-tabs Identidad de Marca
   const marcaSubtabs = document.querySelectorAll('[data-marca-subtab]');
   const marcaPanels = document.querySelectorAll('[data-marca-panel]');
+
+  if (marcaForm instanceof HTMLElement) {
+    marcaForm.querySelectorAll('select').forEach((select) => {
+      if (!(select instanceof HTMLSelectElement) || select.dataset.switchReady === 'true') return;
+      if (select.options.length < 2 || select.options.length > 6) return;
+      select.dataset.switchReady = 'true';
+      select.classList.add('sr-only');
+      const group = document.createElement('div');
+      group.className = 'id-switch';
+      group.setAttribute('role', 'group');
+      const paint = () => {
+        group.querySelectorAll('button').forEach((button) => {
+          if (!(button instanceof HTMLButtonElement)) return;
+          button.setAttribute('aria-pressed', button.dataset.value === select.value ? 'true' : 'false');
+        });
+      };
+      [...select.options].forEach((opt) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'id-switch__opt';
+        button.dataset.value = opt.value;
+        button.textContent = opt.textContent.trim();
+        button.addEventListener('click', () => {
+          if (select.value === opt.value) return;
+          select.value = opt.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          paint();
+        });
+        group.append(button);
+      });
+      select.insertAdjacentElement('afterend', group);
+      select.addEventListener('change', paint);
+      paint();
+    });
+  }
 
   /**
    * @param {string} id
@@ -6611,6 +6653,10 @@
           gadget_sucursales: checked('marca-gadget-sucursales'),
           sucursales_cupo: Number(val('marca-sucursales-cupo')) || 1,
           gadget_pedidos: checked('marca-gadget-pedidos'),
+          gadget_fidelidad: checked('marca-gadget-fidelidad'),
+          fidelidad_puntos: Number(val('marca-fidelidad-puntos')) || 10,
+          fidelidad_meta: Number(val('marca-fidelidad-meta')) || 80,
+          fidelidad_premio: val('marca-fidelidad-premio') || 'Un premio',
           config_pedidos: collectConfigPedidos(),
           gadget_ar_modo_vista: 'rotacion_360',
           gadget_ar_intensidad: '70',

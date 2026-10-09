@@ -94,6 +94,8 @@ import {
   mapsOpenHref,
 } from '../../lib/maps-preview.js';
 import { parsePopupBanner } from '../../lib/popup-banner.js';
+import { DISENOS_FIDELIDAD, readFidelidadDiseno } from '../../lib/fidelidad.js';
+import FidelidadPass from '../../components/gadgets/FidelidadPass.astro';
 
 const restauranteId =
   Astro.url.searchParams.get('restaurante') ||
@@ -137,9 +139,11 @@ if (!isSuperAdmin) {
       restauranteId === assignedRestauranteId ||
       restauranteSlug === assignedRestauranteId;
     if (!urlMatchesAssigned) {
-      return Astro.redirect(
-        `/admin/dashboard?restaurante=${encodeURIComponent(assignedRestauranteId)}`,
-      );
+      const tab = Astro.url.searchParams.get('tab');
+      const next = new URL('/admin/dashboard', Astro.url);
+      next.searchParams.set('restaurante', assignedRestauranteId);
+      if (tab) next.searchParams.set('tab', tab);
+      return Astro.redirect(`${next.pathname}${next.search}`);
     }
   } else if (restauranteId || restauranteSlug) {
     // Sin asignación: no dejar ?restaurante= / ?slug= ajenos en la URL
@@ -155,9 +159,11 @@ const restId = restaurante?.id ?? '';
 if (isSuperAdmin && restId) {
   const urlToken = String(restauranteId || restauranteSlug || '').trim();
   if (urlToken && urlToken !== restId) {
-    return Astro.redirect(
-      `/admin/dashboard?restaurante=${encodeURIComponent(restId)}`,
-    );
+    const tab = Astro.url.searchParams.get('tab');
+    const next = new URL('/admin/dashboard', Astro.url);
+    next.searchParams.set('restaurante', restId);
+    if (tab) next.searchParams.set('tab', tab);
+    return Astro.redirect(`${next.pathname}${next.search}`);
   }
 }
 const publicSlug = String(restaurante?.slug || restauranteSlug || '').trim();
@@ -568,6 +574,11 @@ const marca = {
   gadget_sucursales: gadgetSucursales,
   sucursales_cupo: sucursalesCupo,
   gadget_pedidos: Boolean(restaurante?.gadget_pedidos),
+  gadget_fidelidad: Boolean(restaurante?.gadget_fidelidad),
+  fidelidad_puntos: Number(restaurante?.fidelidad_puntos) || 10,
+  fidelidad_meta: Number(restaurante?.fidelidad_meta) || 80,
+  fidelidad_premio: String(restaurante?.fidelidad_premio || 'Un premio'),
+  fidelidad_diseno: readFidelidadDiseno(restaurante?.fidelidad_diseno),
   config_pedidos: normalizeConfigPedidos(restaurante?.config_pedidos),
   boutique_titulo: boutiqueConfig.titulo || 'Boutique',
   boutique_catalogo_url: boutiqueConfig.catalogo_url || '',
@@ -621,6 +632,10 @@ const marca = {
   reservas_politica: configReservas.politica || '',
   reservas_confirmacion_nativa: configReservas.confirmacionNativa || 'ninguna',
 };
+
+const fidDiseno = marca.fidelidad_diseno;
+const fidMuestra = 24;
+const fidProgreso = Math.min(100, Math.round((fidMuestra / (marca.fidelidad_meta || 80)) * 100));
 
 const marcaHasOperationalGadgets = hasOperationalGadgets({
   wifi: marca.gadget_wifi,
@@ -855,6 +870,17 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             >
               Métricas
             </button>
+            <button
+              type="button"
+              role="tab"
+              id="tab-fidelidad"
+              data-tab-target="fidelidad"
+              aria-selected="false"
+              aria-controls="panel-fidelidad"
+              class={`${tabPillInactive}`}
+            >
+              Fidelidad
+            </button>
             {
               isSuperAdmin && (
                 <button
@@ -917,6 +943,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
           data-gadget-nutricion={marca.gadget_nutricion ? 'true' : 'false'}
           data-gadget-ar={marca.gadget_ar ? 'true' : 'false'}
           data-gadget-pedidos={marca.gadget_pedidos ? 'true' : 'false'}
+          data-requested-tab={Astro.url.searchParams.get('tab') || ''}
         >
           <div
             id="panel-menu"
@@ -1599,6 +1626,649 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             />
           </div>
 
+          <div
+            id="panel-fidelidad"
+            role="tabpanel"
+            aria-labelledby="tab-fidelidad"
+            data-tab-panel="fidelidad"
+            class="hidden w-full min-w-0"
+            hidden
+          >
+            <section
+              class="mx-auto grid w-full max-w-5xl gap-6"
+              data-fidelidad-panel
+              data-restaurante={restId}
+              data-slug={publicSlug}
+              data-local={nombre}
+            >
+              <script type="application/json" data-fid-biblioteca set:html={JSON.stringify({ presets: [...DISENOS_FIDELIDAD, ...fidDiseno.catalogo], catalogo: fidDiseno.catalogo })}></script>
+              <header class="fid-head">
+                <h2>Tarjeta de fidelidad</h2>
+              </header>
+              <div class="grid items-start gap-5 lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]">
+                <div class="fid-stage">
+                  <div class="fid-stage__frame">
+                    <FidelidadPass
+                      preview
+                      titulo={fidDiseno.titulo || nombre}
+                      nombre="Ana"
+                      puntos={fidMuestra}
+                      meta={marca.fidelidad_meta}
+                      premio={marca.fidelidad_premio}
+                      fondo={fidDiseno.fondo}
+                      tinta={fidDiseno.tinta}
+                      acento={fidDiseno.acento}
+                      progreso={fidProgreso}
+                      falta={`Faltan ${Math.max(0, marca.fidelidad_meta - fidMuestra)}`}
+                    />
+                    <button type="button" class="fid-more" data-fid-open-versiones aria-haspopup="dialog" aria-label="Diseños">
+                      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="5" cy="12" r="1.7" fill="currentColor"></circle>
+                        <circle cx="12" cy="12" r="1.7" fill="currentColor"></circle>
+                        <circle cx="19" cy="12" r="1.7" fill="currentColor"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <form class={`${identidadCardClass} fid-studio`} data-fid-form>
+                  {
+                    isSuperAdmin ? (
+                      <label class="flex items-center justify-between gap-3 text-sm font-medium">
+                        Visible en la carta
+                        <input type="checkbox" name="activo" checked={marca.gadget_fidelidad} />
+                      </label>
+                    ) : (
+                      <p class="text-sm text-zinc-500">{marca.gadget_fidelidad ? 'Los clientes ya la ven en la carta.' : 'Todavía no está visible en la carta.'}</p>
+                    )
+                  }
+                  <label class="block">
+                    <span class={gadgetLabelClass}>Título</span>
+                    <input name="titulo" maxlength="40" value={fidDiseno.titulo} placeholder={nombre} class={gadgetFieldClass} />
+                  </label>
+                  <input type="hidden" name="fondo" value={fidDiseno.fondo} />
+                  <input type="hidden" name="tinta" value={fidDiseno.tinta} />
+                  <input type="hidden" name="acento" value={fidDiseno.acento} />
+                  <input type="hidden" name="diseno" value={fidDiseno.diseno} />
+                  <dialog class="fid-pop" data-fid-versiones>
+                    <div class="fid-pop__bar">
+                      <h3>Diseños</h3>
+                      <button type="button" data-fid-close aria-label="Cerrar">Cerrar</button>
+                    </div>
+                    <div class="fid-grid" data-fid-presets role="list"></div>
+                    <button type="button" class="fid-pedir" data-fid-pedir>Pedir diseño</button>
+                    <label class="mt-3 block" data-fid-pedido-wrap hidden={fidDiseno.pedido ? undefined : true}>
+                      <span class={gadgetLabelClass}>Qué diseño quieres</span>
+                      <input name="pedido" maxlength="120" value={fidDiseno.pedido} placeholder="Como Hangang, con el premio en dorado" class={gadgetFieldClass} />
+                    </label>
+                    <div class="fid-grid" data-fid-grid role="list"></div>
+                    <div class="fid-version-meta" data-fid-version-meta hidden>
+                      <label class="block min-w-0">
+                        <span class={gadgetLabelClass}>Nombre</span>
+                        <input data-fid-version-nombre maxlength="24" class={gadgetFieldClass} />
+                      </label>
+                      <label class="block min-w-0">
+                        <span class={gadgetLabelClass}>Canjes</span>
+                        <input data-fid-version-desde type="number" min="1" max="99" step="1" class={gadgetFieldClass} />
+                      </label>
+                      <button type="button" data-fid-quitar>Quitar</button>
+                    </div>
+                  </dialog>
+                  <div class="fid-niveles" hidden>
+                    <div data-fid-nivel-list hidden>
+                      {
+                        fidDiseno.niveles.map((nivel) => (
+                          <article class="fid-nivel" data-fid-nivel data-desde={nivel.desde}>
+                            <label>
+                              <span>Nombre</span>
+                              <input name="nivel_nombre" maxlength="24" value={nivel.nombre} class={gadgetFieldClass} />
+                            </label>
+                            <label>
+                              <span>Canjes</span>
+                              <input name="nivel_desde" type="number" min="1" max="99" step="1" value={nivel.desde} class={gadgetFieldClass} />
+                            </label>
+                            <input name="nivel_diseno" type="hidden" value={nivel.diseno} />
+                            <input name="nivel_fondo" type="hidden" value={nivel.fondo} />
+                            <input name="nivel_tinta" type="hidden" value={nivel.tinta} />
+                            <input name="nivel_acento" type="hidden" value={nivel.acento} />
+                            <input name="nivel_puntos" type="hidden" value={nivel.puntos ?? ''} />
+                            <input name="nivel_meta" type="hidden" value={nivel.meta ?? ''} />
+                            <input name="nivel_premio" type="hidden" value={nivel.premio} />
+                            <button type="button" data-fid-nivel-quitar>Quitar</button>
+                          </article>
+                        ))
+                      }
+                    </div>
+                  </div>
+                  <template data-fid-nivel-template>
+                    <article class="fid-nivel" data-fid-nivel>
+                      <label>
+                        <span>Nombre</span>
+                        <input name="nivel_nombre" maxlength="24" class={gadgetFieldClass} />
+                      </label>
+                      <label>
+                        <span>Canjes</span>
+                        <input name="nivel_desde" type="number" min="1" max="99" step="1" value="1" class={gadgetFieldClass} />
+                      </label>
+                      <input name="nivel_diseno" type="hidden" value="" />
+                      <input name="nivel_fondo" type="hidden" value="#1c1917" />
+                      <input name="nivel_tinta" type="hidden" value="#fafaf9" />
+                      <input name="nivel_acento" type="hidden" value="#d6d3d1" />
+                      <input name="nivel_puntos" type="hidden" value="" />
+                      <input name="nivel_meta" type="hidden" value="" />
+                      <input name="nivel_premio" type="hidden" value="" />
+                      <button type="button" data-fid-nivel-quitar>Quitar</button>
+                    </article>
+                  </template>
+                  <p class="fid-niveles__title" data-fid-reglas-de>Puntos y premio · Inicial</p>
+                  <div class="fid-rules">
+                    <label class="block min-w-0">
+                      <span class={gadgetLabelClass}>Puntos por visita</span>
+                      <input name="puntos" type="number" min="1" max="500" step="1" value={marca.fidelidad_puntos} class={gadgetFieldClass} />
+                    </label>
+                    <label class="block min-w-0">
+                      <span class={gadgetLabelClass}>Meta</span>
+                      <input name="meta" type="number" min="1" max="5000" step="1" value={marca.fidelidad_meta} class={gadgetFieldClass} />
+                    </label>
+                    <label class="block min-w-0">
+                      <span class={gadgetLabelClass}>Premio</span>
+                      <input name="premio" maxlength="80" value={marca.fidelidad_premio} class={gadgetFieldClass} />
+                    </label>
+                  </div>
+                  <button type="submit" class="fid-btn">Guardar diseño</button>
+                  <p class="min-h-5 text-sm text-zinc-500" data-fid-status role="status"></p>
+                </form>
+              </div>
+              <div class={`${identidadCardClass} fid-studio`} data-fidelidad-scan data-restaurante={restId} data-slug={publicSlug}>
+                <h3 class="text-base font-semibold">Escanear puntos</h3>
+                <form class="grid gap-3" data-scan-form>
+                  <label class="block">
+                    <span class={gadgetLabelClass}>Código de la tarjeta</span>
+                    <input name="codigo" autocomplete="off" autocapitalize="characters" class={`${gadgetFieldClass} tracking-[0.16em] uppercase`} placeholder="AB23CD45" />
+                  </label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="submit" class="fid-btn">Buscar</button>
+                    <button type="button" class="fid-btn fid-btn--ghost" data-scan-camera>Usar cámara</button>
+                  </div>
+                </form>
+                <video class="hidden w-full max-w-sm rounded-2xl bg-black" data-scan-video playsinline muted></video>
+                <p class="min-h-5 text-sm text-zinc-600" data-scan-status role="status"></p>
+                <article class="hidden max-w-sm" data-scan-card hidden>
+                  <p class="text-sm text-zinc-500" data-scan-nombre></p>
+                  <p class="fid-scan-points"><span data-scan-puntos>0</span> <small>puntos</small></p>
+                  <p class="mt-2 text-sm text-zinc-600" data-scan-falta></p>
+                  <div class="mt-4 grid gap-2">
+                    <button type="button" class="fid-btn" data-scan-action="visita">Sumar visita</button>
+                    <button type="button" class="fid-btn fid-btn--ghost" data-scan-action="canje">Canjear premio</button>
+                  </div>
+                </article>
+              </div>
+            </section>
+            <script>
+              function initFidelidadPanel() {
+                const root = document.querySelector('[data-fidelidad-panel]');
+                if (!(root instanceof HTMLElement) || root.dataset.bound === 'true') return;
+                root.dataset.bound = 'true';
+                const pass = root.querySelector('[data-fid-preview]');
+                const form = root.querySelector('[data-fid-form]');
+                const status = root.querySelector('[data-fid-status]');
+                const local = root.dataset.local || '';
+                const biblioteca = JSON.parse(root.querySelector('[data-fid-biblioteca]')?.textContent || '{}');
+                const presets = Array.isArray(biblioteca.presets) ? biblioteca.presets : [];
+                const catalogo = Array.isArray(biblioteca.catalogo) ? biblioteca.catalogo : [];
+
+                const field = (name) => {
+                  const el = form?.querySelector(`[name="${name}"]`);
+                  return el instanceof HTMLInputElement ? el : null;
+                };
+
+                const grid = form?.querySelector('[data-fid-grid]');
+                const nivelList = form?.querySelector('[data-fid-nivel-list]');
+                const nivelTemplate = form?.querySelector('[data-fid-nivel-template]');
+                const versionMeta = form?.querySelector('[data-fid-version-meta]');
+                const versionNombre = form?.querySelector('[data-fid-version-nombre]');
+                const versionDesde = form?.querySelector('[data-fid-version-desde]');
+                const presetsGrid = form?.querySelector('[data-fid-presets]');
+                const reglasDe = form?.querySelector('[data-fid-reglas-de]');
+                let vista = 'base';
+                const base = {
+                  diseno: field('diseno')?.value || '',
+                  fondo: field('fondo')?.value || '#1c1917',
+                  tinta: field('tinta')?.value || '#fafaf9',
+                  acento: field('acento')?.value || '#d6d3d1',
+                  puntos: field('puntos')?.value || '',
+                  meta: field('meta')?.value || '',
+                  premio: field('premio')?.value || '',
+                };
+
+                const nivelRows = () => [...(nivelList?.querySelectorAll('[data-fid-nivel]') || [])];
+
+                const rowValue = (row, name) => {
+                  const input = row?.querySelector(`[name="${name}"]`);
+                  return input instanceof HTMLInputElement ? input.value : '';
+                };
+
+                const setRow = (row, name, value) => {
+                  const input = row?.querySelector(`[name="${name}"]`);
+                  if (input instanceof HTMLInputElement) input.value = value;
+                };
+
+                const readFields = () => ({
+                  diseno: field('diseno')?.value || '',
+                  fondo: field('fondo')?.value || '#1c1917',
+                  tinta: field('tinta')?.value || '#fafaf9',
+                  acento: field('acento')?.value || '#d6d3d1',
+                  puntos: field('puntos')?.value || '',
+                  meta: field('meta')?.value || '',
+                  premio: field('premio')?.value || '',
+                });
+
+                const writeFields = (colors) => {
+                  const names = ['diseno', 'fondo', 'tinta', 'acento', 'puntos', 'meta', 'premio'];
+                  names.forEach((name) => {
+                    const input = field(name);
+                    if (input) input.value = colors[name] ?? '';
+                  });
+                };
+
+                const flush = () => {
+                  const colors = readFields();
+                  if (vista === 'base') {
+                    Object.assign(base, colors);
+                    return;
+                  }
+                  const row = nivelRows()[Number(vista)];
+                  if (!(row instanceof HTMLElement)) return;
+                  setRow(row, 'nivel_diseno', colors.diseno);
+                  setRow(row, 'nivel_fondo', colors.fondo);
+                  setRow(row, 'nivel_tinta', colors.tinta);
+                  setRow(row, 'nivel_acento', colors.acento);
+                  setRow(row, 'nivel_puntos', colors.puntos);
+                  setRow(row, 'nivel_meta', colors.meta);
+                  setRow(row, 'nivel_premio', colors.premio);
+                  if (versionNombre instanceof HTMLInputElement) setRow(row, 'nivel_nombre', versionNombre.value);
+                  if (versionDesde instanceof HTMLInputElement) setRow(row, 'nivel_desde', versionDesde.value);
+                };
+
+                const paint = () => {
+                  if (!(pass instanceof HTMLElement)) return;
+                  const colors = readFields();
+                  const titulo = field('titulo')?.value.trim() || local;
+                  const premio = field('premio')?.value.trim() || 'Un premio';
+                  const meta = Math.max(1, Number(field('meta')?.value) || 80);
+                  const muestra = 24;
+                  const nivelNombre = vista === 'base' || !(versionNombre instanceof HTMLInputElement) ? '' : versionNombre.value.trim();
+                  pass.style.setProperty('--fid-fondo', colors.fondo);
+                  pass.style.setProperty('--fid-tinta', colors.tinta);
+                  pass.style.setProperty('--fid-acento', colors.acento);
+                  const tituloEl = pass.querySelector('[data-fid-titulo]');
+                  const nivelEl = pass.querySelector('[data-fid-nivel]');
+                  const premioEl = pass.querySelector('[data-fid-premio]');
+                  const metaEl = pass.querySelector('[data-fid-meta]');
+                  const faltaEl = pass.querySelector('[data-fid-falta]');
+                  const bar = pass.querySelector('[data-fid-bar]');
+                  if (tituloEl) tituloEl.textContent = titulo;
+                  if (nivelEl instanceof HTMLElement) {
+                    nivelEl.textContent = nivelNombre;
+                    nivelEl.hidden = !nivelNombre;
+                  }
+                  if (premioEl) premioEl.textContent = premio;
+                  if (metaEl) metaEl.textContent = `${meta} pts`;
+                  if (faltaEl) faltaEl.textContent = muestra >= meta ? 'Premio listo' : `Faltan ${meta - muestra}`;
+                  if (bar instanceof HTMLElement) bar.style.width = `${Math.min(100, Math.round((muestra / meta) * 100))}%`;
+                  const etiqueta = vista === 'base'
+                    ? 'Inicial'
+                    : (versionNombre instanceof HTMLInputElement && versionNombre.value.trim()) || 'Versión';
+                  if (reglasDe) reglasDe.textContent = `Puntos y premio · ${etiqueta}`;
+                };
+
+                const renderGrid = () => {
+                  if (!(grid instanceof HTMLElement)) return;
+                  grid.replaceChildren();
+                  const addCard = (id, label, colors) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'fid-version';
+                    button.dataset.fidVista = id;
+                    button.setAttribute('aria-pressed', id === vista ? 'true' : 'false');
+                    const mini = document.createElement('span');
+                    mini.className = 'fid-mini';
+                    mini.style.setProperty('--fid-fondo', colors.fondo);
+                    mini.style.setProperty('--fid-tinta', colors.tinta);
+                    mini.style.setProperty('--fid-acento', colors.acento);
+                    const title = document.createElement('span');
+                    title.className = 'fid-mini__title';
+                    title.textContent = field('titulo')?.value.trim() || local;
+                    const points = document.createElement('span');
+                    points.className = 'fid-mini__points';
+                    points.textContent = '24';
+                    const bar = document.createElement('span');
+                    bar.className = 'fid-mini__bar';
+                    const fill = document.createElement('i');
+                    bar.append(fill);
+                    mini.append(title, points, bar);
+                    const name = document.createElement('span');
+                    name.className = 'fid-version__name';
+                    name.textContent = label;
+                    button.append(mini, name);
+                    grid.append(button);
+                  };
+                  addCard('base', 'Inicial', base);
+                  nivelRows().forEach((row, index) => {
+                    if (!(row instanceof HTMLElement)) return;
+                    row.dataset.fidIndex = String(index);
+                    const nombre = rowValue(row, 'nivel_nombre').trim() || `Versión ${index + 1}`;
+                    addCard(String(index), nombre, {
+                      fondo: rowValue(row, 'nivel_fondo') || '#1c1917',
+                      tinta: rowValue(row, 'nivel_tinta') || '#fafaf9',
+                      acento: rowValue(row, 'nivel_acento') || '#d6d3d1',
+                    });
+                  });
+                  if (nivelRows().length < 3) {
+                    const create = document.createElement('button');
+                    create.type = 'button';
+                    create.className = 'fid-version fid-version--new';
+                    create.dataset.fidNueva = 'true';
+                    create.textContent = 'Nueva versión';
+                    grid.append(create);
+                  }
+                };
+
+                const showVersion = (id) => {
+                  flush();
+                  vista = id;
+                  if (versionMeta instanceof HTMLElement) versionMeta.hidden = id === 'base';
+                  if (id === 'base') {
+                    writeFields(base);
+                  } else {
+                    const row = nivelRows()[Number(id)];
+                    writeFields({
+                      diseno: rowValue(row, 'nivel_diseno'),
+                      fondo: rowValue(row, 'nivel_fondo') || base.fondo,
+                      tinta: rowValue(row, 'nivel_tinta') || base.tinta,
+                      acento: rowValue(row, 'nivel_acento') || base.acento,
+                      puntos: rowValue(row, 'nivel_puntos') || base.puntos,
+                      meta: rowValue(row, 'nivel_meta') || base.meta,
+                      premio: rowValue(row, 'nivel_premio') || base.premio,
+                    });
+                    if (versionNombre instanceof HTMLInputElement) versionNombre.value = rowValue(row, 'nivel_nombre');
+                    if (versionDesde instanceof HTMLInputElement) versionDesde.value = rowValue(row, 'nivel_desde') || '1';
+                  }
+                  paint();
+                  renderPresets();
+                  renderGrid();
+                };
+
+                const nivelesPayload = () => nivelRows().map((row) => ({
+                  nombre: rowValue(row, 'nivel_nombre'),
+                  desde: Number(rowValue(row, 'nivel_desde')) || 1,
+                  diseno: rowValue(row, 'nivel_diseno'),
+                  fondo: rowValue(row, 'nivel_fondo'),
+                  tinta: rowValue(row, 'nivel_tinta'),
+                  acento: rowValue(row, 'nivel_acento'),
+                  puntos: rowValue(row, 'nivel_puntos'),
+                  meta: rowValue(row, 'nivel_meta'),
+                  premio: rowValue(row, 'nivel_premio'),
+                }));
+
+                const sameLook = (a, b) => a.fondo === b.fondo && a.tinta === b.tinta && a.acento === b.acento;
+
+                const renderPresets = () => {
+                  if (!(presetsGrid instanceof HTMLElement)) return;
+                  presetsGrid.replaceChildren();
+                  const current = readFields();
+                  const options = presets.some((item) => sameLook(item, current))
+                    ? presets
+                    : [{ id: '', nombre: 'Actual', fondo: current.fondo, tinta: current.tinta, acento: current.acento }, ...presets];
+                  options.forEach((item) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'fid-version';
+                    button.dataset.fidPreset = item.id;
+                    button.setAttribute('aria-pressed', sameLook(item, current) ? 'true' : 'false');
+                    const mini = document.createElement('span');
+                    mini.className = 'fid-mini';
+                    mini.style.setProperty('--fid-fondo', item.fondo);
+                    mini.style.setProperty('--fid-tinta', item.tinta);
+                    mini.style.setProperty('--fid-acento', item.acento);
+                    const title = document.createElement('span');
+                    title.className = 'fid-mini__title';
+                    title.textContent = field('titulo')?.value.trim() || local;
+                    const points = document.createElement('span');
+                    points.className = 'fid-mini__points';
+                    points.textContent = '24';
+                    const bar = document.createElement('span');
+                    bar.className = 'fid-mini__bar';
+                    bar.append(document.createElement('i'));
+                    mini.append(title, points, bar);
+                    const name = document.createElement('span');
+                    name.className = 'fid-version__name';
+                    name.textContent = item.nombre;
+                    button.append(mini, name);
+                    presetsGrid.append(button);
+                  });
+                };
+
+                presetsGrid?.addEventListener('click', (event) => {
+                  const button = event.target instanceof Element ? event.target.closest('[data-fid-preset]') : null;
+                  if (!(button instanceof HTMLButtonElement)) return;
+                  const item = presets.find((preset) => preset.id === button.dataset.fidPreset)
+                    || presets.find((preset) => preset.nombre === button.querySelector('.fid-version__name')?.textContent);
+                  const current = readFields();
+                  const chosen = item || {
+                    id: '',
+                    fondo: current.fondo,
+                    tinta: current.tinta,
+                    acento: current.acento,
+                  };
+                  writeFields({
+                    ...current,
+                    diseno: chosen.id || '',
+                    fondo: chosen.fondo,
+                    tinta: chosen.tinta,
+                    acento: chosen.acento,
+                  });
+                  flush();
+                  paint();
+                  renderPresets();
+                  renderGrid();
+                });
+
+                form?.querySelector('[data-fid-pedir]')?.addEventListener('click', () => {
+                  const wrap = form.querySelector('[data-fid-pedido-wrap]');
+                  if (!(wrap instanceof HTMLElement)) return;
+                  wrap.hidden = false;
+                  wrap.querySelector('input')?.focus();
+                });
+
+                grid?.addEventListener('click', (event) => {
+                  const nueva = event.target instanceof Element ? event.target.closest('[data-fid-nueva]') : null;
+                  if (nueva) {
+                    if (!(nivelTemplate instanceof HTMLTemplateElement) || !(nivelList instanceof HTMLElement) || nivelRows().length >= 3) return;
+                    flush();
+                    const node = nivelTemplate.content.firstElementChild?.cloneNode(true);
+                    if (!(node instanceof HTMLElement)) return;
+                    const colors = vista === 'base' ? base : readFields();
+                    const usados = nivelRows().map((row) => Number(rowValue(row, 'nivel_desde')) || 0);
+                    const desde = Math.max(1, ...usados, 0) + (usados.length ? 1 : 0);
+                    setRow(node, 'nivel_nombre', `Versión ${nivelRows().length + 1}`);
+                    setRow(node, 'nivel_desde', String(Math.min(99, desde || 1)));
+                    setRow(node, 'nivel_diseno', colors.diseno);
+                    setRow(node, 'nivel_fondo', colors.fondo);
+                    setRow(node, 'nivel_tinta', colors.tinta);
+                    setRow(node, 'nivel_acento', colors.acento);
+                    setRow(node, 'nivel_puntos', colors.puntos);
+                    setRow(node, 'nivel_meta', colors.meta);
+                    setRow(node, 'nivel_premio', colors.premio);
+                    nivelList.append(node);
+                    showVersion(String(nivelRows().length - 1));
+                    return;
+                  }
+                  const button = event.target instanceof Element ? event.target.closest('[data-fid-vista]') : null;
+                  if (!(button instanceof HTMLButtonElement)) return;
+                  showVersion(button.dataset.fidVista || 'base');
+                });
+
+                form?.addEventListener('click', (event) => {
+                  const quitar = event.target instanceof Element ? event.target.closest('[data-fid-quitar]') : null;
+                  if (!quitar || vista === 'base') return;
+                  nivelRows()[Number(vista)]?.remove();
+                  vista = 'base';
+                  writeFields(base);
+                  if (versionMeta instanceof HTMLElement) versionMeta.hidden = true;
+                  paint();
+                  renderPresets();
+                  renderGrid();
+                });
+
+                form?.addEventListener('input', () => {
+                  flush();
+                  paint();
+                  renderPresets();
+                  renderGrid();
+                });
+                paint();
+                renderPresets();
+                renderGrid();
+
+                const versiones = root.querySelector('[data-fid-versiones]');
+                root.querySelector('[data-fid-open-versiones]')?.addEventListener('click', () => {
+                  if (versiones instanceof HTMLDialogElement && !versiones.open) versiones.showModal();
+                });
+                versiones?.querySelector('[data-fid-close]')?.addEventListener('click', () => {
+                  if (versiones instanceof HTMLDialogElement) versiones.close();
+                });
+                versiones?.addEventListener('click', (event) => {
+                  if (event.target === versiones && versiones instanceof HTMLDialogElement) versiones.close();
+                });
+
+                form?.addEventListener('submit', async (event) => {
+                  event.preventDefault();
+                  if (status) status.textContent = 'Guardando…';
+                  flush();
+                  const response = await fetch('/api/fidelidad-diseno', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      restaurante: root.dataset.restaurante || '',
+                      titulo: field('titulo')?.value || '',
+                      diseno: base.diseno,
+                      fondo: base.fondo,
+                      tinta: base.tinta,
+                      acento: base.acento,
+                      puntos: base.puntos,
+                      meta: base.meta,
+                      premio: base.premio,
+                      pedido: field('pedido')?.value || '',
+                      catalogo,
+                      niveles: nivelesPayload(),
+                      puntos: Number(field('puntos')?.value) || 10,
+                      meta: Number(field('meta')?.value) || 80,
+                      premio: field('premio')?.value || '',
+                      activo: field('activo') ? field('activo').checked : undefined,
+                    }),
+                  });
+                  const payload = await response.json().catch(() => ({}));
+                  if (status) status.textContent = response.ok ? 'Diseño guardado.' : payload.error || 'No se pudo guardar.';
+                });
+
+                const scan = root.querySelector('[data-fidelidad-scan]');
+                if (!(scan instanceof HTMLElement)) return;
+                const scanStatus = scan.querySelector('[data-scan-status]');
+                const scanCard = scan.querySelector('[data-scan-card]');
+                let codigo = '';
+                let stream = null;
+                const paintScan = (data, message = '') => {
+                  codigo = data.codigo || codigo;
+                  if (scanCard instanceof HTMLElement) {
+                    scanCard.hidden = false;
+                    scanCard.classList.remove('hidden');
+                  }
+                  const nombre = scan.querySelector('[data-scan-nombre]');
+                  const puntos = scan.querySelector('[data-scan-puntos]');
+                  const falta = scan.querySelector('[data-scan-falta]');
+                  const nivel = data.nivel && Number(data.nivel.desde) > 0 ? data.nivel.nombre : '';
+                  if (nombre) nombre.textContent = [data.nombre || 'Tarjeta', nivel].filter(Boolean).join(' · ');
+                  if (puntos) puntos.textContent = String(data.puntos ?? 0);
+                  if (falta) {
+                    const visitas = Number(data.visitas ?? 0);
+                    falta.textContent = data.listo
+                      ? `Listo para canjear ${data.premio || 'el premio'}.`
+                      : `Faltan ${data.falta ?? 0} puntos${visitas ? ` · ${visitas} visitas` : ''}.`;
+                  }
+                  if (scanStatus) scanStatus.textContent = message;
+                };
+                const call = async (action, code) => {
+                  const response = await fetch('/api/fidelidad', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action,
+                      codigo: code,
+                      restaurante: scan.dataset.restaurante || '',
+                      slug: scan.dataset.slug || '',
+                    }),
+                  });
+                  const payload = await response.json().catch(() => ({}));
+                  if (!response.ok) {
+                    if (scanStatus) scanStatus.textContent = payload.error || 'No se pudo leer la tarjeta.';
+                    return;
+                  }
+                  paintScan(payload.card || {}, payload.mensaje || '');
+                };
+                scan.querySelector('[data-scan-form]')?.addEventListener('submit', (event) => {
+                  event.preventDefault();
+                  const input = scan.querySelector('input[name="codigo"]');
+                  void call('ver', input instanceof HTMLInputElement ? input.value : '');
+                });
+                scan.querySelectorAll('[data-scan-action]').forEach((button) => {
+                  button.addEventListener('click', () => {
+                    if (!(button instanceof HTMLButtonElement) || !codigo) return;
+                    void call(button.dataset.scanAction || '', codigo);
+                  });
+                });
+                scan.querySelector('[data-scan-camera]')?.addEventListener('click', async () => {
+                  const video = scan.querySelector('[data-scan-video]');
+                  if (!(video instanceof HTMLVideoElement)) return;
+                  if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+                    if (scanStatus) scanStatus.textContent = 'Este navegador no lee la cámara. Escribe el código.';
+                    return;
+                  }
+                  stream?.getTracks().forEach((track) => track.stop());
+                  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                  video.srcObject = stream;
+                  video.hidden = false;
+                  video.classList.remove('hidden');
+                  await video.play();
+                  const Detector = /** @type {any} */ (window).BarcodeDetector;
+                  const detector = new Detector({ formats: ['qr_code'] });
+                  const tick = async () => {
+                    if (!stream || video.hidden) return;
+                    try {
+                      const codes = await detector.detect(video);
+                      const raw = codes?.[0]?.rawValue;
+                      if (raw) {
+                        stream.getTracks().forEach((track) => track.stop());
+                        stream = null;
+                        video.hidden = true;
+                        const input = scan.querySelector('input[name="codigo"]');
+                        if (input instanceof HTMLInputElement) input.value = raw;
+                        await call('ver', raw);
+                        return;
+                      }
+                    } catch {
+                      /* el cuadro todavía no está listo */
+                    }
+                    window.requestAnimationFrame(() => void tick());
+                  };
+                  void tick();
+                });
+              }
+
+              initFidelidadPanel();
+              document.addEventListener('astro:page-load', initFidelidadPanel);
+            </script>
+          </div>
+
           {
             !isSuperAdmin && (
           <div
@@ -1864,7 +2534,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         <span class="block text-[10px] leading-snug text-zinc-500">Frase debajo del logo en el Home Editorial (y otros themes).</span>
                       </label>
 
-                      <div class="rounded-xl border border-white/15 bg-transparent px-4 py-3">
+                      <div class="id-manual rounded-xl border border-white/15 bg-transparent px-4 py-3">
                         <p class="mb-3 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">Escalas</p>
                         <div class="grid grid-cols-2 gap-x-4 gap-y-3.5">
                           {
@@ -1951,7 +2621,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </div>
 
-                      <div class="grid grid-cols-3 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3">
+                      <div class="id-manual grid grid-cols-3 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3">
                         <label class="block min-w-0 space-y-1.5">
                           <span class="text-xs font-mono text-zinc-400">Fondo</span>
                           <div class="flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5">
@@ -2029,7 +2699,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       </label>
 
                       <div
-                        class="space-y-1.5"
+                        class="id-manual space-y-1.5"
                         data-overlay-oscuro-controls
                         hidden={
                           marca.home_overlay_estilo !== 'oscuro' &&
@@ -2236,7 +2906,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </select>
                       </label>
 
-                      <div class="grid grid-cols-2 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3 sm:grid-cols-4">
+                      <div class="id-manual grid grid-cols-2 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3 sm:grid-cols-4">
                         <label class="block min-w-0 space-y-1.5">
                           <span class="text-xs font-mono text-zinc-400">Fondo</span>
                           <div class="flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5">
@@ -2666,7 +3336,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </div>
                         </div>
 
-                        <div class="rounded-xl border border-white/15 bg-transparent px-3 py-2.5" data-menu-fondo-color hidden={marca.fondo_menu_tipo !== 'color'}>
+                        <div class="id-manual rounded-xl border border-white/15 bg-transparent px-3 py-2.5" data-menu-fondo-color hidden={marca.fondo_menu_tipo !== 'color'}>
                           <label class="flex items-center gap-3">
                             <span class="text-xs font-mono text-zinc-400">Color de fondo</span>
                             <div class="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5">
@@ -2678,7 +3348,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         <input type="hidden" id="marca-fondo-menu-valor" name="fondo_menu_valor" value={marca.fondo_menu_valor} />
                       </div>
 
-                      <div class="grid grid-cols-3 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3">
+                      <div class="id-manual grid grid-cols-3 gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-3">
                         <label class="block min-w-0 space-y-1.5">
                           <span class="text-xs font-mono text-zinc-400">Fondo</span>
                           <div class="flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-2 py-1.5">
@@ -3149,7 +3819,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </select>
                         </label>
 
-                        <div class="grid grid-cols-3 gap-3">
+                        <div class="id-manual grid grid-cols-3 gap-3">
                           <label class="block min-w-0 space-y-1.5">
                             <span class="text-xs font-mono text-zinc-500">Fondo</span>
                             <div class={colorRowClass} data-ubicacion-fondo-color hidden={marca.fondo_ubicacion_tipo !== 'color'}>
@@ -3203,7 +3873,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                         <button
                           type="button"
-                          class="inline-flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-300 transition hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-white"
+                          class="id-manual inline-flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-300 transition hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-white"
                           data-copy-home-colors-ubicacion
                         >
                           Usar colores del Home
@@ -3796,6 +4466,52 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         </div>
                       </article>
 
+                      <article
+                        class:list={[
+                          'gadget-card flex h-full flex-col bg-zinc-50/80 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all',
+                          marca.gadget_fidelidad && 'gadget-card--on',
+                        ]}
+                        data-gadget-card
+                        data-gadget-id="fidelidad"
+                      >
+                        <div class="flex items-center justify-between gap-3">
+                          <div class="flex min-w-0 items-center gap-3">
+                            <span class="gadget-card__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5v10.5H3.75z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 10.5h4.5M7.5 13.5h3" />
+                              </svg>
+                            </span>
+                            <div class="min-w-0">
+                              <h4 class="text-sm font-semibold text-neutral-900">Tarjeta de fidelidad</h4>
+                              <p class="text-xs text-neutral-500">Puntos, escáner y wallet</p>
+                            </div>
+                          </div>
+                          <label class="relative shrink-0 cursor-pointer" title="Activar fidelidad">
+                            <input type="checkbox" id="marca-gadget-fidelidad" name="gadget_fidelidad" checked={marca.gadget_fidelidad} class="peer sr-only" data-marca-gadget data-gadget-switch role="switch" aria-checked={marca.gadget_fidelidad ? 'true' : 'false'} />
+                            <span class:list={['ios-toggle pointer-events-none', marca.gadget_fidelidad && 'is-on']} data-marca-toggle-ui data-for="marca-gadget-fidelidad" aria-hidden="true"><span class="ios-toggle__knob"></span></span>
+                          </label>
+                        </div>
+                        <div class:list={['gadget-card__config', marca.gadget_fidelidad && 'is-open']} data-gadget-config aria-hidden={marca.gadget_fidelidad ? 'false' : 'true'}>
+                          <div class="gadget-card__config-inner mt-4 grid gap-3 border-t border-neutral-100 pt-4" data-gadget-config-inner>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Puntos por visita</span>
+                              <input type="number" id="marca-fidelidad-puntos" name="fidelidad_puntos" min="1" max="500" step="1" inputmode="numeric" value={marca.fidelidad_puntos} class={gadgetFieldClass} />
+                            </label>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Puntos para el premio</span>
+                              <input type="number" id="marca-fidelidad-meta" name="fidelidad_meta" min="1" max="5000" step="1" inputmode="numeric" value={marca.fidelidad_meta} class={gadgetFieldClass} />
+                            </label>
+                            <label class="block">
+                              <span class={gadgetLabelClass}>Premio</span>
+                              <input type="text" id="marca-fidelidad-premio" name="fidelidad_premio" maxlength="80" value={marca.fidelidad_premio} class={gadgetFieldClass} />
+                            </label>
+                            <a href={`/admin/dashboard?restaurante=${restaurante.slug || restaurante.id}&tab=fidelidad`} class="text-sm font-medium text-zinc-900 underline">Abrir diseño y escáner</a>
+                            <p class="text-xs text-zinc-500">Apple Wallet y Google Wallet quedan armados. Se activan cuando lleguen las claves.</p>
+                          </div>
+                        </div>
+                      </article>
+
                       {/* 5. Sucursales (de pago, con cupo de sedes) */}
                       <article
                         class:list={[
@@ -4185,6 +4901,13 @@ Postres | Tres leches | Coco | 9.00 | SI |`
             </button>
               )
             }
+            <button type="button" class="studio-dock__btn" data-tab-target="fidelidad" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M3.5 7.5h17v9h-17z"></path>
+                <path d="M7 11h5M7 14h3"></path>
+              </svg>
+              <span>Fidelidad</span>
+            </button>
             <button type="button" class="studio-dock__btn" data-tab-target="metricas" aria-selected="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path>

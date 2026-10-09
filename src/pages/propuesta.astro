@@ -195,44 +195,58 @@ const investment = [
 
 const ticketDate = new Intl.DateTimeFormat('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date());
 
+const adicionalPrecio = (id: string) => {
+  const raw = propuestaGuardada?.adicionales;
+  const map = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+  return readAmount(map[id] == null ? '' : String(map[id]), '');
+};
+
 const gadgets = [
   {
+    id: 'ar',
     icon: ICONS.cube,
     title: 'Realidad aumentada',
     body: 'Tus platos insignia en 3D sobre la mesa.',
     action: { dialog: 'ar-dialog', label: 'Ver en AR' },
   },
   {
+    id: 'nutri',
     icon: ICONS.leaf,
     title: 'Ficha nutricional',
     body: 'Calorías, macros y alérgenos.',
     action: { dialog: 'nutri-dialog', label: 'Ver ficha' },
   },
   {
+    id: 'qr',
     icon: ICONS.qr,
     title: 'QRs artísticos',
     body: 'Acrílicos, NFC y listos para imprimir.',
     action: { dialog: 'qr-dialog', label: 'Ver diseños' },
   },
   {
+    id: 'ia',
     icon: ICONS.spark,
     title: 'Klientiq CRM + IA',
     body: 'IA que atiende y reserva 24/7, conectada a tu CRM o al sistema que ya usas.',
     action: { dialog: 'ia-dialog', label: 'Ver chat' },
   },
   {
+    id: 'shop',
     icon: ICONS.bag,
     title: 'Tienda',
     body: 'Vende merch, salsas y productos de la casa desde tu propio menú.',
     action: { dialog: 'shop-dialog', label: 'Ver tienda' },
   },
   {
+    id: 'loyalty',
     icon: ICONS.gift,
     title: 'Tarjeta de fidelidad',
     body: 'Sellos digitales que premian cada visita y los hacen volver.',
     action: { dialog: 'loyalty-dialog', label: 'Ver tarjeta' },
   },
-];
+].map((gadget) => ({ ...gadget, price: adicionalPrecio(gadget.id) }));
+
+const adicionalesConPrecio = gadgets.some((gadget) => gadget.price);
 
 /* print: zona imprimible de cada foto, en % de la imagen cuadrada (left, top, width, height). */
 const shopDemo = [
@@ -795,7 +809,11 @@ const glass =
           Solo para degustadores.
         </h2>
         <p class="mx-auto mt-4 max-w-md text-balance text-base font-medium leading-snug tracking-[-0.01em] text-zinc-500">
-          No están incluidos en el plan. Se suman con un costo extra, precio a&nbsp;consultar.
+          {
+            adicionalesConPrecio
+              ? 'No están incluidos en el plan. El precio es el de esta propuesta; si no tiene cifra, sigue a consultar.'
+              : 'No están incluidos en el plan. Se suman con un costo extra, precio a consultar.'
+          }
         </p>
       </div>
       <div class="grid grid-cols-1 gap-3 md:auto-rows-fr md:grid-cols-2 md:gap-4 lg:grid-cols-3">
@@ -810,8 +828,8 @@ const glass =
               <div class="min-w-0 flex-1">
                 <h3 class="flex flex-wrap items-center gap-2 text-sm font-medium tracking-tight text-zinc-100">
                   {gadget.title}
-                  <span class="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
-                    A consultar
+                  <span class:list={['rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em]', gadget.price ? 'border-white/20 text-zinc-200' : 'border-white/10 text-zinc-500']}>
+                    {gadget.price ? `${gadget.price} USD` : 'A consultar'}
                   </span>
                 </h3>
                 <p class="mt-0.5 text-sm font-light text-zinc-400">{gadget.body}</p>

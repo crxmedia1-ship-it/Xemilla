@@ -4,6 +4,7 @@ import MenuPanel from './MenuPanel.astro';
 import NosotrosPanel from './NosotrosPanel.astro';
 import SectionAtmosphere from './SectionAtmosphere.astro';
 import WifiGadget from '../gadgets/WifiGadget.astro';
+import FidelidadGadget from '../gadgets/FidelidadGadget.astro';
 import BoutiqueGadget from '../gadgets/BoutiqueGadget.astro';
 import CartGadget from '../gadgets/CartGadget.astro';
 import GadgetFloatingButton from './GadgetFloatingButton.astro';
@@ -59,6 +60,7 @@ const uiEstilo = restaurante?.uiEstilo || {};
 const showWifi = Boolean(gadgets?.wifi);
 const showReservas = Boolean(gadgets?.reservas);
 const showBoutique = Boolean(gadgets?.boutique);
+const showFidelidad = Boolean(gadgets?.fidelidad);
 const showNutricion = Boolean(gadgets?.nutricion);
 const showAr = Boolean(gadgets?.ar);
 /** Sin WhatsApp de destino el pedido no tiene a dónde llegar: el carrito no se muestra. */
@@ -638,6 +640,26 @@ const cssAvanzadoScoped = scopeCssAvanzado(
       )
     }
 
+
+    {
+      showFidelidad && (
+        <OverlayPanel sectionId="fidelidad" title="TARJETA DE FIDELIDAD" estilos={estilos}>
+          <FidelidadGadget
+            slug={restaurante?.slug || ''}
+            nombre={restaurante?.nombre || ''}
+            puntos={Number(restaurante?.fidelidad?.puntos) || 10}
+            meta={Number(restaurante?.fidelidad?.meta) || 80}
+            premio={restaurante?.fidelidad?.premio || 'Un premio'}
+            titulo={restaurante?.fidelidad?.diseno?.titulo || restaurante?.nombre || ''}
+            fondo={restaurante?.fidelidad?.diseno?.fondo || '#1c1917'}
+            tinta={restaurante?.fidelidad?.diseno?.tinta || '#fafaf9'}
+            acento={restaurante?.fidelidad?.diseno?.acento || '#d6d3d1'}
+            textColor={estilos?.textColor || ''}
+            mutedColor={estilos?.mutedColor || ''}
+          />
+        </OverlayPanel>
+      )
+    }
 
     {
       showBoutique && (

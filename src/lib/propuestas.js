@@ -4,6 +4,21 @@ const UUID_RE =
 const MUNDOS = new Set(['barra', 'espacio', 'estudio']);
 const TIPOS = new Set(['vista', 'ar', 'nutri', 'qr', 'ia', 'whatsapp']);
 
+/** Adicionales de «Solo para degustadores». El precio vive en la propuesta, no en el plan. */
+export const PROPUESTA_ADICIONALES = [
+  { id: 'ar', label: 'Realidad aumentada' },
+  { id: 'nutri', label: 'Ficha nutricional' },
+  { id: 'qr', label: 'QRs artísticos' },
+  { id: 'ia', label: 'Klientiq' },
+  { id: 'shop', label: 'Tienda' },
+  { id: 'loyalty', label: 'Tarjeta de fidelidad' },
+];
+
+const ADICIONAL_IDS = new Set(PROPUESTA_ADICIONALES.map((item) => item.id));
+const PROPUESTA_COLUMNS =
+  'id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo, adicionales';
+const PROPUESTA_LIST_COLUMNS = `${PROPUESTA_COLUMNS}, vistas, ultima_vista, vio_ar, vio_nutri, vio_qr, vio_ia, vio_whatsapp, created_at`;
+
 /**
  * @param {unknown} value
  */
@@ -81,15 +96,50 @@ export function readPropuestaTipo(value) {
 }
 
 /**
+ * Precio opcional de un adicional. Vacío = se muestra «A consultar».
+ * @param {unknown} value
+ */
+export function readPropuestaMonto(value) {
+  return String(value || '').trim().replace(/[^\d.,]/g, '').slice(0, 12);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {Record<string, string>}
+ */
+export function readPropuestaAdicionales(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const id of ADICIONAL_IDS) {
+    const amount = readPropuestaMonto(source[id]);
+    if (amount) out[id] = amount;
+  }
+  return out;
+}
+
+/**
+ * @param {unknown} error
+ */
+function missingAdicionalesColumn(error) {
+  return /adicionales|schema cache|does not exist/i.test(String(error?.message || ''));
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  */
 export async function listPropuestas(client) {
-  const { data, error } = await client
+  let { data, error } = await client
     .from('propuestas')
-    .select(
-      'id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo, vistas, ultima_vista, vio_ar, vio_nutri, vio_qr, vio_ia, vio_whatsapp, created_at',
-    )
+    .select(PROPUESTA_LIST_COLUMNS)
     .order('created_at', { ascending: false });
+
+  if (error && missingAdicionalesColumn(error)) {
+    ({ data, error } = await client
+      .from('propuestas')
+      .select(PROPUESTA_LIST_COLUMNS.replace(', adicionales', ''))
+      .order('created_at', { ascending: false }));
+  }
 
   if (error) {
     console.error('[propuestas] list:', error.message);
@@ -122,11 +172,19 @@ export async function listPropuestaEventos(client, limit = 12) {
  */
 export async function getPropuesta(client, id) {
   if (!isPropuestaId(id)) return null;
-  const { data, error } = await client
+  let { data, error } = await client
     .from('propuestas')
-    .select('id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo')
+    .select(PROPUESTA_COLUMNS)
     .eq('id', id)
     .maybeSingle();
+
+  if (error && missingAdicionalesColumn(error)) {
+    ({ data, error } = await client
+      .from('propuestas')
+      .select(PROPUESTA_COLUMNS.replace(', adicionales', ''))
+      .eq('id', id)
+      .maybeSingle());
+  }
 
   if (error) {
     console.error('[propuestas] get:', error.message);
@@ -137,7 +195,7 @@ export async function getPropuesta(client, id) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} client
- * @param {{ nombre: string, logoUrl?: string, setup?: string, anual?: string, sinPrecio?: boolean, dominio?: string, mundo?: string }} input
+ * @param {{ nombre: string, logoUrl?: string, setup?: string, anual?: string, sinPrecio?: boolean, dominio?: string, mundo?: string, adicionales?: unknown }} input
  */
 export async function createPropuesta(client, input) {
   const nombre = readPropuestaNombre(input.nombre);
@@ -151,19 +209,94 @@ export async function createPropuesta(client, input) {
     sin_precio: input.sinPrecio === true,
     dominio: readPropuestaDominio(input.dominio) || null,
     mundo: readPropuestaMundo(input.mundo),
+    adicionales: readPropuestaAdicionales(input.adicionales),
   };
 
   const { data, error } = await client
     .from('propuestas')
     .insert(row)
-    .select('id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo')
+    .select(PROPUESTA_COLUMNS)
     .single();
 
   if (error || !data) {
     console.error('[propuestas] create:', error?.message);
+    if (missingAdicionalesColumn(error)) {
+      return { error: 'Falta aplicar la migración de precios de degustadores en Supabase.' };
+    }
     return { error: 'No se pudo crear la propuesta.' };
   }
   return { data };
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {string} id
+ * @param {unknown} adicionales
+ */
+export async function updatePropuestaAdicionales(client, id, adicionales) {
+  if (!isPropuestaId(id)) return { error: 'Propuesta inválida.' };
+  const next = readPropuestaAdicionales(adicionales);
+  const { data, error } = await client
+    .from('propuestas')
+    .update({ adicionales: next, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, adicionales')
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('[propuestas] adicionales:', error?.message);
+    if (missingAdicionalesColumn(error)) {
+      return { error: 'Falta aplicar la migración de precios de degustadores en Supabase.' };
+    }
+    return { error: 'No se pudieron guardar los precios.' };
+  }
+  return { data: { id: data.id, adicionales: readPropuestaAdicionales(data.adicionales) } };
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {string} id
+ */
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ */
+export async function getPropuestaDefaults(client) {
+  const { data, error } = await client
+    .from('propuesta_precios_default')
+    .select('adicionales')
+    .eq('id', 'default')
+    .maybeSingle();
+
+  if (error) {
+    if (missingAdicionalesColumn(error) || /propuesta_precios_default|schema cache|does not exist/i.test(error.message)) {
+      return {};
+    }
+    console.error('[propuestas] defaults:', error.message);
+    return {};
+  }
+  return readPropuestaAdicionales(data?.adicionales);
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {unknown} adicionales
+ */
+export async function savePropuestaDefaults(client, adicionales) {
+  const next = readPropuestaAdicionales(adicionales);
+  const { data, error } = await client
+    .from('propuesta_precios_default')
+    .upsert({ id: 'default', adicionales: next, updated_at: new Date().toISOString() })
+    .select('adicionales')
+    .single();
+
+  if (error || !data) {
+    console.error('[propuestas] save defaults:', error?.message);
+    if (/propuesta_precios_default|schema cache|does not exist/i.test(String(error?.message || ''))) {
+      return { error: 'Falta aplicar la tabla de precios predeterminados en Supabase.' };
+    }
+    return { error: 'No se pudo guardar el predeterminado.' };
+  }
+  return { data: readPropuestaAdicionales(data.adicionales) };
 }
 
 /**

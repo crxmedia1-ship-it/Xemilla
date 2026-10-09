@@ -12,7 +12,7 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
-import { listPropuestas, listPropuestaEventos } from '../../../lib/propuestas.js';
+import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, readPropuestaAdicionales } from '../../../lib/propuestas.js';
 import {
   resolveHubTarjeta,
   readUiHub,
@@ -100,10 +100,12 @@ const mesaPorId = new Map(
     .map((r, i) => [String(r.id), String(i + 1).padStart(2, '0')]),
 );
 const propuestasClient = getSuperAdminWriteClient(gate.supabase, gate.user);
-const [propuestas, propEventos] = await Promise.all([
+const [propuestas, propEventos, addonDefaults] = await Promise.all([
   listPropuestas(propuestasClient),
   listPropuestaEventos(propuestasClient),
+  getPropuestaDefaults(propuestasClient),
 ]);
+const usarPredeterminados = Object.keys(addonDefaults).length > 0;
 const requestedTab = Astro.url.searchParams.get('tab');
 const superTab =
   requestedTab === 'metricas' || requestedTab === 'propuestas' ? requestedTab : 'locales';
@@ -1570,18 +1572,74 @@ function resolveMapsEmbed(direccion) {
           </div>
           <div class="super-prop-price__amounts" data-prop-amounts>
             <label>
-              <span>Implementación (USD, pago único)</span>
-              <input name="setup" inputmode="decimal" maxlength="12" value="600" placeholder="600" />
+              <span>Implementación · pago único</span>
+              <span class="super-prop-money">
+                <input name="setup" type="number" min="0" step="1" inputmode="numeric" value="600" />
+                <em>USD</em>
+              </span>
             </label>
             <label>
-              <span>Licencia anual (USD)</span>
-              <input name="anual" inputmode="decimal" maxlength="12" value="200" placeholder="200" />
+              <span>Licencia anual</span>
+              <span class="super-prop-money">
+                <input name="anual" type="number" min="0" step="1" inputmode="numeric" value="200" />
+                <em>USD</em>
+              </span>
             </label>
           </div>
         </fieldset>
 
-        <div class="super-prop-form__wide super-prop-logo-field">
+        <fieldset class="super-prop-form__wide super-prop-price" data-addon-defaults={JSON.stringify(addonDefaults)}>
+          <legend>Solo para degustadores</legend>
+          <p class="super-prop-form__hint">No van en el plan. Predeterminados recuerda los precios; si regulas uno, ajústalo y guárdalo una vez.</p>
+          <div class="super-prop-price__modes" role="radiogroup" aria-label="Origen de los precios">
+            <label class="super-prop-price__mode">
+              <input type="radio" name="degustadores_modo" value="consultar" checked={!usarPredeterminados} data-addon-preset />
+              <span>A consultar</span>
+            </label>
+            <label class="super-prop-price__mode">
+              <input type="radio" name="degustadores_modo" value="default" checked={usarPredeterminados} data-addon-preset />
+              <span>Predeterminados</span>
+            </label>
+          </div>
+          <div class="super-prop-addon-list">
+            {PROPUESTA_ADICIONALES.map((item) => {
+              const amount = usarPredeterminados ? addonDefaults[item.id] || '' : '';
+              return (
+                <div class="super-prop-addon" data-addon-row>
+                  <p class="super-prop-addon__name">{item.label}</p>
+                  <div class="super-prop-addon__controls">
+                    <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
+                      <option value="" selected={!amount}>A consultar</option>
+                      <option value="precio" selected={Boolean(amount)}>Con precio</option>
+                    </select>
+                    <span class="super-prop-money" data-adicional-money hidden={!amount}>
+                      <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
+                      <em>USD</em>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div class="super-prop-default-bar">
+            <button type="button" data-addon-save-default>Guardar como predeterminado</button>
+            <p data-addon-default-status role="status">{usarPredeterminados ? 'Listo para reutilizar.' : ''}</p>
+          </div>
+        </fieldset>
+
+        <div class="super-prop-form__wide super-prop-logo-field" data-prop-logo-field>
           <span class="super-prop-logo-field__label">Logo</span>
+          <div class="super-prop-price__modes" role="radiogroup" aria-label="Logo de la propuesta">
+            <label class="super-prop-price__mode">
+              <input type="radio" name="logo_modo" value="con" checked data-prop-logo-mode />
+              <span>Con logo</span>
+            </label>
+            <label class="super-prop-price__mode">
+              <input type="radio" name="logo_modo" value="sin" data-prop-logo-mode />
+              <span>Sin logo</span>
+            </label>
+          </div>
+          <p class="super-prop-form__hint" data-prop-logo-hint hidden>En la propuesta se ve la inicial del nombre.</p>
           <label class="super-prop-drop" data-prop-drop>
             <span class="super-prop-logo__mark" data-prop-logo-mark aria-hidden="true">?</span>
             <span class="super-prop-drop__text">
@@ -1648,6 +1706,33 @@ function resolveMapsEmbed(direccion) {
                       <strong>{p.vistas}</strong>
                       <span>{p.vistas === 1 ? 'apertura' : 'aperturas'}</span>
                     </p>
+                    <details class="super-prop__addons">
+                      <summary>Precios de degustadores</summary>
+                      <form data-prop-addons={p.id}>
+                        <div class="super-prop-addon-list">
+                          {PROPUESTA_ADICIONALES.map((item) => {
+                            const amount = readPropuestaAdicionales(p.adicionales)[item.id] || '';
+                            return (
+                              <div class="super-prop-addon" data-addon-row>
+                                <p class="super-prop-addon__name">{item.label}</p>
+                                <div class="super-prop-addon__controls">
+                                  <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
+                                    <option value="" selected={!amount}>A consultar</option>
+                                    <option value="precio" selected={Boolean(amount)}>Con precio</option>
+                                  </select>
+                                  <span class="super-prop-money" data-adicional-money hidden={!amount}>
+                                    <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
+                                    <em>USD</em>
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button type="submit">Guardar en esta propuesta</button>
+                        <p data-addons-status role="status"></p>
+                      </form>
+                    </details>
                     <ul class="super-prop__seen">
                       {miradas.map(([label, count]) => (
                         <li data-seen={Number(count) > 0 ? 'yes' : 'no'}>

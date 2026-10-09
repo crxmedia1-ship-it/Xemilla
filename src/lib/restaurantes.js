@@ -28,6 +28,7 @@ import { createSupabaseServiceClient } from './supabase/service.js';
 import { normalizeAlergias } from '../config/nutricion.js';
 import { normalizeDestacadoTipo } from './destacado-tipo.js';
 import { normalizeConfigPedidos, normalizePlatoOpciones } from './pedidos.js';
+import { readFidelidadDiseno, readFidelidadReglas } from './fidelidad.js';
 
 /**
  * Formatea el precio NUMERIC de Postgres para la UI móvil.
@@ -813,6 +814,11 @@ async function loadRestauranteBySlug(slug, opts = {}) {
       nutricion: Boolean(row.gadget_nutricion),
       ar: Boolean(row.gadget_ar),
       pedidos: Boolean(row.gadget_pedidos),
+      fidelidad: Boolean(row.gadget_fidelidad),
+    },
+    fidelidad: {
+      ...readFidelidadReglas(row),
+      diseno: readFidelidadDiseno(row.fidelidad_diseno),
     },
     pedidos: normalizeConfigPedidos(row.config_pedidos),
     wifi: {

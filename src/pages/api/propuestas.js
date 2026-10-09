@@ -3,6 +3,7 @@ import {
   createPropuesta,
   deletePropuesta,
   isPropuestaId,
+  updatePropuestaAdicionales,
 } from '../../lib/propuestas.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
 import { getSuperAdminWriteClient } from '../../lib/superadmin.js';
@@ -11,7 +12,8 @@ export const prerender = false;
 
 /**
  * SuperAdmin: crea o borra un enlace de propuesta.
- * POST { nombre, logoUrl, setup, anual, sinPrecio, mundo }
+ * POST { nombre, logoUrl, setup, anual, sinPrecio, mundo, adicionales }
+ * PATCH { id, adicionales }
  * DELETE { id }
  */
 export async function POST({ request, cookies }) {
@@ -33,6 +35,7 @@ export async function POST({ request, cookies }) {
     anual: String(body.anual || ''),
     sinPrecio: body.sinPrecio === true,
     mundo: String(body.mundo || ''),
+    adicionales: body.adicionales,
   });
 
   if (result.error || !result.data) return json({ error: result.error || 'No se pudo crear' }, 400);
@@ -42,6 +45,23 @@ export async function POST({ request, cookies }) {
     id: result.data.id,
     href: `/propuesta?p=${result.data.id}`,
   });
+}
+
+export async function PATCH({ request, cookies }) {
+  const gate = await gateSuperAdmin({ request, cookies });
+  if (gate.error) return json({ error: gate.error }, gate.status);
+
+  /** @type {Record<string, unknown>} */
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido' }, 400);
+  }
+
+  const result = await updatePropuestaAdicionales(gate.client, String(body.id || ''), body.adicionales);
+  if (result.error || !result.data) return json({ error: result.error || 'No se pudo guardar' }, 400);
+  return json({ ok: true, adicionales: result.data.adicionales });
 }
 
 export async function DELETE({ request, cookies }) {

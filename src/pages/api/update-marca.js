@@ -12,6 +12,7 @@ import {
 import { buildBoutiqueConfig, parseBoutiqueConfig } from '../../lib/boutique.js';
 import { normalizeMapsStorage } from '../../lib/maps-preview.js';
 import { normalizeConfigPedidos } from '../../lib/pedidos.js';
+import { readFidelidadReglas } from '../../lib/fidelidad.js';
 import {
   homeLayoutToTheme,
   normalizeHomeTheme,
@@ -373,6 +374,23 @@ async function handleUpdateMarca({ request, cookies }) {
   if (raw.gadget_pedidos !== undefined) {
     patch.gadget_pedidos = toBool(raw.gadget_pedidos);
   }
+  if (raw.gadget_fidelidad !== undefined) {
+    patch.gadget_fidelidad = toBool(raw.gadget_fidelidad);
+  }
+  if (
+    raw.fidelidad_puntos !== undefined ||
+    raw.fidelidad_meta !== undefined ||
+    raw.fidelidad_premio !== undefined
+  ) {
+    const reglas = readFidelidadReglas({
+      fidelidad_puntos: raw.fidelidad_puntos,
+      fidelidad_meta: raw.fidelidad_meta,
+      fidelidad_premio: raw.fidelidad_premio,
+    });
+    if (raw.fidelidad_puntos !== undefined) patch.fidelidad_puntos = reglas.puntos;
+    if (raw.fidelidad_meta !== undefined) patch.fidelidad_meta = reglas.meta;
+    if (raw.fidelidad_premio !== undefined) patch.fidelidad_premio = reglas.premio;
+  }
   if (raw.config_pedidos !== undefined) {
     patch.config_pedidos = normalizeConfigPedidos(raw.config_pedidos);
   }
@@ -515,6 +533,10 @@ async function updateRestauranteMarca(client, restauranteId, patch) {
         'sucursales_cupo',
         'gadget_pedidos',
         'config_pedidos',
+        'gadget_fidelidad',
+        'fidelidad_puntos',
+        'fidelidad_meta',
+        'fidelidad_premio',
         'gadget_ar',
         'gadget_nutricion',
         'gadget_boutique',

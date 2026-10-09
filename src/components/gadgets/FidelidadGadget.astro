@@ -1,0 +1,259 @@
+---
+import FidelidadPass from './FidelidadPass.astro';
+
+interface Props {
+  slug: string;
+  nombre: string;
+  puntos: number;
+  meta: number;
+  premio: string;
+  titulo?: string;
+  fondo?: string;
+  tinta?: string;
+  acento?: string;
+  textColor?: string;
+  mutedColor?: string;
+}
+
+const {
+  slug,
+  nombre,
+  puntos,
+  meta,
+  premio,
+  titulo = '',
+  fondo = '#1c1917',
+  tinta = '#fafaf9',
+  acento = '#d6d3d1',
+  textColor = 'text-white',
+  mutedColor = 'text-zinc-400',
+} = Astro.props;
+---
+
+<section
+  class={`fidelidad-gadget px-4 py-4 md:px-5 md:py-6 ${textColor}`}
+  data-fidelidad
+  data-slug={slug}
+  data-puntos={puntos}
+  data-meta={meta}
+  data-premio={premio}
+>
+  <h2 class="text-xl font-semibold tracking-tight">{nombre}</h2>
+  <p class={`mt-1 text-sm ${mutedColor}`}>Cada visita suma {puntos}. Con {meta} canjeas {premio}.</p>
+
+  <form class="mt-5 grid gap-3" data-fidelidad-form>
+    <label class="grid gap-1 text-sm">
+      <span class={mutedColor}>Tu nombre</span>
+      <input name="nombre" autocomplete="name" maxlength="60" class="rounded-xl border border-current/20 bg-black/10 px-3 py-3 text-inherit outline-none" placeholder="Ana" />
+    </label>
+    <label class="grid gap-1 text-sm">
+      <span class={mutedColor}>Teléfono</span>
+      <input name="telefono" type="tel" inputmode="tel" autocomplete="tel" required class="rounded-xl border border-current/20 bg-black/10 px-3 py-3 text-inherit outline-none" placeholder="0414…" />
+    </label>
+    <button type="submit" class="rounded-full bg-white px-4 py-3 text-sm font-semibold text-zinc-950">Ver mi tarjeta</button>
+    <p class={`min-h-5 text-sm ${mutedColor}`} data-fidelidad-status role="status"></p>
+  </form>
+
+  <div class="mt-5 hidden" data-fidelidad-ready hidden>
+    <FidelidadPass
+      titulo={titulo || nombre}
+      nombre=""
+      puntos={0}
+      meta={meta}
+      premio={premio}
+      fondo={fondo}
+      tinta={tinta}
+      acento={acento}
+      falta=""
+    />
+    <div class="fid-caja" data-fidelidad-caja hidden>
+      <p>Muestra este código en caja</p>
+      <img alt="Código para sumar puntos" data-fidelidad-qr-grande />
+    </div>
+    <div class="mx-auto mt-4 grid w-full max-w-[24.5rem] gap-2">
+      <button type="button" class="rounded-full bg-white px-4 py-3 text-sm font-semibold text-zinc-950" data-fidelidad-mostrar>Mostrar en caja</button>
+      <button type="button" class="rounded-full border border-current/25 px-4 py-3 text-sm" data-fidelidad-wallet="apple">Guardar en Apple Wallet</button>
+      <button type="button" class="rounded-full border border-current/25 px-4 py-3 text-sm" data-fidelidad-wallet="google">Guardar en Google Wallet</button>
+    </div>
+    <p class={`mx-auto mt-2 max-w-[24.5rem] text-center text-sm ${mutedColor}`}>Wallet guarda esta tarjeta y avisa en el teléfono cuando sumes puntos o canjees.</p>
+    <p class={`mt-2 text-center text-sm ${mutedColor}`} data-fidelidad-wallet-status role="status"></p>
+    <button type="button" class={`mt-3 block w-full text-center text-sm underline ${mutedColor}`} data-fidelidad-otra>Usar otro teléfono</button>
+  </div>
+</section>
+
+<style>
+  .fid-caja {
+    display: grid;
+    justify-items: center;
+    gap: 0.6rem;
+    width: min(100%, 24.5rem);
+    margin: 1rem auto 0;
+    padding: 1rem;
+    border-radius: 1.25rem;
+    background: #fff;
+    color: #18181b;
+  }
+
+  .fid-caja p {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .fid-caja img {
+    width: min(100%, 14rem);
+    height: auto;
+    border-radius: 0.8rem;
+  }
+</style>
+
+<script>
+  const storageKey = (slug: string) => `xemilla-fidelidad:${slug}`;
+
+  function initFidelidad() {
+    document.querySelectorAll('[data-fidelidad]').forEach((root) => {
+      if (!(root instanceof HTMLElement) || root.dataset.bound === 'true') return;
+      root.dataset.bound = 'true';
+      const slug = root.dataset.slug || '';
+      const form = root.querySelector('[data-fidelidad-form]');
+      const card = root.querySelector('[data-fidelidad-ready]');
+      const status = root.querySelector('[data-fidelidad-status]');
+
+      const paint = (data: {
+        nombre?: string;
+        puntos?: number;
+        progreso?: number;
+        falta?: number;
+        visitas?: number;
+        premio?: string;
+        listo?: boolean;
+        codigo?: string;
+        qr?: string;
+        nivel?: { nombre?: string; desde?: number; fondo?: string; tinta?: string; acento?: string };
+      }) => {
+        if (form instanceof HTMLElement) form.hidden = true;
+        if (card instanceof HTMLElement) {
+          card.hidden = false;
+          card.classList.remove('hidden');
+        }
+        const nombre = root.querySelector('[data-fidelidad-nombre]');
+        const puntos = root.querySelector('[data-fidelidad-puntos]');
+        const falta = root.querySelector('[data-fidelidad-falta]');
+        const codigo = root.querySelector('[data-fidelidad-codigo]');
+        const bar = root.querySelector('[data-fidelidad-bar]');
+        const qr = root.querySelector('[data-fidelidad-qr]');
+        if (nombre) nombre.textContent = data.nombre || 'Tu tarjeta';
+        if (puntos) puntos.textContent = String(data.puntos ?? 0);
+        if (falta) {
+          const visitas = Number(data.visitas ?? 0);
+          falta.textContent = data.listo
+            ? 'Premio listo'
+            : `Faltan ${data.falta ?? 0}${visitas ? ` · ${visitas} visitas` : ''}`;
+        }
+        if (codigo instanceof HTMLElement) {
+          codigo.textContent = data.codigo || '';
+          codigo.hidden = !data.codigo;
+        }
+        if (bar instanceof HTMLElement) bar.style.width = `${data.progreso ?? 0}%`;
+        const pass = root.querySelector('[data-fidelidad-card]');
+        if (pass instanceof HTMLElement && data.nivel?.fondo) {
+          pass.style.setProperty('--fid-fondo', data.nivel.fondo);
+          pass.style.setProperty('--fid-tinta', data.nivel.tinta || '#fafaf9');
+          pass.style.setProperty('--fid-acento', data.nivel.acento || '#d6d3d1');
+          const badge = pass.querySelector('[data-fid-nivel]');
+          const mostrar = Number(data.nivel.desde) > 0;
+          if (badge instanceof HTMLElement) {
+            badge.textContent = mostrar ? data.nivel.nombre || '' : '';
+            badge.hidden = !mostrar;
+          }
+        }
+        if (qr instanceof HTMLImageElement && data.qr) qr.src = data.qr;
+        const grande = root.querySelector('[data-fidelidad-qr-grande]');
+        if (grande instanceof HTMLImageElement && data.qr) grande.src = data.qr;
+        if (data.codigo) localStorage.setItem(storageKey(slug), data.codigo);
+      };
+
+      const load = async (codigo: string) => {
+        if (status) status.textContent = 'Buscando tu tarjeta…';
+        const response = await fetch('/api/fidelidad', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'ver', slug, codigo }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          localStorage.removeItem(storageKey(slug));
+          if (status) status.textContent = payload.error || 'No se encontró la tarjeta.';
+          return;
+        }
+        if (status) status.textContent = '';
+        paint(payload.card || {});
+      };
+
+      form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!(form instanceof HTMLFormElement)) return;
+        const data = new FormData(form);
+        if (status) status.textContent = 'Abriendo tarjeta…';
+        const response = await fetch('/api/fidelidad', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'entrar',
+            slug,
+            nombre: String(data.get('nombre') || ''),
+            telefono: String(data.get('telefono') || ''),
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (status) status.textContent = payload.error || 'No se pudo abrir la tarjeta.';
+          return;
+        }
+        if (status) status.textContent = '';
+        paint(payload.card || {});
+      });
+
+      root.querySelector('[data-fidelidad-mostrar]')?.addEventListener('click', () => {
+        const caja = root.querySelector('[data-fidelidad-caja]');
+        if (!(caja instanceof HTMLElement)) return;
+        const open = caja.hidden;
+        caja.hidden = !open;
+        const button = root.querySelector('[data-fidelidad-mostrar]');
+        if (button) button.textContent = open ? 'Ocultar código' : 'Mostrar en caja';
+      });
+
+      root.querySelector('[data-fidelidad-otra]')?.addEventListener('click', () => {
+        localStorage.removeItem(storageKey(slug));
+        if (card instanceof HTMLElement) {
+          card.hidden = true;
+          card.classList.add('hidden');
+        }
+        if (form instanceof HTMLElement) form.hidden = false;
+      });
+
+      root.querySelectorAll('[data-fidelidad-wallet]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const note = root.querySelector('[data-fidelidad-wallet-status]');
+          const codigo = localStorage.getItem(storageKey(slug)) || '';
+          if (note) note.textContent = 'Revisando Wallet…';
+          const response = await fetch('/api/fidelidad-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, codigo }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (note) note.textContent = payload.message || payload.error || 'Wallet todavía no está activa.';
+        });
+      });
+
+      const saved = localStorage.getItem(storageKey(slug));
+      if (saved) void load(saved);
+    });
+  }
+
+  initFidelidad();
+  document.addEventListener('astro:page-load', initFidelidad);
+</script>

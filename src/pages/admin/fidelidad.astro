@@ -1,0 +1,15 @@
+---
+export const prerender = false;
+
+import { getAdminDashboardData } from '../../lib/admin.js';
+
+const token = Astro.url.searchParams.get('restaurante') || Astro.url.searchParams.get('slug') || '';
+const session = await getAdminDashboardData(
+  { request: Astro.request, cookies: Astro.cookies },
+  { restauranteId: token, slug: token },
+);
+if (!session?.restaurante) return Astro.redirect('/admin/login');
+
+const local = session.restaurante.slug || session.restaurante.id;
+return Astro.redirect(`/admin/dashboard?restaurante=${encodeURIComponent(local)}&tab=fidelidad`);
+---
