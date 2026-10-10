@@ -12,7 +12,8 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
-import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, readPropuestaAdicionales, readPropuestaFactura } from '../../../lib/propuestas.js';
+import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, PROPUESTA_QR_PIEZAS, readPropuestaAdicionales, readPropuestaFactura, readPropuestaPiezas, readPropuestaPiezasFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, propuestaTienePaquetes, readPropuestaIaMensual } from '../../../lib/propuestas.js';
+import { listRestauranteVentas, VENTA_PRODUCTOS, ventaProductoLabel, formatVentaMonto, resumenVentas } from '../../../lib/ventas.js';
 import {
   resolveHubTarjeta,
   readUiHub,
@@ -99,12 +100,55 @@ const mesaPorId = new Map(
     )
     .map((r, i) => [String(r.id), String(i + 1).padStart(2, '0')]),
 );
+const cartasDemo = restaurantes
+  .filter((r) => r.activo !== false && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(r.slug || '')) && String(r.slug) !== 'crx-prueba')
+  .map((r) => ({
+    slug: String(r.slug),
+    nombre: String(r.nombre_comercial || r.slug).trim() || String(r.slug),
+  }))
+  .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 const propuestasClient = getSuperAdminWriteClient(gate.supabase, gate.user);
-const [propuestas, propEventos, addonDefaults] = await Promise.all([
+const [propuestas, propEventos, addonDefaults, ventasRows] = await Promise.all([
   listPropuestas(propuestasClient),
   listPropuestaEventos(propuestasClient),
   getPropuestaDefaults(propuestasClient),
+  listRestauranteVentas(propuestasClient),
 ]);
+const ventasPorRestaurante = new Map();
+for (const venta of ventasRows) {
+  const id = String(venta.restaurante_id || '');
+  const list = ventasPorRestaurante.get(id) || [];
+  list.push(venta);
+  ventasPorRestaurante.set(id, list);
+}
+
+function arPaqueteRows(adicionales) {
+  const precios = readPropuestaPaquetes(adicionales);
+  const platos = readPropuestaPaquetesPlatos(adicionales);
+  const guardo =
+    adicionales && typeof adicionales === 'object' && Array.isArray(adicionales.paquetesFactura);
+  const en = new Set(readPropuestaPaquetesFactura(adicionales));
+  return readPropuestaPaquetesOrden(adicionales).map((id) => ({
+    id,
+    label: `Paquete ${id}`,
+    amount: precios[id] || '',
+    platos: platos[id] || '1',
+    on: guardo ? en.has(id) : Boolean(precios[id]),
+  }));
+}
+
+function qrPiezaRows(adicionales, tentSiNoHayLista) {
+  const precios = readPropuestaPiezas(adicionales);
+  const guardo =
+    adicionales && typeof adicionales === 'object' && Array.isArray(adicionales.piezasFactura);
+  const en = new Set(readPropuestaPiezasFactura(adicionales));
+  return PROPUESTA_QR_PIEZAS.map((piece) => ({
+    id: piece.id,
+    label: piece.label,
+    amount: precios[piece.id] || '',
+    on: guardo ? en.has(piece.id) : Boolean(precios[piece.id]) || (tentSiNoHayLista && piece.id === 'tent'),
+  }));
+}
 const requestedTab = Astro.url.searchParams.get('tab');
 const superTab =
   requestedTab === 'metricas' || requestedTab === 'propuestas' || requestedTab === 'accesos'
@@ -477,15 +521,6 @@ function resolveMapsEmbed(direccion) {
                   <span class="super-card-menu__hint">Página de venta</span>
                 </span>
               </a>
-              <a href="/black-sushi" target="_blank" rel="noopener noreferrer" class="super-card-menu__item" role="menuitem">
-                <span class="super-card-menu__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d="M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" /><path d="M8 8V6a4 4 0 0 1 8 0v2" /></svg>
-                </span>
-                <span class="super-card-menu__copy">
-                  <span class="super-card-menu__label">Carta demo</span>
-                  <span class="super-card-menu__hint">/black-sushi</span>
-                </span>
-              </a>
               <div class="super-card-menu__divider" aria-hidden="true"></div>
               <a href="/admin/login" target="_blank" rel="noopener noreferrer" class="super-card-menu__item" role="menuitem">
                 <span class="super-card-menu__icon" aria-hidden="true">
@@ -643,6 +678,11 @@ function resolveMapsEmbed(direccion) {
                 data-hub-activo={r.activo === false ? 'false' : 'true'}
               >
                 <div class="super-hub-card__face" data-tarjeta={tarjetaActual}>
+                  <a
+                    href={studioHref}
+                    class="super-hub-card__hit"
+                    aria-label={`Abrir el panel de ${nombre || r.slug}`}
+                  ></a>
                   <span class="super-hub-card__ticket" aria-hidden="true">Comanda · Mesa {mesaPorId.get(String(r.id))}</span>
                   <details class="absolute right-3 top-3 z-30" data-card-menu>
                     <summary
@@ -656,15 +696,6 @@ function resolveMapsEmbed(direccion) {
                       </svg>
                     </summary>
                     <div class="super-card-menu flex flex-col" data-card-menu-panel role="menu">
-                      <a href={studioHref} class="super-card-menu__item" role="menuitem">
-                        <span class="super-card-menu__icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
-                        </span>
-                        <span class="super-card-menu__copy">
-                          <span class="super-card-menu__label">Entrar al Studio</span>
-                          <span class="super-card-menu__hint">Abrir panel del local</span>
-                        </span>
-                      </a>
                       <button type="button" data-open-ficha class="super-card-menu__item" role="menuitem">
                         <span class="super-card-menu__icon" aria-hidden="true">
                           <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 16-4.5-4.5L9 19"/></svg>
@@ -681,6 +712,17 @@ function resolveMapsEmbed(direccion) {
                         <span class="super-card-menu__copy">
                           <span class="super-card-menu__label">Info del restaurante</span>
                           <span class="super-card-menu__hint">Contacto, ubicación y mapa</span>
+                        </span>
+                      </button>
+                      <button type="button" data-open-ventas class="super-card-menu__item" role="menuitem">
+                        <span class="super-card-menu__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.2L14 21l-2-1.2L10 21l-2-1.2L6 21z"/><path d="M9 8h6M9 12h6"/></svg>
+                        </span>
+                        <span class="super-card-menu__copy">
+                          <span class="super-card-menu__label">Se le vendió</span>
+                          <span class="super-card-menu__hint" data-ventas-hint>
+                            {resumenVentas(ventasPorRestaurante.get(String(r.id)) || []) || 'Todavía nada'}
+                          </span>
                         </span>
                       </button>
                       <button type="button" data-open-creds class="super-card-menu__item" role="menuitem">
@@ -751,7 +793,7 @@ function resolveMapsEmbed(direccion) {
                     </div>
                   </details>
 
-                  <a href={studioHref} class="super-hub-card__mark" aria-label={`Entrar al Studio de ${nombre || r.slug}`}>
+                  <span class="super-hub-card__mark" aria-hidden="true">
                     {esPrueba && !logoUrl ? (
                       <span class="super-hub-card__sticker" aria-hidden="true">Prueba</span>
                     ) : (
@@ -772,10 +814,10 @@ function resolveMapsEmbed(direccion) {
                         )}
                       </span>
                     )}
-                  </a>
+                  </span>
 
                   <div class="super-hub-card__meta">
-                    <a href={studioHref} class="super-hub-card__name">{nombre || r.slug}</a>
+                    <p class="super-hub-card__name">{nombre || r.slug}</p>
                     {r.slug ? <p class="super-hub-card__slug">/{r.slug}</p> : null}
                     <div class="super-hub-card__states" data-estado-host>
                       {r.activo === false ? (
@@ -811,6 +853,7 @@ function resolveMapsEmbed(direccion) {
                       El logo va impreso en la comanda.
                     </p>
                     <form class="space-y-3.5" data-ficha-form data-restaurante-id={r.id} data-slug={r.slug || ''} novalidate>
+                      <div class="hub-ficha-folder">
                       <div class="hub-ficha-stage" data-ficha-stage data-tarjeta={tarjetaActual}>
                         <span class="super-hub-card__ticket" aria-hidden="true">Comanda · Mesa {mesaPorId.get(String(r.id))}</span>
                         <div class="hub-ficha-stage__mark" data-ficha-logo-preview>
@@ -824,6 +867,8 @@ function resolveMapsEmbed(direccion) {
                             </span>
                           )}
                         </div>
+                      </div>
+                      <span class="hub-ficha-folder__flap" aria-hidden="true"></span>
                       </div>
                       <div class="hub-ficha-stage__bar">
                         <span>Logo</span>
@@ -913,6 +958,54 @@ function resolveMapsEmbed(direccion) {
                         </div>
                       ) : null}
                     </div>
+                  </div>
+                </div>
+
+                {/* Lo que ya pagó este restaurante */}
+                <div class="hub-modal" data-ventas-panel data-restaurante-host={r.id} hidden>
+                  <button type="button" class="hub-modal__backdrop" data-close-ventas aria-label="Cerrar"></button>
+                  <div class="hub-modal__dialog" role="dialog" aria-modal="true" aria-labelledby={`ventas-title-${r.id}`}>
+                    <div class="hub-modal__header">
+                      <p class="hub-modal__title" id={`ventas-title-${r.id}`}>Se le vendió</p>
+                      <button type="button" class="hub-modal__close" data-close-ventas aria-label="Cerrar">×</button>
+                    </div>
+                    <p class="hub-modal__hint">{nombre || r.slug}</p>
+                    <ul class="hub-ventas" data-ventas-list>
+                      {(ventasPorRestaurante.get(String(r.id)) || []).map((venta) => (
+                        <li data-venta-id={venta.id} data-monto={venta.monto} data-moneda={venta.moneda}>
+                          <span>{ventaProductoLabel(venta.producto)}</span>
+                          <b>{formatVentaMonto(venta.monto, venta.moneda)}</b>
+                          <button type="button" data-venta-remove aria-label={`Quitar ${ventaProductoLabel(venta.producto)}`}>Quitar</button>
+                        </li>
+                      ))}
+                    </ul>
+                    <p class="hub-ventas__empty" data-ventas-empty hidden={(ventasPorRestaurante.get(String(r.id)) || []).length > 0}>
+                      Todavía no hay nada cargado.
+                    </p>
+                    <form class="hub-venta-form" data-ventas-form data-restaurante-id={r.id}>
+                      <label>
+                        <span>Producto</span>
+                        <select name="producto" required>
+                          <option value="">Elegir producto</option>
+                          {VENTA_PRODUCTOS.map((item) => (
+                            <option value={item.id}>{item.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Monto</span>
+                        <input type="text" name="monto" inputmode="decimal" placeholder="0" required />
+                      </label>
+                      <label>
+                        <span>Moneda</span>
+                        <select name="moneda" required>
+                          <option value="usd">USD</option>
+                          <option value="bs">Bs</option>
+                        </select>
+                      </label>
+                      <button type="submit" class="super-card-sheet__submit">Añadir</button>
+                      <p class="hub-ventas__status" data-ventas-status role="status"></p>
+                    </form>
                   </div>
                 </div>
 
@@ -1493,14 +1586,456 @@ function resolveMapsEmbed(direccion) {
         </article>
       </section>
 
-      <!-- D) Propuestas comerciales -->
+    </div>
+
+    <div data-super-panel="propuestas" class="super-props" hidden={superTab !== 'propuestas'}>
+      <header class="super-props__head">
+        <div>
+          <p class="super-props__kicker">Enlace de venta</p>
+          <h2>Propuestas</h2>
+        </div>
+        <div class="super-props__switch" role="tablist" aria-label="Vistas de propuestas" data-on="armar">
+          <span class="super-props__switch-thumb" aria-hidden="true"></span>
+          <button type="button" role="tab" data-prop-view="armar" aria-selected="true">Armar</button>
+          <button type="button" role="tab" data-prop-view="historial" aria-selected="false">Historial</button>
+          <button type="button" role="tab" data-prop-view="metricas" aria-selected="false">Métricas</button>
+        </div>
+      </header>
+
+      <div data-prop-pane="armar">
+      <form id="propuesta-form" class="super-prop-form" novalidate>
+        <div class="super-prop-form__top">
+        <label>
+          <span>Restaurante</span>
+          <input name="nombre" type="text" maxlength="80" required placeholder="Nombre" autocomplete="off" data-prop-nombre />
+        </label>
+
+        <fieldset class="super-prop-price">
+          <legend>Precio</legend>
+          <div class="super-prop-price__modes" role="radiogroup" aria-label="Precio">
+            <label class="super-prop-price__mode">
+              <input type="radio" name="precio_modo" value="con" checked data-prop-price-mode />
+              <span>Con precio</span>
+            </label>
+            <label class="super-prop-price__mode">
+              <input type="radio" name="precio_modo" value="consultar" data-prop-price-mode />
+              <span>Sin precio</span>
+            </label>
+          </div>
+          <div class="super-prop-price__amounts" data-prop-amounts>
+            <fieldset class="super-prop-fx">
+              <legend>Tasas</legend>
+              <div class="super-prop-fx__modes" role="group" aria-label="Ver el monto en bolívares o euros">
+                <button type="button" data-prop-fx-view="bs" aria-pressed="false">
+                  <span>BCV</span>
+                  <b data-prop-fx-rate="bs">…</b>
+                </button>
+                <button type="button" data-prop-fx-view="eur" aria-pressed="false">
+                  <span>Euro</span>
+                  <b data-prop-fx-rate="eur">…</b>
+                </button>
+              </div>
+            </fieldset>
+            <div class="super-prop-wheel">
+              <p class="super-prop-wheel__label">Pago único</p>
+              <div class="super-prop-wheel__frame">
+                <span class="super-prop-wheel__lens" aria-hidden="true"></span>
+                <div
+                  class="super-prop-wheel__drum"
+                  data-wheel
+                  role="spinbutton"
+                  tabindex="0"
+                  aria-label="Pago único"
+                  aria-valuemin="0"
+                  aria-valuemax="5000"
+                  aria-valuenow="600"
+                >
+                  <div class="super-prop-wheel__track" data-wheel-track></div>
+                </div>
+              </div>
+              <p class="super-prop-wheel__unit">$</p>
+              <p class="super-prop-wheel__fx" data-prop-fx-preview="setup" hidden></p>
+              <input type="hidden" name="setup" value="600" data-wheel-input />
+            </div>
+            <div class="super-prop-wheel">
+              <p class="super-prop-wheel__label">Licencia anual</p>
+              <div class="super-prop-wheel__frame">
+                <span class="super-prop-wheel__lens" aria-hidden="true"></span>
+                <div
+                  class="super-prop-wheel__drum"
+                  data-wheel
+                  role="spinbutton"
+                  tabindex="0"
+                  aria-label="Licencia anual"
+                  aria-valuemin="0"
+                  aria-valuemax="5000"
+                  aria-valuenow="200"
+                >
+                  <div class="super-prop-wheel__track" data-wheel-track></div>
+                </div>
+              </div>
+              <p class="super-prop-wheel__unit">$</p>
+              <p class="super-prop-wheel__fx" data-prop-fx-preview="anual" hidden></p>
+              <input type="hidden" name="anual" value="200" data-wheel-input />
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="super-prop-logo-field" data-prop-logo-field data-prop-note="Sin logo, la propuesta muestra el nombre del restaurante.">
+          <span class="super-prop-logo-field__label">Logo</span>
+          <div class="super-prop-price__modes" role="radiogroup" aria-label="Logo de la propuesta">
+            <label class="super-prop-price__mode">
+              <input type="radio" name="logo_modo" value="con" checked data-prop-logo-mode />
+              <span>Con logo</span>
+            </label>
+            <label class="super-prop-price__mode">
+              <input type="radio" name="logo_modo" value="sin" data-prop-logo-mode />
+              <span>Sin logo</span>
+            </label>
+          </div>
+          <label class="super-prop-drop" data-prop-drop>
+            <span class="super-prop-logo__mark" data-prop-logo-mark aria-hidden="true"></span>
+            <span class="super-prop-drop__text">
+              <strong data-prop-drop-title>Añadir foto</strong>
+              <em data-prop-drop-sub>Tócala o arrástrala aquí</em>
+            </span>
+            <input
+              type="file"
+              accept="image/svg+xml,.svg,image/png,image/jpeg,image/webp,image/gif,image/avif,image/heic,image/heif"
+              class="sr-only"
+              data-prop-logo-file
+            />
+          </label>
+          <button type="button" class="super-prop-logo__pick" data-prop-logo-clear hidden>Quitar</button>
+          <input type="hidden" name="logo" data-prop-logo />
+        </div>
+        </div>
+
+        <label class="super-prop-demo">
+          <span>Demo restaurante</span>
+          <select name="carta_demo" data-prop-carta>
+            <option value="">Elegir una PWA</option>
+            {cartasDemo.map((carta) => (
+              <option value={carta.slug}>{carta.nombre}</option>
+            ))}
+          </select>
+        </label>
+
+        <fieldset class="super-prop-form__wide super-prop-price">
+          <div class="super-prop-addon-list">
+            {PROPUESTA_ADICIONALES.map((item) => {
+              const amount = addonDefaults[item.id] || '';
+              const iaMensual = item.id === 'ia' ? readPropuestaIaMensual(addonDefaults) : '';
+              const iaConPrecios = item.id === 'ia' && (Boolean(amount) || Boolean(iaMensual));
+              const arConPaquetes = item.id === 'ar' && (Boolean(amount) || propuestaTienePaquetes(addonDefaults));
+              const qrConPiezas = item.id === 'qr' && (Boolean(amount) || Object.keys(readPropuestaPiezas(addonDefaults)).length > 0);
+              return (
+                <div class="super-prop-addon" data-addon-row data-addon-packages={item.id === 'ar' ? '' : undefined} data-packs-on={arConPaquetes ? '' : undefined} data-addon-pieces={item.id === 'qr' ? '' : undefined} data-detail-on={qrConPiezas ? '' : undefined} data-addon-ia={item.id === 'ia' ? '' : undefined} data-ia-on={iaConPrecios ? '' : undefined}>
+                  <p class="super-prop-addon__name">{item.label}</p>
+                  <div class="super-prop-addon__controls">
+                    {item.id === 'ia' ? null : (
+                      <label class="super-prop-factura">
+                        <input type="checkbox" data-adicional-factura={item.id} checked={Boolean(amount)} />
+                        <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                        <span>Factura</span>
+                      </label>
+                    )}
+                    <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
+                      <option value="" selected={!arConPaquetes && !qrConPiezas && !iaConPrecios && !amount}>A consultar</option>
+                      <option value="precio" selected={arConPaquetes || qrConPiezas || iaConPrecios || Boolean(amount)}>Con precio</option>
+                    </select>
+                    <span class="super-prop-money" data-adicional-money hidden={!amount}>
+                      <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
+                      <em>$</em>
+                    </span>
+                  </div>
+                  {item.id === 'ar' ? (
+                    <div class="super-prop-pieces super-prop-packages" data-prop-packs>
+                      {arPaqueteRows(addonDefaults).map((pack, index) => (
+                        <div class:list={['super-prop-addon', 'super-prop-addon--piece', index === 0 && 'is-on']} data-addon-row data-prop-pack>
+                          <p class="super-prop-addon__name" data-prop-pack-name>{pack.label}</p>
+                          <div class="super-prop-pack-qty">
+                            <span>Platos</span>
+                            <button type="button" data-prop-pack-qty-step="-1" aria-label="Menos platos">−</button>
+                            <input type="number" data-paquete-platos={pack.id} min="1" max="40" step="1" inputmode="numeric" value={pack.platos} aria-label={`Platos de ${pack.label}`} />
+                            <button type="button" data-prop-pack-qty-step="1" aria-label="Más platos">+</button>
+                          </div>
+                          <div class="super-prop-addon__controls">
+                            <label class="super-prop-factura">
+                              <input type="checkbox" data-adicional-factura={pack.id} checked={pack.on} />
+                              <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                              <span>Factura</span>
+                            </label>
+                            <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${pack.label}`}>
+                              <option value="precio" selected>Con precio</option>
+                            </select>
+                            <span class="super-prop-money" data-adicional-money>
+                              <span>Precio</span>
+                              <input type="number" data-paquete={pack.id} min="0" step="1" inputmode="numeric" placeholder="0" value={pack.amount} />
+                              <em>$</em>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" class="super-prop-pack-add" data-prop-pack-add>Añadir otro</button>
+                    </div>
+                  ) : null}
+                  {item.id === 'qr' ? (
+                    <div class="super-prop-pieces">
+                      {qrPiezaRows(addonDefaults, false).map((piece) => (
+                        <div class="super-prop-addon super-prop-addon--piece" data-addon-row data-piece-row>
+                          <p class="super-prop-addon__name">{piece.label}</p>
+                          <div class="super-prop-addon__controls">
+                            <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${piece.label}`}>
+                              <option value="precio" selected>Con precio</option>
+                            </select>
+                            <span class="super-prop-money" data-adicional-money>
+                              <input type="number" data-pieza={piece.id} min="0" step="1" inputmode="numeric" placeholder="A consultar" value={piece.amount} />
+                            </span>
+                            <label class="super-prop-factura" title="Si lo marcas, entra en la factura. Si no, lo ven y lo añaden.">
+                              <input type="checkbox" data-adicional-factura={piece.id} checked={piece.on} aria-label={`Incluir ${piece.label} en la factura`} />
+                              <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                              <span>Factura</span>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                      <p class="super-prop-pieces__hint">Márcalo para que entre en la factura. Si no, lo ven y lo añaden ellos.</p>
+                    </div>
+                  ) : null}
+                  {item.id === 'ia' ? (
+                    <div class="super-prop-ia">
+                      <label class="super-prop-ia__row">
+                        <span>Instalación</span>
+                        <span class="super-prop-money">
+                          <input type="number" data-ia-instalacion min="0" step="1" inputmode="numeric" placeholder="0" value={amount} aria-label="Precio de instalación de Klientiq" />
+                          <em>$</em>
+                        </span>
+                      </label>
+                      <label class="super-prop-ia__row">
+                        <span>Mensual</span>
+                        <span class="super-prop-money">
+                          <input type="number" data-ia-mensual min="0" step="1" inputmode="numeric" placeholder="0" value={iaMensual} aria-label="Mantenimiento mensual de Klientiq" />
+                          <em>$</em>
+                        </span>
+                      </label>
+                      <label class="super-prop-factura" title="Si lo marcas, entra en la factura. Si no, lo ven y lo añaden.">
+                        <input type="checkbox" data-adicional-factura="ia" checked={iaConPrecios} aria-label="Incluir Klientiq en la factura" />
+                        <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                        <span>Factura</span>
+                      </label>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <input type="hidden" name="mundo" value="estudio" />
+        <div class="super-prop-form__actions" data-prop-actions hidden>
+          <div class="prop-slide" data-prop-slide>
+            <span class="prop-slide__sheen" aria-hidden="true"></span>
+            <span class="prop-slide__label">Crear propuesta</span>
+            <button type="button" class="prop-slide__knob" data-prop-slide-knob aria-label="Desliza para crear la propuesta">
+              <svg class="prop-slide__glyph prop-slide__glyph--go" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4.5 4.25 8 8l-3.5 3.75M8.5 4.25 12 8l-3.5 3.75" />
+              </svg>
+              <svg class="prop-slide__glyph prop-slide__glyph--ok" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+              </svg>
+            </button>
+          </div>
+          <p class="super-prop-form__status" data-prop-status role="status"></p>
+        </div>
+      </form>
+
+      <div class="super-prop-result" data-prop-result hidden>
+        <p>Enlace listo</p>
+        <a data-prop-result-link href="/propuesta" target="_blank" rel="noopener noreferrer">Entrar</a>
+        <button type="button" data-prop-copy>Copiar</button>
+      </div>
+      </div>
+      <div data-prop-pane="historial" hidden>
+      {
+        propuestas.length === 0 ? (
+          <p class="super-props__empty" data-prop-empty>Todavía no hay propuestas.</p>
+        ) : (
+          <ul class="super-props__list">
+            {propuestas.map((p) => {
+              const href = `/propuesta?p=${p.id}`;
+              const cuando = formatPropuestaCuando(p.ultima_vista);
+              const precio = p.sin_precio ? 'A consultar' : `$${p.setup} + $${p.anual ?? '200'}/año`;
+              const miradas = [
+                ['AR', p.vio_ar],
+                ['Ficha', p.vio_nutri],
+                ['QRs', p.vio_qr],
+                ['Klientiq', p.vio_ia],
+                ['WhatsApp', p.vio_whatsapp],
+              ];
+              return (
+                <li>
+                  <article class="super-prop" data-propuesta-card={p.id}>
+                    <div class="super-prop__id">
+                      {p.logo_url ? (
+                        <img src={p.logo_url} alt="" class="super-prop__logo" />
+                      ) : (
+                        <span class="super-prop__logo super-prop__logo--letter">{String(p.nombre || '?').charAt(0).toUpperCase()}</span>
+                      )}
+                      <div class="min-w-0">
+                        <h3>{p.nombre}</h3>
+                        <p>{cuando} · {precio}</p>
+                      </div>
+                    </div>
+                    <p class="super-prop__views">
+                      <strong>{p.vistas}</strong>
+                      <span>{p.vistas === 1 ? 'apertura' : 'aperturas'}</span>
+                    </p>
+                    <details class="super-prop__addons">
+                      <summary>Precios de degustadores</summary>
+                      <form data-prop-addons={p.id}>
+                        <div class="super-prop-addon-list">
+                          {PROPUESTA_ADICIONALES.map((item) => {
+                            const amount = readPropuestaAdicionales(p.adicionales)[item.id] || '';
+                            const iaMensual = item.id === 'ia' ? readPropuestaIaMensual(p.adicionales) : '';
+                            const iaConPrecios = item.id === 'ia' && (Boolean(amount) || Boolean(iaMensual));
+                            const enFactura = readPropuestaFactura(p.adicionales).includes(item.id);
+                            const arConPaquetes = item.id === 'ar' && (Boolean(amount) || propuestaTienePaquetes(p.adicionales));
+                            const qrConPiezas = item.id === 'qr' && (Boolean(amount) || Object.keys(readPropuestaPiezas(p.adicionales)).length > 0);
+                            return (
+                              <div class="super-prop-addon" data-addon-row data-addon-packages={item.id === 'ar' ? '' : undefined} data-packs-on={arConPaquetes ? '' : undefined} data-addon-pieces={item.id === 'qr' ? '' : undefined} data-detail-on={qrConPiezas ? '' : undefined} data-addon-ia={item.id === 'ia' ? '' : undefined} data-ia-on={iaConPrecios ? '' : undefined}>
+                                <p class="super-prop-addon__name">{item.label}</p>
+                                <div class="super-prop-addon__controls">
+                                  {item.id === 'ia' ? null : (
+                                    <label class="super-prop-factura">
+                                      <input type="checkbox" data-adicional-factura={item.id} checked={enFactura} />
+                                      <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                                      <span>Factura</span>
+                                    </label>
+                                  )}
+                                  <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
+                                    <option value="" selected={!arConPaquetes && !qrConPiezas && !iaConPrecios && !amount}>A consultar</option>
+                                    <option value="precio" selected={arConPaquetes || qrConPiezas || iaConPrecios || Boolean(amount)}>Con precio</option>
+                                  </select>
+                                  <span class="super-prop-money" data-adicional-money hidden={!amount}>
+                                    <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
+                                    <em>$</em>
+                                  </span>
+                                </div>
+                              {item.id === 'ar' ? (
+                                <div class="super-prop-pieces super-prop-packages" data-prop-packs>
+                                  {arPaqueteRows(p.adicionales).map((pack, index) => (
+                                    <div class:list={['super-prop-addon', 'super-prop-addon--piece', index === 0 && 'is-on']} data-addon-row data-prop-pack>
+                                      <p class="super-prop-addon__name" data-prop-pack-name>{pack.label}</p>
+                                      <div class="super-prop-pack-qty">
+                                        <span>Platos</span>
+                                        <button type="button" data-prop-pack-qty-step="-1" aria-label="Menos platos">−</button>
+                                        <input type="number" data-paquete-platos={pack.id} min="1" max="40" step="1" inputmode="numeric" value={pack.platos} aria-label={`Platos de ${pack.label}`} />
+                                        <button type="button" data-prop-pack-qty-step="1" aria-label="Más platos">+</button>
+                                      </div>
+                                      <div class="super-prop-addon__controls">
+                                        <label class="super-prop-factura">
+                                          <input type="checkbox" data-adicional-factura={pack.id} checked={pack.on} />
+                                          <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                                          <span>Factura</span>
+                                        </label>
+                                        <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${pack.label}`}>
+                                          <option value="precio" selected>Con precio</option>
+                                        </select>
+                                        <span class="super-prop-money" data-adicional-money>
+                                          <span>Precio</span>
+                                          <input type="number" data-paquete={pack.id} min="0" step="1" inputmode="numeric" placeholder="0" value={pack.amount} />
+                                          <em>$</em>
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <button type="button" class="super-prop-pack-add" data-prop-pack-add>Añadir otro</button>
+                                </div>
+                              ) : null}
+                              {item.id === 'qr' ? (
+                                <div class="super-prop-pieces">
+                                  {qrPiezaRows(p.adicionales, enFactura).map((piece) => (
+                                    <div class="super-prop-addon super-prop-addon--piece" data-addon-row data-piece-row>
+                                      <p class="super-prop-addon__name">{piece.label}</p>
+                                      <div class="super-prop-addon__controls">
+                                        <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${piece.label}`}>
+                                          <option value="precio" selected>Con precio</option>
+                                        </select>
+                                        <span class="super-prop-money" data-adicional-money>
+                                          <input type="number" data-pieza={piece.id} min="0" step="1" inputmode="numeric" placeholder="A consultar" value={piece.amount} />
+                                        </span>
+                                        <label class="super-prop-factura" title="Si lo marcas, entra en la factura. Si no, lo ven y lo añaden.">
+                                          <input type="checkbox" data-adicional-factura={piece.id} checked={piece.on} aria-label={`Incluir ${piece.label} en la factura`} />
+                                          <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                                          <span>Factura</span>
+                                        </label>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <p class="super-prop-pieces__hint">Márcalo para que entre en la factura. Si no, lo ven y lo añaden ellos.</p>
+                                </div>
+                              ) : null}
+                              {item.id === 'ia' ? (
+                                <div class="super-prop-ia">
+                                  <label class="super-prop-ia__row">
+                                    <span>Instalación</span>
+                                    <span class="super-prop-money">
+                                      <input type="number" data-ia-instalacion min="0" step="1" inputmode="numeric" placeholder="0" value={amount} aria-label="Precio de instalación de Klientiq" />
+                                      <em>$</em>
+                                    </span>
+                                  </label>
+                                  <label class="super-prop-ia__row">
+                                    <span>Mensual</span>
+                                    <span class="super-prop-money">
+                                      <input type="number" data-ia-mensual min="0" step="1" inputmode="numeric" placeholder="0" value={iaMensual} aria-label="Mantenimiento mensual de Klientiq" />
+                                      <em>$</em>
+                                    </span>
+                                  </label>
+                                  <label class="super-prop-factura" title="Si lo marcas, entra en la factura. Si no, lo ven y lo añaden.">
+                                    <input type="checkbox" data-adicional-factura="ia" checked={enFactura} aria-label="Incluir Klientiq en la factura" />
+                                    <span class="super-prop-factura__ui" aria-hidden="true"></span>
+                                    <span>Factura</span>
+                                  </label>
+                                </div>
+                              ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button type="submit">Guardar en esta propuesta</button>
+                        <p data-addons-status role="status"></p>
+                      </form>
+                    </details>
+                    <ul class="super-prop__seen">
+                      {miradas.map(([label, count]) => (
+                        <li data-seen={Number(count) > 0 ? 'yes' : 'no'}>
+                          <span>{label}</span>
+                          <strong>{count}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <div class="super-prop__links">
+                      <a href={href} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      <button type="button" data-prop-copy={href}>Copiar enlace</button>
+                      <button type="button" data-prop-delete={p.id}>Borrar</button>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      }
+      </div>
+      <div data-prop-pane="metricas" hidden>
       <section class="super-propm" aria-label="Métricas de propuestas">
         <header class="super-propm__head">
           <div class="min-w-0">
             <h3>Propuestas comerciales</h3>
             <p>Todas las que enviaste y qué hizo cada restaurante con el enlace</p>
           </div>
-          <a href="?tab=propuestas" class="super-propm__cta">+ Nueva propuesta</a>
+          <button type="button" class="super-propm__cta" data-prop-view-go="armar">+ Nueva propuesta</button>
         </header>
 
         <div class="super-propm__top">
@@ -1569,286 +2104,8 @@ function resolveMapsEmbed(direccion) {
             )}
           </article>
         </div>
-
-        <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card super-propm__card--flush">
-          <header class="super-propm__card-head">
-            <span>Todas las propuestas enviadas</span>
-            <small>{formatKpi(propStats.total)} en total</small>
-          </header>
-          {propuestas.length === 0 ? (
-            <p class="super-propm__empty">
-              Todavía no enviaste ninguna. Crea la primera en
-              <a href="?tab=propuestas">Propuestas</a> y quedará guardada aquí.
-            </p>
-          ) : (
-            <table class="super-propm__table">
-              <thead>
-                <tr>
-                  <th>Restaurante</th>
-                  <th>Enviada</th>
-                  <th>Aperturas</th>
-                  <th>Última apertura</th>
-                  <th>Miró</th>
-                  <th>Estado</th>
-                  <th><span class="sr-only">Abrir</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {propuestas.map((p) => {
-                  const estado = propuestaEstado(p);
-                  const miro = [
-                    ['AR', p.vio_ar],
-                    ['Ficha', p.vio_nutri],
-                    ['QR', p.vio_qr],
-                    ['IA', p.vio_ia],
-                    ['WA', p.vio_whatsapp],
-                  ];
-                  return (
-                    <tr>
-                      <td data-col="rest">
-                        <div class="super-propm__rest">
-                          {p.logo_url ? (
-                            <img src={p.logo_url} alt="" loading="lazy" decoding="async" />
-                          ) : (
-                            <span>{initialsFromName(p.nombre)}</span>
-                          )}
-                          <strong>{p.nombre}</strong>
-                        </div>
-                      </td>
-                      <td data-label="Enviada">{formatFechaCorta(p.created_at)}</td>
-                      <td data-label="Aperturas" class="super-propm__mono">{formatKpi(p.vistas)}</td>
-                      <td data-label="Última apertura">{p.ultima_vista ? formatHace(p.ultima_vista) : '—'}</td>
-                      <td data-label="Miró">
-                        <ul class="super-propm__chips">
-                          {miro.map(([label, n]) => (
-                            <li data-on={Number(n) > 0 ? '' : undefined} title={`${n} ${label}`}>{label}</li>
-                          ))}
-                        </ul>
-                      </td>
-                      <td data-label="Estado">
-                        <span class="super-propm__estado" data-tone={estado.tone}>{estado.label}</span>
-                      </td>
-                      <td data-col="open">
-                        <a href={`/propuesta?p=${p.id}`} target="_blank" rel="noopener noreferrer">Abrir ↗</a>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </article>
       </section>
-    </div>
-
-    <div data-super-panel="propuestas" class="super-props" hidden={superTab !== 'propuestas'}>
-      <header class="super-props__head">
-        <div>
-          <p class="super-props__kicker">Enlace de venta</p>
-          <h2>Propuestas</h2>
-          <p>Crea un enlace de venta con el nombre y el logo del restaurante. Las aperturas y lo que miró cada uno están en <a href="?tab=metricas" class="underline underline-offset-2">Métricas</a>.</p>
-        </div>
-      </header>
-
-      <form id="propuesta-form" class="super-prop-form" novalidate>
-        <label class="super-prop-form__wide">
-          <span>Restaurante</span>
-          <input name="nombre" type="text" maxlength="80" required placeholder="Black Sushi" autocomplete="off" data-prop-nombre />
-          <small class="super-prop-form__hint" data-prop-domain-hint>El dominio de la propuesta se arma con el nombre.</small>
-        </label>
-
-        <fieldset class="super-prop-form__wide super-prop-price">
-          <legend>Precio</legend>
-          <div class="super-prop-price__modes" role="radiogroup" aria-label="Precio">
-            <label class="super-prop-price__mode">
-              <input type="radio" name="precio_modo" value="con" checked data-prop-price-mode />
-              <span>Con precio</span>
-            </label>
-            <label class="super-prop-price__mode">
-              <input type="radio" name="precio_modo" value="consultar" data-prop-price-mode />
-              <span>Sin precio · «A consultar»</span>
-            </label>
-          </div>
-          <div class="super-prop-price__amounts" data-prop-amounts>
-            <label>
-              <span>Implementación · pago único</span>
-              <span class="super-prop-money">
-                <input name="setup" type="number" min="0" step="1" inputmode="numeric" value="600" />
-                <em>USD</em>
-              </span>
-            </label>
-            <label>
-              <span>Licencia anual</span>
-              <span class="super-prop-money">
-                <input name="anual" type="number" min="0" step="1" inputmode="numeric" value="200" />
-                <em>USD</em>
-              </span>
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset class="super-prop-form__wide super-prop-price" data-addon-defaults={JSON.stringify(addonDefaults)}>
-          <div class="super-prop-addon-list">
-            {PROPUESTA_ADICIONALES.map((item) => {
-              const amount = addonDefaults[item.id] || '';
-              return (
-                <div class="super-prop-addon" data-addon-row>
-                  <p class="super-prop-addon__name">{item.label}</p>
-                  <div class="super-prop-addon__controls">
-                    <label class="super-prop-factura">
-                      <input type="checkbox" data-adicional-factura={item.id} checked={Boolean(amount)} />
-                      <span>En la factura</span>
-                    </label>
-                    <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
-                      <option value="" selected={!amount}>A consultar</option>
-                      <option value="precio" selected={Boolean(amount)}>Con precio</option>
-                    </select>
-                    <span class="super-prop-money" data-adicional-money hidden={!amount}>
-                      <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
-                      <em>USD</em>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div class="super-prop-default-bar">
-            <button type="button" data-addon-save-default>Guardar como predeterminado</button>
-            <p data-addon-default-status role="status"></p>
-          </div>
-        </fieldset>
-
-        <div class="super-prop-form__wide super-prop-logo-field" data-prop-logo-field>
-          <span class="super-prop-logo-field__label">Logo</span>
-          <div class="super-prop-price__modes" role="radiogroup" aria-label="Logo de la propuesta">
-            <label class="super-prop-price__mode">
-              <input type="radio" name="logo_modo" value="con" checked data-prop-logo-mode />
-              <span>Con logo</span>
-            </label>
-            <label class="super-prop-price__mode">
-              <input type="radio" name="logo_modo" value="sin" data-prop-logo-mode />
-              <span>Sin logo</span>
-            </label>
-          </div>
-          <p class="super-prop-form__hint" data-prop-logo-hint hidden>En la propuesta se ve la inicial del nombre.</p>
-          <label class="super-prop-drop" data-prop-drop>
-            <span class="super-prop-logo__mark" data-prop-logo-mark aria-hidden="true">?</span>
-            <span class="super-prop-drop__text">
-              <strong data-prop-drop-title>Elegir archivo</strong>
-              <em data-prop-drop-sub>o arrástralo aquí · SVG, PNG, JPG, WEBP o HEIC</em>
-            </span>
-            <input
-              type="file"
-              accept="image/svg+xml,.svg,image/png,image/jpeg,image/webp,image/gif,image/avif,image/heic,image/heif"
-              class="sr-only"
-              data-prop-logo-file
-            />
-          </label>
-          <button type="button" class="super-prop-logo__pick" data-prop-logo-clear hidden>Quitar</button>
-          <input type="hidden" name="logo" data-prop-logo />
-        </div>
-        <input type="hidden" name="mundo" value="estudio" />
-        <div class="super-prop-form__actions">
-          <button type="submit" class="super-until-hero__cta" data-prop-submit>
-            <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
-            Crear enlace
-          </button>
-          <p class="super-prop-form__status" data-prop-status role="status"></p>
-        </div>
-      </form>
-
-      <div class="super-prop-result" data-prop-result hidden>
-        <p>Enlace listo</p>
-        <a data-prop-result-link href="/propuesta" target="_blank" rel="noopener noreferrer"></a>
-        <button type="button" data-prop-copy>Copiar</button>
       </div>
-
-      {
-        propuestas.length === 0 ? (
-          <p class="super-props__empty" data-prop-empty>Todavía no hay propuestas.</p>
-        ) : (
-          <ul class="super-props__list">
-            {propuestas.map((p) => {
-              const href = `/propuesta?p=${p.id}`;
-              const cuando = formatPropuestaCuando(p.ultima_vista);
-              const precio = p.sin_precio ? 'A consultar' : `${p.setup} + ${p.anual ?? '200'}/año USD`;
-              const miradas = [
-                ['AR', p.vio_ar],
-                ['Ficha', p.vio_nutri],
-                ['QRs', p.vio_qr],
-                ['Klientiq', p.vio_ia],
-                ['WhatsApp', p.vio_whatsapp],
-              ];
-              return (
-                <li>
-                  <article class="super-prop" data-propuesta-card={p.id}>
-                    <div class="super-prop__id">
-                      {p.logo_url ? (
-                        <img src={p.logo_url} alt="" class="super-prop__logo" />
-                      ) : (
-                        <span class="super-prop__logo super-prop__logo--letter">{String(p.nombre || '?').charAt(0).toUpperCase()}</span>
-                      )}
-                      <div class="min-w-0">
-                        <h3>{p.nombre}</h3>
-                        <p>{cuando} · {precio}</p>
-                      </div>
-                    </div>
-                    <p class="super-prop__views">
-                      <strong>{p.vistas}</strong>
-                      <span>{p.vistas === 1 ? 'apertura' : 'aperturas'}</span>
-                    </p>
-                    <details class="super-prop__addons">
-                      <summary>Precios de degustadores</summary>
-                      <form data-prop-addons={p.id}>
-                        <div class="super-prop-addon-list">
-                          {PROPUESTA_ADICIONALES.map((item) => {
-                            const amount = readPropuestaAdicionales(p.adicionales)[item.id] || '';
-                            const enFactura = readPropuestaFactura(p.adicionales).includes(item.id);
-                            return (
-                              <div class="super-prop-addon" data-addon-row>
-                                <p class="super-prop-addon__name">{item.label}</p>
-                                <div class="super-prop-addon__controls">
-                                  <label class="super-prop-factura">
-                                    <input type="checkbox" data-adicional-factura={item.id} checked={enFactura} />
-                                    <span>En la factura</span>
-                                  </label>
-                                  <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
-                                    <option value="" selected={!amount}>A consultar</option>
-                                    <option value="precio" selected={Boolean(amount)}>Con precio</option>
-                                  </select>
-                                  <span class="super-prop-money" data-adicional-money hidden={!amount}>
-                                    <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
-                                    <em>USD</em>
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <button type="submit">Guardar en esta propuesta</button>
-                        <p data-addons-status role="status"></p>
-                      </form>
-                    </details>
-                    <ul class="super-prop__seen">
-                      {miradas.map(([label, count]) => (
-                        <li data-seen={Number(count) > 0 ? 'yes' : 'no'}>
-                          <span>{label}</span>
-                          <strong>{count}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                    <div class="super-prop__links">
-                      <a href={href} target="_blank" rel="noopener noreferrer">Abrir</a>
-                      <button type="button" data-prop-copy={href}>Copiar enlace</button>
-                      <button type="button" data-prop-delete={p.id}>Borrar</button>
-                    </div>
-                  </article>
-                </li>
-              );
-            })}
-          </ul>
-        )
-      }
     </div>
 
     <!-- Modal: Nuevo Restaurante -->

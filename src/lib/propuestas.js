@@ -8,13 +8,23 @@ const TIPOS = new Set(['vista', 'ar', 'nutri', 'qr', 'ia', 'whatsapp']);
 export const PROPUESTA_ADICIONALES = [
   { id: 'ar', label: 'Realidad aumentada' },
   { id: 'nutri', label: 'Ficha nutricional' },
-  { id: 'qr', label: 'QRs artísticos' },
+  { id: 'qr', label: 'QR & NFC' },
   { id: 'ia', label: 'Klientiq' },
   { id: 'shop', label: 'Tienda' },
   { id: 'loyalty', label: 'Tarjeta de fidelidad' },
 ];
 
+/** Formatos físicos de QR & NFC. Cada uno puede tener su precio. */
+export const PROPUESTA_QR_PIEZAS = [
+  { id: 'tent', label: 'Acrílico' },
+  { id: 'nfc', label: 'Tag NFC' },
+  { id: 'plate', label: 'Placa' },
+];
+
 const ADICIONAL_IDS = new Set(PROPUESTA_ADICIONALES.map((item) => item.id));
+const QR_PIEZA_IDS = new Set(PROPUESTA_QR_PIEZAS.map((item) => item.id));
+/** Ids de paquetes de realidad aumentada: «1», «2»… */
+const AR_PAQUETE_ID = /^[1-9]\d{0,2}$/;
 const PROPUESTA_COLUMNS =
   'id, nombre, logo_url, setup, anual, sin_precio, dominio, mundo, adicionales';
 const PROPUESTA_LIST_COLUMNS = `${PROPUESTA_COLUMNS}, vistas, ultima_vista, vio_ar, vio_nutri, vio_qr, vio_ia, vio_whatsapp, created_at`;
@@ -104,6 +114,15 @@ export function readPropuestaMonto(value) {
 }
 
 /**
+ * Mantenimiento mensual de Klientiq. Vacío = no se cobra mes a mes.
+ * @param {unknown} value
+ */
+export function readPropuestaIaMensual(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return readPropuestaMonto(source.iaMensual);
+}
+
+/**
  * @param {unknown} value
  * @returns {Record<string, string>}
  */
@@ -133,6 +152,126 @@ export function readPropuestaFactura(value) {
 }
 
 /**
+ * Precio de cada formato de QR & NFC. Vacío = usa el precio general, o «A consultar».
+ * @param {unknown} value
+ * @returns {Record<string, string>}
+ */
+export function readPropuestaPiezas(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const raw = source.piezas && typeof source.piezas === 'object' && !Array.isArray(source.piezas) ? source.piezas : {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const id of QR_PIEZA_IDS) {
+    const amount = readPropuestaMonto(raw[id]);
+    if (amount) out[id] = amount;
+  }
+  return out;
+}
+
+/**
+ * Formatos que arrancan ya sumados. Si no se guardó la lista, no hay ninguno.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function readPropuestaPiezasFactura(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  if (!Array.isArray(source.piezasFactura)) return [];
+  return source.piezasFactura.map((id) => String(id)).filter((id) => QR_PIEZA_IDS.has(id));
+}
+
+/**
+ * Hay paquetes guardados. Sin esa lista, realidad aumentada queda a consultar.
+ * @param {unknown} value
+ */
+export function propuestaTienePaquetes(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  if (Array.isArray(source.paquetesOrden) && source.paquetesOrden.some((id) => AR_PAQUETE_ID.test(String(id)))) return true;
+  if (Object.keys(readPropuestaPaquetes(source)).length) return true;
+  if (readPropuestaPaquetesFactura(source).length) return true;
+  if (Object.keys(readPropuestaPaquetesPlatos(source)).length) return true;
+  return false;
+}
+
+/**
+ * Web de Xemilla que la propuesta usa como carta de ejemplo.
+ * @param {unknown} value
+ */
+export function readPropuestaCartaDemo(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const slug = String(source.cartaDemo || '').trim().toLowerCase();
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : '';
+}
+
+/**
+ * Precio de cada paquete de realidad aumentada. Vacío = «A consultar».
+ * @param {unknown} value
+ * @returns {Record<string, string>}
+ */
+export function readPropuestaPaquetes(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const raw = source.paquetes && typeof source.paquetes === 'object' && !Array.isArray(source.paquetes) ? source.paquetes : {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const [id, amount] of Object.entries(raw)) {
+    if (!AR_PAQUETE_ID.test(id)) continue;
+    const clean = readPropuestaMonto(amount);
+    if (clean) out[id] = clean;
+  }
+  return out;
+}
+
+/**
+ * Orden de los paquetes. Sin lista guardada, queda el primero.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function readPropuestaPaquetesOrden(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const listed = Array.isArray(source.paquetesOrden)
+    ? [...new Set(source.paquetesOrden.map((id) => String(id)).filter((id) => AR_PAQUETE_ID.test(id)))]
+    : [];
+  if (listed.length) return listed;
+  const known = [
+    ...Object.keys(readPropuestaPaquetes(source)),
+    ...readPropuestaPaquetesFactura(source),
+  ];
+  const ids = [...new Set(known)].sort((a, b) => Number(a) - Number(b));
+  return ids.length ? ids : ['1'];
+}
+
+/**
+ * Paquetes que arrancan ya sumados. Si no se guardó la lista, no hay ninguno.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function readPropuestaPaquetesFactura(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  if (!Array.isArray(source.paquetesFactura)) return [];
+  return source.paquetesFactura.map((id) => String(id)).filter((id) => AR_PAQUETE_ID.test(id));
+}
+
+/**
+ * Cantidad de platos de cada paquete. Vacío = 1.
+ * @param {unknown} value
+ * @returns {Record<string, string>}
+ */
+export function readPropuestaPaquetesPlatos(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const raw =
+    source.paquetesPlatos && typeof source.paquetesPlatos === 'object' && !Array.isArray(source.paquetesPlatos)
+      ? source.paquetesPlatos
+      : {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const [id, amount] of Object.entries(raw)) {
+    if (!AR_PAQUETE_ID.test(id)) continue;
+    const n = Math.round(Number(String(amount).replace(/[^\d]/g, '')));
+    if (n >= 1 && n <= 40) out[id] = String(n);
+  }
+  return out;
+}
+
+/**
  * Precios más el switch de factura, listo para guardar.
  * @param {unknown} value
  */
@@ -142,7 +281,28 @@ export function packPropuestaAdicionales(value) {
   const factura = Array.isArray(source.factura)
     ? readPropuestaFactura({ factura: source.factura })
     : readPropuestaFactura(prices);
-  return { ...prices, factura };
+  const piezas = readPropuestaPiezas(source);
+  const piezasFactura = Array.isArray(source.piezasFactura) ? readPropuestaPiezasFactura(source) : null;
+  const paquetes = readPropuestaPaquetes(source);
+  const paquetesOrden = Array.isArray(source.paquetesOrden) ? readPropuestaPaquetesOrden(source) : null;
+  const paquetesFactura = Array.isArray(source.paquetesFactura) ? readPropuestaPaquetesFactura(source) : null;
+  const paquetesPlatos = readPropuestaPaquetesPlatos(source);
+  const moneda = source.moneda === 'bs' || source.moneda === 'eur' ? source.moneda : 'usd';
+  const cartaDemo = readPropuestaCartaDemo(source);
+  const iaMensual = readPropuestaIaMensual(source);
+  return {
+    ...prices,
+    factura,
+    moneda,
+    ...(iaMensual ? { iaMensual } : {}),
+    ...(cartaDemo ? { cartaDemo } : {}),
+    ...(Object.keys(piezas).length ? { piezas } : {}),
+    ...(piezasFactura ? { piezasFactura } : {}),
+    ...(Object.keys(paquetes).length ? { paquetes } : {}),
+    ...(paquetesOrden ? { paquetesOrden } : {}),
+    ...(paquetesFactura ? { paquetesFactura } : {}),
+    ...(Object.keys(paquetesPlatos).length ? { paquetesPlatos } : {}),
+  };
 }
 
 /**
@@ -301,7 +461,7 @@ export async function getPropuestaDefaults(client) {
     console.error('[propuestas] defaults:', error.message);
     return {};
   }
-  return readPropuestaAdicionales(data?.adicionales);
+  return packPropuestaAdicionales(data?.adicionales);
 }
 
 /**
@@ -309,7 +469,7 @@ export async function getPropuestaDefaults(client) {
  * @param {unknown} adicionales
  */
 export async function savePropuestaDefaults(client, adicionales) {
-  const next = readPropuestaAdicionales(adicionales);
+  const next = packPropuestaAdicionales(adicionales);
   const { data, error } = await client
     .from('propuesta_precios_default')
     .upsert({ id: 'default', adicionales: next, updated_at: new Date().toISOString() })

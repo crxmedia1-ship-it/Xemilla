@@ -4,7 +4,7 @@ export const prerender = false;
 import PhoneSync from '../components/propuesta/PhoneSync.astro';
 import QrArt from '../components/propuesta/QrArt.astro';
 import CurrencySwitcher from '../components/app/CurrencySwitcher.astro';
-import { getPropuesta, isPropuestaId, readPropuestaFactura, touchPropuesta } from '../lib/propuestas.js';
+import { getPropuesta, isPropuestaId, readPropuestaFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, readPropuestaPiezas, readPropuestaPiezasFactura, propuestaTienePaquetes, readPropuestaCartaDemo, readPropuestaIaMensual, touchPropuesta } from '../lib/propuestas.js';
 import { createSupabaseServiceClient } from '../lib/supabase/service.js';
 import Layout from '../layouts/Layout.astro';
 
@@ -31,10 +31,21 @@ function readLogo(value: string | null) {
   try {
     const url = new URL(raw);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
-    return url.href;
+    return logoSinPlaca(url.href);
   } catch {
     return '';
   }
+}
+
+/** Quita el cuadrado blanco que viene pegado alrededor del logo. */
+function logoSinPlaca(href: string) {
+  const marker = '/image/upload/';
+  const at = href.indexOf(marker);
+  if (at === -1 || !href.includes('res.cloudinary.com')) return href;
+  const rest = href.slice(at + marker.length);
+  const version = rest.search(/\/v\d+\//);
+  const tail = version === -1 ? rest : rest.slice(version + 1);
+  return `${href.slice(0, at + marker.length)}e_make_transparent:20,f_png,q_auto,w_800,c_limit/${tail}`;
 }
 
 function readDomain(value: string | null, fallback: string) {
@@ -71,6 +82,8 @@ const propuestaId = propuestaGuardada?.id ?? '';
 const para = readText(propuestaGuardada?.nombre ?? params.get('para'), 'Tu Restaurante');
 const setup = readAmount(propuestaGuardada?.setup ?? params.get('setup'), '500');
 const anual = readAmount(propuestaGuardada?.anual ?? params.get('anual'), '200');
+const cartaDemo = readPropuestaCartaDemo(propuestaGuardada?.adicionales);
+const iaMensual = readPropuestaIaMensual(propuestaGuardada?.adicionales);
 const sinPrecio = propuestaGuardada ? propuestaGuardada.sin_precio === true : params.get('precio') === 'consultar';
 const logo = readLogo(propuestaGuardada?.logo_url ?? params.get('logo'));
 const initial = para.charAt(0).toUpperCase();
@@ -201,7 +214,34 @@ const adicionalPrecio = (id: string) => {
   return readAmount(map[id] == null ? '' : String(map[id]), '');
 };
 
+const precioIa = () => {
+  const inst = adicionalPrecio('ia');
+  if (inst && iaMensual) return `${inst} USD + ${iaMensual} USD/mes`;
+  if (inst) return `${inst} USD`;
+  if (iaMensual) return `${iaMensual} USD/mes`;
+  return 'A consultar';
+};
+
 const facturaInicial = new Set(readPropuestaFactura(propuestaGuardada?.adicionales));
+const piezasPrecio = readPropuestaPiezas(propuestaGuardada?.adicionales);
+const piezasFacturaGuardada = Array.isArray(propuestaGuardada?.adicionales?.piezasFactura);
+const piezasEnFactura = new Set(readPropuestaPiezasFactura(propuestaGuardada?.adicionales));
+const precioPieza = (id: string) => piezasPrecio[id] || '';
+const paquetesPrecio = readPropuestaPaquetes(propuestaGuardada?.adicionales);
+const paquetesFacturaGuardada = Array.isArray(propuestaGuardada?.adicionales?.paquetesFactura);
+const paquetesEnFactura = new Set(readPropuestaPaquetesFactura(propuestaGuardada?.adicionales));
+const paquetesPlatos = readPropuestaPaquetesPlatos(propuestaGuardada?.adicionales);
+const arPaquetes = propuestaTienePaquetes(propuestaGuardada?.adicionales)
+  ? readPropuestaPaquetesOrden(propuestaGuardada?.adicionales).map((id) => ({
+      id,
+      label: `Paquete ${id}`,
+      platos: paquetesPlatos[id] || '1',
+      amount: paquetesPrecio[id] || '',
+      on: paquetesFacturaGuardada ? paquetesEnFactura.has(id) : Boolean(paquetesPrecio[id]),
+    }))
+  : [];
+const piezaArranca = (id: string) =>
+  piezasFacturaGuardada ? piezasEnFactura.has(id) : facturaInicial.has('qr') && id === 'tent';
 
 const gadgets = [
   {
@@ -221,7 +261,7 @@ const gadgets = [
   {
     id: 'qr',
     icon: ICONS.qr,
-    title: 'QRs artísticos',
+    title: 'QR & NFC',
     body: 'Acrílicos, NFC y listos para imprimir.',
     action: { dialog: 'qr-dialog', label: 'Ver diseños' },
   },
@@ -253,6 +293,7 @@ const gadgets = [
 }));
 
 const precioDe = (id: string) => {
+  if (id === 'ia') return precioIa();
   const price = gadgets.find((gadget) => gadget.id === id)?.price;
   return price ? `${price} USD` : 'A consultar';
 };
@@ -271,13 +312,18 @@ const loyaltyFilled = 7;
 const nutriDemo = {
   name: 'Risotto de hongos',
   serving: '1 porción · 350 g',
+  img: '/propuesta/risotto.jpg',
   kcal: 520,
   macros: [
-    { label: 'Proteína', grams: 18, pct: 36, color: '#34d399' },
-    { label: 'Carbohidratos', grams: 62, pct: 82, color: '#fbbf24' },
-    { label: 'Grasas', grams: 22, pct: 48, color: '#fb7185' },
+    { key: 'prot', label: 'Prot', grams: 18 },
+    { key: 'carbs', label: 'Carbs', grams: 62 },
+    { key: 'grasas', label: 'Grasas', grams: 22 },
   ],
-  allergens: ['Lácteos', 'Sulfitos', 'Apio'],
+  allergens: [
+    { id: 'lacteos', label: 'Lácteos' },
+    { id: 'sulfitos', label: 'Sulfitos' },
+    { id: 'apio', label: 'Apio' },
+  ],
 };
 
 const AR_DEMO_MODEL =
@@ -433,16 +479,12 @@ const glass =
             />
           ) : null
         }
-        <div
+        <p
           id="brand-seal"
-          class:list={[
-            'flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-zinc-900 font-serif text-lg font-bold text-zinc-200 shadow-lg',
-            logo && 'hidden',
-          ]}
-          aria-label={para}
+          class:list={['brand-word', logo && 'hidden']}
         >
-          {initial}
-        </div>
+          {para}
+        </p>
       </div>
 
       <h1 data-pass class="mt-10 text-balance text-[1.85rem] font-light leading-[1.12] tracking-[-0.025em] text-zinc-50 sm:text-5xl lg:text-[3.15rem]">
@@ -485,7 +527,21 @@ const glass =
                       <span class="feat-ev__screen bn-open__screen">
                         <span class="feat-ev__status">9:41</span>
                         <span class="bn-open__menu">
-                          <b>{initial}</b>
+                          <b data-initial={initial}>
+                            {
+                              logo ? (
+                                <img
+                                  src={logo}
+                                  alt=""
+                                  decoding="async"
+                                  referrerpolicy="no-referrer"
+                                  onerror="var b=this.parentElement; if(b){b.textContent=b.dataset.initial||'';}"
+                                />
+                              ) : (
+                                initial
+                              )
+                            }
+                          </b>
                           <i />
                           <i />
                           <i />
@@ -524,7 +580,21 @@ const glass =
                         </span>
                       ))}
                     </div>
-                    <span class="bn-eco__core bg-zinc-50 text-zinc-950">{initial}</span>
+                    <span class:list={['bn-eco__core', logo ? 'bn-eco__core--logo' : 'bg-zinc-50 text-zinc-950']} data-initial={initial}>
+                      {
+                        logo ? (
+                          <img
+                            src={logo}
+                            alt=""
+                            decoding="async"
+                            referrerpolicy="no-referrer"
+                            onerror="var b=this.parentElement; if(b){b.classList.remove('bn-eco__core--logo'); b.classList.add('bg-zinc-50','text-zinc-950'); b.textContent=b.dataset.initial||'';}"
+                          />
+                        ) : (
+                          initial
+                        )
+                      }
+                    </span>
                     <span class="bn-eco__pdf">PDF</span>
                   </div>
                 )}
@@ -761,10 +831,18 @@ const glass =
                   <p class="ticket__row">
                     <span>1 × {plan.label}</span>
                     <i aria-hidden="true" />
-                    <b>{sinPrecio ? 'A consultar' : plan.cadence === 'Anual' ? 'Incluida' : plan.amount}</b>
+                    <b data-prop-usd={!sinPrecio && plan.cadence !== 'Anual' ? plan.amount : undefined}>
+                      {sinPrecio ? 'A consultar' : plan.cadence === 'Anual' ? 'Incluida' : `${plan.amount} USD`}
+                    </b>
                   </p>
                   <p class="ticket__note">
-                    {plan.cadence === 'Anual' && !sinPrecio ? `Primer año gratis · luego ${anual}/año` : plan.cadence}
+                    {plan.cadence === 'Anual' && !sinPrecio ? (
+                      <>
+                        Primer año gratis · luego <span data-prop-usd={anual}>{anual} USD</span>/año
+                      </>
+                    ) : (
+                      plan.cadence
+                    )}
                   </p>
                   <ul class="ticket__subs">
                     {plan.tags.map((tag) => (
@@ -795,9 +873,11 @@ const glass =
             <p class="ticket__row">
               <span>{sinPrecio ? 'Total' : 'Total primer año'}</span>
               <i aria-hidden="true" />
-              <b data-ticket-total data-base={sinPrecio ? '' : setup}>{sinPrecio ? 'A consultar' : `${setup} USD`}</b>
+              <b data-ticket-total data-prop-usd={sinPrecio ? undefined : setup} data-base={sinPrecio ? '' : setup}>{sinPrecio ? 'A consultar' : `${setup} USD`}</b>
             </p>
-            {!sinPrecio && <p class="ticket__note">Desde el 2.º año, solo {anual} USD al año.</p>}
+            {!sinPrecio && (
+              <p class="ticket__note">Desde el 2.º año, solo <span data-prop-usd={anual}>{anual} USD</span> al año.</p>
+            )}
             <p class="ticket__note" data-ticket-consultar hidden>Incluye adicionales a consultar.</p>
           </div>
 
@@ -836,24 +916,33 @@ const glass =
               <div class="gadget-slide__copy">
                 <h3 class="gadget-slide__title">
                   {gadget.title}
-                  <span class:list={['gadget-slide__price', gadget.price && 'is-priced']}>
-                    {gadget.price ? `${gadget.price} USD` : 'A consultar'}
+                  <span
+                    class:list={['gadget-slide__price', gadget.price && 'is-priced']}
+                    data-prop-usd={gadget.id === 'ar' || (gadget.id === 'ia' && iaMensual) ? undefined : gadget.price || undefined}
+                    data-qr-total={gadget.id === 'qr' ? '' : undefined}
+                    data-unit={gadget.id === 'qr' ? gadget.price : undefined}
+                  >
+                    {gadget.id === 'ar' ? (arPaquetes.length ? 'Paquetes' : 'A consultar') : gadget.id === 'ia' ? precioIa() : gadget.price ? `${gadget.price} USD` : 'A consultar'}
                   </span>
                 </h3>
                 <p>{gadget.body}</p>
               </div>
               <div class="gadget-slide__actions">
-                <button
-                  type="button"
-                  class="gadget-slide__pick"
-                  data-addon-pick
-                  data-addon-id={gadget.id}
-                  data-addon-name={gadget.title}
-                  data-addon-price={gadget.price}
-                  aria-pressed={gadget.onBill ? 'true' : 'false'}
-                >
-                  {gadget.onBill ? 'Quitar de la cuenta' : 'Añadir a la cuenta'}
-                </button>
+                {gadget.id === 'qr' || gadget.id === 'ar' ? null : (
+                  <button
+                    type="button"
+                    class="gadget-slide__add"
+                    data-addon-pick
+                    data-addon-id={gadget.id}
+                    data-addon-name={gadget.title}
+                    data-addon-price={gadget.price}
+                    data-addon-monthly={gadget.id === 'ia' ? iaMensual : undefined}
+                    aria-pressed={gadget.onBill ? 'true' : 'false'}
+                    aria-label={gadget.onBill ? `Quitar ${gadget.title} de la cuenta` : `Añadir ${gadget.title} a la cuenta`}
+                  >
+                    +
+                  </button>
+                )}
                 {gadget.action && (
                   <button type="button" data-dialog-open={gadget.action.dialog} class="gadget-slide__action">
                     {gadget.action.label}
@@ -889,21 +978,32 @@ const glass =
     >
       WhatsApp
     </a>
-    <button
-      type="button"
-      disabled
-      aria-disabled="true"
-      class="inline-flex min-h-12 shrink-0 cursor-default items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-center text-[0.68rem] font-medium uppercase leading-tight tracking-[0.12em] text-zinc-300 backdrop-blur-xl disabled:opacity-100"
-    >
-      Ver Demo<br />en Vivo
-    </button>
+    {cartaDemo ? (
+      <a
+        href={`/${cartaDemo}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-center text-[0.68rem] font-medium uppercase leading-tight tracking-[0.12em] text-zinc-100 backdrop-blur-xl transition active:scale-[0.98]"
+      >
+        Ver demo<br />en vivo
+      </a>
+    ) : (
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        class="inline-flex min-h-12 shrink-0 cursor-default items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-center text-[0.68rem] font-medium uppercase leading-tight tracking-[0.12em] text-zinc-300 backdrop-blur-xl disabled:opacity-100"
+      >
+        Ver demo<br />en vivo
+      </button>
+    )}
   </nav>
 
   <dialog id="ar-dialog" class="demo-dialog" aria-labelledby="ar-dialog-title">
     <div class="demo-dialog__head">
       <div>
         <p id="ar-dialog-title" class="demo-dialog__title">Plato en 3D</p>
-        <p class="demo-dialog__price">{precioDe('ar')}</p>
+        <p class="demo-dialog__price">{arPaquetes.length ? 'Paquetes' : 'A consultar'}</p>
       </div>
       <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
     </div>
@@ -922,58 +1022,70 @@ const glass =
     >
       <button type="button" slot="ar-button" class="ar-dialog__place">Ver en tu mesa</button>
     </model-viewer>
+    <ul class="ar-packs">
+      {arPaquetes.map((pack) => (
+        <li class="ar-pack">
+          <span>{pack.label}<small>{pack.platos} {pack.platos === '1' ? 'plato' : 'platos'}</small></span>
+          <b data-prop-usd={pack.amount || undefined}>{pack.amount ? `${pack.amount} USD` : 'A consultar'}</b>
+          <button
+            type="button"
+            data-ar-pack
+            data-pack-name={pack.label}
+            data-pack-price={pack.amount}
+            aria-pressed={pack.on ? 'true' : 'false'}
+          >
+            {pack.on ? 'En la cuenta' : 'Sumar'}
+          </button>
+        </li>
+      ))}
+    </ul>
     <p class="demo-dialog__hint">Gíralo con el dedo. Desde el teléfono, ponlo sobre tu mesa.</p>
   </dialog>
 
-  <dialog id="nutri-dialog" class="demo-dialog" aria-labelledby="nutri-dialog-title">
-    <div class="demo-dialog__head">
-      <div>
-        <p id="nutri-dialog-title" class="demo-dialog__title">{nutriDemo.name}</p>
-        <p class="nutri__serving">{nutriDemo.serving}</p>
-        <p class="demo-dialog__price">{precioDe('nutri')}</p>
-      </div>
+  <dialog id="nutri-dialog" class="demo-dialog demo-dialog--plate" aria-labelledby="nutri-dialog-title">
+    <div class="nutri-photo">
+      <img src={nutriDemo.img} alt={nutriDemo.name} width="800" height="800" />
       <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
     </div>
-    <div class="nutri">
-      <div class="nutri__kcal">
-        <span class="nutri__kcal-value">{nutriDemo.kcal}</span>
-        <span class="nutri__kcal-unit">kcal</span>
-      </div>
-      <ul class="nutri__macros">
+    <div class="nutri-sheet">
+      <p id="nutri-dialog-title" class="demo-dialog__title">{nutriDemo.name}</p>
+      <p class="nutri__serving">{nutriDemo.serving}</p>
+      <div class="nutri-metrics">
+        <div class="nutri-metric">
+          <span>kcal</span>
+          <b>{nutriDemo.kcal}</b>
+        </div>
         {
           nutriDemo.macros.map((macro) => (
-            <li class="nutri__macro">
-              <div class="nutri__macro-row">
-                <span>{macro.label}</span>
-                <span class="nutri__macro-grams">{macro.grams} g</span>
-              </div>
-              <span class="nutri__bar">
-                <span class="nutri__bar-fill" style={`width:${macro.pct}%;background:${macro.color}`} />
-              </span>
-            </li>
+            <div class="nutri-metric">
+              <span>{macro.label}</span>
+              <b>{macro.grams} g</b>
+            </div>
           ))
         }
-      </ul>
-      <p class="nutri__label">Alérgenos</p>
+      </div>
+      <p class="nutri__label">Contiene</p>
       <ul class="nutri__allergens">
-        {nutriDemo.allergens.map((allergen) => <li>{allergen}</li>)}
+        {nutriDemo.allergens.map((allergen) => <li data-alergeno={allergen.id}>{allergen.label}</li>)}
       </ul>
+      <p class="demo-dialog__hint">Así lo ve tu cliente al tocar un plato.</p>
     </div>
-    <p class="demo-dialog__hint">Así lo ve tu cliente al tocar un plato.</p>
   </dialog>
 
   <dialog id="qr-dialog" class="demo-dialog demo-dialog--wide" aria-labelledby="qr-dialog-title">
-    <div class="demo-dialog__head">
-      <div>
+    <div class="demo-dialog__head qr-dialog__head">
+      <div class="qr-dialog__intro">
+        <p class="qr-dialog__kicker">QR &amp; NFC</p>
         <p id="qr-dialog-title" class="demo-dialog__title">QRs de autor</p>
-        <p class="nutri__serving">Con tu marca, impresos y listos para el local.</p>
-        <p class="demo-dialog__price">{precioDe('qr')}</p>
+        <p class="qr-dialog__lead">Con tu marca, impresos y listos para el local.</p>
       </div>
-      <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+      <div class="qr-dialog__meta">
+        <p class="demo-dialog__price" data-prop-usd={adicionalPrecio('qr') || undefined}>{precioDe('qr')}</p>
+        <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
+      </div>
     </div>
 
     <div class="qr-hero">
-      <div class="qr-hero__slot" data-photo-slot aria-hidden="true"></div>
       <QrArt
         url={`https://${domain}`}
         initial={initial}
@@ -1005,6 +1117,12 @@ const glass =
         </div>
         <p class="qr-mockups__title">Soporte de mesa</p>
         <p class="qr-mockups__sub">Acrílico con base de madera</p>
+        <p class="qr-piece__price" data-prop-usd={precioPieza('tent') || undefined}>{precioPieza('tent') ? `${precioPieza('tent')} USD` : 'A consultar'}</p>
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Acrílico" data-piece-price={precioPieza('tent')} role="group" aria-label="Acrílico">
+          <button type="button" data-qr-step="-1" aria-label="Quitar un acrílico">−</button>
+          <span data-qr-qty>{piezaArranca('tent') ? '1' : '0'}</span>
+          <button type="button" data-qr-step="1" aria-label="Añadir un acrílico">+</button>
+        </div>
       </li>
       <li>
         <div class="qr-photo">
@@ -1021,27 +1139,12 @@ const glass =
         </div>
         <p class="qr-mockups__title">Tag NFC</p>
         <p class="qr-mockups__sub">Acerca el teléfono y abre la carta</p>
-      </li>
-      <li>
-        <div class="qr-photo">
-          <img src="/propuesta/formatos/coaster.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
-          <div class="qr-print qr-print--coaster" style="left:18.5%;top:19.5%;width:61.7%;height:62.5%">
-            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#4a2f17" paper="transparent" />
-          </div>
+        <p class="qr-piece__price" data-prop-usd={precioPieza('nfc') || undefined}>{precioPieza('nfc') ? `${precioPieza('nfc')} USD` : 'A consultar'}</p>
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Tag NFC" data-piece-price={precioPieza('nfc')} role="group" aria-label="Tag NFC">
+          <button type="button" data-qr-step="-1" aria-label="Quitar un tag NFC">−</button>
+          <span data-qr-qty>{piezaArranca('nfc') ? '1' : '0'}</span>
+          <button type="button" data-qr-step="1" aria-label="Añadir un tag NFC">+</button>
         </div>
-        <p class="qr-mockups__title">Posavasos grabado</p>
-        <p class="qr-mockups__sub">Madera grabada con láser</p>
-      </li>
-      <li>
-        <div class="qr-photo">
-          <img src="/propuesta/formatos/vinyl.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
-          <div class="qr-print qr-print--vinyl" style="left:24.2%;top:20.7%;width:51.6%;height:53.7%">
-            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#f5f0e8" paper="#0c0c0d" accent="#d9c29a" />
-            <span class="qr-print__label">Menú digital</span>
-          </div>
-        </div>
-        <p class="qr-mockups__title">Vinilo de vitrina</p>
-        <p class="qr-mockups__sub">Para puerta, barra o estantes</p>
       </li>
       <li>
         <div class="qr-photo">
@@ -1053,27 +1156,12 @@ const glass =
         </div>
         <p class="qr-mockups__title">Placa numerada</p>
         <p class="qr-mockups__sub">Número de mesa y QR en una pieza</p>
-      </li>
-      <li>
-        <div class="qr-photo">
-          <img src="/propuesta/formatos/display.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
-          <div class="qr-print qr-print--display" style="left:30.3%;top:24%;width:38.8%;height:53.2%">
-            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#2a1f12" accent="#2a1f12" />
-            <span class="qr-print__name">{para}</span>
-          </div>
+        <p class="qr-piece__price" data-prop-usd={precioPieza('plate') || undefined}>{precioPieza('plate') ? `${precioPieza('plate')} USD` : 'A consultar'}</p>
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Placa" data-piece-price={precioPieza('plate')} role="group" aria-label="Placa">
+          <button type="button" data-qr-step="-1" aria-label="Quitar una placa">−</button>
+          <span data-qr-qty>{piezaArranca('plate') ? '1' : '0'}</span>
+          <button type="button" data-qr-step="1" aria-label="Añadir una placa">+</button>
         </div>
-        <p class="qr-mockups__title">Display de barra</p>
-        <p class="qr-mockups__sub">Metal dorado para caja o recepción</p>
-      </li>
-      <li>
-        <div class="qr-photo">
-          <img src="/propuesta/formatos/bag.webp" alt="" width="560" height="560" loading="lazy" decoding="async" />
-          <div class="qr-print qr-print--bag" style="left:37.3%;top:52.2%;width:24.8%;height:25.2%">
-            <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" accent="#9a3412" />
-          </div>
-        </div>
-        <p class="qr-mockups__title">Sticker delivery</p>
-        <p class="qr-mockups__sub">Para bolsas y empaques</p>
       </li>
     </ul>
   </dialog>
@@ -1083,7 +1171,7 @@ const glass =
       <div>
         <p id="ia-dialog-title" class="demo-dialog__title">Klientiq CRM + IA</p>
         <p class="ia-chat__sub">Atiende por ti, también a las 3 a.&nbsp;m.</p>
-        <p class="demo-dialog__price">{precioDe('ia')}</p>
+        <p class="demo-dialog__price" data-prop-usd={iaMensual ? undefined : adicionalPrecio('ia') || undefined}>{precioDe('ia')}</p>
       </div>
       <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
     </div>
@@ -1137,7 +1225,7 @@ const glass =
       <div>
         <p id="shop-dialog-title" class="demo-dialog__title">Tienda</p>
         <p class="ia-chat__sub">Una sección más de tu menú, lista para vender.</p>
-        <p class="demo-dialog__price">{precioDe('shop')}</p>
+        <p class="demo-dialog__price" data-prop-usd={adicionalPrecio('shop') || undefined}>{precioDe('shop')}</p>
       </div>
       <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
     </div>
@@ -1208,7 +1296,7 @@ const glass =
       <div>
         <p id="loyalty-dialog-title" class="demo-dialog__title">Tarjeta de fidelidad</p>
         <p class="ia-chat__sub">Vive en el teléfono del cliente, sin cartón ni apps.</p>
-        <p class="demo-dialog__price">{precioDe('loyalty')}</p>
+        <p class="demo-dialog__price" data-prop-usd={adicionalPrecio('loyalty') || undefined}>{precioDe('loyalty')}</p>
       </div>
       <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
     </div>
@@ -1663,12 +1751,29 @@ const glass =
     });
   }
 
-  const boundPicks = new WeakSet<HTMLButtonElement>();
+  const formatPropUsd = (amount: number) => {
+    const n = Number(amount);
+    if (!Number.isFinite(n)) return 'A consultar';
+    const whole = Number.isInteger(n) ? String(n) : n.toFixed(2);
+    return `${whole} USD`;
+  };
+
+  const paintPropMoney = () => {
+    document.querySelectorAll<HTMLElement>('[data-prop-usd]').forEach((el) => {
+      if (el.hasAttribute('data-ticket-total') || el.hasAttribute('data-qr-total')) return;
+      const raw = el.getAttribute('data-prop-usd') || '';
+      if (!raw) return;
+      el.textContent = formatPropUsd(Number(raw.replace(',', '.')));
+    });
+  };
+  paintPropMoney();
+
+  const boundPicks = new WeakSet<HTMLElement>();
   const initTicket = () => {
     const ticketAddons = document.querySelector<HTMLElement>('[data-ticket-addons]');
     const ticketTotal = document.querySelector<HTMLElement>('[data-ticket-total]');
     const ticketConsultar = document.querySelector<HTMLElement>('[data-ticket-consultar]');
-    const addonPicks = [...document.querySelectorAll<HTMLButtonElement>('[data-addon-pick]')];
+    const addonPicks = [...document.querySelectorAll<HTMLElement>('[data-addon-pick]')];
     if (!ticketAddons || !ticketTotal || !addonPicks.length) return;
     const baseRaw = ticketTotal.dataset.base ?? '';
     const base = baseRaw === '' ? null : Number(baseRaw.replace(',', '.'));
@@ -1677,9 +1782,33 @@ const glass =
       return Number.isFinite(n) && n > 0 ? n : 0;
     };
     const labelOf = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+    const arPacks = [...document.querySelectorAll<HTMLElement>('[data-ar-pack]')];
+    const qrPieces = [...document.querySelectorAll<HTMLElement>('[data-qr-piece]')];
+    const qrTotal = document.querySelector<HTMLElement>('[data-qr-total]');
+    const qrSlide = document.querySelector<HTMLElement>(".gadget-slide[data-splash='qr']");
+    const qrUnit = amountOf(qrTotal?.dataset.unit ?? '');
     const scopeAttr = document.querySelector('.ticket__row')?.getAttributeNames().find((name) => name.startsWith('data-astro-cid'));
     const stamp = (el: HTMLElement) => {
       if (scopeAttr) el.setAttribute(scopeAttr, '');
+    };
+    const addLine = (label: string, valueText: string) => {
+      const li = document.createElement('li');
+      const row = document.createElement('p');
+      row.className = 'ticket__row';
+      const name = document.createElement('span');
+      name.textContent = label;
+      const dots = document.createElement('i');
+      dots.setAttribute('aria-hidden', 'true');
+      const value = document.createElement('b');
+      value.textContent = valueText;
+      stamp(li);
+      stamp(row);
+      stamp(name);
+      stamp(dots);
+      stamp(value);
+      row.append(name, dots, value);
+      li.append(row);
+      ticketAddons.append(li);
     };
     const paintTicket = () => {
       ticketAddons.replaceChildren();
@@ -1687,40 +1816,100 @@ const glass =
       let consultar = false;
       for (const pick of addonPicks) {
         const on = pick.getAttribute('aria-pressed') === 'true';
-        pick.textContent = on ? 'Quitar de la cuenta' : 'Añadir a la cuenta';
+        const name = pick.dataset.addonName || 'adicional';
+        pick.setAttribute('aria-label', on ? `Quitar ${name} de la cuenta` : `Añadir ${name} a la cuenta`);
         pick.closest('.gadget-slide')?.classList.toggle('is-picked', on);
         if (!on) continue;
+        if (pick.dataset.addonId === 'ar') continue;
+        if (pick.dataset.addonId === 'ia') {
+          const inst = amountOf(pick.dataset.addonPrice ?? '');
+          const mens = amountOf(pick.dataset.addonMonthly ?? '');
+          if (!inst && !mens) {
+            consultar = true;
+            addLine('1 × Klientiq', 'A consultar');
+          }
+          if (inst) {
+            extra += inst;
+            addLine('1 × Klientiq instalación', formatPropUsd(inst));
+          }
+          if (mens) {
+            extra += mens;
+            addLine('1 × Klientiq mensual', formatPropUsd(mens));
+          }
+          continue;
+        }
         const price = amountOf(pick.dataset.addonPrice ?? '');
         if (price) extra += price;
         else consultar = true;
-        const li = document.createElement('li');
-        const row = document.createElement('p');
-        row.className = 'ticket__row';
-        const name = document.createElement('span');
-        name.textContent = `1 × ${pick.dataset.addonName || 'Adicional'}`;
-        const dots = document.createElement('i');
-        dots.setAttribute('aria-hidden', 'true');
-        const value = document.createElement('b');
-        value.textContent = price ? String(price) : 'A consultar';
-        stamp(li);
-        stamp(row);
-        stamp(name);
-        stamp(dots);
-        stamp(value);
-        row.append(name, dots, value);
-        li.append(row);
-        ticketAddons.append(li);
+        addLine(`1 × ${pick.dataset.addonName || 'Adicional'}`, price ? formatPropUsd(price) : 'A consultar');
+      }
+      for (const pack of arPacks) {
+        const on = pack.getAttribute('aria-pressed') === 'true';
+        pack.textContent = on ? 'En la cuenta' : 'Sumar';
+        if (!on) continue;
+        const price = amountOf(pack.dataset.packPrice ?? '');
+        if (price) extra += price;
+        else consultar = true;
+        addLine(`1 × ${pack.dataset.packName || 'Paquete AR'}`, price ? formatPropUsd(price) : 'A consultar');
+      }
+      let qrCount = 0;
+      let qrMoney = 0;
+      for (const piece of qrPieces) {
+        const qtyEl = piece.querySelector<HTMLElement>('[data-qr-qty]');
+        const qty = Math.max(0, Math.min(99, Number(qtyEl?.textContent) || 0));
+        if (qtyEl) qtyEl.textContent = String(qty);
+        piece.setAttribute('aria-pressed', qty > 0 ? 'true' : 'false');
+        if (!qty) continue;
+        qrCount += qty;
+        const unit = amountOf(piece.dataset.piecePrice ?? '');
+        const price = unit ? unit * qty : 0;
+        if (price) {
+          extra += price;
+          qrMoney += price;
+        } else consultar = true;
+        addLine(`${qty} × ${piece.dataset.pieceName || 'QR & NFC'}`, price ? formatPropUsd(price) : 'A consultar');
+      }
+      if (qrSlide) qrSlide.classList.toggle('is-picked', qrCount > 0);
+      if (qrTotal) {
+        if (qrCount > 0 && qrMoney > 0) qrTotal.textContent = formatPropUsd(qrMoney);
+        else if (qrCount > 0) qrTotal.textContent = 'A consultar';
+        else qrTotal.textContent = qrUnit ? formatPropUsd(qrUnit) : 'A consultar';
       }
       ticketAddons.hidden = ticketAddons.childElementCount === 0;
       if (base == null || !Number.isFinite(base)) ticketTotal.textContent = 'A consultar';
-      else ticketTotal.textContent = `${labelOf(base + extra)} USD`;
+      else ticketTotal.textContent = formatPropUsd(base + extra);
       if (ticketConsultar) ticketConsultar.hidden = !consultar;
     };
     for (const pick of addonPicks) {
       if (boundPicks.has(pick)) continue;
       boundPicks.add(pick);
       pick.addEventListener('click', () => {
-        pick.setAttribute('aria-pressed', pick.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+        const on = pick.getAttribute('aria-pressed') === 'true';
+        pick.setAttribute('aria-pressed', on ? 'false' : 'true');
+        paintTicket();
+      });
+    }
+    for (const pack of arPacks) {
+      if (boundPicks.has(pack)) continue;
+      boundPicks.add(pack);
+      pack.addEventListener('click', () => {
+        const on = pack.getAttribute('aria-pressed') === 'true';
+        pack.setAttribute('aria-pressed', on ? 'false' : 'true');
+        paintTicket();
+      });
+    }
+    for (const piece of qrPieces) {
+      if (boundPicks.has(piece)) continue;
+      boundPicks.add(piece);
+      piece.addEventListener('click', (event) => {
+        const step = (event.target as HTMLElement | null)?.closest?.('[data-qr-step]');
+        if (!(step instanceof HTMLElement)) return;
+        const qtyEl = piece.querySelector<HTMLElement>('[data-qr-qty]');
+        if (!qtyEl) return;
+        const qty = Math.max(0, Number(qtyEl.textContent) || 0);
+        const next = Math.max(0, Math.min(99, qty + (step.dataset.qrStep === '1' ? 1 : -1)));
+        if (next === qty) return;
+        qtyEl.textContent = String(next);
         paintTicket();
       });
     }
@@ -2273,6 +2462,19 @@ const glass =
     font-size: 9px;
   }
 
+  .bn-open__menu b:has(img) {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .bn-open__menu b img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  }
+
   .bn-open__menu i {
     height: 5px;
     border-radius: 999px;
@@ -2420,6 +2622,25 @@ const glass =
     font-weight: 700;
     box-shadow: 0 12px 24px -10px rgba(28, 25, 23, 0.55);
     transform: translate(-50%, -50%);
+  }
+
+  .bn-eco__core--logo {
+    width: 52px;
+    height: 52px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .bn-eco__core--logo::before,
+  .bn-eco__core--logo::after {
+    display: none;
+  }
+
+  .bn-eco__core--logo img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
   }
 
   .bn-eco__core::before,
@@ -2756,6 +2977,62 @@ const glass =
     line-height: 1;
   }
 
+  .ar-packs {
+    display: grid;
+    gap: 8px;
+    margin: 14px 0 4px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ar-pack {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 6px 6px 6px 12px;
+    border-radius: 14px;
+    background: #f4f1ea;
+  }
+
+  .ar-pack span {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .ar-pack small {
+    font-size: 11px;
+    font-weight: 500;
+    color: #78716c;
+  }
+
+  .ar-pack b {
+    font-size: 12px;
+    font-weight: 600;
+    color: #78716c;
+  }
+
+  .ar-pack button {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #18181b;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .ar-pack button[aria-pressed='true'] {
+    background: #fff;
+    color: #18181b;
+    box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.16);
+  }
+
   .ar-dialog__viewer {
     position: relative;
     display: block;
@@ -2779,10 +3056,95 @@ const glass =
     transform: translateX(-50%);
   }
 
-  .nutri__serving {
+  .demo-dialog--plate {
+    padding: 0 0 16px;
+    overflow: hidden;
+  }
+
+  .nutri-photo {
+    position: relative;
+    aspect-ratio: 1.15;
+    max-height: 280px;
+    overflow: hidden;
+    background: #e7e2da;
+  }
+
+  .nutri-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .nutri-photo .demo-dialog__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(12, 10, 8, 0.48);
+    color: #fff;
+    backdrop-filter: blur(8px);
+  }
+
+  .nutri-sheet {
+    padding: 16px 16px 0;
+  }
+
+  .nutri-sheet .demo-dialog__title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+
+  .nutri-sheet .nutri__serving {
     margin-top: 2px;
     color: #71717a;
     font-size: 12px;
+  }
+
+  .nutri-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .nutri-metric {
+    min-width: 0;
+    padding: 10px 4px 11px;
+    border-radius: 14px;
+    background: rgba(28, 25, 23, 0.05);
+    text-align: center;
+  }
+
+  .nutri-metric span {
+    display: block;
+    color: #78716c;
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .nutri-metric b {
+    display: block;
+    margin-top: 4px;
+    font-size: 15px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nutri-sheet .nutri__allergens li[data-alergeno='lacteos'] { --badge: #0284c7; }
+  .nutri-sheet .nutri__allergens li[data-alergeno='sulfitos'] { --badge: #a16207; }
+  .nutri-sheet .nutri__allergens li[data-alergeno='apio'] { --badge: #15803d; }
+
+  .nutri-sheet .nutri__allergens li {
+    border: 1px solid color-mix(in srgb, var(--badge, #9f1239) 40%, transparent);
+    background: color-mix(in srgb, var(--badge, #9f1239) 12%, white);
+    color: color-mix(in srgb, var(--badge, #9f1239) 70%, #1c1917);
+    box-shadow: none;
+  }
+
+  .nutri-sheet .demo-dialog__hint {
+    margin: 14px 0 0;
   }
 
   .nutri {
@@ -2898,6 +3260,78 @@ const glass =
     overflow-y: auto;
   }
 
+  #qr-dialog {
+    padding: 20px 18px 16px;
+    background:
+      radial-gradient(90% 55% at 100% 0%, rgba(176, 141, 87, 0.18), transparent 46%),
+      #f6f3ee;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.75),
+      0 50px 100px -36px rgba(20, 14, 8, 0.62);
+  }
+
+  #qr-dialog .demo-dialog__head {
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+    padding: 2px 2px 16px;
+    border-bottom: 1px solid rgba(28, 25, 23, 0.08);
+  }
+
+  .qr-dialog__intro {
+    min-width: 0;
+  }
+
+  .qr-dialog__kicker {
+    color: #9a6b3f;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  #qr-dialog .demo-dialog__title {
+    margin-top: 5px;
+    font-size: 1.65rem;
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+  }
+
+  .qr-dialog__lead {
+    max-width: 32ch;
+    margin-top: 7px;
+    color: #78716c;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .qr-dialog__meta {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #qr-dialog .demo-dialog__price {
+    margin: 0;
+    padding: 0.38rem 0.72rem;
+    border-radius: 999px;
+    background: #1c1917;
+    color: #f6f1e8;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  #qr-dialog .demo-dialog__close {
+    background: rgba(255, 255, 255, 0.72);
+    color: #44403c;
+    box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.08);
+  }
+
   .qr-hero {
     display: flex;
     align-items: center;
@@ -2994,6 +3428,7 @@ const glass =
 
   .qr-mockups > li {
     scroll-snap-align: start;
+    text-align: center;
   }
 
   /* Fotos reales de cada formato; el QR y el nombre del local se imprimen encima. */
@@ -3148,6 +3583,64 @@ const glass =
     color: #71717a;
     font-size: 11px;
     line-height: 1.35;
+  }
+
+  .qr-piece__price {
+    margin-top: 4px;
+    color: #78716c;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .qr-piece.gadget-slide__pick {
+    height: 2rem;
+    gap: 0;
+    margin: 0.7rem auto 0;
+    padding: 0.16rem;
+    border: 1px solid rgba(28, 25, 23, 0.1);
+    background: #fff;
+    box-shadow: 0 10px 18px -16px rgba(28, 25, 23, 0.85);
+  }
+
+  .qr-piece.gadget-slide__pick button {
+    width: 1.58rem;
+    height: 1.58rem;
+    background: transparent;
+    color: #1c1917;
+    font-size: 1.05rem;
+  }
+
+  .qr-piece.gadget-slide__pick [data-qr-step='1'] {
+    background: #1c1917;
+    color: #fff;
+  }
+
+  .qr-piece.gadget-slide__pick[aria-pressed='false'] [data-qr-step='-1'] {
+    color: #a8a29e;
+  }
+
+  .qr-piece.gadget-slide__pick[aria-pressed='true'],
+  .qr-piece.gadget-slide__pick[aria-pressed='true'] button {
+    background: #fff;
+    color: #1c1917;
+  }
+
+  .qr-piece.gadget-slide__pick[aria-pressed='true'] [data-qr-step='1'] {
+    background: #1c1917;
+    color: #fff;
+  }
+
+  .qr-piece.gadget-slide__pick [data-qr-qty] {
+    min-width: 1.2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .qr-piece.gadget-slide__pick button:active {
+    transform: scale(0.94);
   }
 
 
@@ -4078,17 +4571,13 @@ const glass =
 
   .gadget-slide[data-splash='loyalty']::before {
     background:
-      linear-gradient(118deg, transparent 42%, rgb(255 255 255 / 0.92) 47%, rgb(255 255 255 / 0.92) 50%, transparent 55%),
-      radial-gradient(38% 32% at 8% 78%, #7b5cff 0%, transparent 70%),
-      radial-gradient(42% 36% at 0% 18%, #ff2d55 0%, transparent 68%),
-      linear-gradient(160deg, #fff1e4 0%, #ffd7b0 100%);
+      radial-gradient(48% 40% at 88% 8%, #5b8fd4 0%, transparent 64%),
+      radial-gradient(42% 38% at 6% 92%, #16325c 0%, transparent 70%),
+      linear-gradient(165deg, #2a5fad 0%, #1a3d78 100%);
   }
 
   .gadget-slide[data-splash='loyalty'] .gadget-slide__art {
-    background:
-      radial-gradient(circle at 72% 28%, #fff6b0 0 7%, #ffb703 18%, #fb5607 42%, transparent 43%),
-      radial-gradient(ellipse at 86% 46%, transparent 0 28%, #2ee59a 29% 34%, transparent 35%);
-    clip-path: polygon(46% 0, 100% 0, 100% 72%, 58% 100%, 38% 62%);
+    background: radial-gradient(circle at 74% 22%, rgb(186 214 255 / 0.45) 0%, transparent 46%);
   }
 
   .gadget-slide__icon {
@@ -4188,15 +4677,59 @@ const glass =
     gap: 0.5rem;
   }
 
+  .gadget-slide__add {
+    display: grid;
+    place-items: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 999px;
+    background: #1c1917;
+    color: #fff;
+    font-size: 1.45rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .gadget-slide__add:active {
+    transform: scale(0.97);
+  }
+
   .gadget-slide__pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1rem;
+    height: 2.8rem;
+    padding: 0.22rem;
     border-radius: 999px;
     border: 1px solid rgb(28 25 23 / 0.14);
     background: rgb(255 255 255 / 0.78);
-    padding: 0.7rem 1.05rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
     color: #1c1917;
+  }
+
+  .gadget-slide__pick button {
+    display: grid;
+    place-items: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: 999px;
+    background: #1c1917;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .gadget-slide__pick [data-addon-qty] {
+    min-width: 1.35rem;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gadget-slide__pick[aria-pressed='false'] [data-addon-step='-1'],
+  .gadget-slide__pick[aria-pressed='true'] [data-addon-step='1'] {
+    opacity: 0.35;
   }
 
   .gadget-slide__pick[aria-pressed='true'] {
@@ -4205,7 +4738,12 @@ const glass =
     color: #fff;
   }
 
-  .gadget-slide__pick:active,
+  .gadget-slide__pick[aria-pressed='true'] button {
+    background: #fff;
+    color: #1c1917;
+  }
+
+  .gadget-slide__pick button:active,
   .gadget-slide__action:active {
     transform: scale(0.97);
   }
@@ -5126,6 +5664,21 @@ const glass =
     --color-zinc-900: oklch(98.5% 0 0);
     --color-zinc-950: oklch(99.5% 0 0);
     --color-emerald-400: oklch(59.6% 0.145 163.225);
+  }
+
+  .brand-word {
+    max-width: 16rem;
+    margin: 0;
+    color: #f5f5f4;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: clamp(1.55rem, 3.4vw, 2.15rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 0.92;
+  }
+
+  [data-palette='light'] .brand-word {
+    color: #1c1917;
   }
 
   .xemilla-mark--light {
