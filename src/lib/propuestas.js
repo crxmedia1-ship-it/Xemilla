@@ -187,6 +187,27 @@ export function readPropuestaPiezasFactura(value) {
 }
 
 /**
+ * Cantidad inicial de cada formato. Vacío = la propuesta decide (1 si entra en la factura).
+ * @param {unknown} value
+ * @returns {Record<string, string>}
+ */
+export function readPropuestaPiezasCantidad(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const raw =
+    source.piezasCantidad && typeof source.piezasCantidad === 'object' && !Array.isArray(source.piezasCantidad)
+      ? source.piezasCantidad
+      : {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const id of QR_PIEZA_IDS) {
+    if (raw[id] == null || raw[id] === '') continue;
+    const n = Math.round(Number(String(raw[id]).replace(/[^\d]/g, '')));
+    if (n >= 0 && n <= 99) out[id] = String(n);
+  }
+  return out;
+}
+
+/**
  * Hay paquetes guardados. Sin esa lista, realidad aumentada queda a consultar.
  * @param {unknown} value
  */
@@ -291,6 +312,7 @@ export function packPropuestaAdicionales(value) {
     : readPropuestaFactura(prices);
   const piezas = readPropuestaPiezas(source);
   const piezasFactura = Array.isArray(source.piezasFactura) ? readPropuestaPiezasFactura(source) : null;
+  const piezasCantidad = readPropuestaPiezasCantidad(source);
   const paquetes = readPropuestaPaquetes(source);
   const paquetesOrden = Array.isArray(source.paquetesOrden) ? readPropuestaPaquetesOrden(source) : null;
   const paquetesFactura = Array.isArray(source.paquetesFactura) ? readPropuestaPaquetesFactura(source) : null;
@@ -306,6 +328,7 @@ export function packPropuestaAdicionales(value) {
     ...(cartaDemo ? { cartaDemo } : {}),
     ...(Object.keys(piezas).length ? { piezas } : {}),
     ...(piezasFactura ? { piezasFactura } : {}),
+    ...(Object.keys(piezasCantidad).length ? { piezasCantidad } : {}),
     ...(Object.keys(paquetes).length ? { paquetes } : {}),
     ...(paquetesOrden ? { paquetesOrden } : {}),
     ...(paquetesFactura ? { paquetesFactura } : {}),

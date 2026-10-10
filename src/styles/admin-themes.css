@@ -5243,6 +5243,35 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   background: var(--bg-card-elevated);
 }
 
+.super-version__detail {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0.05rem 0.75rem 0.3rem;
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: #a1a1aa !important;
+  user-select: none;
+}
+
+.super-version__n {
+  font-variant-numeric: tabular-nums;
+  color: #71717a !important;
+}
+
+.super-version__detail.is-dirty .super-version__n {
+  color: #b45309 !important;
+}
+
+.super-version__sha {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.54rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: #a1a1aa !important;
+}
+
 .super-jump {
   position: relative;
 }
@@ -7757,6 +7786,8 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   overscroll-behavior: contain;
   touch-action: pan-y;
   scrollbar-width: none;
+  scroll-snap-type: y proximity;
+  -webkit-overflow-scrolling: touch;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 16%, #000 84%, transparent);
   mask-image: linear-gradient(to bottom, transparent, #000 16%, #000 84%, transparent);
 }
@@ -7773,10 +7804,11 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-wheel__lens {
   position: absolute;
   z-index: 0;
-  top: 44px;
+  top: 50%;
   right: 0.4rem;
   left: 0.4rem;
   height: 44px;
+  transform: translateY(-50%);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow:
@@ -7801,13 +7833,15 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   justify-content: center;
   width: 100%;
   height: 44px;
+  scroll-snap-align: center;
+  scroll-snap-stop: normal;
   padding: 0;
   border: 0;
   background: transparent;
   color: #1c1917;
   font: inherit;
   font-size: 1.35rem;
-  font-weight: 500;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -8213,6 +8247,16 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   margin: 0;
 }
 
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz > .super-prop-addon:not([data-addon-packages]):not([data-addon-pieces]):not([data-addon-ia]) > .super-prop-addon__controls > .super-prop-money input,
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz > .super-prop-addon:not([data-addon-packages]):not([data-addon-pieces]):not([data-addon-ia]) > .super-prop-addon__controls > .super-prop-money input:focus {
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz > .super-prop-addon:not([data-addon-packages]):not([data-addon-pieces]):not([data-addon-ia]) > .super-prop-addon__controls > .super-prop-money.is-picker[hidden] {
   display: none;
 }
@@ -8380,20 +8424,30 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   text-transform: uppercase;
 }
 
-.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia .super-prop-money.is-picker {
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia .super-prop-money {
   grid-column: auto;
   width: 100%;
   min-width: 0;
-  min-height: 0;
+  min-height: 3.15rem;
   margin: 0;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
+  padding: 0 0.85rem 0 0.4rem;
+  border-radius: 999px;
+  background: #fff;
   box-shadow: none;
 }
 
-.super-admin-dash .super-prop-ia .super-prop-wheel--addon {
-  width: 100%;
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia .super-prop-money input,
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia .super-prop-money input:focus {
+  min-height: 3rem;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+  font-size: 1.45rem;
+  text-align: center;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia > label.super-prop-factura {
@@ -8454,7 +8508,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages .super-prop-addon--piece {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.45rem;
+}
+
+.super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages > [data-prop-pack] .super-prop-addon__controls {
+  display: contents;
 }
 
 .super-admin-dash .super-prop-packages > [data-prop-pack]:not(.is-on) {
@@ -8475,7 +8535,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages > [data-prop-pack] .super-prop-addon__name {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.35rem;
   font-size: clamp(1.35rem, 2.4vw, 1.75rem);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -8488,8 +8548,9 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   align-items: center;
   gap: 0.45rem;
   width: 100%;
-  min-height: 3rem;
-  margin: 0 0 0.15rem;
+  min-width: 0;
+  min-height: 3.15rem;
+  margin: 0;
   padding: 0 0.35rem 0 0.95rem;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.72);
@@ -8653,12 +8714,59 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-addon--piece {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 0.4rem;
   padding: 0.28rem 0.35rem 0.28rem 0.9rem;
   border-radius: 999px;
   background: #fff;
+}
+
+.super-admin-dash .super-prop-piece-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.05rem;
+  height: 2.15rem;
+  padding: 0 0.15rem;
+  border-radius: 999px;
+  background: #f5f5f4;
+}
+
+.super-admin-dash .super-prop-piece-qty button {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: #1c1917;
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.super-admin-dash .super-prop-piece-qty button:active {
+  transform: scale(0.94);
+}
+
+.super-admin-dash .super-prop-piece-qty input {
+  width: 1.7rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1c1917;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.super-admin-dash .super-prop-piece-qty input::-webkit-outer-spin-button,
+.super-admin-dash .super-prop-piece-qty input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-addon__name {
@@ -8737,11 +8845,11 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-money {
-  width: 7.4rem;
-  min-width: 7.4rem;
+  width: 5.6rem;
+  min-width: 5.6rem;
   min-height: 2.15rem;
   margin: 0;
-  padding: 0 0.7rem;
+  padding: 0 0.15rem 0 0.55rem;
   border-radius: 999px;
   background: #f5f5f4;
   box-shadow: none;
@@ -8756,8 +8864,14 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   width: auto;
   min-width: 0;
   flex: 1 1 auto;
-  min-height: 2.05rem;
-  background: transparent;
+  min-height: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #1c1917 !important;
+  box-shadow: none;
   font-size: 1rem;
   font-weight: 650;
   text-align: right;
@@ -8775,17 +8889,23 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-money input::placeholder {
   color: #a8a29e;
-  font-size: 0.68rem;
+  font-size: 1rem;
   font-weight: 650;
-  letter-spacing: 0.02em;
-}
-
-.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-money input:placeholder-shown {
-  text-align: center;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-money em {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  margin: 0;
+  border-radius: 999px;
+  background: #1c1917;
+  color: #fff;
+  font-style: normal;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-quiz__choices {
@@ -8818,9 +8938,65 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   white-space: normal;
 }
 
-.super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages .super-prop-factura,
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages .super-prop-quiz__choices {
   display: none;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura {
+  display: grid;
+  place-items: center;
+  position: relative;
+  grid-column: auto;
+  justify-self: center;
+  align-self: center;
+  width: 1.35rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  min-height: 1.35rem;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid #1c1917;
+  border-radius: 0.28rem;
+  background: #fff;
+  color: #16a34a;
+  box-shadow: none;
+  transform: none;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura:hover,
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura:active {
+  transform: none;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura .super-prop-factura__ui {
+  display: none;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura:has(input:checked),
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura[data-on='true'] {
+  border-color: #1c1917;
+  background: #fff;
+  color: #1c1917;
+  box-shadow: none;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura:has(input:checked) .super-prop-factura__ui,
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura[data-on='true'] .super-prop-factura__ui {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+  background: #16a34a;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M2.6 8.2 6.3 12 13.4 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages label.super-prop-factura > span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .super-admin-dash .super-prop-packages .super-prop-select {
@@ -8829,11 +9005,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-packages .super-prop-money {
   display: grid;
+  grid-column: auto;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.55rem;
+  min-width: 0;
   min-height: 3.15rem;
-  margin-top: 0.35rem;
+  margin-top: 0;
   padding: 0 0.4rem 0 0.95rem;
   border-radius: 1rem;
   background: #fff;
@@ -9221,15 +9399,17 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-prop-form .super-prop-drop input[type='file'] {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
   border: 0;
   opacity: 0;
+  cursor: pointer;
+  font-size: 0;
 }
 
 .super-admin-dash .super-prop-form .super-prop-drop[data-busy='true'] {
@@ -9376,6 +9556,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .prop-slide.is-dragging .prop-slide__knob {
   transition: none;
   cursor: grabbing;
+}
+
+.super-admin-dash .prop-slide.is-dragging .prop-slide__knob {
+  transform: translateX(calc(var(--p) * var(--travel, 0px))) scale(1.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 14px 20px -8px rgba(0, 0, 0, 0.62);
 }
 
 .super-admin-dash .prop-slide.is-done .prop-slide__sheen {
@@ -9642,6 +9829,18 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   border-color: transparent;
   background: #1c1917;
   color: #fafaf9;
+}
+
+.super-admin-dash .super-prop__links [data-prop-delete] {
+  border-color: transparent;
+  background: transparent;
+  color: #9f1239;
+}
+
+.super-admin-dash .super-props__empty {
+  margin: 1.15rem 0 0;
+  color: #78716c;
+  font-size: 0.95rem;
 }
 
 @media (max-width: 640px) {
@@ -10757,22 +10956,62 @@ html.admin-panel[data-theme='organico'] .studio-search-input {
     min-height: 6.2rem;
   }
 
+  .super-admin-dash .super-prop-quiz {
+    gap: 0.35rem;
+  }
+
   .super-admin-dash .super-prop-addon-list.is-quiz.is-stepped > .super-prop-addon:not([hidden]) {
     min-height: 0;
-    padding: 1rem 0.8rem 0.85rem;
+    padding: 0.7rem 0.7rem 0.5rem;
   }
 
   .super-admin-dash .super-prop-addon-list.is-quiz > .super-prop-addon > .super-prop-addon__name {
-    margin-bottom: 0.6rem;
-    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+    font-size: 1.05rem;
+  }
+
+  .super-admin-dash .super-prop-quiz__caption {
+    height: auto;
+    margin: 0 0 0.2rem;
+    font-size: 0.78rem;
+    line-height: 1;
   }
 
   .super-admin-dash .super-prop-quiz__choice {
-    height: 2.75rem;
-    min-height: 2.75rem;
-    padding: 0.3rem 0.4rem;
-    font-size: 0.8rem;
+    height: 2.4rem;
+    min-height: 2.4rem;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.78rem;
     letter-spacing: 0.03em;
+  }
+
+  .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages {
+    gap: 0.4rem;
+  }
+
+  .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-packages > [data-prop-pack] .super-prop-addon__name {
+    margin-bottom: 0.3rem;
+    font-size: 1rem;
+  }
+
+  .super-admin-dash .super-prop-pack-qty {
+    min-height: 3.15rem;
+    margin-bottom: 0;
+  }
+
+  .super-admin-dash .super-prop-pack-add {
+    min-height: 2.2rem;
+    font-size: 0.78rem;
+  }
+
+  .super-admin-dash .super-prop-quiz__nav {
+    gap: 0.35rem;
+  }
+
+  .super-admin-dash .super-prop-quiz__nav button {
+    min-height: 2.25rem;
+    padding: 0 0.9rem;
+    font-size: 0.84rem;
   }
 
   .super-admin-dash .super-prop-wheel--addon {

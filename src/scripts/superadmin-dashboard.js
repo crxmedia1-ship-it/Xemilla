@@ -102,6 +102,12 @@ import { formatVentaMonto } from '../lib/ventas.js';
         }
         const drop = form.querySelector('[data-prop-drop]');
         if (drop instanceof HTMLElement) drop.dataset.filled = logo ? 'true' : 'false';
+        const dropTitle = form.querySelector('[data-prop-drop-title]');
+        const dropSub = form.querySelector('[data-prop-drop-sub]');
+        if (dropTitle) dropTitle.textContent = logo ? 'Cambiar foto' : 'Añadir foto';
+        if (dropSub) dropSub.textContent = logo ? 'Foto lista' : 'Tócala o arrástrala aquí';
+        const clear = form.querySelector('[data-prop-logo-clear]');
+        if (clear instanceof HTMLElement) clear.hidden = !logo;
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
@@ -2042,12 +2048,22 @@ import { formatVentaMonto } from '../lib/ventas.js';
     };
 
     /** @param {File | null | undefined} file */
+    const isLogoFile = (file) => {
+      const type = String(file?.type || '').toLowerCase();
+      if (type === 'image/jpg' || type === 'image/pjpeg' || type.startsWith('image/')) return true;
+      return /\.(png|jpe?g|webp|gif|avif|heic|heif|svg)$/i.test(file?.name || '');
+    };
+
+    /** @param {File | null | undefined} file */
     const uploadLogo = async (file) => {
       if (!file || !(logoInput instanceof HTMLInputElement)) return;
-      if (!file.type.startsWith('image/')) {
+      if (!isLogoFile(file)) {
         setStatus('El logo tiene que ser una imagen.');
+        if (dropSub) dropSub.textContent = 'Tiene que ser una imagen';
         return;
       }
+      const preview = URL.createObjectURL(file);
+      paintLogo(preview, file.name);
       setStatus('Subiendo logo…');
       if (drop instanceof HTMLElement) drop.dataset.busy = 'true';
       const body = new FormData();
@@ -2058,15 +2074,23 @@ import { formatVentaMonto } from '../lib/ventas.js';
         const response = await fetch('/api/upload', { method: 'POST', body });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload.url) {
-          setStatus(payload.error || 'No se pudo subir el logo.');
+          paintLogo('');
+          logoInput.value = '';
+          const message = payload.error || 'No se pudo subir el logo.';
+          setStatus(message);
+          if (dropSub) dropSub.textContent = message;
           return;
         }
         logoInput.value = payload.url;
         paintLogo(payload.url, file.name);
         setStatus('');
       } catch {
+        paintLogo('');
+        logoInput.value = '';
         setStatus('No se pudo subir el logo.');
+        if (dropSub) dropSub.textContent = 'No se pudo subir';
       } finally {
+        URL.revokeObjectURL(preview);
         if (drop instanceof HTMLElement) delete drop.dataset.busy;
         if (logoFile instanceof HTMLInputElement) logoFile.value = '';
       }
@@ -2181,15 +2205,13 @@ import { formatVentaMonto } from '../lib/ventas.js';
         }
       }
       if (focusPrice && priced && row instanceof HTMLElement && window.matchMedia('(max-width: 760px)').matches) {
-        const revealed =
-          (packsParent && row.querySelector(':scope > .super-prop-packages')) ||
-          (piecesParent && row.querySelector(':scope > .super-prop-pieces')) ||
-          (iaParent && row.querySelector(':scope > .super-prop-ia')) ||
-          row.querySelector(':scope > .super-prop-addon__controls .super-prop-money') ||
-          row;
         requestAnimationFrame(() => {
-          if (revealed instanceof HTMLElement) {
-            revealed.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          const quiz = row.closest('.super-prop-quiz');
+          const target = quiz instanceof HTMLElement ? quiz : row;
+          const rect = target.getBoundingClientRect();
+          const fits = rect.height <= window.innerHeight - 8;
+          if (rect.top < 8 || rect.bottom > window.innerHeight - 8) {
+            target.scrollIntoView({ behavior: 'smooth', block: fits ? 'nearest' : 'start', inline: 'nearest' });
           }
         });
       }
@@ -2307,41 +2329,6 @@ import { formatVentaMonto } from '../lib/ventas.js';
             return;
           }
           show(index + 1);
-        });
-
-        const mountPriceWheel = (money, label) => {
-          if (!(money instanceof HTMLElement) || money.querySelector('[data-wheel]')) return;
-          const field = money.querySelector('input');
-          if (!(field instanceof HTMLInputElement)) return;
-          money.classList.add('is-picker');
-          field.dataset.wheelInput = '';
-          const wheel = document.createElement('div');
-          wheel.className = 'super-prop-wheel super-prop-wheel--addon';
-          const now = field.value || '0';
-          const safeLabel = String(label || 'Precio').replace(/"/g, '');
-          wheel.innerHTML =
-            '<div class="super-prop-wheel__frame"><span class="super-prop-wheel__lens" aria-hidden="true"></span><div class="super-prop-wheel__drum" data-wheel role="spinbutton" tabindex="0" aria-label="' +
-            safeLabel +
-            '" aria-valuemin="0" aria-valuemax="5000" aria-valuenow="' +
-            now +
-            '"><div class="super-prop-wheel__track" data-wheel-track></div></div></div><p class="super-prop-wheel__unit">$</p>';
-          money.querySelector('em')?.remove();
-          money.append(wheel);
-          wheel.append(field);
-        };
-
-        quizList.querySelectorAll(':scope > .super-prop-addon:not([data-addon-packages]):not([data-addon-pieces]):not([data-addon-ia]) > .super-prop-addon__controls > .super-prop-money').forEach((money) => {
-          const bill = money.parentElement?.querySelector(':scope > label.super-prop-factura');
-          mountPriceWheel(money, 'Precio');
-          if (!(money instanceof HTMLElement)) return;
-          const unit = money.querySelector('.super-prop-wheel__unit');
-          if (unit) money.append(unit);
-          if (bill instanceof HTMLElement) money.append(bill);
-        });
-        quizList.querySelectorAll('[data-addon-ia] .super-prop-ia .super-prop-money').forEach((money) => {
-          const label = money.parentElement?.querySelector(':scope > span')?.textContent?.trim() || 'Precio';
-          mountPriceWheel(money, label);
-          money.querySelector('[data-wheel]')?.setAttribute('data-wheel-step', '25');
         });
 
         quizList.before(shell);
@@ -2528,11 +2515,42 @@ import { formatVentaMonto } from '../lib/ventas.js';
     });
     if (document.documentElement.dataset.addonModesBound !== 'true') {
       document.documentElement.dataset.addonModesBound = 'true';
+      document.addEventListener('click', (event) => {
+        const step = event.target instanceof Element ? event.target.closest('[data-pieza-qty-step]') : null;
+        if (!(step instanceof HTMLButtonElement)) return;
+        const field = step.parentElement?.querySelector('[data-pieza-qty]');
+        if (!(field instanceof HTMLInputElement)) return;
+        const delta = Number(step.dataset.piezaQtyStep) || 0;
+        const next = Math.max(0, Math.min(99, (Math.round(Number(field.value) || 0)) + delta));
+        field.value = String(next);
+        const check = field.closest('[data-piece-row]')?.querySelector('[data-adicional-factura]');
+        if (check instanceof HTMLInputElement) {
+          check.checked = next > 0;
+          const billLabel = check.closest('label');
+          if (billLabel instanceof HTMLElement) billLabel.dataset.on = next > 0 ? 'true' : 'false';
+        }
+      });
       document.addEventListener('change', (event) => {
         const mode = event.target;
+        if (mode instanceof HTMLInputElement && mode.matches('[data-pieza-qty]')) {
+          const next = Math.max(0, Math.min(99, Math.round(Number(mode.value) || 0)));
+          mode.value = String(next);
+          const check = mode.closest('[data-piece-row]')?.querySelector('[data-adicional-factura]');
+          if (check instanceof HTMLInputElement) {
+            check.checked = next > 0;
+            const billLabel = check.closest('label');
+            if (billLabel instanceof HTMLElement) billLabel.dataset.on = next > 0 ? 'true' : 'false';
+          }
+        }
         if (mode instanceof HTMLInputElement && mode.matches('[data-adicional-factura]')) {
           const billLabel = mode.closest('label');
           if (billLabel instanceof HTMLElement) billLabel.dataset.on = mode.checked ? 'true' : 'false';
+          const pieceRow = mode.closest('[data-piece-row]');
+          const qty = pieceRow?.querySelector('[data-pieza-qty]');
+          if (qty instanceof HTMLInputElement) {
+            const current = Math.max(0, Math.min(99, Math.round(Number(qty.value) || 0)));
+            qty.value = mode.checked ? String(Math.max(1, current)) : '0';
+          }
         }
         if (!(mode instanceof HTMLSelectElement) || !mode.matches('[data-adicional-mode]')) return;
         const row = mode.closest('[data-addon-row]');
@@ -2551,6 +2569,8 @@ import { formatVentaMonto } from '../lib/ventas.js';
       /** @type {string[]} */
       const piezasFactura = [];
       /** @type {Record<string, string>} */
+      const piezasCantidad = {};
+      /** @type {Record<string, string>} */
       const paquetes = {};
       /** @type {Record<string, string>} */
       const paquetesPlatos = {};
@@ -2559,7 +2579,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
       root.querySelectorAll('[data-addon-row]').forEach((row) => {
         if (row instanceof HTMLElement && row.hasAttribute('data-addon-ia')) return;
         const input = row.querySelector(':scope > .super-prop-addon__controls [data-adicional], :scope > .super-prop-addon__controls [data-pieza], :scope > .super-prop-addon__controls [data-paquete]');
-        const check = row.querySelector(':scope > .super-prop-addon__controls [data-adicional-factura]');
+        const check = row.querySelector(':scope > .super-prop-addon__controls [data-adicional-factura], :scope > label.super-prop-factura [data-adicional-factura]');
         if (!(input instanceof HTMLInputElement)) return;
         const paquete = input.dataset.paquete || '';
         if (paquete) {
@@ -2585,7 +2605,12 @@ import { formatVentaMonto } from '../lib/ventas.js';
           const parentMode = parent?.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
           if (parentMode instanceof HTMLSelectElement && parentMode.value !== 'precio') return;
           if (!input.disabled && input.value.trim() && Number(input.value) > 0) piezas[pieza] = input.value.trim();
-          if (check instanceof HTMLInputElement && check.checked) piezasFactura.push(pieza);
+          const qty = row.querySelector('[data-pieza-qty]');
+          const n = qty instanceof HTMLInputElement
+            ? Math.max(0, Math.min(99, Math.round(Number(qty.value) || 0)))
+            : 0;
+          piezasCantidad[pieza] = String(n);
+          if (check instanceof HTMLInputElement && check.checked && n > 0) piezasFactura.push(pieza);
           return;
         }
         const id = input.dataset.adicional || '';
@@ -2608,6 +2633,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
       if (!(qrMode instanceof HTMLSelectElement) || qrMode.value === 'precio') {
         adicionales.piezas = piezas;
         adicionales.piezasFactura = piezasFactura;
+        adicionales.piezasCantidad = piezasCantidad;
       }
       const arMode = root.querySelector('[data-addon-packages] > .super-prop-addon__controls [data-adicional-mode]');
       if (arMode instanceof HTMLSelectElement && arMode.value === 'precio') {
@@ -2672,57 +2698,67 @@ import { formatVentaMonto } from '../lib/ventas.js';
       const indexFromScroll = () =>
         Math.max(0, Math.min(values.length - 1, Math.round(drum.scrollTop / WHEEL_ROW)));
 
-      const paint = () => {
-        const pos = drum.scrollTop / WHEEL_ROW;
-        items.forEach((node, i) => {
-          const dist = i - pos;
-          const away = Math.abs(dist);
-          const scale = Math.max(0.78, 1.16 - away * 0.24);
-          const tilt = Math.max(-46, Math.min(46, dist * 24));
-          node.style.transform = `perspective(140px) rotateX(${tilt}deg) scale(${scale})`;
-          node.style.opacity = String(Math.max(0.22, 1 - away * 0.42));
-          node.classList.toggle('is-on', away < 0.35);
-        });
+      let lastOn = -1;
+      const paint = (on) => {
+        const index = Math.max(0, Math.min(values.length - 1, on));
+        if (index === lastOn) return;
+        const start = lastOn < 0 ? 0 : Math.max(0, Math.min(lastOn, index) - 5);
+        const end = lastOn < 0 ? items.length - 1 : Math.min(items.length - 1, Math.max(lastOn, index) + 5);
+        for (let i = start; i <= end; i += 1) {
+          const away = Math.abs(i - index);
+          items[i].style.opacity = String(away === 0 ? 1 : Math.max(0.28, 1 - away * 0.38));
+          items[i].classList.toggle('is-on', i === index);
+        }
+        lastOn = index;
       };
 
       const commit = (index) => {
-        const value = values[index];
+        const value = values[Math.max(0, Math.min(values.length - 1, index))];
+        if (input.value === String(value) && drum.getAttribute('aria-valuenow') === String(value)) return;
         input.value = String(value);
         drum.setAttribute('aria-valuenow', String(value));
         input.dispatchEvent(new Event('input', { bubbles: true }));
       };
 
-      const goTo = (index, smooth) => {
-        const next = Math.max(0, Math.min(values.length - 1, index));
-        drum.scrollTo({ top: next * WHEEL_ROW, behavior: smooth ? 'smooth' : 'auto' });
-        commit(next);
-        paint();
+      let snapping = false;
+      const align = () => {
+        const index = indexFromScroll();
+        const top = index * WHEEL_ROW;
+        if (Math.abs(drum.scrollTop - top) > 1) {
+          snapping = true;
+          drum.scrollTo({ top, behavior: 'auto' });
+          snapping = false;
+        }
+        commit(index);
+        paint(index);
       };
 
-      let snapTimer = 0;
-      let snapping = false;
+      const goTo = (index, smooth) => {
+        const next = Math.max(0, Math.min(values.length - 1, index));
+        snapping = true;
+        drum.scrollTo({ top: next * WHEEL_ROW, behavior: smooth ? 'smooth' : 'auto' });
+        snapping = false;
+        commit(next);
+        paint(next);
+      };
+
+      let settleTimer = 0;
       drum.addEventListener(
         'scroll',
         () => {
-          paint();
           if (snapping) return;
-          window.clearTimeout(snapTimer);
-          snapTimer = window.setTimeout(() => {
-            const index = indexFromScroll();
-            const top = index * WHEEL_ROW;
-            commit(index);
-            if (Math.abs(drum.scrollTop - top) > 0.5) {
-              snapping = true;
-              drum.scrollTo({ top, behavior: 'auto' });
-              window.setTimeout(() => {
-                snapping = false;
-                paint();
-              }, 40);
-            }
-          }, 70);
+          const index = indexFromScroll();
+          paint(index);
+          window.clearTimeout(settleTimer);
+          settleTimer = window.setTimeout(align, 140);
         },
         { passive: true },
       );
+      drum.addEventListener('scrollend', () => {
+        if (snapping) return;
+        window.clearTimeout(settleTimer);
+        align();
+      });
 
       track.addEventListener('click', (event) => {
         const item = event.target instanceof Element ? event.target.closest('[data-value]') : null;
@@ -2747,9 +2783,10 @@ import { formatVentaMonto } from '../lib/ventas.js';
         fitPads();
         const current = Math.max(0, Math.round(Number(input.value) || start));
         const index = Math.max(0, values.indexOf(current));
+        lastOn = -1;
         drum.scrollTop = (index < 0 ? 0 : index) * WHEEL_ROW;
         commit(index < 0 ? 0 : index);
-        paint();
+        paint(index < 0 ? 0 : index);
       };
       drum.addEventListener('wheel-show', () => requestAnimationFrame(place));
       place();
@@ -2865,6 +2902,37 @@ import { formatVentaMonto } from '../lib/ventas.js';
       document.addEventListener('click', async (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;
+        const delBtn = target.closest('[data-prop-delete]');
+        if (delBtn instanceof HTMLButtonElement && delBtn.dataset.propDelete) {
+          event.preventDefault();
+          const id = delBtn.dataset.propDelete;
+          const card = delBtn.closest('[data-propuesta-card]');
+          const name = card?.querySelector('h3')?.textContent?.trim() || 'esta propuesta';
+          if (!window.confirm(`¿Eliminar la propuesta de ${name}?`)) return;
+          delBtn.disabled = true;
+          try {
+            const response = await fetch('/api/propuestas', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'No se pudo borrar');
+            const list = card?.closest('.super-props__list');
+            card?.closest('li')?.remove();
+            if (list && !list.querySelector('[data-propuesta-card]')) {
+              const note = document.createElement('p');
+              note.className = 'super-props__empty';
+              note.textContent = 'Todavía no hay propuestas.';
+              list.replaceWith(note);
+            }
+          } catch (error) {
+            delBtn.disabled = false;
+            const status = document.querySelector('[data-prop-status]');
+            if (status) status.textContent = error instanceof Error ? error.message : 'No se pudo borrar la propuesta.';
+          }
+          return;
+        }
         const copyBtn = target.closest('[data-prop-copy]');
         if (copyBtn instanceof HTMLButtonElement && copyBtn.dataset.propCopy) {
           event.preventDefault();
@@ -2962,12 +3030,47 @@ import { formatVentaMonto } from '../lib/ventas.js';
       };
       let travel = 0;
       let dragging = false;
+      let touchDrag = false;
       let origin = 0;
       let originP = 0;
+      let lastNotch = 0;
+      /** @type {HTMLInputElement | null} */
+      let hapticSwitch = null;
+      const buzz = (pattern) => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (typeof navigator.vibrate === 'function') {
+          try {
+            if (navigator.vibrate(pattern)) return;
+          } catch {
+            /* El motor no está disponible. */
+          }
+        }
+        if (!hapticSwitch) {
+          hapticSwitch = document.createElement('input');
+          hapticSwitch.type = 'checkbox';
+          hapticSwitch.setAttribute('switch', '');
+          hapticSwitch.tabIndex = -1;
+          hapticSwitch.setAttribute('aria-hidden', 'true');
+          hapticSwitch.style.cssText = 'position:fixed;inline-size:1px;block-size:1px;opacity:0;pointer-events:none;bottom:0;left:0';
+          document.body.append(hapticSwitch);
+        }
+        try {
+          hapticSwitch.click();
+        } catch {
+          /* Safari sin háptica. */
+        }
+      };
       const progress = () => Number.parseFloat(propSlide.style.getPropertyValue('--p')) || 0;
       const setProgress = (value) => {
         const next = Math.min(1, Math.max(0, value));
         propSlide.style.setProperty('--p', String(next));
+        if (dragging && touchDrag) {
+          const notch = Math.round(next * 14);
+          if (notch !== lastNotch) {
+            lastNotch = notch;
+            buzz(next >= 0.86 ? [10, 24, 16] : 7);
+          }
+        }
         return next;
       };
       const resetSlide = () => {
@@ -2975,28 +3078,39 @@ import { formatVentaMonto } from '../lib/ventas.js';
         setProgress(0);
       };
       propSlide.addEventListener('slide-reset', resetSlide);
-      const finish = () => {
+      const finish = (fromTouch) => {
         if (propSlide.classList.contains('is-done') || form.dataset.creating === 'true') return;
         propSlide.classList.remove('is-dragging');
         setProgress(1);
         propSlide.classList.add('is-done');
+        if (fromTouch) buzz([16, 36, 22]);
         form.requestSubmit();
       };
       const release = (value) => {
         propSlide.classList.remove('is-dragging');
         dragging = false;
-        if (value >= 0.86) finish();
-        else setProgress(0);
+        if (value >= 0.86) finish(touchDrag);
+        else {
+          if (touchDrag && value > 0.04) buzz(9);
+          setProgress(0);
+        }
       };
       propKnob.addEventListener('pointerdown', (event) => {
         if (propSlide.classList.contains('is-done') || form.dataset.creating === 'true') return;
         travel = measure();
         if (travel < 1) return;
         dragging = true;
+        touchDrag = event.pointerType === 'touch';
         origin = event.clientX;
         originP = progress();
+        lastNotch = Math.round(originP * 14);
         propSlide.classList.add('is-dragging');
-        propKnob.setPointerCapture(event.pointerId);
+        try {
+          propKnob.setPointerCapture(event.pointerId);
+        } catch {
+          /* El gesto sigue por pointermove. */
+        }
+        if (touchDrag) buzz(8);
       });
       propKnob.addEventListener('pointermove', (event) => {
         if (!dragging) return;
@@ -3013,7 +3127,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
       propKnob.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        finish();
+        finish(false);
       });
     }
   }

@@ -4,7 +4,7 @@ export const prerender = false;
 import PhoneSync from '../components/propuesta/PhoneSync.astro';
 import QrArt from '../components/propuesta/QrArt.astro';
 import CurrencySwitcher from '../components/app/CurrencySwitcher.astro';
-import { getPropuesta, isPropuestaId, readPropuestaFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, readPropuestaPiezas, readPropuestaPiezasFactura, propuestaTienePaquetes, readPropuestaCartaDemo, readPropuestaIaMensual, touchPropuesta } from '../lib/propuestas.js';
+import { getPropuesta, isPropuestaId, readPropuestaFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, readPropuestaPiezas, readPropuestaPiezasFactura, readPropuestaPiezasCantidad, propuestaTienePaquetes, readPropuestaCartaDemo, readPropuestaIaMensual, touchPropuesta } from '../lib/propuestas.js';
 import { createSupabaseServiceClient } from '../lib/supabase/service.js';
 import Layout from '../layouts/Layout.astro';
 
@@ -83,6 +83,8 @@ if (propuestaGuardada && propuestaService) {
   await touchPropuesta(propuestaService, propuestaGuardada.id, 'vista');
 }
 const propuestaId = propuestaGuardada?.id ?? '';
+/** Un ?p= que ya no existe no debe pintar la propuesta de muestra. */
+const propuestaPerdida = Boolean(params.get('p')) && !propuestaGuardada;
 
 const para = readText(propuestaGuardada?.nombre ?? params.get('para'), 'Tu Restaurante');
 const setup = readAmount(propuestaGuardada?.setup ?? params.get('setup'), '500');
@@ -253,8 +255,13 @@ const precioAr = () => {
   if (arPaquetes.length === 1 && priced.length === 1) return `${priced[0].amount} USD`;
   return 'Paquetes';
 };
+const piezasCantidad = readPropuestaPiezasCantidad(propuestaGuardada?.adicionales);
 const piezaArranca = (id: string) =>
   piezasFacturaGuardada ? piezasEnFactura.has(id) : facturaInicial.has('qr') && id === 'tent';
+const piezaQtyInicial = (id: string) => {
+  if (piezasCantidad[id] != null) return Number(piezasCantidad[id]);
+  return piezaArranca(id) ? 1 : 0;
+};
 
 const gadgets = [
   {
@@ -311,6 +318,50 @@ const precioDe = (id: string) => {
   return price ? `${price} USD` : 'A consultar';
 };
 
+const platosNota = (platos: string) => `${platos} ${platos === '1' ? 'plato' : 'platos'}`;
+
+const ticketExtras: Array<{ label: string; value: string; note?: string }> = [
+  ...gadgets
+    .filter((gadget) => gadget.onBill && gadget.id !== 'ar' && gadget.id !== 'qr' && gadget.id !== 'ia')
+    .map((gadget) => ({
+      label: `1 × ${gadget.title}`,
+      value: gadget.price ? `${gadget.price} USD` : 'A consultar',
+    })),
+  ...(facturaInicial.has('ia')
+    ? [
+        ...(adicionalPrecio('ia')
+          ? [{ label: '1 × Klientiq instalación', value: `${adicionalPrecio('ia')} USD` }]
+          : []),
+        ...(iaMensual ? [{ label: '1 × Klientiq mensual', value: `${iaMensual} USD/mes` }] : []),
+        ...(!adicionalPrecio('ia') && !iaMensual ? [{ label: '1 × Klientiq', value: 'A consultar' }] : []),
+      ]
+    : []),
+  ...arPaquetes
+    .filter((pack) => pack.on)
+    .map((pack) => ({
+      label: `1 × ${pack.label} (AR)`,
+      value: pack.amount ? `${pack.amount} USD` : 'A consultar',
+      note: platosNota(pack.platos),
+    })),
+  ...[
+    ['tent', 'Acrílico'],
+    ['nfc', 'Tag NFC'],
+    ['plate', 'Placa'],
+  ]
+    .filter(([id]) => piezaQtyInicial(id) > 0)
+    .map(([id, name]) => {
+      const qty = piezaQtyInicial(id);
+      const unit = Number(precioPieza(id));
+      return {
+        label: `${qty} × ${name}`,
+        value: unit ? `${unit * qty} USD` : 'A consultar',
+        note: qty > 1 && unit ? `${unit} USD c/u` : undefined,
+      };
+    }),
+];
+
+const mensualInicial = facturaInicial.has('ia') && iaMensual ? iaMensual : '';
+
 /* print: zona imprimible de cada foto, en % de la imagen cuadrada (left, top, width, height). */
 const shopDemo = [
   { img: '/propuesta/tienda/camiseta.webp', name: 'Camiseta', price: 22, print: [37, 33, 26, 16] },
@@ -325,7 +376,7 @@ const loyaltyFilled = 7;
 const nutriDemo = {
   name: 'Risotto de hongos',
   serving: '1 porción · 350 g',
-  img: '/propuesta/risotto.jpg',
+  img: '/propuesta/comida-champinon.png',
   kcal: 520,
   macros: [
     { key: 'prot', label: 'Prot', grams: 18 },
@@ -455,7 +506,19 @@ const glass =
     }
   </div>
 
-  <main data-palette={palette} data-propuesta-id={propuestaId} class="font-blacksushi relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-5 pt-12 text-zinc-200 sm:px-8 sm:pt-20 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+  {
+    propuestaPerdida ? (
+      <main class="relative z-10 mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-6 text-center">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Propuesta</p>
+        <h1 class="mt-3 text-3xl font-light tracking-[-0.03em] text-zinc-50">Este enlace ya no está</h1>
+        <p class="mt-3 text-base font-light leading-relaxed text-zinc-400">
+          Esa versión se reemplazó. Abrí el enlace nuevo desde el panel, el que dice Entrar.
+        </p>
+      </main>
+    ) : null
+  }
+
+  <main data-palette={palette} data-propuesta-id={propuestaId} hidden={propuestaPerdida} class="font-blacksushi relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-5 pt-12 text-zinc-200 sm:px-8 sm:pt-20 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
     <header class="mx-auto flex max-w-3xl flex-col items-center text-center">
       <p data-collide class="inline-flex items-center rounded-full border border-white/10 bg-zinc-900/40 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.16em] whitespace-nowrap text-zinc-400 min-[400px]:tracking-[0.28em] shadow-2xl backdrop-blur-xl">
         Propuesta privada de exclusividad
@@ -830,6 +893,11 @@ const glass =
         <div class="ticket__paper">
           <header class="ticket__head">
             <img class="ticket__brand" src="/propuesta/xemilla-on-light.png" alt="Xemilla" width="766" height="249" />
+            {
+              logo ? (
+                <img class="ticket__logo" src={logo} alt={`Logo de ${para}`} decoding="async" referrerpolicy="no-referrer" />
+              ) : null
+            }
             <p class="ticket__for">Propuesta para {para}</p>
             <p class="ticket__meta">
               <span>Mesa 01</span>
@@ -844,18 +912,20 @@ const glass =
                   <p class="ticket__row">
                     <span>1 × {plan.label}</span>
                     <i aria-hidden="true" />
-                    <b data-prop-usd={!sinPrecio && plan.cadence !== 'Anual' && esPrecio(plan.amount) ? plan.amount : undefined}>
-                      {sinPrecio || !esPrecio(plan.amount) ? 'A consultar' : plan.cadence === 'Anual' ? 'Incluida' : `${plan.amount} USD`}
+                    <b>
+                      {sinPrecio || !esPrecio(plan.amount) ? (
+                        'A consultar'
+                      ) : plan.cadence === 'Anual' ? (
+                        <>
+                          <span data-prop-usd={plan.amount}>{plan.amount} USD</span>/año
+                        </>
+                      ) : (
+                        <span data-prop-usd={plan.amount}>{plan.amount} USD</span>
+                      )}
                     </b>
                   </p>
                   <p class="ticket__note">
-                    {plan.cadence === 'Anual' && !sinPrecio && esPrecio(anual) ? (
-                      <>
-                        Primer año gratis · luego <span data-prop-usd={anual}>{anual} USD</span>/año
-                      </>
-                    ) : (
-                      plan.cadence
-                    )}
+                    {plan.cadence === 'Anual' && !sinPrecio && esPrecio(anual) ? 'Primer año incluido' : plan.cadence}
                   </p>
                   <ul class="ticket__subs">
                     {plan.tags.map((tag) => (
@@ -867,13 +937,26 @@ const glass =
             }
           </ul>
 
-          <ul class="ticket__addons" data-ticket-addons hidden></ul>
+          <ul class="ticket__addons" data-ticket-addons hidden={ticketExtras.length === 0}>
+            {
+              ticketExtras.map((line) => (
+                <li>
+                  <p class="ticket__row">
+                    <span>{line.label}</span>
+                    <i aria-hidden="true" />
+                    <b>{line.value}</b>
+                  </p>
+                  {line.note ? <p class="ticket__note">{line.note}</p> : null}
+                </li>
+              ))
+            }
+          </ul>
 
           <div class="ticket__zero">
             <p class="ticket__row">
               <span>Mensualidades</span>
               <i aria-hidden="true" />
-              <b>0</b>
+              <b data-ticket-monthly>{mensualInicial ? `${mensualInicial} USD/mes` : '0'}</b>
             </p>
             <p class="ticket__row">
               <span>Costos ocultos</span>
@@ -889,7 +972,9 @@ const glass =
               <b data-ticket-total data-prop-usd={!sinPrecio && esPrecio(setup) ? setup : undefined} data-base={!sinPrecio && esPrecio(setup) ? setup : ''}>{sinPrecio || !esPrecio(setup) ? 'A consultar' : `${setup} USD`}</b>
             </p>
             {!sinPrecio && esPrecio(anual) && (
-              <p class="ticket__note">Desde el 2.º año, solo <span data-prop-usd={anual}>{anual} USD</span> al año.</p>
+              <p class="ticket__note">
+                Desde el 2.º año, solo <span data-prop-usd={anual}>{anual} USD</span> al año<span data-ticket-monthly-note>{mensualInicial ? ` y ${mensualInicial} USD al mes` : ''}</span>.
+              </p>
             )}
             {!sinPrecio && !esPrecio(anual) && (
               <p class="ticket__note">Desde el 2.º año, a consultar.</p>
@@ -954,6 +1039,7 @@ const glass =
                     data-addon-price={gadget.price}
                     data-addon-monthly={gadget.id === 'ia' ? iaMensual : undefined}
                     aria-pressed={gadget.onBill ? 'true' : 'false'}
+                    data-billed={gadget.onBill ? '' : undefined}
                     aria-label={gadget.onBill ? `Quitar ${gadget.title} de la cuenta` : `Añadir ${gadget.title} a la cuenta`}
                   >
                     +
@@ -981,6 +1067,7 @@ const glass =
 
   <div class={`pointer-events-none fixed inset-x-0 bottom-0 z-40 h-24 bg-gradient-to-t to-transparent ${WORLDS[world].fade}`} aria-hidden="true"></div>
   <nav
+    hidden={propuestaPerdida}
     data-palette={palette}
     class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-50 mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/15 bg-zinc-950/80 p-2 shadow-2xl backdrop-blur-2xl"
     aria-label="Acciones de la propuesta"
@@ -1038,6 +1125,7 @@ const glass =
             type="button"
             data-ar-pack
             data-pack-name={pack.label}
+            data-pack-platos={pack.platos}
             data-pack-price={pack.amount}
             aria-pressed={pack.on ? 'true' : 'false'}
           >
@@ -1058,9 +1146,9 @@ const glass =
       <p id="nutri-dialog-title" class="demo-dialog__title">{nutriDemo.name}</p>
       <p class="nutri__serving">{nutriDemo.serving}</p>
       <div class="nutri-metrics">
-        <div class="nutri-metric">
-          <span>kcal</span>
-          <b>{nutriDemo.kcal}</b>
+        <div class="nutri-metric nutri-metric--kcal">
+          <span>Calorías</span>
+          <b>{nutriDemo.kcal}<small>kcal</small></b>
         </div>
         {
           nutriDemo.macros.map((macro) => (
@@ -1127,7 +1215,7 @@ const glass =
         <p class="qr-piece__price" data-prop-usd={precioPieza('tent') || undefined}>{precioPieza('tent') ? `${precioPieza('tent')} USD` : 'A consultar'}</p>
         <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Acrílico" data-piece-price={precioPieza('tent')} role="group" aria-label="Acrílico">
           <button type="button" data-qr-step="-1" aria-label="Quitar un acrílico">−</button>
-          <span data-qr-qty>{piezaArranca('tent') ? '1' : '0'}</span>
+          <span data-qr-qty>{piezaQtyInicial('tent')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir un acrílico">+</button>
         </div>
       </li>
@@ -1149,7 +1237,7 @@ const glass =
         <p class="qr-piece__price" data-prop-usd={precioPieza('nfc') || undefined}>{precioPieza('nfc') ? `${precioPieza('nfc')} USD` : 'A consultar'}</p>
         <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Tag NFC" data-piece-price={precioPieza('nfc')} role="group" aria-label="Tag NFC">
           <button type="button" data-qr-step="-1" aria-label="Quitar un tag NFC">−</button>
-          <span data-qr-qty>{piezaArranca('nfc') ? '1' : '0'}</span>
+          <span data-qr-qty>{piezaQtyInicial('nfc')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir un tag NFC">+</button>
         </div>
       </li>
@@ -1166,7 +1254,7 @@ const glass =
         <p class="qr-piece__price" data-prop-usd={precioPieza('plate') || undefined}>{precioPieza('plate') ? `${precioPieza('plate')} USD` : 'A consultar'}</p>
         <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Placa" data-piece-price={precioPieza('plate')} role="group" aria-label="Placa">
           <button type="button" data-qr-step="-1" aria-label="Quitar una placa">−</button>
-          <span data-qr-qty>{piezaArranca('plate') ? '1' : '0'}</span>
+          <span data-qr-qty>{piezaQtyInicial('plate')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir una placa">+</button>
         </div>
       </li>
@@ -1798,7 +1886,9 @@ const glass =
     const stamp = (el: HTMLElement) => {
       if (scopeAttr) el.setAttribute(scopeAttr, '');
     };
-    const addLine = (label: string, valueText: string) => {
+    const ticketMonthly = document.querySelector<HTMLElement>('[data-ticket-monthly]');
+    const ticketMonthlyNote = document.querySelector<HTMLElement>('[data-ticket-monthly-note]');
+    const addLine = (label: string, valueText: string, noteText = '') => {
       const li = document.createElement('li');
       const row = document.createElement('p');
       row.className = 'ticket__row';
@@ -1815,11 +1905,19 @@ const glass =
       stamp(value);
       row.append(name, dots, value);
       li.append(row);
+      if (noteText) {
+        const note = document.createElement('p');
+        note.className = 'ticket__note';
+        note.textContent = noteText;
+        stamp(note);
+        li.append(note);
+      }
       ticketAddons.append(li);
     };
     const paintTicket = () => {
       ticketAddons.replaceChildren();
       let extra = 0;
+      let monthly = 0;
       let consultar = false;
       for (const pick of addonPicks) {
         const on = pick.getAttribute('aria-pressed') === 'true';
@@ -1840,8 +1938,8 @@ const glass =
             addLine('1 × Klientiq instalación', formatPropUsd(inst));
           }
           if (mens) {
-            extra += mens;
-            addLine('1 × Klientiq mensual', formatPropUsd(mens));
+            monthly += mens;
+            addLine('1 × Klientiq mensual', `${formatPropUsd(mens)}/mes`);
           }
           continue;
         }
@@ -1857,7 +1955,12 @@ const glass =
         const price = amountOf(pack.dataset.packPrice ?? '');
         if (price) extra += price;
         else consultar = true;
-        addLine(`1 × ${pack.dataset.packName || 'Paquete AR'}`, price ? formatPropUsd(price) : 'A consultar');
+        const platos = pack.dataset.packPlatos || '';
+        addLine(
+          `1 × ${pack.dataset.packName || 'Paquete'} (AR)`,
+          price ? formatPropUsd(price) : 'A consultar',
+          platos ? `${platos} ${platos === '1' ? 'plato' : 'platos'}` : '',
+        );
       }
       let qrCount = 0;
       let qrMoney = 0;
@@ -1874,7 +1977,11 @@ const glass =
           extra += price;
           qrMoney += price;
         } else consultar = true;
-        addLine(`${qty} × ${piece.dataset.pieceName || 'QR & NFC'}`, price ? formatPropUsd(price) : 'A consultar');
+        addLine(
+          `${qty} × ${piece.dataset.pieceName || 'QR & NFC'}`,
+          price ? formatPropUsd(price) : 'A consultar',
+          qty > 1 && unit ? `${formatPropUsd(unit)} c/u` : '',
+        );
       }
       if (qrSlide) qrSlide.classList.toggle('is-picked', qrCount > 0);
       if (qrTotal) {
@@ -1883,6 +1990,8 @@ const glass =
         else qrTotal.textContent = qrUnit ? formatPropUsd(qrUnit) : 'A consultar';
       }
       ticketAddons.hidden = ticketAddons.childElementCount === 0;
+      if (ticketMonthly) ticketMonthly.textContent = monthly ? `${formatPropUsd(monthly)}/mes` : '0';
+      if (ticketMonthlyNote) ticketMonthlyNote.textContent = monthly ? ` y ${formatPropUsd(monthly)} al mes` : '';
       if (base == null || !Number.isFinite(base)) ticketTotal.textContent = 'A consultar';
       else ticketTotal.textContent = formatPropUsd(base + extra);
       if (ticketConsultar) ticketConsultar.hidden = !consultar;
@@ -2055,6 +2164,15 @@ const glass =
     width: auto;
     height: 34px;
     margin: 0 auto;
+    object-fit: contain;
+  }
+
+  .ticket__logo {
+    display: block;
+    width: auto;
+    max-width: 7.5rem;
+    height: 42px;
+    margin: 10px auto 0;
     object-fit: contain;
   }
 
@@ -2974,15 +3092,26 @@ const glass =
   }
 
   .demo-dialog__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
     width: 32px;
     height: 32px;
+    margin: 0;
+    padding: 0;
+    border: 0;
     border-radius: 999px;
     background: rgba(24, 24, 27, 0.07);
-    font-size: 20px;
-    line-height: 1;
+    color: #18181b;
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .demo-dialog__close::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' d='M2.2 2.2 9.8 9.8M9.8 2.2 2.2 9.8'/%3E%3C/svg%3E") center / contain no-repeat;
   }
 
   .ar-packs {
@@ -3071,16 +3200,36 @@ const glass =
 
   .nutri-photo {
     position: relative;
-    aspect-ratio: 1.15;
-    max-height: 280px;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1.45;
+    max-height: 240px;
     overflow: hidden;
-    background: #e7e2da;
+    background:
+      radial-gradient(ellipse 55% 70% at 50% 46%, rgba(255, 255, 255, 0.82), transparent 68%),
+      radial-gradient(circle at 50% 78%, rgba(159, 18, 57, 0.16), transparent 42%),
+      linear-gradient(165deg, #fff7f6 0%, #ffe4e6 46%, #fda4af 100%);
+  }
+
+  .nutri-photo::before {
+    content: '';
+    position: absolute;
+    width: min(46%, 148px);
+    aspect-ratio: 1;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.46);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 18px 30px -18px rgba(159, 18, 57, 0.55);
   }
 
   .nutri-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    position: relative;
+    z-index: 1;
+    width: auto;
+    height: 68%;
+    object-fit: contain;
+    filter: drop-shadow(0 16px 14px rgba(127, 29, 29, 0.28));
   }
 
   .nutri-photo .demo-dialog__close {
@@ -3110,22 +3259,39 @@ const glass =
 
   .nutri-metrics {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin-top: 14px;
   }
 
   .nutri-metric {
     min-width: 0;
-    padding: 10px 4px 11px;
-    border-radius: 14px;
-    background: rgba(28, 25, 23, 0.05);
+    padding: 10px 6px 11px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 241, 242, 0.46));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 10px 16px -14px rgba(159, 18, 57, 0.65);
     text-align: center;
+    backdrop-filter: blur(12px);
+  }
+
+  .nutri-metric--kcal {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    text-align: left;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 228, 230, 0.5)),
+      linear-gradient(120deg, #fff1f2, #fecdd3);
   }
 
   .nutri-metric span {
     display: block;
-    color: #78716c;
+    color: #9f1239;
     font-size: 9px;
     font-weight: 650;
     letter-spacing: 0.14em;
@@ -3135,9 +3301,29 @@ const glass =
   .nutri-metric b {
     display: block;
     margin-top: 4px;
+    color: #1c1917;
     font-size: 15px;
     font-weight: 650;
     font-variant-numeric: tabular-nums;
+  }
+
+  .nutri-metric--kcal b {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 0;
+    color: #9f1239;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .nutri-metric--kcal small {
+    color: #be123c;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
   }
 
   .nutri-sheet .nutri__allergens li[data-alergeno='lacteos'] { --badge: #0284c7; }
@@ -3813,6 +3999,76 @@ const glass =
     color: #3f3f46;
     font-size: 11.5px;
     font-weight: 500;
+  }
+
+  @media (max-width: 760px) {
+    #ia-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: min(92vw, 420px);
+      max-height: calc(100svh - 16px);
+      margin: 0;
+      padding: 10px 10px 8px;
+      overflow: hidden;
+      transform: translate(-50%, -50%);
+    }
+
+    #ia-dialog .demo-dialog__head {
+      align-items: flex-start;
+      padding: 0 2px 6px;
+    }
+
+    #ia-dialog .demo-dialog__title {
+      font-size: 16px;
+    }
+
+    #ia-dialog .ia-chat__sub {
+      font-size: 11px;
+    }
+
+    #ia-dialog .ia-chat__bar {
+      padding: 7px 10px;
+    }
+
+    #ia-dialog .ia-chat__avatar,
+    #ia-dialog .ia-chat__avatar--logo {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+    }
+
+    #ia-dialog .ia-chat__thread {
+      gap: 4px;
+      padding: 8px;
+    }
+
+    #ia-dialog .ia-chat__msg {
+      padding: 5px 8px 4px;
+      font-size: 12.5px;
+      line-height: 1.28;
+    }
+
+    #ia-dialog .ia-chat__crm {
+      margin: 0 8px 8px;
+      padding: 7px 8px;
+    }
+
+    #ia-dialog .ia-chat__tags {
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    #ia-dialog .ia-chat__tags li {
+      padding: 3px 7px;
+      font-size: 11px;
+    }
+
+    #ia-dialog .demo-dialog__hint {
+      padding: 6px 2px 0;
+      font-size: 11.5px;
+      line-height: 1.3;
+    }
   }
 
   .shop {
@@ -4702,6 +4958,10 @@ const glass =
     transform: scale(0.97);
   }
 
+  .gadget-slide__add[data-billed] {
+    display: none;
+  }
+
   .gadget-slide__pick {
     display: inline-flex;
     align-items: center;
@@ -4827,14 +5087,25 @@ const glass =
   .feat-flip__face {
     position: relative;
     grid-area: 1 / 1;
+    transform: rotateY(0deg);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    transition: visibility 0s linear 0.3s;
+  }
+
+  .feat-flip__card[aria-pressed='true'] > .feat-flip__face:not(.feat-flip__back) {
+    visibility: hidden;
+  }
+
+  .feat-flip__card:not([aria-pressed='true']) > .feat-flip__back {
+    visibility: hidden;
   }
 
   .feat-flip__back {
     justify-content: center;
     gap: 0;
-    padding: 18px;
+    padding: 18px 18px 42px;
+    background: color-mix(in oklab, #14120f 94%, white);
     transform: rotateY(180deg);
   }
 
@@ -4856,7 +5127,6 @@ const glass =
 
   .feat-flip__more {
     margin-top: 10px;
-    padding-right: 26px;
     font-size: 0.84rem;
     font-weight: 400;
     line-height: 1.5;
@@ -4903,7 +5173,8 @@ const glass =
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .feat-flip__card {
+    .feat-flip__card,
+    .feat-flip__face {
       transition: none;
     }
   }
@@ -5469,7 +5740,7 @@ const glass =
     font-size: 21px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    line-height: 1;
+    line-height: 1.15;
   }
 
   .feat-ev__chip {
@@ -5484,7 +5755,8 @@ const glass =
   .feat-ev__eyebrow,
   .feat-ev__info strong,
   .feat-ev__chip {
-    white-space: nowrap;
+    max-width: 100%;
+    white-space: normal;
   }
 
   @container feat-ev (max-width: 220px) {
