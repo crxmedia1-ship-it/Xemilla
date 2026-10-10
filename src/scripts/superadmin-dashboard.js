@@ -57,12 +57,14 @@
    * @param {boolean} hasActive
    */
   function paintAccessBadge(restauranteId, hasActive) {
-    const badge = document.querySelector(
-      `li.super-hub-card[data-restaurante-id="${restauranteId}"] [data-access-badge]`,
-    );
-    if (!(badge instanceof HTMLElement)) return;
-    badge.className = `super-hub-card__state${hasActive ? ' super-hub-card__state--on' : ''}`;
-    badge.innerHTML = `<span class="super-hub-card__dot" aria-hidden="true"></span>${hasActive ? 'Acceso activo' : 'Sin acceso'}`;
+    const html = `<span class="super-hub-card__dot" aria-hidden="true"></span>${hasActive ? 'Acceso activo' : 'Sin acceso'}`;
+    document
+      .querySelectorAll(`[data-restaurante-id="${restauranteId}"] [data-access-badge]`)
+      .forEach((badge) => {
+        if (!(badge instanceof HTMLElement)) return;
+        badge.className = `super-hub-card__state${hasActive ? ' super-hub-card__state--on' : ''}`;
+        badge.innerHTML = html;
+      });
   }
 
   /**
@@ -98,6 +100,25 @@
         .map((u) => {
           const gerente = u.rol === 'gerente';
           const rol = gerente ? `Gerente · ${escUser(u.sede || 'Sede')}` : 'Admin';
+          const compact = Boolean(list.closest('[data-access-local]'));
+          if (compact) {
+            return `
+          <div class="hub-user${u.suspendido ? ' is-suspended' : ''}" data-user-id="${escUser(u.id)}" data-user-email="${escUser(u.email)}">
+            <div class="hub-user__info">
+              <p class="hub-user__email">${escUser(u.email)}</p>
+              <p class="hub-user__meta">
+                <em class="hub-user__pill${gerente ? ' is-gerente' : ''}">${rol}</em>
+                <em class="hub-user__state"><b aria-hidden="true"></b>${u.suspendido ? 'Suspendido' : 'Activo'}</em>
+              </p>
+            </div>
+            <div class="hub-user__actions">
+              <button type="button" class="hub-user__btn" data-user-action="${u.suspendido ? 'activate' : 'suspend'}">${u.suspendido ? 'Activar' : 'Suspender'}</button>
+              <button type="button" class="hub-user__btn" data-user-action="password">Editar clave</button>
+              <button type="button" class="hub-user__btn hub-user__btn--danger" data-user-action="delete">Eliminar</button>
+            </div>
+            <div class="hub-user__panel" data-user-panel hidden></div>
+          </div>`;
+          }
           const inicial = escUser((u.email || '?').charAt(0).toUpperCase());
           return `
           <div class="hub-user${u.suspendido ? ' is-suspended' : ''}" data-user-id="${escUser(u.id)}" data-user-email="${escUser(u.email)}">
@@ -168,6 +189,20 @@
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     const bytes = crypto.getRandomValues(new Uint8Array(12));
     return Array.from(bytes, (n) => chars[n % chars.length]).join('');
+  }
+
+  function initAccessBoard() {
+    document.querySelectorAll('[data-access-local]').forEach((el) => {
+      if (!(el instanceof HTMLDetailsElement) || el.dataset.bound === 'true') return;
+      el.dataset.bound = 'true';
+      el.addEventListener('toggle', () => {
+        if (!el.open) return;
+        document.querySelectorAll('[data-access-local]').forEach((other) => {
+          if (other !== el && other instanceof HTMLDetailsElement && other.open) other.open = false;
+        });
+        void loadUsuarios(el.querySelector('[data-usuarios-list]'));
+      });
+    });
   }
 
   function initUsuarios() {
@@ -1018,8 +1053,7 @@
         const password =
           passwordInput instanceof HTMLInputElement ? passwordInput.value : '';
 
-        const idleLabel =
-          form.dataset.hasAccess === 'true' ? ACTIVE_CTA : DEFAULT_CTA;
+        const idleLabel = form.dataset.cta || (form.dataset.hasAccess === 'true' ? ACTIVE_CTA : DEFAULT_CTA);
 
         feedback.classList.add('hidden');
         feedback.textContent = '';
@@ -1086,11 +1120,11 @@
           if (passwordInput instanceof HTMLInputElement) passwordInput.value = '';
           if (emailInput instanceof HTMLInputElement) emailInput.value = '';
           markAccessActive(form);
-          void loadUsuarios(form.closest('.hub-modal')?.querySelector('[data-usuarios-list]'));
+          void loadUsuarios(form.closest('.hub-modal, [data-access-local]')?.querySelector('[data-usuarios-list]'));
           submitBtn.disabled = false;
           window.setTimeout(() => {
             if (submitBtn.textContent === '¡Usuario agregado!') {
-              submitBtn.textContent = ACTIVE_CTA;
+              submitBtn.textContent = form.dataset.cta || ACTIVE_CTA;
             }
           }, 2500);
         } catch (err) {
@@ -1845,7 +1879,11 @@
       money.hidden = !priced;
       input.disabled = !priced;
       mode.dataset.priced = priced ? 'true' : 'false';
-      if (priced && focusPrice) input.focus();
+      if (focusPrice) {
+        const factura = row.querySelector('[data-adicional-factura]');
+        if (factura instanceof HTMLInputElement) factura.checked = priced;
+        input.focus();
+      }
     };
 
     document.querySelectorAll('[data-addon-row]').forEach((row) => syncAddonRow(row));
@@ -1861,13 +1899,20 @@
 
     /** @param {ParentNode} root */
     const readAdicionales = (root) => {
-      /** @type {Record<string, string>} */
+      /** @type {Record<string, string | string[]>} */
       const adicionales = {};
-      root.querySelectorAll('[data-adicional]').forEach((input) => {
-        if (!(input instanceof HTMLInputElement) || input.disabled) return;
+      /** @type {string[]} */
+      const factura = [];
+      root.querySelectorAll('[data-addon-row]').forEach((row) => {
+        const input = row.querySelector('[data-adicional]');
+        const check = row.querySelector('[data-adicional-factura]');
+        if (!(input instanceof HTMLInputElement)) return;
         const id = input.dataset.adicional || '';
-        if (id) adicionales[id] = input.value;
+        if (!id) return;
+        if (!input.disabled) adicionales[id] = input.value;
+        if (check instanceof HTMLInputElement && check.checked) factura.push(id);
       });
+      adicionales.factura = factura;
       return adicionales;
     };
 
@@ -1893,16 +1938,11 @@
         const amount = source[input.dataset.adicional || ''] || '';
         mode.value = amount ? 'precio' : '';
         input.value = amount;
+        const factura = row.querySelector('[data-adicional-factura]');
+        if (factura instanceof HTMLInputElement) factura.checked = Boolean(amount);
         syncAddonRow(row);
       });
     };
-
-    form.querySelectorAll('[data-addon-preset]').forEach((radio) => {
-      radio.addEventListener('change', () => {
-        if (!(radio instanceof HTMLInputElement) || !radio.checked) return;
-        paintAddonPreset(radio.value === 'default' ? addonDefaults : {});
-      });
-    });
 
     const saveDefaultBtn = form.querySelector('[data-addon-save-default]');
     const defaultStatus = form.querySelector('[data-addon-default-status]');
@@ -1923,13 +1963,8 @@
         }
         addonDefaults = payload.adicionales && typeof payload.adicionales === 'object' ? payload.adicionales : {};
         addonField.dataset.addonDefaults = JSON.stringify(addonDefaults);
-        const preset = form.querySelector('[data-addon-preset][value="default"]');
-        if (preset instanceof HTMLInputElement) preset.checked = true;
-        if (defaultStatus) {
-          defaultStatus.textContent = Object.keys(addonDefaults).length
-            ? 'Guardado. Las próximas propuestas pueden usar estos precios.'
-            : 'Guardado sin precios. Predeterminados queda a consultar.';
-        }
+        paintAddonPreset(addonDefaults);
+        if (defaultStatus) defaultStatus.textContent = 'Guardado.';
       } catch {
         if (defaultStatus) defaultStatus.textContent = 'No se pudo guardar.';
       } finally {
@@ -2162,6 +2197,7 @@
     initFichaForms();
     initOperativoForms();
     initUsuarios();
+    initAccessBoard();
     initNuevoRestModal();
     initSuperNetTimeframe();
     initPropuestas();

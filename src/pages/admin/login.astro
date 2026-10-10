@@ -22,44 +22,43 @@ if (user && !suspendido) {
   return Astro.redirect(getAdminPostLoginPath(user));
 }
 
-const xemillaWordmark =
-  'https://res.cloudinary.com/wdmzaemi/image/upload/v1789022797/Photoroom_20260810_004814.png';
 ---
 
 <Layout
   title="Admin · Xemilla"
   theme="crx"
-  themeColor="#f6f3ee"
+  themeColor="#16324f"
   description="Acceso al panel de administración Xemilla"
 >
-  <main
-    class="login-stage relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-6"
-  >
-    <!-- Abismo vivo sin “luces”: niebla, grano y grilla que respira -->
-    <div class="login-abyss" aria-hidden="true">
-      <div class="login-abyss__base"></div>
-      <div class="login-abyss__fog login-abyss__fog--a"></div>
-      <div class="login-abyss__fog login-abyss__fog--b"></div>
-      <div class="login-abyss__grid"></div>
-      <div class="login-abyss__grain"></div>
-      <div class="login-abyss__vignette"></div>
+  <main class="login-stage relative flex min-h-dvh items-center justify-center overflow-hidden px-5 py-10 font-blacksushi text-zinc-950">
+    <div class="login-studio" aria-hidden="true">
+      <img
+        class="login-studio__photo"
+        src="/home/fondo.jpg"
+        alt=""
+        width="1024"
+        height="1024"
+        decoding="async"
+        fetchpriority="high"
+      />
+      <div class="login-studio__veil"></div>
     </div>
 
-    <section class="login-card z-10 mx-4 flex w-full max-w-md flex-col rounded-3xl border border-black/8 bg-white/85 p-8 shadow-[0_18px_40px_-18px_rgba(40,30,20,0.18)] backdrop-blur-xl sm:p-10">
+    <section class="login-card z-10 flex w-full max-w-[24rem] flex-col">
       <header class="flex flex-col items-center text-center">
         <img
-          src={xemillaWordmark}
+          src="/propuesta/xemilla-on-light.png"
           alt="Xemilla"
-          width="200"
-          height="72"
-          class="login-wordmark login-in login-in--1 h-8 w-auto object-contain sm:h-9"
+          width="766"
+          height="249"
+          class="login-wordmark login-in login-in--1"
           loading="eager"
           decoding="async"
         />
-        <h1 class="login-in login-in--2 mt-6 mb-2 text-center text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 class="login-in login-in--2 mt-8 text-center text-[1.65rem] font-normal leading-none tracking-[-0.03em] text-zinc-950">
           Bienvenido
         </h1>
-        <p class="login-in login-in--3 mb-8 max-w-[22rem] text-center text-sm text-balance text-zinc-500">
+        <p class="login-in login-in--3 mt-3 mb-8 max-w-[18rem] text-center text-sm font-normal leading-snug text-zinc-950/70">
           Accede a tu panel para gestionar tu restaurante.
         </p>
       </header>
@@ -74,9 +73,9 @@ const xemillaWordmark =
         <div class="login-in login-in--4 mb-5">
           <label
             for="email"
-            class="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
+            class="mb-2 block text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-950/55"
           >
-            Email
+            Usuario
           </label>
           <input
             id="email"
@@ -85,14 +84,14 @@ const xemillaWordmark =
             autocomplete="email"
             required
             placeholder="tu@restaurante.com"
-            class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            class="login-field w-full rounded-full px-4 py-3 text-zinc-950 placeholder:text-zinc-950/35 transition-colors focus:outline-none"
           />
         </div>
 
         <div class="login-in login-in--5 mb-2">
           <label
             for="password"
-            class="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
+            class="mb-2 block text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-950/55"
           >
             Contraseña
           </label>
@@ -103,7 +102,7 @@ const xemillaWordmark =
             autocomplete="current-password"
             required
             placeholder="••••••••"
-            class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+            class="login-field w-full rounded-full px-4 py-3 text-zinc-950 placeholder:text-zinc-950/35 transition-colors focus:outline-none"
           />
         </div>
 
@@ -117,274 +116,116 @@ const xemillaWordmark =
         <button
           type="submit"
           id="login-submit"
-          class="login-in login-in--6 mt-6 w-full rounded-xl bg-zinc-900 py-3.5 text-sm font-bold tracking-wide text-white transition-transform hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
+          class="login-in login-in--6 mt-6 w-full rounded-full bg-[#141414] py-3.5 text-sm font-medium tracking-[-0.01em] text-[#f6f3ee] transition-transform hover:bg-black active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
         >
-          ENTRAR AL PANEL
+          Entrar al panel
         </button>
       </form>
     </section>
   </main>
 </Layout>
 
-<style is:global>
-  .login-wordmark {
-    filter: brightness(0);
-  }
-
-  .login-card {
-    opacity: 0;
-    transform: translateY(28px) scale(0.97);
-    filter: blur(8px);
-    animation: loginReveal 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
-  }
-
-  .login-in {
-    opacity: 0;
-    transform: translateY(14px);
-    animation: loginIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  .login-in--1 { animation-delay: 0.28s; }
-  .login-in--2 { animation-delay: 0.4s; }
-  .login-in--3 { animation-delay: 0.5s; }
-  .login-in--4 { animation-delay: 0.62s; }
-  .login-in--5 { animation-delay: 0.72s; }
-  .login-in--6 { animation-delay: 0.84s; }
-
-  @keyframes loginReveal {
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      filter: blur(0);
-    }
-  }
-
-  @keyframes loginIn {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
+<style>
   .login-stage {
-    background: #f6f3ee;
+    background: #16324f;
   }
 
-  .login-abyss {
-    pointer-events: none;
-    position: absolute;
+  .login-studio {
+    position: fixed;
     inset: 0;
     z-index: 0;
     overflow: hidden;
+    pointer-events: none;
   }
 
-  .login-abyss__base {
-    position: absolute;
-    inset: -10%;
-    background:
-      radial-gradient(ellipse 80% 48% at 50% 0%, #ffffff 0%, transparent 62%),
-      linear-gradient(180deg, #fbfaf8 0%, #f2f1ee 55%, #e9e7e3 100%);
-    animation: abyssPulse 12s ease-in-out infinite alternate;
-  }
-
-  /* Niebla oscura (no luces blancas) */
-  .login-abyss__fog {
-    position: absolute;
-    width: 85vmax;
-    height: 55vmax;
-    border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.35;
-  }
-
-  .login-abyss__fog--a {
-    top: -18%;
-    left: -20%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, transparent 70%);
-    animation: abyssFogA 26s ease-in-out infinite alternate;
-  }
-
-  .login-abyss__fog--b {
-    right: -22%;
-    bottom: -24%;
-    background: radial-gradient(circle, rgba(232, 224, 214, 0.7) 0%, transparent 72%);
-    animation: abyssFogB 32s ease-in-out infinite alternate;
-  }
-
-  .login-abyss__grid {
-    position: absolute;
-    inset: -10%;
-    background-image:
-      linear-gradient(to right, rgba(28, 25, 23, 0.4) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(28, 25, 23, 0.4) 1px, transparent 1px);
-    background-size: 56px 56px;
-    opacity: 0.04;
-    mask-image: radial-gradient(ellipse 65% 55% at 50% 42%, #000 10%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse 65% 55% at 50% 42%, #000 10%, transparent 75%);
-    animation: abyssGrid 28s linear infinite, abyssGridBreath 10s ease-in-out infinite alternate;
-  }
-
-  /* Mobile / touch: lighter continuous FX for battery + FPS */
-  @media (max-width: 768px), (pointer: coarse) {
-    .login-card {
-      filter: none;
-      transform: translateY(18px);
-      animation: loginRevealMobile 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    .login-in {
-      transform: translateY(10px);
-      animation-duration: 0.55s;
-    }
-
-    .login-in--1 { animation-delay: 0.16s; }
-    .login-in--2 { animation-delay: 0.24s; }
-    .login-in--3 { animation-delay: 0.3s; }
-    .login-in--4 { animation-delay: 0.38s; }
-    .login-in--5 { animation-delay: 0.44s; }
-    .login-in--6 { animation-delay: 0.5s; }
-
-    .login-abyss__base {
-      inset: -4%;
-      animation: abyssPulse 18s ease-in-out infinite alternate;
-    }
-
-    .login-abyss__fog {
-      filter: blur(36px);
-      opacity: 0.28;
-    }
-
-    .login-abyss__fog--b {
-      display: none; /* one fog layer is enough on phones */
-    }
-
-    .login-abyss__fog--a {
-      animation: abyssFogA 36s ease-in-out infinite alternate;
-    }
-
-    .login-abyss__grid {
-      animation: abyssGridBreath 12s ease-in-out infinite alternate; /* no pan */
-      background-size: 48px 48px;
-    }
-
-    .login-abyss__grain {
-      display: none; /* grain SVG + steps() is expensive on mobile GPUs */
-    }
-  }
-
-  @media (max-width: 640px) {
-    .login-stage {
-      align-items: flex-start;
-      padding-top: max(2.5rem, env(safe-area-inset-top));
-      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-    }
-
-    .login-abyss__grid {
-      inset: -22% -10% 0;
-      mask-image: radial-gradient(ellipse 82% 60% at 50% 24%, #000 8%, transparent 72%);
-      -webkit-mask-image: radial-gradient(ellipse 82% 60% at 50% 24%, #000 8%, transparent 72%);
-      opacity: 0.055;
-    }
-
-    .login-card {
-      margin-top: 1.25rem;
-    }
-  }
-
-  @keyframes loginRevealMobile {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .login-abyss__grain {
+  .login-studio__photo {
     position: absolute;
     inset: 0;
-    opacity: 0.18;
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
-    animation: abyssGrain 1.2s steps(2) infinite;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transform-origin: 46% 42%;
+    filter: hue-rotate(198deg) saturate(1.28) brightness(0.88);
+    animation: login-ken 32s ease-in-out infinite alternate;
   }
 
-  .login-abyss__vignette {
+  .login-studio__veil {
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse 70% 62% at 50% 42%, transparent 46%, rgba(120, 110, 100, 0.08) 100%);
+    background: radial-gradient(ellipse 48% 36% at 50% 46%, rgba(232, 240, 255, 0.28), transparent 72%);
   }
 
-  @keyframes abyssPulse {
+  .login-card {
+    border-radius: 1.85rem;
+    padding: 2.35rem 1.6rem 1.7rem;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.16) 46%,
+      rgba(255, 255, 255, 0.24) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.22),
+      0 22px 44px -26px rgba(40, 12, 0, 0.5);
+    backdrop-filter: blur(6px) saturate(1.2);
+    animation: login-reveal 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-wordmark {
+    display: block;
+    width: min(78%, 15.5rem);
+    height: auto;
+  }
+
+  .login-in {
+    animation: login-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .login-in--1 { animation-delay: 0.12s; }
+  .login-in--2 { animation-delay: 0.22s; }
+  .login-in--3 { animation-delay: 0.32s; }
+  .login-in--4 { animation-delay: 0.42s; }
+  .login-in--5 { animation-delay: 0.5s; }
+  .login-in--6 { animation-delay: 0.58s; }
+
+  .login-field {
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .login-field:focus {
+    border-color: rgba(20, 20, 20, 0.55);
+    background: rgba(255, 255, 255, 0.78);
+  }
+
+  @keyframes login-ken {
+    from { transform: scale(1.06) translate3d(1.4%, 0.6%, 0); }
+    to { transform: scale(1.16) translate3d(-1.8%, -1.5%, 0); }
+  }
+
+  @keyframes login-reveal {
     from {
-      transform: scale(1);
-    }
-    to {
-      transform: scale(1.08);
+      opacity: 0;
+      transform: translate3d(0, 28px, 0) scale(0.96);
     }
   }
 
-  @keyframes abyssFogA {
+  @keyframes login-in {
     from {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-      transform: translate3d(10%, 8%, 0) scale(1.12);
-    }
-  }
-
-  @keyframes abyssFogB {
-    from {
-      transform: translate3d(0, 0, 0) scale(1.05);
-    }
-    to {
-      transform: translate3d(-12%, -6%, 0) scale(1.18);
-    }
-  }
-
-  @keyframes abyssGrid {
-    from {
-      transform: translate3d(0, 0, 0);
-    }
-    to {
-      transform: translate3d(-56px, -56px, 0);
-    }
-  }
-
-  @keyframes abyssGridBreath {
-    from {
-      opacity: 0.028;
-    }
-    to {
-      opacity: 0.06;
-    }
-  }
-
-  @keyframes abyssGrain {
-    from {
-      transform: translate3d(0, 0, 0);
-    }
-    to {
-      transform: translate3d(-2%, 1%, 0);
+      opacity: 0;
+      transform: translate3d(0, 16px, 0);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .login-abyss__base,
-    .login-abyss__fog,
-    .login-abyss__grid,
-    .login-abyss__grain,
+    .login-studio__photo,
     .login-card,
     .login-in {
-      animation: none !important;
-      opacity: 1 !important;
-      transform: none !important;
-      filter: none !important;
-    }
-
-    .login-abyss__grain {
-      opacity: 0.08;
+      animation: none;
     }
   }
 </style>
@@ -425,7 +266,7 @@ const xemillaWordmark =
           : 'Email o contraseña incorrectos.';
         errorEl.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'ENTRAR AL PANEL';
+        submitBtn.textContent = 'Entrar al panel';
         return;
       }
 

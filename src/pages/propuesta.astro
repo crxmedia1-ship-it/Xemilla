@@ -4,7 +4,7 @@ export const prerender = false;
 import PhoneSync from '../components/propuesta/PhoneSync.astro';
 import QrArt from '../components/propuesta/QrArt.astro';
 import CurrencySwitcher from '../components/app/CurrencySwitcher.astro';
-import { getPropuesta, isPropuestaId, touchPropuesta } from '../lib/propuestas.js';
+import { getPropuesta, isPropuestaId, readPropuestaFactura, touchPropuesta } from '../lib/propuestas.js';
 import { createSupabaseServiceClient } from '../lib/supabase/service.js';
 import Layout from '../layouts/Layout.astro';
 
@@ -201,6 +201,8 @@ const adicionalPrecio = (id: string) => {
   return readAmount(map[id] == null ? '' : String(map[id]), '');
 };
 
+const facturaInicial = new Set(readPropuestaFactura(propuestaGuardada?.adicionales));
+
 const gadgets = [
   {
     id: 'ar',
@@ -244,7 +246,11 @@ const gadgets = [
     body: 'Sellos digitales que premian cada visita y los hacen volver.',
     action: { dialog: 'loyalty-dialog', label: 'Ver tarjeta' },
   },
-].map((gadget) => ({ ...gadget, price: adicionalPrecio(gadget.id) }));
+].map((gadget) => ({
+  ...gadget,
+  price: adicionalPrecio(gadget.id),
+  onBill: facturaInicial.has(gadget.id),
+}));
 
 const precioDe = (id: string) => {
   const price = gadgets.find((gadget) => gadget.id === id)?.price;
@@ -347,6 +353,7 @@ const glass =
   theme="crx"
   themeColor={WORLDS[world].themeColor}
   fontHref={FONT_HREF}
+  noIndex
 >
   {
     world === 'espacio' ? (
@@ -399,16 +406,16 @@ const glass =
         <img
           src="/propuesta/xemilla.png"
           alt="Xemilla"
-          width="1024"
-          height="274"
+          width="766"
+          height="249"
           class="xemilla-mark xemilla-mark--dark h-8 w-auto sm:h-9"
           decoding="async"
         />
         <img
           src="/propuesta/xemilla-on-light.png"
           alt=""
-          width="1024"
-          height="274"
+          width="766"
+          height="249"
           class="xemilla-mark xemilla-mark--light h-8 w-auto sm:h-9"
           decoding="async"
           aria-hidden="true"
@@ -416,16 +423,14 @@ const glass =
         <span class="mx-3 font-light text-zinc-600" aria-hidden="true">×</span>
         {
           logo ? (
-            <div class="flex h-12 w-auto max-w-[140px] items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-2">
-              <img
-                src={logo}
-                alt={`Logotipo de ${para}`}
-                class="h-8 w-auto object-contain"
-                decoding="async"
-                referrerpolicy="no-referrer"
-                onerror="var seal=document.getElementById('brand-seal'); if(seal) seal.classList.remove('hidden'); this.parentElement?.remove();"
-              />
-            </div>
+            <img
+              src={logo}
+              alt={`Logotipo de ${para}`}
+              class="h-9 w-auto max-w-[9rem] object-contain sm:h-10"
+              decoding="async"
+              referrerpolicy="no-referrer"
+              onerror="var seal=document.getElementById('brand-seal'); if(seal) seal.classList.remove('hidden'); this.remove();"
+            />
           ) : null
         }
         <div
@@ -771,6 +776,8 @@ const glass =
             }
           </ul>
 
+          <ul class="ticket__addons" data-ticket-addons hidden></ul>
+
           <div class="ticket__zero">
             <p class="ticket__row">
               <span>Mensualidades</span>
@@ -788,9 +795,10 @@ const glass =
             <p class="ticket__row">
               <span>{sinPrecio ? 'Total' : 'Total primer año'}</span>
               <i aria-hidden="true" />
-              <b>{sinPrecio ? 'A consultar' : `${setup} USD`}</b>
+              <b data-ticket-total data-base={sinPrecio ? '' : setup}>{sinPrecio ? 'A consultar' : `${setup} USD`}</b>
             </p>
             {!sinPrecio && <p class="ticket__note">Desde el 2.º año, solo {anual} USD al año.</p>}
+            <p class="ticket__note" data-ticket-consultar hidden>Incluye adicionales a consultar.</p>
           </div>
 
           <footer class="ticket__foot">
@@ -811,7 +819,7 @@ const glass =
           Solo para degustadores.
         </h2>
         <p class="mx-auto mt-4 max-w-md text-balance text-base font-medium leading-snug tracking-[-0.01em] text-zinc-500">
-          No están incluidos en el plan. Se suman con un costo extra.
+          No están incluidos en el plan. Súmalos a la cuenta o quítalos: el ticket de arriba cambia.
         </p>
       </div>
       <div class="gadget-rail" data-gadget-carousel>
@@ -828,15 +836,30 @@ const glass =
               <div class="gadget-slide__copy">
                 <h3 class="gadget-slide__title">
                   {gadget.title}
-                  {gadget.price && <span class="gadget-slide__price is-priced">{gadget.price} USD</span>}
+                  <span class:list={['gadget-slide__price', gadget.price && 'is-priced']}>
+                    {gadget.price ? `${gadget.price} USD` : 'A consultar'}
+                  </span>
                 </h3>
                 <p>{gadget.body}</p>
               </div>
-              {gadget.action && (
-                <button type="button" data-dialog-open={gadget.action.dialog} class="gadget-slide__action">
-                  {gadget.action.label}
+              <div class="gadget-slide__actions">
+                <button
+                  type="button"
+                  class="gadget-slide__pick"
+                  data-addon-pick
+                  data-addon-id={gadget.id}
+                  data-addon-name={gadget.title}
+                  data-addon-price={gadget.price}
+                  aria-pressed={gadget.onBill ? 'true' : 'false'}
+                >
+                  {gadget.onBill ? 'Quitar de la cuenta' : 'Añadir a la cuenta'}
                 </button>
-              )}
+                {gadget.action && (
+                  <button type="button" data-dialog-open={gadget.action.dialog} class="gadget-slide__action">
+                    {gadget.action.label}
+                  </button>
+                )}
+              </div>
             </article>
           ))
         }
@@ -1244,6 +1267,26 @@ const glass =
 <script>
   import { initCurrencyEngine } from '../scripts/currency-engine';
 
+  /* Quien abre la propuesta se queda en ella: esta pestaña no entra al resto de Xemilla. */
+  try {
+    sessionStorage.setItem('xemilla-propuesta-only', `${location.pathname}${location.search}`);
+  } catch {
+    /* almacenamiento bloqueado: el enlace de WhatsApp sigue siendo la única salida */
+  }
+  document.addEventListener(
+    'click',
+    (event) => {
+      const anchor = (event.target as Element | null)?.closest?.('a');
+      if (!(anchor instanceof HTMLAnchorElement) || !anchor.href) return;
+      const url = new URL(anchor.href, location.origin);
+      const external = url.origin !== location.origin;
+      if (external || url.pathname === '/propuesta') return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true,
+  );
+
   /*
    * Los bocados viven en coordenadas del documento, no de la pantalla:
    * cada uno ocupa un lugar en la página y solo se ve cuando el lector
@@ -1620,6 +1663,72 @@ const glass =
     });
   }
 
+  const boundPicks = new WeakSet<HTMLButtonElement>();
+  const initTicket = () => {
+    const ticketAddons = document.querySelector<HTMLElement>('[data-ticket-addons]');
+    const ticketTotal = document.querySelector<HTMLElement>('[data-ticket-total]');
+    const ticketConsultar = document.querySelector<HTMLElement>('[data-ticket-consultar]');
+    const addonPicks = [...document.querySelectorAll<HTMLButtonElement>('[data-addon-pick]')];
+    if (!ticketAddons || !ticketTotal || !addonPicks.length) return;
+    const baseRaw = ticketTotal.dataset.base ?? '';
+    const base = baseRaw === '' ? null : Number(baseRaw.replace(',', '.'));
+    const amountOf = (raw: string) => {
+      const n = Number(String(raw).replace(',', '.'));
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    const labelOf = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+    const scopeAttr = document.querySelector('.ticket__row')?.getAttributeNames().find((name) => name.startsWith('data-astro-cid'));
+    const stamp = (el: HTMLElement) => {
+      if (scopeAttr) el.setAttribute(scopeAttr, '');
+    };
+    const paintTicket = () => {
+      ticketAddons.replaceChildren();
+      let extra = 0;
+      let consultar = false;
+      for (const pick of addonPicks) {
+        const on = pick.getAttribute('aria-pressed') === 'true';
+        pick.textContent = on ? 'Quitar de la cuenta' : 'Añadir a la cuenta';
+        pick.closest('.gadget-slide')?.classList.toggle('is-picked', on);
+        if (!on) continue;
+        const price = amountOf(pick.dataset.addonPrice ?? '');
+        if (price) extra += price;
+        else consultar = true;
+        const li = document.createElement('li');
+        const row = document.createElement('p');
+        row.className = 'ticket__row';
+        const name = document.createElement('span');
+        name.textContent = `1 × ${pick.dataset.addonName || 'Adicional'}`;
+        const dots = document.createElement('i');
+        dots.setAttribute('aria-hidden', 'true');
+        const value = document.createElement('b');
+        value.textContent = price ? String(price) : 'A consultar';
+        stamp(li);
+        stamp(row);
+        stamp(name);
+        stamp(dots);
+        stamp(value);
+        row.append(name, dots, value);
+        li.append(row);
+        ticketAddons.append(li);
+      }
+      ticketAddons.hidden = ticketAddons.childElementCount === 0;
+      if (base == null || !Number.isFinite(base)) ticketTotal.textContent = 'A consultar';
+      else ticketTotal.textContent = `${labelOf(base + extra)} USD`;
+      if (ticketConsultar) ticketConsultar.hidden = !consultar;
+    };
+    for (const pick of addonPicks) {
+      if (boundPicks.has(pick)) continue;
+      boundPicks.add(pick);
+      pick.addEventListener('click', () => {
+        pick.setAttribute('aria-pressed', pick.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+        paintTicket();
+      });
+    }
+    paintTicket();
+  };
+  initTicket();
+  document.addEventListener('astro:page-load', initTicket);
+
   document.querySelector('[data-propuesta-event="whatsapp"]')?.addEventListener('click', () => {
     trackPropuesta('whatsapp');
   });
@@ -1776,6 +1885,33 @@ const glass =
     gap: 12px;
     padding: 12px 0;
     border-bottom: 1.5px dashed #d6d3d1;
+  }
+
+  .ticket__addons {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 0;
+    border-bottom: 1.5px dashed #d6d3d1;
+    list-style: none;
+  }
+
+  .ticket__addons[hidden] {
+    display: none;
+  }
+
+  .ticket__addons .ticket__row span {
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .ticket__addons .ticket__row i {
+    flex: 1 0 1.5rem;
+  }
+
+  .ticket__addons .ticket__row b {
+    flex: none;
   }
 
   .ticket__row {
@@ -4041,6 +4177,37 @@ const glass =
   .gadget-slide__price.is-priced {
     border-color: color-mix(in oklab, var(--color-white) 22%, transparent);
     color: var(--color-zinc-200);
+  }
+
+  .gadget-slide__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .gadget-slide__pick {
+    border-radius: 999px;
+    border: 1px solid rgb(28 25 23 / 0.14);
+    background: rgb(255 255 255 / 0.78);
+    padding: 0.7rem 1.05rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #1c1917;
+  }
+
+  .gadget-slide__pick[aria-pressed='true'] {
+    border-color: transparent;
+    background: #1c1917;
+    color: #fff;
+  }
+
+  .gadget-slide__pick:active,
+  .gadget-slide__action:active {
+    transform: scale(0.97);
   }
 
   .gadget-slide__action {

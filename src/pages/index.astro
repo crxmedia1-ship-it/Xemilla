@@ -12,67 +12,49 @@ const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;5
 const slogan = 'Plantamos la tecnología, tú cosechas el éxito.';
 
 const networkLogos = await listPublicNetworkLogos();
-/** Tira con al menos 8 logos, para que el carrusel llene el ancho aunque haya pocas marcas. */
+/** La tira se repite para que el carrusel llene el ancho cuando entren más marcas. */
 const logoStrip = networkLogos.length
   ? Array.from({ length: Math.ceil(8 / networkLogos.length) }, () => networkLogos).flat()
   : [];
 
-const FOODS = [
-  ['nigiri', 52],
-  ['limon', 46],
-  ['albahaca', 38],
-  ['fresa', 44],
-  ['gamba', 50],
-  ['uvas', 42],
-  ['tomate', 40],
-  ['champinon', 44],
-  ['aceituna', 34],
-  ['ajo', 36],
-  ['frambuesa', 38],
-  ['higo', 46],
-  ['macaron', 42],
-  ['aguacate', 50],
-] as const;
+/** Trazo fino (script) necesita más altura. */
+function markScale(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes('sanza')) return 2.05;
+  if (n.includes('cant')) return 1.15;
+  return 1;
+}
 
-/** Lluvia determinista: cada pieza tiene su carril, ritmo y giro; el delay negativo la arranca a mitad de caída. */
-let seed = 11;
-const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-const rain = FOODS.map(([name, size], i) => {
-  const duration = 16 + rand() * 12;
-  return {
-    src: `/propuesta/comida-${name}.png`,
-    style: [
-      `--size:${size}px`,
-      `left:${(((i * 5) % FOODS.length) + 0.2 + rand() * 0.6) * (100 / FOODS.length)}%`,
-      `--dx:${Math.round((rand() - 0.5) * 80)}px`,
-      `--r0:${Math.round(rand() * 360)}deg`,
-      `--r1:${Math.round((rand() - 0.5) * 540)}deg`,
-      `animation-duration:${duration.toFixed(1)}s`,
-      `animation-delay:-${(rand() * duration).toFixed(1)}s`,
-    ].join(';'),
-  };
-});
+/** El rombo blanco de Hangang, al pasarlo a negro, tapa el dibujo. */
+function partnerLogo(item: { name: string; logoUrl: string }) {
+  if (/hangang/i.test(item.name) || /hangang\.svg/i.test(item.logoUrl)) return '/logos/hangang-ink.svg';
+  return item.logoUrl;
+}
 
-const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(#g)'/></svg>`,
-)}")`;
 ---
 
 <Layout
   title="Xemilla · Software gastronómico"
   theme="crx"
-  themeColor="#f2f1ee"
+  themeColor="#e07028"
   fontHref={FONT_HREF}
   description="Xemilla — software gastronómico de marca blanca para restaurantes"
+  ogImage={`${Astro.url.origin}/home/og.jpg`}
+  ogUrl={Astro.url.origin}
+  manifestHref="/manifest.webmanifest"
+  appName="Xemilla"
 >
   <div class="studio" aria-hidden="true">
-    <div class="studio__softbox"></div>
-    <div class="studio__cyclorama"></div>
-    <div class="studio__grain" style={`background-image:${studioGrain}`}></div>
-  </div>
-
-  <div class="rain" aria-hidden="true">
-    {rain.map((food) => <img class="rain__food" src={food.src} alt="" style={food.style} draggable="false" decoding="async" />)}
+    <img
+      class="studio__photo"
+      src="/home/fondo.jpg"
+      alt=""
+      width="1024"
+      height="1024"
+      decoding="async"
+      fetchpriority="high"
+    />
+    <div class="studio__veil"></div>
   </div>
 
   <main class="landing-lock relative z-10 flex h-[100dvh] max-h-[100dvh] w-full flex-col items-center overflow-hidden px-5 font-blacksushi text-zinc-950">
@@ -85,27 +67,30 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
       <img
         src="/propuesta/xemilla-on-light.png"
         alt="Xemilla"
-        width="1024"
-        height="274"
-        class="landing-in h-auto w-[62%] max-w-[260px] sm:w-72 sm:max-w-none"
+        width="766"
+        height="249"
+        class="landing-in h-auto w-[74%] max-w-[340px] sm:w-[24rem] sm:max-w-none"
         style="--d: 0.1s"
         decoding="async"
       />
       <h1
-        class="landing-in mt-7 max-w-xl text-balance text-[1.9rem] font-medium leading-[1.08] tracking-[-0.045em] sm:mt-9 sm:text-5xl"
+        class="landing-in mt-12 max-w-lg text-balance text-[1.45rem] font-normal leading-[1.2] tracking-[-0.03em] text-zinc-950/70 sm:mt-16 sm:text-[2.15rem]"
         style="--d: 0.25s"
       >
         {slogan}
       </h1>
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="landing-in mt-9 inline-flex min-h-12 items-center justify-center rounded-xl bg-zinc-950 px-8 text-sm font-medium tracking-wide text-white shadow-[0_18px_40px_-18px_rgba(0,0,0,0.55)] transition hover:scale-[1.02] active:scale-[0.98]"
-        style="--d: 0.4s"
-      >
-        Solicitar acceso
-      </a>
+      <div class="access landing-in mt-8" style="--d: 0.4s" data-href={waHref}>
+        <span class="access__sheen" aria-hidden="true"></span>
+        <span class="access__label">Solicitar acceso</span>
+        <button type="button" class="access__knob" aria-label="Desliza para solicitar acceso">
+          <svg class="access__glyph access__glyph--go" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4.5 4.25 8 8l-3.5 3.75M8.5 4.25 12 8l-3.5 3.75" />
+          </svg>
+          <svg class="access__glyph access__glyph--ok" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <footer class="landing-in flex w-full flex-col items-center gap-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] sm:gap-6" style="--d: 0.55s">
@@ -116,9 +101,9 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
               {[0, 1].map((copy) => (
                 <ul class="partners__set" aria-hidden={copy === 1 ? 'true' : undefined}>
                   {logoStrip.map((item, i) => (
-                    <li>
+                    <li style={`--mark:${markScale(item.name)}`}>
                       <img
-                        src={item.logoUrl}
+                        src={partnerLogo(item)}
                         alt={copy === 0 && i < networkLogos.length ? item.name : ''}
                         width="160"
                         height="48"
@@ -134,9 +119,10 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
           </div>
         )
       }
-      <span class="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">powered by CRX</span>
+      <span class="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-950/55">powered by CRX</span>
     </footer>
   </main>
+
 </Layout>
 
 <style is:global>
@@ -162,105 +148,266 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    background: linear-gradient(180deg, #fbfaf8 0%, #f2f1ee 55%, #e9e7e3 100%);
+    background: #e07028;
   }
 
-  .studio__softbox {
+  .studio__photo {
     position: absolute;
     inset: 0;
-    background:
-      radial-gradient(ellipse 70% 38% at 50% -4%, rgba(255, 255, 255, 1), transparent 70%),
-      radial-gradient(ellipse 35% 60% at 0% 40%, rgba(255, 255, 255, 0.7), transparent 70%),
-      radial-gradient(ellipse 35% 60% at 100% 40%, rgba(255, 255, 255, 0.55), transparent 70%);
-  }
-
-  .studio__cyclorama {
-    position: absolute;
-    inset: auto -10% 0;
-    height: 46%;
-    background:
-      radial-gradient(ellipse 60% 70% at 50% 100%, rgba(255, 255, 255, 0.85), transparent 70%),
-      linear-gradient(180deg, transparent 0%, rgba(120, 110, 100, 0.07) 40%, rgba(120, 110, 100, 0.04) 100%);
-    border-radius: 50% 50% 0 0 / 22% 22% 0 0;
-  }
-
-  .studio__grain {
-    position: absolute;
-    inset: 0;
-    background-size: 320px 320px;
-    opacity: 0.5;
-    mix-blend-mode: multiply;
-    filter: invert(1);
-  }
-
-  .landing-in {
-    animation: landing-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both;
-  }
-
-  @keyframes landing-in {
-    from {
-      opacity: 0;
-      translate: 0 12px;
-    }
-  }
-
-  .rain {
-    position: fixed;
-    inset: 0;
-    z-index: 5;
-    overflow: hidden;
-    pointer-events: none;
-    mask-image: radial-gradient(ellipse 38% 24% at 50% 50%, rgba(0, 0, 0, 0.3) 40%, #000 100%);
-  }
-
-  @media (max-width: 767px) {
-    .rain {
-      mask-image: radial-gradient(ellipse 60% 22% at 50% 50%, rgba(0, 0, 0, 0.3) 40%, #000 100%);
-    }
-  }
-
-  .rain__food {
-    position: absolute;
-    top: 0;
-    width: var(--size);
-    height: var(--size);
-    object-fit: contain;
-    filter: drop-shadow(0 8px 12px rgba(60, 45, 30, 0.18));
-    user-select: none;
-    animation: food-fall linear infinite;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transform-origin: 46% 42%;
+    animation: ken-burns 32s ease-in-out infinite alternate;
     will-change: transform;
   }
 
-  @keyframes food-fall {
+  .studio__veil {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 46% 34% at 50% 44%, rgba(255, 250, 242, 0.42), transparent 72%);
+  }
+
+  .landing-in {
+    animation: landing-rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0s) both;
+  }
+
+  .landing-lock > p.landing-in,
+  .landing-lock img.landing-in,
+  .landing-lock h1.landing-in {
+    animation-name: landing-rise-soft;
+  }
+
+  @keyframes ken-burns {
     from {
-      transform: translate3d(0, -12vh, 0) rotate(var(--r0));
+      transform: scale(1.06) translate3d(1.4%, 0.6%, 0);
     }
     to {
-      transform: translate3d(var(--dx), 108vh, 0) rotate(calc(var(--r0) + var(--r1)));
+      transform: scale(1.16) translate3d(-1.8%, -1.5%, 0);
     }
   }
 
-  @media (max-width: 767px) {
-    .rain__food {
-      width: calc(var(--size) * 0.78);
-      height: calc(var(--size) * 0.78);
+  @keyframes landing-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 28px, 0) scale(0.96);
     }
+  }
 
-    .rain__food:nth-child(3n) {
-      display: none;
+  @keyframes landing-rise-soft {
+    from {
+      opacity: 0;
+      filter: blur(8px);
+      transform: translate3d(0, 28px, 0) scale(0.96);
+    }
+  }
+
+  .access {
+    --p: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: min(100%, 19.25rem);
+    height: 3.55rem;
+    padding: 0.22rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 255, 255, 0.1) 46%,
+      rgba(255, 255, 255, 0.16) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    color: #161616;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.82),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.22),
+      0 14px 28px -22px rgba(40, 12, 0, 0.4);
+    backdrop-filter: blur(3px) saturate(1.2);
+    touch-action: none;
+    user-select: none;
+  }
+
+  .access__sheen {
+    position: absolute;
+    top: 0.22rem;
+    bottom: 0.22rem;
+    left: 0.22rem;
+    width: calc(3.05rem + (100% - 3.05rem - 0.44rem) * var(--p));
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    pointer-events: none;
+    transition:
+      width 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+      background 0.4s ease;
+  }
+
+  .access.is-dragging .access__sheen {
+    transition: none;
+  }
+
+  .access.is-done .access__sheen {
+    width: calc(100% - 0.44rem);
+    background: #f6f3ee;
+  }
+
+  .access.is-done {
+    animation: access-pop 0.72s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .access__label {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    padding-inline: 3.4rem 1.1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    pointer-events: none;
+    opacity: calc(1 - var(--p));
+    color: #141414;
+    background-image: linear-gradient(
+      105deg,
+      #141414 0%,
+      #141414 42%,
+      #6b6258 50%,
+      #141414 58%,
+      #141414 100%
+    );
+    background-size: 220% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: access-shimmer 2.6s linear infinite;
+  }
+
+  .access__knob {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 3.05rem;
+    height: 3.05rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #141414;
+    color: #f6f3ee;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 8px 16px -10px rgba(0, 0, 0, 0.55);
+    transform: translateX(calc(var(--p) * var(--travel, 0px)));
+    transition:
+      transform 0.55s cubic-bezier(0.16, 1.15, 0.3, 1),
+      background 0.35s ease,
+      color 0.35s ease;
+    cursor: grab;
+  }
+
+  .access.is-dragging .access__knob,
+  .access.is-dragging .access__sheen {
+    transition: none;
+    cursor: grabbing;
+  }
+
+  .access.is-done .access__knob {
+    background: #f6f3ee;
+    color: #141414;
+  }
+
+  .access__knob svg {
+    grid-area: 1 / 1;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition:
+      opacity 0.28s ease,
+      transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .access__glyph--go {
+    animation: access-nudge 1.25s ease-in-out infinite;
+  }
+
+  .access__glyph--ok {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  .access.is-dragging .access__glyph--go,
+  .access.is-done .access__glyph--go {
+    animation: none;
+  }
+
+  .access.is-done .access__glyph--go {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+
+  .access.is-done .access__glyph--ok {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .access__knob:focus-visible {
+    outline: 2px solid #f7f4ef;
+    outline-offset: 3px;
+  }
+
+  @keyframes access-pop {
+    0% {
+      transform: scale(1);
+    }
+    38% {
+      transform: scale(1.055);
+    }
+    72% {
+      transform: scale(0.985);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes access-shimmer {
+    from {
+      background-position: 120% 0;
+    }
+    to {
+      background-position: -120% 0;
+    }
+  }
+
+  @keyframes access-nudge {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(3px);
     }
   }
 
   .partners {
     width: 100%;
+    margin-bottom: 0.65rem;
     overflow: hidden;
-    mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
   }
 
   .partners__track {
     display: flex;
     width: max-content;
-    animation: partners-roll 40s linear infinite;
+    animation: partners-roll 48s linear infinite;
   }
 
   .partners:hover .partners__track {
@@ -271,48 +418,38 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
     display: flex;
     flex: none;
     align-items: center;
-    gap: 3rem;
+    gap: 3.25rem;
     margin: 0;
-    padding: 0 1.5rem;
+    padding: 0.85rem 1.625rem;
     list-style: none;
+  }
+
+  .partners li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .partners img {
     display: block;
     width: auto;
-    height: 2rem;
-    max-width: 8.5rem;
+    height: calc(1.65rem * var(--mark, 1));
+    max-width: calc(7rem * var(--mark, 1));
     object-fit: contain;
     user-select: none;
     -webkit-user-drag: none;
+    filter: brightness(0);
   }
 
   @media (min-width: 640px) {
     .partners__set {
-      gap: 4rem;
-      padding: 0 2rem;
+      gap: 4.25rem;
+      padding: 0.95rem 2.125rem;
     }
 
     .partners img {
-      height: 2.4rem;
-      max-width: 10.5rem;
-    }
-  }
-
-  .partners li.is-light {
-    padding: 0.45rem 0.8rem;
-    border-radius: 0.75rem;
-    background: #18181b;
-    box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.6);
-  }
-
-  .partners li.is-light img {
-    height: 1.6rem;
-  }
-
-  @media (min-width: 640px) {
-    .partners li.is-light img {
-      height: 1.9rem;
+      height: calc(1.9rem * var(--mark, 1));
+      max-width: calc(8.5rem * var(--mark, 1));
     }
   }
 
@@ -323,11 +460,23 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .landing-in {
+    .studio__photo {
+      animation: none;
+      transform: none;
+    }
+
+    .landing-in,
+    .access,
+    .access__label,
+    .access__knob svg {
       animation: none;
     }
 
-    .rain__food,
+    .access__label {
+      color: #161616;
+      background: none;
+    }
+
     .partners__track {
       animation-play-state: paused;
     }
@@ -335,46 +484,83 @@ const studioGrain = `url("data:image/svg+xml,${encodeURIComponent(
 </style>
 
 <script>
-  /* Un logo casi blanco desaparece sobre el fondo claro: se le pone una pastilla oscura. */
-  const isLightLogo = (src: string) =>
-    new Promise<boolean>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const size = 32;
-          const canvas = document.createElement('canvas');
-          canvas.width = canvas.height = size;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return resolve(false);
-          ctx.drawImage(img, 0, 0, size, size);
-          const px = ctx.getImageData(0, 0, size, size).data;
-          let sum = 0;
-          let weight = 0;
-          for (let i = 0; i < px.length; i += 4) {
-            const a = px[i + 3] / 255;
-            if (a < 0.2) continue;
-            sum += ((0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255) * a;
-            weight += a;
-          }
-          resolve(weight > 0 && sum / weight > 0.82);
-        } catch {
-          resolve(false);
-        }
-      };
-      img.onerror = () => resolve(false);
-      img.src = src;
+  const slide = document.querySelector<HTMLElement>('.access');
+  const knob = slide?.querySelector<HTMLButtonElement>('.access__knob');
+  const href = slide?.getAttribute('data-href');
+
+  if (slide && knob && href) {
+    const measure = () => {
+      const pad = parseFloat(getComputedStyle(slide).paddingLeft) || 0;
+      const travel = Math.max(0, slide.clientWidth - knob.offsetWidth - pad * 2);
+      slide.style.setProperty('--travel', `${travel}px`);
+      return travel;
+    };
+
+    let travel = measure();
+    window.addEventListener('resize', () => {
+      travel = measure();
     });
 
-  const items = [...document.querySelectorAll<HTMLLIElement>('.partners li')];
-  const bySrc = new Map<string, HTMLLIElement[]>();
-  for (const li of items) {
-    const src = li.querySelector('img')?.getAttribute('src');
-    if (src) bySrc.set(src, [...(bySrc.get(src) ?? []), li]);
-  }
-  for (const [src, lis] of bySrc) {
-    void isLightLogo(src).then((light) => {
-      if (light) lis.forEach((li) => li.classList.add('is-light'));
+    let dragging = false;
+    let origin = 0;
+    let originP = 0;
+
+    const progress = () => Number.parseFloat(slide.style.getPropertyValue('--p')) || 0;
+
+    const setProgress = (value: number) => {
+      const next = Math.min(1, Math.max(0, value));
+      slide.style.setProperty('--p', String(next));
+      return next;
+    };
+
+    const finish = () => {
+      if (slide.classList.contains('is-done')) return;
+      slide.classList.remove('is-dragging');
+      setProgress(1);
+      slide.classList.add('is-done');
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.setTimeout(() => {
+        window.location.assign(href);
+      }, reduce ? 40 : 720);
+    };
+
+    const release = (value: number) => {
+      slide.classList.remove('is-dragging');
+      dragging = false;
+      if (value >= 0.86) finish();
+      else setProgress(0);
+    };
+
+    knob.addEventListener('pointerdown', (event) => {
+      if (slide.classList.contains('is-done')) return;
+      travel = measure();
+      if (travel < 1) return;
+      dragging = true;
+      origin = event.clientX;
+      originP = progress();
+      slide.classList.add('is-dragging');
+      knob.setPointerCapture(event.pointerId);
+    });
+
+    knob.addEventListener('pointermove', (event) => {
+      if (!dragging) return;
+      setProgress(originP + (event.clientX - origin) / travel);
+    });
+
+    knob.addEventListener('pointerup', () => {
+      if (!dragging) return;
+      release(progress());
+    });
+
+    knob.addEventListener('pointercancel', () => {
+      if (!dragging) return;
+      release(0);
+    });
+
+    knob.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      finish();
     });
   }
 </script>

@@ -10,11 +10,22 @@ import { createSupabaseServerClient } from './lib/supabase/server.js';
  */
 const PUBLIC_CDN_CACHE = 's-maxage=10, stale-while-revalidate=60';
 
+/** Rutas de un solo tramo que no son un menú de restaurante. */
+const ROOT_PAGES = new Set(['admin', 'api', 'propuesta', '404']);
+
 /**
  * Solo refresca sesión en rutas on-demand del panel.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
+  const restaurantRoot = pathname.match(/^\/([^/]+)$/);
+  if (
+    restaurantRoot &&
+    !ROOT_PAGES.has(restaurantRoot[1]) &&
+    !restaurantRoot[1].includes('.')
+  ) {
+    return context.redirect(`${pathname}/${context.url.search}`);
+  }
   const needsAuth =
     pathname.startsWith('/admin') || pathname.startsWith('/api/');
 

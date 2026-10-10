@@ -119,6 +119,33 @@ export function readPropuestaAdicionales(value) {
 }
 
 /**
+ * Ids que arrancan ya sumados en la factura.
+ * Si la propuesta no guardó el switch, entran los que tienen precio.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function readPropuestaFactura(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  if (Array.isArray(source.factura)) {
+    return source.factura.map((id) => String(id)).filter((id) => ADICIONAL_IDS.has(id));
+  }
+  return [...ADICIONAL_IDS].filter((id) => readPropuestaMonto(source[id]));
+}
+
+/**
+ * Precios más el switch de factura, listo para guardar.
+ * @param {unknown} value
+ */
+export function packPropuestaAdicionales(value) {
+  const prices = readPropuestaAdicionales(value);
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const factura = Array.isArray(source.factura)
+    ? readPropuestaFactura({ factura: source.factura })
+    : readPropuestaFactura(prices);
+  return { ...prices, factura };
+}
+
+/**
  * @param {unknown} error
  */
 function missingAdicionalesColumn(error) {
@@ -209,7 +236,7 @@ export async function createPropuesta(client, input) {
     sin_precio: input.sinPrecio === true,
     dominio: readPropuestaDominio(input.dominio) || null,
     mundo: readPropuestaMundo(input.mundo),
-    adicionales: readPropuestaAdicionales(input.adicionales),
+    adicionales: packPropuestaAdicionales(input.adicionales),
   };
 
   const { data, error } = await client
@@ -235,7 +262,7 @@ export async function createPropuesta(client, input) {
  */
 export async function updatePropuestaAdicionales(client, id, adicionales) {
   if (!isPropuestaId(id)) return { error: 'Propuesta inválida.' };
-  const next = readPropuestaAdicionales(adicionales);
+  const next = packPropuestaAdicionales(adicionales);
   const { data, error } = await client
     .from('propuestas')
     .update({ adicionales: next, updated_at: new Date().toISOString() })
@@ -250,7 +277,7 @@ export async function updatePropuestaAdicionales(client, id, adicionales) {
     }
     return { error: 'No se pudieron guardar los precios.' };
   }
-  return { data: { id: data.id, adicionales: readPropuestaAdicionales(data.adicionales) } };
+  return { data: { id: data.id, adicionales: data.adicionales } };
 }
 
 /**

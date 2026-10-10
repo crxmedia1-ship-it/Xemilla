@@ -8,8 +8,6 @@ interface Props {
 
 const { class: className = '' } = Astro.props;
 
-const SRC =
-  'https://res.cloudinary.com/wdmzaemi/image/upload/v1789022797/Photoroom_20260810_004814.png';
 ---
 
 <footer
@@ -17,12 +15,21 @@ const SRC =
   aria-label="Xemilla"
 >
   <img
-    src={SRC}
+    src="/propuesta/xemilla.png"
     alt="Xemilla"
-    width="120"
-    height="40"
+    width="766"
+    height="249"
     loading="lazy"
     decoding="async"
-    class="admin-xemilla-mark__img"
+    class="admin-xemilla-mark__img admin-xemilla-mark__img--cream"
+  />
+  <img
+    src="/propuesta/xemilla-on-light.png"
+    alt=""
+    width="766"
+    height="249"
+    loading="lazy"
+    decoding="async"
+    class="admin-xemilla-mark__img admin-xemilla-mark__img--ink"
   />
 </footer>

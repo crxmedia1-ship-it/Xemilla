@@ -12,7 +12,7 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
-import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, readPropuestaAdicionales } from '../../../lib/propuestas.js';
+import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, readPropuestaAdicionales, readPropuestaFactura } from '../../../lib/propuestas.js';
 import {
   resolveHubTarjeta,
   readUiHub,
@@ -105,10 +105,11 @@ const [propuestas, propEventos, addonDefaults] = await Promise.all([
   listPropuestaEventos(propuestasClient),
   getPropuestaDefaults(propuestasClient),
 ]);
-const usarPredeterminados = Object.keys(addonDefaults).length > 0;
 const requestedTab = Astro.url.searchParams.get('tab');
 const superTab =
-  requestedTab === 'metricas' || requestedTab === 'propuestas' ? requestedTab : 'locales';
+  requestedTab === 'metricas' || requestedTab === 'propuestas' || requestedTab === 'accesos'
+    ? requestedTab
+    : 'locales';
 
 /**
  * @param {string | null | undefined} iso
@@ -242,8 +243,6 @@ const networkIntel = await fetchNetworkIntelligence(writeClient, {
   localesConAcceso,
 });
 
-const networkLocalesActivos = networkIntel.localesOperativos;
-
 /** @param {number} n */
 function formatKpi(n) {
   return (Number(n) || 0).toLocaleString('es-VE');
@@ -348,8 +347,7 @@ const tfOnClass =
 const tfOffClass =
   'px-3 py-1.5 rounded-xl font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors';
 
-const xemillaWordmark =
-  'https://res.cloudinary.com/wdmzaemi/image/upload/v1789022797/Photoroom_20260810_004814.png';
+const xemillaWordmark = '/propuesta/xemilla-on-light.png';
 
 /**
  * @param {string | null | undefined} url
@@ -442,7 +440,11 @@ function resolveMapsEmbed(direccion) {
             aria-haspopup="dialog"
             aria-controls="nuevo-rest-modal"
           >
-            <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
+            <span class="super-until-hero__cta-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+              </svg>
+            </span>
             Nuevo restaurante
           </button>
           <form method="POST" action="/api/admin-logout" class="super-until-hero__logout">
@@ -501,10 +503,6 @@ function resolveMapsEmbed(direccion) {
 
       <div class="super-until-hero__copy">
         <p class="super-until-hero__eyebrow">Súper Administrador</p>
-        <p class="super-until-hero__sub">
-          {restaurantes.length} local{restaurantes.length === 1 ? '' : 'es'} en la red
-          · {networkLocalesActivos} con acceso activo
-        </p>
       </div>
 
       <nav
@@ -524,20 +522,29 @@ function resolveMapsEmbed(direccion) {
         <button
           type="button"
           role="tab"
-          data-super-tab="metricas"
-          aria-selected={superTab === 'metricas' ? 'true' : 'false'}
-          class="super-until-hero__link"
-        >
-          Métricas
-        </button>
-        <button
-          type="button"
-          role="tab"
           data-super-tab="propuestas"
           aria-selected={superTab === 'propuestas' ? 'true' : 'false'}
           class="super-until-hero__link"
         >
           Propuestas
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-super-tab="accesos"
+          aria-selected={superTab === 'accesos' ? 'true' : 'false'}
+          class="super-until-hero__link"
+        >
+          Accesos
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-super-tab="metricas"
+          aria-selected={superTab === 'metricas' ? 'true' : 'false'}
+          class="super-until-hero__link"
+        >
+          Métricas
         </button>
       </nav>
     </section>
@@ -556,7 +563,11 @@ function resolveMapsEmbed(direccion) {
               aria-haspopup="dialog"
               aria-controls="nuevo-rest-modal"
             >
-              <span class="super-until-hero__cta-icon" aria-hidden="true">+</span>
+              <span class="super-until-hero__cta-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+                </svg>
+              </span>
               Nuevo restaurante
             </button>
           </div>
@@ -980,6 +991,94 @@ function resolveMapsEmbed(direccion) {
             })}
           </ul>
           </>
+        )
+      }
+    </div>
+
+    <div data-super-panel="accesos" class="access-board admin-fade-in-up" hidden={superTab !== 'accesos'}>
+      <header class="access-board__head">
+        <p class="access-board__kicker">Paneles</p>
+        <h2>Accesos de los locales</h2>
+        <p>Activa quién entra al panel de cada restaurante. Suspender corta el ingreso sin borrar la cuenta.</p>
+      </header>
+      {
+        restaurantes.length === 0 ? (
+          <p class="access-board__empty">Todavía no hay locales.</p>
+        ) : (
+          <div class="access-board__list">
+            {restaurantes.map((r) => {
+              const nombreAcceso = String(r.nombre_comercial || r.slug || 'Local');
+              const logoAcceso = resolveLogoUrl(r);
+              const accesoOn =
+                localesConAcceso.has(String(r.id)) || localesConAcceso.has(String(r.slug));
+              return (
+                <details class="access-local" name="accesos-local" data-access-local data-restaurante-id={r.id}>
+                  <summary class="access-local__summary">
+                    <span class="access-local__id">
+                      <strong>{nombreAcceso}</strong>
+                      <em>/{r.slug}</em>
+                    </span>
+                    <span
+                      class:list={['super-hub-card__state', accesoOn && 'super-hub-card__state--on']}
+                      data-access-badge
+                    >
+                      <span class="super-hub-card__dot" aria-hidden="true"></span>
+                      {accesoOn ? 'Acceso activo' : 'Sin acceso'}
+                    </span>
+                  </summary>
+                  <div class="access-local__body hub-modal__dialog">
+                    <div class="access-local__logo">
+                      {
+                        logoAcceso ? (
+                          <img src={logoAcceso} alt="" width="72" height="72" />
+                        ) : (
+                          <span>{nombreAcceso.slice(0, 1).toUpperCase()}</span>
+                        )
+                      }
+                    </div>
+                    <div class="hub-users" data-usuarios-list data-restaurante-id={r.id}>
+                      <p class="hub-users__empty">Cargando usuarios…</p>
+                    </div>
+                    <details class="access-add">
+                      <summary class="access-add__summary">Añadir usuario</summary>
+                      <form
+                        class="hub-users-add"
+                        data-operativo-form
+                        data-restaurante-id={r.id}
+                        data-restaurante-nombre={nombreAcceso}
+                        data-has-access={accesoOn ? 'true' : 'false'}
+                        data-cta="Añadir usuario"
+                        novalidate
+                      >
+                        <input type="hidden" name="rol" value="admin" />
+                        <label>
+                          <span>Usuario</span>
+                          <input type="email" name="email" required autocomplete="off" placeholder="nombre@local.com" />
+                        </label>
+                        <label>
+                          <span>Contraseña</span>
+                          <div class="access-pass">
+                            <input
+                              type="text"
+                              name="password"
+                              required
+                              minlength="8"
+                              autocomplete="new-password"
+                              spellcheck="false"
+                              placeholder="Mín. 8 caracteres"
+                            />
+                            <button type="button" class="access-pass__gen" data-gen-pass>Generar</button>
+                          </div>
+                        </label>
+                        <p class="hidden text-[0.75rem] leading-relaxed" data-operativo-feedback role="status" aria-live="polite"></p>
+                        <button type="submit" data-operativo-submit class="super-card-sheet__submit">Añadir usuario</button>
+                      </form>
+                    </details>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
         )
       }
     </div>
@@ -1589,25 +1688,17 @@ function resolveMapsEmbed(direccion) {
         </fieldset>
 
         <fieldset class="super-prop-form__wide super-prop-price" data-addon-defaults={JSON.stringify(addonDefaults)}>
-          <legend>Solo para degustadores</legend>
-          <p class="super-prop-form__hint">No van en el plan. Predeterminados recuerda los precios; si regulas uno, ajústalo y guárdalo una vez.</p>
-          <div class="super-prop-price__modes" role="radiogroup" aria-label="Origen de los precios">
-            <label class="super-prop-price__mode">
-              <input type="radio" name="degustadores_modo" value="consultar" checked={!usarPredeterminados} data-addon-preset />
-              <span>A consultar</span>
-            </label>
-            <label class="super-prop-price__mode">
-              <input type="radio" name="degustadores_modo" value="default" checked={usarPredeterminados} data-addon-preset />
-              <span>Predeterminados</span>
-            </label>
-          </div>
           <div class="super-prop-addon-list">
             {PROPUESTA_ADICIONALES.map((item) => {
-              const amount = usarPredeterminados ? addonDefaults[item.id] || '' : '';
+              const amount = addonDefaults[item.id] || '';
               return (
                 <div class="super-prop-addon" data-addon-row>
                   <p class="super-prop-addon__name">{item.label}</p>
                   <div class="super-prop-addon__controls">
+                    <label class="super-prop-factura">
+                      <input type="checkbox" data-adicional-factura={item.id} checked={Boolean(amount)} />
+                      <span>En la factura</span>
+                    </label>
                     <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
                       <option value="" selected={!amount}>A consultar</option>
                       <option value="precio" selected={Boolean(amount)}>Con precio</option>
@@ -1623,7 +1714,7 @@ function resolveMapsEmbed(direccion) {
           </div>
           <div class="super-prop-default-bar">
             <button type="button" data-addon-save-default>Guardar como predeterminado</button>
-            <p data-addon-default-status role="status">{usarPredeterminados ? 'Listo para reutilizar.' : ''}</p>
+            <p data-addon-default-status role="status"></p>
           </div>
         </fieldset>
 
@@ -1712,10 +1803,15 @@ function resolveMapsEmbed(direccion) {
                         <div class="super-prop-addon-list">
                           {PROPUESTA_ADICIONALES.map((item) => {
                             const amount = readPropuestaAdicionales(p.adicionales)[item.id] || '';
+                            const enFactura = readPropuestaFactura(p.adicionales).includes(item.id);
                             return (
                               <div class="super-prop-addon" data-addon-row>
                                 <p class="super-prop-addon__name">{item.label}</p>
                                 <div class="super-prop-addon__controls">
+                                  <label class="super-prop-factura">
+                                    <input type="checkbox" data-adicional-factura={item.id} checked={enFactura} />
+                                    <span>En la factura</span>
+                                  </label>
                                   <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
                                     <option value="" selected={!amount}>A consultar</option>
                                     <option value="precio" selected={Boolean(amount)}>Con precio</option>

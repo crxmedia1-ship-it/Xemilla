@@ -19,10 +19,14 @@ interface Props {
   manifestHref?: string;
   /** Nombre bajo el ícono al instalar */
   appName?: string;
+  /** Alcance del service worker. Cada restaurante tiene el suyo para no pisar otra app. */
+  pwaScope?: string;
   /** Absolute page URL for og:url */
   ogUrl?: string;
   /** Activa shell admin (siempre light). */
   adminPanel?: boolean;
+  /** Oculta la página de buscadores (propuestas privadas). */
+  noIndex?: boolean;
 }
 
 const {
@@ -36,8 +40,10 @@ const {
   appIcon = '',
   manifestHref = '',
   appName = '',
+  pwaScope = '',
   ogUrl = '',
   adminPanel = false,
+  noIndex = false,
 } = Astro.props;
 
 const fontHref =
@@ -51,9 +57,9 @@ const fontHref =
         : 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&display=swap');
 
 const safeCustomCss = typeof customCss === 'string' ? customCss : '';
-const iconHref =
-  appIcon?.trim() ||
-  'https://res.cloudinary.com/dgphys1xd/image/upload/v1786337633/IMG_3774_zsxajg.png';
+const customIcon = appIcon?.trim() || '';
+const iconHref = customIcon || '/favicon.png';
+const appleHref = customIcon || '/icons/apple-touch-icon.png';
 const shareImage = ogImage?.trim() || '';
 const initialThemeColor = adminPanel ? '#f8fafc' : themeColor;
 
@@ -70,6 +76,7 @@ function chromeIsLight(color: string) {
 
 const chromeScheme = adminPanel || chromeIsLight(initialThemeColor) ? 'light' : 'dark';
 const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chromeScheme}`;
+const pwaScopeSafe = /^\/[a-z0-9-]+\/$/i.test(pwaScope) ? pwaScope : '';
 ---
 
 <!doctype html>
@@ -93,12 +100,29 @@ const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chrome
         </>
       ) : null
     }
-    <link rel="icon" href={iconHref} />
-    <link rel="apple-touch-icon" href={iconHref} sizes="180x180" />
+    <link rel="icon" type="image/png" href={iconHref} sizes="32x32" />
+    <link rel="apple-touch-icon" href={appleHref} sizes="180x180" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href={fontHref} rel="stylesheet" />
     <meta name="description" content={description} />
+    {noIndex ? <meta name="robots" content="noindex, nofollow" /> : null}
+    <script is:inline>
+      (function () {
+        var KEY = 'xemilla-propuesta-only';
+        function guard() {
+          try {
+            var lock = sessionStorage.getItem(KEY);
+            if (!lock || lock.charAt(0) !== '/') return;
+            var path = location.pathname;
+            if (path === '/propuesta' || path.indexOf('/admin') === 0 || path.indexOf('/api/') === 0) return;
+            location.replace(lock);
+          } catch (e) {}
+        }
+        guard();
+        document.addEventListener('astro:page-load', guard);
+      })();
+    </script>
     <meta name="color-scheme" content={chromeScheme} id="meta-color-scheme" />
     <meta
       name="theme-color"
@@ -126,11 +150,23 @@ const chromeStyle = `background-color:${initialThemeColor};color-scheme:${chrome
           <link rel="manifest" href={manifestHref} />
           {appName ? <meta name="apple-mobile-web-app-title" content={appName} /> : null}
           {appName ? <meta name="application-name" content={appName} /> : null}
-          <script is:inline>
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.register('/sw.js').catch(function () {});
-            }
-          </script>
+          {
+            pwaScopeSafe ? (
+              <script is:inline define:vars={{ pwaScope: pwaScopeSafe }}>
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(function (regs) {
+                    return Promise.all(regs.map(function (reg) {
+                      try {
+                        if (new URL(reg.scope).pathname === '/') return reg.unregister();
+                      } catch (e) {}
+                    }));
+                  }).then(function () {
+                    navigator.serviceWorker.register('/sw.js', { scope: pwaScope }).catch(function () {});
+                  });
+                }
+              </script>
+            ) : null
+          }
         </>
       ) : null
     }

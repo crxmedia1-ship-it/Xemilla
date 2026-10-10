@@ -184,8 +184,7 @@ const horarioHoy = previewHorarioHoy(horarioSemana);
 const hubLogoUrl = String(restaurante?.logo_url || '').trim();
 const hubLogoTrimUrl = cloudinaryTrimUrl(hubLogoUrl);
 const footLogoUrl = cloudinaryTrimUrl(resolveMediaUrl(hubLogoUrl, 'logo') || hubLogoUrl);
-const xemillaWordmark =
-  'https://res.cloudinary.com/wdmzaemi/image/upload/v1789022797/Photoroom_20260810_004814.png';
+const xemillaWordmark = '/propuesta/xemilla.png';
 const hubNombre = String(restaurante?.nombre_comercial || nombre || '').trim();
 const menuCategoryNames = [
   ...new Set(
@@ -1645,6 +1644,29 @@ Postres | Tres leches | Coco | 9.00 | SI |`
               <header class="fid-head">
                 <h2>Tarjeta de fidelidad</h2>
               </header>
+              <div class={`${identidadCardClass} fid-studio fid-scan`} data-fidelidad-scan data-restaurante={restId} data-slug={publicSlug}>
+                <form class="fid-scan__bar" data-scan-form>
+                  <label class="fid-scan__code">
+                    <span class={gadgetLabelClass}>Código</span>
+                    <input name="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" class="fid-scan__input" placeholder="AB23CD45" />
+                  </label>
+                  <button type="submit" class="fid-btn">Buscar</button>
+                  <button type="button" class="fid-btn fid-btn--ghost" data-scan-camera>Cámara</button>
+                </form>
+                <video class="fid-scan__video hidden" data-scan-video playsinline muted></video>
+                <p class="fid-scan__status" data-scan-status role="status"></p>
+                <article class="fid-scan__result" data-scan-card hidden>
+                  <div class="min-w-0">
+                    <p class="fid-scan__who" data-scan-nombre></p>
+                    <p class="fid-scan-points"><span data-scan-puntos>0</span> <small>puntos</small></p>
+                    <p class="fid-scan__falta" data-scan-falta></p>
+                  </div>
+                  <div class="fid-scan__moves">
+                    <button type="button" class="fid-btn" data-scan-action="visita">Sumar visita</button>
+                    <button type="button" class="fid-btn fid-btn--ghost" data-scan-action="canje">Canjear premio</button>
+                  </div>
+                </article>
+              </div>
               <div class="grid items-start gap-5 lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]">
                 <div class="fid-stage">
                   <div class="fid-stage__frame">
@@ -1759,48 +1781,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       <button type="button" data-fid-nivel-quitar>Quitar</button>
                     </article>
                   </template>
-                  <p class="fid-niveles__title" data-fid-reglas-de>Puntos y premio · Inicial</p>
-                  <div class="fid-rules">
-                    <label class="block min-w-0">
-                      <span class={gadgetLabelClass}>Puntos por visita</span>
-                      <input name="puntos" type="number" min="1" max="500" step="1" value={marca.fidelidad_puntos} class={gadgetFieldClass} />
-                    </label>
-                    <label class="block min-w-0">
-                      <span class={gadgetLabelClass}>Meta</span>
-                      <input name="meta" type="number" min="1" max="5000" step="1" value={marca.fidelidad_meta} class={gadgetFieldClass} />
-                    </label>
-                    <label class="block min-w-0">
-                      <span class={gadgetLabelClass}>Premio</span>
-                      <input name="premio" maxlength="80" value={marca.fidelidad_premio} class={gadgetFieldClass} />
-                    </label>
-                  </div>
+                  <label class="block">
+                    <span class={gadgetLabelClass}>Puntos por visita</span>
+                    <input name="puntos" type="number" min="1" max="500" step="1" value={marca.fidelidad_puntos} class={gadgetFieldClass} />
+                  </label>
+                  <input type="hidden" name="meta" value={marca.fidelidad_meta} />
+                  <input type="hidden" name="premio" value={marca.fidelidad_premio} />
+                  <div class="fid-premios" data-fid-premios></div>
                   <button type="submit" class="fid-btn">Guardar diseño</button>
                   <p class="min-h-5 text-sm text-zinc-500" data-fid-status role="status"></p>
                 </form>
-              </div>
-              <div class={`${identidadCardClass} fid-studio`} data-fidelidad-scan data-restaurante={restId} data-slug={publicSlug}>
-                <h3 class="text-base font-semibold">Escanear puntos</h3>
-                <form class="grid gap-3" data-scan-form>
-                  <label class="block">
-                    <span class={gadgetLabelClass}>Código de la tarjeta</span>
-                    <input name="codigo" autocomplete="off" autocapitalize="characters" class={`${gadgetFieldClass} tracking-[0.16em] uppercase`} placeholder="AB23CD45" />
-                  </label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button type="submit" class="fid-btn">Buscar</button>
-                    <button type="button" class="fid-btn fid-btn--ghost" data-scan-camera>Usar cámara</button>
-                  </div>
-                </form>
-                <video class="hidden w-full max-w-sm rounded-2xl bg-black" data-scan-video playsinline muted></video>
-                <p class="min-h-5 text-sm text-zinc-600" data-scan-status role="status"></p>
-                <article class="hidden max-w-sm" data-scan-card hidden>
-                  <p class="text-sm text-zinc-500" data-scan-nombre></p>
-                  <p class="fid-scan-points"><span data-scan-puntos>0</span> <small>puntos</small></p>
-                  <p class="mt-2 text-sm text-zinc-600" data-scan-falta></p>
-                  <div class="mt-4 grid gap-2">
-                    <button type="button" class="fid-btn" data-scan-action="visita">Sumar visita</button>
-                    <button type="button" class="fid-btn fid-btn--ghost" data-scan-action="canje">Canjear premio</button>
-                  </div>
-                </article>
               </div>
             </section>
             <script>
@@ -1872,8 +1862,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
 
                 const flush = () => {
                   const colors = readFields();
+                  base.puntos = colors.puntos;
                   if (vista === 'base') {
-                    Object.assign(base, colors);
+                    base.diseno = colors.diseno;
+                    base.fondo = colors.fondo;
+                    base.tinta = colors.tinta;
+                    base.acento = colors.acento;
                     return;
                   }
                   const row = nivelRows()[Number(vista)];
@@ -1882,21 +1876,21 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   setRow(row, 'nivel_fondo', colors.fondo);
                   setRow(row, 'nivel_tinta', colors.tinta);
                   setRow(row, 'nivel_acento', colors.acento);
-                  setRow(row, 'nivel_puntos', colors.puntos);
-                  setRow(row, 'nivel_meta', colors.meta);
-                  setRow(row, 'nivel_premio', colors.premio);
                   if (versionNombre instanceof HTMLInputElement) setRow(row, 'nivel_nombre', versionNombre.value);
                   if (versionDesde instanceof HTMLInputElement) setRow(row, 'nivel_desde', versionDesde.value);
                 };
 
+                let mirando = null;
+
                 const paint = () => {
                   if (!(pass instanceof HTMLElement)) return;
-                  const colors = readFields();
+                  const colors = mirando?.colors || readFields();
                   const titulo = field('titulo')?.value.trim() || local;
-                  const premio = field('premio')?.value.trim() || 'Un premio';
-                  const meta = Math.max(1, Number(field('meta')?.value) || 80);
+                  const premio = String(mirando?.premio ?? (base.premio || field('premio')?.value || '')).trim() || 'Un premio';
+                  const meta = Math.max(1, Number(mirando?.meta ?? (base.meta || field('meta')?.value)) || 80);
                   const muestra = 24;
-                  const nivelNombre = vista === 'base' || !(versionNombre instanceof HTMLInputElement) ? '' : versionNombre.value.trim();
+                  const nivelNombre = mirando?.nombre
+                    || (vista === 'base' || !(versionNombre instanceof HTMLInputElement) ? '' : versionNombre.value.trim());
                   pass.style.setProperty('--fid-fondo', colors.fondo);
                   pass.style.setProperty('--fid-tinta', colors.tinta);
                   pass.style.setProperty('--fid-acento', colors.acento);
@@ -1915,10 +1909,6 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                   if (metaEl) metaEl.textContent = `${meta} pts`;
                   if (faltaEl) faltaEl.textContent = muestra >= meta ? 'Premio listo' : `Faltan ${meta - muestra}`;
                   if (bar instanceof HTMLElement) bar.style.width = `${Math.min(100, Math.round((muestra / meta) * 100))}%`;
-                  const etiqueta = vista === 'base'
-                    ? 'Inicial'
-                    : (versionNombre instanceof HTMLInputElement && versionNombre.value.trim()) || 'Versión';
-                  if (reglasDe) reglasDe.textContent = `Puntos y premio · ${etiqueta}`;
                 };
 
                 const renderGrid = () => {
@@ -1986,9 +1976,9 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       fondo: rowValue(row, 'nivel_fondo') || base.fondo,
                       tinta: rowValue(row, 'nivel_tinta') || base.tinta,
                       acento: rowValue(row, 'nivel_acento') || base.acento,
-                      puntos: rowValue(row, 'nivel_puntos') || base.puntos,
-                      meta: rowValue(row, 'nivel_meta') || base.meta,
-                      premio: rowValue(row, 'nivel_premio') || base.premio,
+                      puntos: base.puntos,
+                      meta: base.meta,
+                      premio: base.premio,
                     });
                     if (versionNombre instanceof HTMLInputElement) versionNombre.value = rowValue(row, 'nivel_nombre');
                     if (versionDesde instanceof HTMLInputElement) versionDesde.value = rowValue(row, 'nivel_desde') || '1';
@@ -2011,6 +2001,329 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 }));
 
                 const sameLook = (a, b) => a.fondo === b.fondo && a.tinta === b.tinta && a.acento === b.acento;
+
+                const esInicial = (item) => (base.diseno ? item.id === base.diseno : sameLook(item, base));
+
+                const nivelDeDiseno = (id) => nivelRows().find((row) => rowValue(row, 'nivel_diseno') === id) || null;
+
+                const inputClass = field('titulo')?.className || '';
+
+                const premioInput = (value, attrs) => {
+                  const input = document.createElement('input');
+                  input.className = inputClass;
+                  Object.entries(attrs).forEach(([key, val]) => input.setAttribute(key, val));
+                  input.value = value;
+                  return input;
+                };
+
+                let abierto = 'base';
+
+                const nombreDe = (colors) => {
+                  const item = presets.find((preset) => (colors.diseno ? preset.id === colors.diseno : sameLook(preset, colors)));
+                  return item?.nombre || 'Inicial';
+                };
+
+                const campo = (texto, input) => {
+                  const wrap = document.createElement('label');
+                  wrap.className = 'block min-w-0';
+                  const span = document.createElement('span');
+                  span.className = 'block text-xs font-medium text-zinc-600 mb-1.5';
+                  span.textContent = texto;
+                  wrap.append(span, input);
+                  return wrap;
+                };
+
+                const renderPremios = () => {
+                  const list = form?.querySelector('[data-fid-premios]');
+                  if (!(list instanceof HTMLElement)) return;
+                  if (document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement)) return;
+                  if (abierto !== 'base' && !nivelDeDiseno(abierto)) abierto = 'base';
+                  list.replaceChildren();
+                  const piezas = [
+                    {
+                      key: 'base',
+                      nombre: nombreDe(base),
+                      cuando: 'Al empezar',
+                      premio: base.premio || field('premio')?.value || '',
+                      meta: base.meta || field('meta')?.value || '',
+                      colors: base,
+                    },
+                    ...nivelRows().map((row) => ({
+                      key: rowValue(row, 'nivel_diseno') || rowValue(row, 'nivel_nombre'),
+                      nombre: rowValue(row, 'nivel_nombre') || 'Premio',
+                      cuando: Number(rowValue(row, 'nivel_desde')) === 1
+                        ? 'Tras 1 canje'
+                        : `Tras ${rowValue(row, 'nivel_desde') || '—'} canjes`,
+                      premio: rowValue(row, 'nivel_premio'),
+                      meta: rowValue(row, 'nivel_meta') || base.meta || '',
+                      desde: rowValue(row, 'nivel_desde'),
+                      colors: {
+                        diseno: rowValue(row, 'nivel_diseno'),
+                        fondo: rowValue(row, 'nivel_fondo'),
+                        tinta: rowValue(row, 'nivel_tinta'),
+                        acento: rowValue(row, 'nivel_acento'),
+                      },
+                    })),
+                  ];
+                  piezas.forEach((pieza) => {
+                    const abiertoEste = pieza.key === abierto;
+                    const article = document.createElement('article');
+                    article.className = 'fid-premio';
+                    article.dataset.fidPremio = pieza.key;
+                    const toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'fid-premio__toggle';
+                    toggle.dataset.fidAbrir = pieza.key;
+                    toggle.setAttribute('aria-expanded', abiertoEste ? 'true' : 'false');
+                    const name = document.createElement('span');
+                    name.className = 'fid-premio__name';
+                    const swatch = document.createElement('i');
+                    swatch.className = 'fid-premio__swatch';
+                    swatch.style.setProperty('--fid-fondo', pieza.colors.fondo);
+                    swatch.style.setProperty('--fid-tinta', pieza.colors.tinta);
+                    swatch.style.setProperty('--fid-acento', pieza.colors.acento);
+                    name.append(swatch, document.createTextNode(pieza.nombre));
+                    const when = document.createElement('span');
+                    when.className = 'fid-premio__when';
+                    when.textContent = abiertoEste ? pieza.cuando : [pieza.cuando, pieza.premio].filter(Boolean).join(' · ');
+                    toggle.append(name, when);
+                    article.append(toggle);
+                    if (abiertoEste) {
+                      const panel = document.createElement('div');
+                      panel.className = 'fid-premio__panel';
+                      const lookLabel = document.createElement('span');
+                      lookLabel.className = 'block text-xs font-medium text-zinc-600 mb-1.5';
+                      lookLabel.textContent = 'Diseño';
+                      const looks = document.createElement('div');
+                      looks.className = 'fid-premio__looks';
+                      const idDe = (colors) => colors.diseno || presets.find((preset) => sameLook(preset, colors))?.id || '';
+                      const ocupados = new Set(piezas.filter((otro) => otro.key !== pieza.key).map((otro) => idDe(otro.colors)));
+                      presets.forEach((preset) => {
+                        const dot = document.createElement('button');
+                        dot.type = 'button';
+                        dot.className = 'fid-look';
+                        dot.dataset.fidLook = preset.id;
+                        dot.title = preset.nombre;
+                        dot.setAttribute('aria-label', preset.nombre);
+                        dot.setAttribute('aria-pressed', preset.id === idDe(pieza.colors) ? 'true' : 'false');
+                        dot.disabled = ocupados.has(preset.id);
+                        dot.style.setProperty('--fid-fondo', preset.fondo);
+                        dot.style.setProperty('--fid-acento', preset.acento);
+                        looks.append(dot);
+                      });
+                      const rules = document.createElement('div');
+                      rules.className = pieza.key === 'base' ? 'fid-premio__rules' : 'fid-premio__rules fid-premio__rules--extra';
+                      if (pieza.key !== 'base') {
+                        rules.append(campo('Canjes para abrirlo', premioInput(pieza.desde || '', { 'data-desde': '', type: 'number', min: '1', max: '99', step: '1' })));
+                      }
+                      rules.append(campo('Meta', premioInput(pieza.meta || '', { 'data-meta': '', type: 'number', min: '1', max: '5000', step: '1' })));
+                      rules.append(campo('Premio', premioInput(pieza.premio || '', { 'data-premio': '', maxlength: '80', placeholder: 'La recompensa' })));
+                      panel.append(lookLabel, looks, rules);
+                      if (pieza.key !== 'base') {
+                        const quitar = document.createElement('button');
+                        quitar.type = 'button';
+                        quitar.className = 'fid-premio__quitar';
+                        quitar.dataset.fidPremioQuitar = pieza.key;
+                        quitar.textContent = 'Quitar';
+                        panel.append(quitar);
+                      }
+                      article.append(panel);
+                    }
+                    list.append(article);
+                  });
+                  if (nivelRows().length < 3) {
+                    const add = document.createElement('button');
+                    add.type = 'button';
+                    add.className = 'fid-premio__add';
+                    add.dataset.fidAnadir = 'true';
+                    add.textContent = 'Añadir otro';
+                    list.append(add);
+                  }
+                };
+
+                const asegurarNivel = (item, desde, premio) => {
+                  let row = nivelDeDiseno(item.id);
+                  if (!Number.isFinite(desde) || desde < 1) {
+                    row?.remove();
+                    return true;
+                  }
+                  const nuevo = !(row instanceof HTMLElement);
+                  if (nuevo) {
+                    if (!(nivelTemplate instanceof HTMLTemplateElement) || !(nivelList instanceof HTMLElement) || nivelRows().length >= 3) {
+                      if (status) status.textContent = 'Puedes sumar 3 premios además del inicial.';
+                      return false;
+                    }
+                    const node = nivelTemplate.content.firstElementChild?.cloneNode(true);
+                    if (!(node instanceof HTMLElement)) return false;
+                    nivelList.append(node);
+                    row = node;
+                  }
+                  const repetido = nivelRows().some((otro) => otro !== row && Number(rowValue(otro, 'nivel_desde')) === desde);
+                  if (repetido) {
+                    if (nuevo) row.remove();
+                    if (status) status.textContent = 'Cada premio abre con un número de canjes distinto.';
+                    return false;
+                  }
+                  if (status) status.textContent = '';
+                  setRow(row, 'nivel_nombre', item.nombre);
+                  setRow(row, 'nivel_desde', String(desde));
+                  setRow(row, 'nivel_diseno', item.id);
+                  setRow(row, 'nivel_fondo', item.fondo);
+                  setRow(row, 'nivel_tinta', item.tinta);
+                  setRow(row, 'nivel_acento', item.acento);
+                  setRow(row, 'nivel_puntos', '');
+                  setRow(row, 'nivel_meta', '');
+                  setRow(row, 'nivel_premio', premio);
+                  return true;
+                };
+
+                const aplicarLook = (item) => {
+                  if (abierto === 'base') {
+                    const current = readFields();
+                    writeFields({
+                      ...current,
+                      diseno: item.id,
+                      fondo: item.fondo,
+                      tinta: item.tinta,
+                      acento: item.acento,
+                      meta: base.meta,
+                      premio: base.premio,
+                    });
+                    nivelDeDiseno(item.id)?.remove();
+                    flush();
+                    mirando = null;
+                    return;
+                  }
+                  const row = nivelDeDiseno(abierto);
+                  if (!(row instanceof HTMLElement)) return;
+                  setRow(row, 'nivel_nombre', item.nombre);
+                  setRow(row, 'nivel_diseno', item.id);
+                  setRow(row, 'nivel_fondo', item.fondo);
+                  setRow(row, 'nivel_tinta', item.tinta);
+                  setRow(row, 'nivel_acento', item.acento);
+                  abierto = item.id;
+                  const premio = rowValue(row, 'nivel_premio');
+                  mirando = { colors: item, nombre: item.nombre, premio, meta: rowValue(row, 'nivel_meta') || base.meta };
+                };
+
+                const agregarPremio = () => {
+                  if (!(nivelTemplate instanceof HTMLTemplateElement) || !(nivelList instanceof HTMLElement) || nivelRows().length >= 3) {
+                    if (status) status.textContent = 'Puedes sumar 3 premios además del inicial.';
+                    return;
+                  }
+                  const idDe = (colors) => colors.diseno || presets.find((preset) => sameLook(preset, colors))?.id || '';
+                  const ocupados = new Set([
+                    idDe(base),
+                    ...nivelRows().map((row) => rowValue(row, 'nivel_diseno')),
+                  ]);
+                  const item = presets.find((preset) => preset.id && !ocupados.has(preset.id));
+                  if (!item) return;
+                  const node = nivelTemplate.content.firstElementChild?.cloneNode(true);
+                  if (!(node instanceof HTMLElement)) return;
+                  const usados = nivelRows().map((row) => Number(rowValue(row, 'nivel_desde')) || 0);
+                  const desde = Math.min(99, (usados.length ? Math.max(...usados) : 0) + 1);
+                  setRow(node, 'nivel_nombre', item.nombre);
+                  setRow(node, 'nivel_desde', String(desde));
+                  setRow(node, 'nivel_diseno', item.id);
+                  setRow(node, 'nivel_fondo', item.fondo);
+                  setRow(node, 'nivel_tinta', item.tinta);
+                  setRow(node, 'nivel_acento', item.acento);
+                  setRow(node, 'nivel_puntos', '');
+                  setRow(node, 'nivel_meta', base.meta || '');
+                  setRow(node, 'nivel_premio', '');
+                  nivelList.append(node);
+                  abierto = item.id;
+                  if (status) status.textContent = '';
+                  mirando = { colors: item, nombre: item.nombre, premio: '', meta: base.meta };
+                };
+
+                form?.querySelector('[data-fid-premios]')?.addEventListener('click', (event) => {
+                  const target = event.target instanceof Element ? event.target : null;
+                  if (!target) return;
+                  if (target.closest('[data-fid-anadir]')) {
+                    agregarPremio();
+                    paint();
+                    renderPremios();
+                    return;
+                  }
+                  const quitar = target.closest('[data-fid-premio-quitar]');
+                  if (quitar instanceof HTMLElement) {
+                    nivelDeDiseno(quitar.dataset.fidPremioQuitar || '')?.remove();
+                    abierto = 'base';
+                    mirando = null;
+                    paint();
+                    renderPremios();
+                    return;
+                  }
+                  const look = target.closest('[data-fid-look]');
+                  if (look instanceof HTMLButtonElement && !look.disabled) {
+                    const item = presets.find((preset) => preset.id === look.dataset.fidLook);
+                    if (!item) return;
+                    aplicarLook(item);
+                    paint();
+                    renderPresets();
+                    renderPremios();
+                    return;
+                  }
+                  const abrir = target.closest('[data-fid-abrir]');
+                  if (!(abrir instanceof HTMLButtonElement)) return;
+                  abierto = abrir.dataset.fidAbrir || 'base';
+                  if (abierto === 'base') mirando = null;
+                  else {
+                    const row = nivelDeDiseno(abierto);
+                    const item = presets.find((preset) => preset.id === abierto);
+                    mirando = item ? {
+                      colors: item,
+                      nombre: item.nombre,
+                      premio: rowValue(row, 'nivel_premio'),
+                      meta: rowValue(row, 'nivel_meta') || base.meta,
+                    } : null;
+                  }
+                  paint();
+                  renderPremios();
+                });
+
+                form?.querySelector('[data-fid-premios]')?.addEventListener('input', (event) => {
+                  const box = event.target instanceof Element ? event.target.closest('[data-fid-premio]') : null;
+                  if (!(box instanceof HTMLElement)) return;
+                  event.stopPropagation();
+                  const premio = box.querySelector('[data-premio]');
+                  const meta = box.querySelector('[data-meta]');
+                  const desde = box.querySelector('[data-desde]');
+                  if (box.dataset.fidPremio === 'base') {
+                    if (premio instanceof HTMLInputElement) {
+                      base.premio = premio.value;
+                      const hidden = field('premio');
+                      if (hidden) hidden.value = premio.value;
+                    }
+                    if (meta instanceof HTMLInputElement) {
+                      base.meta = meta.value;
+                      const hidden = field('meta');
+                      if (hidden) hidden.value = meta.value;
+                    }
+                    mirando = null;
+                    paint();
+                    return;
+                  }
+                  const row = nivelDeDiseno(box.dataset.fidPremio || '');
+                  if (!(row instanceof HTMLElement)) return;
+                  if (premio instanceof HTMLInputElement) setRow(row, 'nivel_premio', premio.value);
+                  if (meta instanceof HTMLInputElement) setRow(row, 'nivel_meta', meta.value);
+                  if (desde instanceof HTMLInputElement) {
+                    const valor = Math.round(Number(desde.value));
+                    const repetido = nivelRows().some((otro) => otro !== row && Number(rowValue(otro, 'nivel_desde')) === valor);
+                    if (Number.isFinite(valor) && valor >= 1 && !repetido) setRow(row, 'nivel_desde', String(valor));
+                    else if (status && repetido) status.textContent = 'Cada premio abre con un número de canjes distinto.';
+                  }
+                  const item = presets.find((preset) => preset.id === box.dataset.fidPremio);
+                  mirando = item ? {
+                    colors: item,
+                    nombre: item.nombre,
+                    premio: premio instanceof HTMLInputElement ? premio.value : '',
+                    meta: meta instanceof HTMLInputElement ? meta.value : base.meta,
+                  } : null;
+                  paint();
+                });
 
                 const renderPresets = () => {
                   if (!(presetsGrid instanceof HTMLElement)) return;
@@ -2066,11 +2379,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     fondo: chosen.fondo,
                     tinta: chosen.tinta,
                     acento: chosen.acento,
+                    meta: base.meta,
+                    premio: base.premio,
                   });
+                  if (chosen.id) nivelDeDiseno(chosen.id)?.remove();
                   flush();
                   paint();
                   renderPresets();
                   renderGrid();
+                  renderPremios();
                 });
 
                 form?.querySelector('[data-fid-pedir]')?.addEventListener('click', () => {
@@ -2129,6 +2446,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                 paint();
                 renderPresets();
                 renderGrid();
+                renderPremios();
 
                 const versiones = root.querySelector('[data-fid-versiones]');
                 root.querySelector('[data-fid-open-versiones]')?.addEventListener('click', () => {
@@ -2155,15 +2473,12 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       fondo: base.fondo,
                       tinta: base.tinta,
                       acento: base.acento,
-                      puntos: base.puntos,
-                      meta: base.meta,
-                      premio: base.premio,
                       pedido: field('pedido')?.value || '',
                       catalogo,
                       niveles: nivelesPayload(),
-                      puntos: Number(field('puntos')?.value) || 10,
-                      meta: Number(field('meta')?.value) || 80,
-                      premio: field('premio')?.value || '',
+                      puntos: Number(base.puntos || field('puntos')?.value) || 10,
+                      meta: Number(base.meta || field('meta')?.value) || 80,
+                      premio: base.premio || field('premio')?.value || '',
                       activo: field('activo') ? field('activo').checked : undefined,
                     }),
                   });

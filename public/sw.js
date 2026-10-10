@@ -1,4 +1,4 @@
-/* Webapp instalable. No cachea el menú: cada visita sigue en red. */
+/* Cada restaurante registra este worker solo dentro de /su-slug/. */
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
