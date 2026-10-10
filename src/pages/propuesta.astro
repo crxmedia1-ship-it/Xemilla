@@ -5059,6 +5059,74 @@ const glass =
     background: var(--color-zinc-300);
   }
 
+  /* iPad y escritorio: grilla compacta, sin cuadrados a todo el ancho. */
+  @media (min-width: 700px) {
+    #gadgets-title {
+      font-size: clamp(2rem, 3.4vw, 2.6rem);
+    }
+
+    .gadget-rail {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      overflow: visible;
+      scroll-snap-type: none;
+    }
+
+    .gadget-slide {
+      flex: none;
+      aspect-ratio: auto;
+      min-height: 0;
+      gap: 0.65rem;
+      padding: 0.95rem 0.8rem 0.9rem;
+      scroll-snap-align: none;
+    }
+
+    .gadget-slide__icon {
+      width: 4.25rem;
+      margin-top: 0;
+      border-radius: 1.15rem;
+    }
+
+    .gadget-slide__title {
+      flex-direction: column;
+      font-size: 1.02rem;
+      gap: 0.28rem;
+    }
+
+    .gadget-slide__action {
+      padding: 0.55rem 0.9rem;
+      font-size: 0.8rem;
+    }
+
+    .gadget-slide__add {
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+
+    .gadget-slide__copy {
+      width: 100%;
+      gap: 0.25rem;
+      padding: 0.4rem 0.55rem 0.45rem;
+    }
+
+    .gadget-slide__copy p {
+      font-size: 0.78rem;
+      line-height: 1.3;
+    }
+
+    .gadget-dots {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .gadget-rail {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+  }
+
   /* Tarjeta que gira: las dos caras ocupan la misma celda, así mide lo que la más alta. */
   .feat-flip {
     perspective: 1200px;
