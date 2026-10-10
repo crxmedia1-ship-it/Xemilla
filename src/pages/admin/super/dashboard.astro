@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../layouts/Layout.astro';
+import XemillaQuiet from '../../../components/XemillaQuiet.astro';
 import '../../../styles/admin-themes.css';
 import ImageCropHost from '../../../components/admin/ImageCropHost.astro';
 import {
@@ -551,7 +552,9 @@ function resolveMapsEmbed(direccion) {
         class="super-until-hero__links"
         role="tablist"
         aria-label="Secciones SuperAdmin"
+        data-on={superTab}
       >
+        <span class="super-until-hero__thumb" aria-hidden="true"></span>
         <button
           type="button"
           role="tab"
@@ -559,7 +562,7 @@ function resolveMapsEmbed(direccion) {
           aria-selected={superTab === 'locales' ? 'true' : 'false'}
           class="super-until-hero__link"
         >
-          Locales
+          Restaurantes
         </button>
         <button
           type="button"
@@ -594,13 +597,10 @@ function resolveMapsEmbed(direccion) {
     <div data-super-panel="locales" class="admin-fade-in-up" hidden={superTab !== 'locales'}>
       {
         restaurantes.length === 0 ? (
-          <div class="glass-panel solid-obstacle mt-12 max-w-xl p-8 text-center">
-            <p class="text-sm leading-relaxed text-zinc-400">
-              Todavía no hay locales registrados. Creá el primero.
-            </p>
+          <XemillaQuiet inset kicker="Restaurantes" title="Todavía no hay locales." detail="Creá el primero para empezar la red.">
             <button
               type="button"
-              class="super-until-hero__cta mt-5 inline-flex"
+              class="super-until-hero__cta inline-flex"
               data-nuevo-rest-open
               aria-haspopup="dialog"
               aria-controls="nuevo-rest-modal"
@@ -612,7 +612,7 @@ function resolveMapsEmbed(direccion) {
               </span>
               Nuevo restaurante
             </button>
-          </div>
+          </XemillaQuiet>
         ) : (
           <>
             <div class="super-hub-search solid-obstacle">
@@ -691,12 +691,12 @@ function resolveMapsEmbed(direccion) {
                     aria-label={`Abrir el panel de ${nombre || r.slug}`}
                   ></a>
                   <span class="super-hub-card__ticket" aria-hidden="true">Comanda · Mesa {mesaPorId.get(String(r.id))}</span>
-                  <details class="absolute right-3 top-3 z-30" data-card-menu>
+                  <details class="super-hub-card__menu" data-card-menu>
                     <summary
                       class="cursor-pointer list-none [&::-webkit-details-marker]:hidden"
                       aria-label={`Menú de ${nombre || r.slug}`}
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                      <svg width="9" height="9" viewBox="0 0 16 16" aria-hidden="true">
                         <circle cx="4" cy="8" r="1.35" fill="currentColor" />
                         <circle cx="8" cy="8" r="1.35" fill="currentColor" />
                         <circle cx="12" cy="8" r="1.35" fill="currentColor" />
@@ -1098,13 +1098,48 @@ function resolveMapsEmbed(direccion) {
     <div data-super-panel="accesos" class="access-board admin-fade-in-up" hidden={superTab !== 'accesos'}>
       <header class="access-board__head">
         <p class="access-board__kicker">Paneles</p>
-        <h2>Accesos de los locales</h2>
-        <p>Activa quién entra al panel de cada restaurante. Suspender corta el ingreso sin borrar la cuenta.</p>
+        <h2>Accesos de los restaurantes</h2>
       </header>
       {
         restaurantes.length === 0 ? (
-          <p class="access-board__empty">Todavía no hay locales.</p>
+          <XemillaQuiet inset kicker="Accesos" title="Todavía no hay locales." detail="Cuando exista un restaurante, sus usuarios aparecen aquí." />
         ) : (
+          <>
+          <div class="super-hub-search solid-obstacle">
+            <label class="sr-only" for="access-search-input">
+              Buscar restaurante por nombre
+            </label>
+            <span class="super-hub-search__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.2-3.2"></path>
+              </svg>
+            </span>
+            <input
+              id="access-search-input"
+              type="search"
+              class="super-hub-search__input"
+              placeholder="Buscar por nombre…"
+              autocomplete="off"
+              spellcheck="false"
+              data-access-search
+            />
+            <button
+              type="button"
+              class="super-hub-search__clear"
+              data-access-search-clear
+              hidden
+              aria-label="Limpiar búsqueda"
+            >
+              ×
+            </button>
+            <p class="super-hub-search__count" data-access-search-count aria-live="polite">
+              {restaurantes.length} restaurante{restaurantes.length === 1 ? '' : 's'}
+            </p>
+          </div>
+          <p class="super-hub-search__empty" data-access-search-empty hidden>
+            No hay restaurantes con ese nombre.
+          </p>
           <div class="access-board__list">
             {restaurantes.map((r) => {
               const nombreAcceso = String(r.nombre_comercial || r.slug || 'Local');
@@ -1112,19 +1147,12 @@ function resolveMapsEmbed(direccion) {
               const accesoOn =
                 localesConAcceso.has(String(r.id)) || localesConAcceso.has(String(r.slug));
               return (
-                <details class="access-local" name="accesos-local" data-access-local data-restaurante-id={r.id}>
+                <details class="access-local" name="accesos-local" data-access-local data-access-name={nombreAcceso} data-restaurante-id={r.id}>
                   <summary class="access-local__summary">
                     <span class="access-local__id">
                       <strong>{nombreAcceso}</strong>
-                      <em>/{r.slug}</em>
                     </span>
-                    <span
-                      class:list={['super-hub-card__state', accesoOn && 'super-hub-card__state--on']}
-                      data-access-badge
-                    >
-                      <span class="super-hub-card__dot" aria-hidden="true"></span>
-                      {accesoOn ? 'Acceso activo' : 'Sin acceso'}
-                    </span>
+                    <span class="access-local__edit">Editar</span>
                   </summary>
                   <div class="access-local__body hub-modal__dialog">
                     <div class="access-local__logo">
@@ -1179,6 +1207,7 @@ function resolveMapsEmbed(direccion) {
               );
             })}
           </div>
+          </>
         )
       }
     </div>
@@ -1722,6 +1751,7 @@ function resolveMapsEmbed(direccion) {
           <span>Demo restaurante</span>
           <select name="carta_demo" data-prop-carta>
             <option value="">Elegir una PWA</option>
+            <option value="sin">Sin demo</option>
             {cartasDemo.map((carta) => (
               <option value={carta.slug}>{carta.nombre}</option>
             ))}
@@ -1866,7 +1896,7 @@ function resolveMapsEmbed(direccion) {
       <div data-prop-pane="historial" hidden>
       {
         propuestas.length === 0 ? (
-          <p class="super-props__empty" data-prop-empty>Todavía no hay propuestas.</p>
+          <XemillaQuiet inset kicker="Historial" title="Todavía no hay propuestas." detail="Cuando crees una, el enlace queda en este historial." />
         ) : (
           <ul class="super-props__list">
             {propuestas.map((p) => {
@@ -1948,9 +1978,12 @@ function resolveMapsEmbed(direccion) {
               <small>{propActividadTotal === 1 ? '1 movimiento' : `${propActividadTotal} movimientos`}</small>
             </header>
             {propActividad.length === 0 ? (
-              <p class="super-propm__empty">
-                Cuando un restaurante abra su enlace o toque algo, aparece aquí con la hora.
-              </p>
+              <XemillaQuiet
+                inset
+                kicker="Actividad"
+                title="Todavía no hay movimientos."
+                detail="Cuando un restaurante abra su enlace o toque algo, aparece aquí con la hora."
+              />
             ) : (
               <ol class="super-propm__feed">
                 {propActividad.map((ev) => (
@@ -2096,62 +2129,6 @@ function resolveMapsEmbed(direccion) {
                 class="mt-1 min-h-[1rem] text-[10px] text-zinc-400"
                 role="status"
                 data-upload-status="logo"
-              ></p>
-            </div>
-
-            <div>
-              <button
-                type="button"
-                class="relative h-28 w-full rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col items-center justify-center p-2 cursor-pointer hover:border-zinc-400 transition-colors text-center text-xs text-zinc-500 overflow-hidden"
-                data-upload-trigger="portada"
-                aria-label="Subir portada Hub"
-              >
-                <div
-                  class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 p-2"
-                  data-upload-placeholder="portada"
-                  hidden={Boolean(createPrefill.hubCoverUrl)}
-                >
-                  <span class="font-medium">Portada Hub</span>
-                  <span class="text-[10px] text-zinc-400">JPG · clic</span>
-                </div>
-                <div
-                  class="absolute inset-0"
-                  data-upload-preview="portada"
-                  hidden={!createPrefill.hubCoverUrl}
-                >
-                  <img
-                    src={createPrefill.hubCoverUrl || undefined}
-                    alt="Portada"
-                    class="h-full w-full object-cover"
-                    data-upload-img="portada"
-                    hidden={!createPrefill.hubCoverUrl}
-                  />
-                </div>
-                <span
-                  class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-zinc-950/50 text-[11px] font-medium text-white backdrop-blur-[2px]"
-                  data-upload-loading="portada"
-                >
-                  Cargando...
-                </span>
-              </button>
-              <input type="file" id="input-portada-file" accept="image/*" class="hidden" />
-              <input
-                type="hidden"
-                id="hub_cover_url"
-                name="hub_cover_url"
-                value={createPrefill.hubCoverUrl}
-                data-portada-hidden
-              />
-              <input
-                type="hidden"
-                name="portada_url"
-                value={createPrefill.hubCoverUrl}
-                data-portada-alias
-              />
-              <p
-                class="mt-1 min-h-[1rem] text-[10px] text-zinc-400"
-                role="status"
-                data-upload-status="portada"
               ></p>
             </div>
           </div>

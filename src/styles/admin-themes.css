@@ -55,6 +55,7 @@ html.admin-panel body.admin-panel-body {
 
 html.admin-panel {
   overflow-x: clip;
+  scrollbar-gutter: stable;
 }
 
 html.admin-panel h1,
@@ -5356,11 +5357,6 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 }
 
 @media (max-width: 480px) {
-  .super-until-hero__cta {
-    padding-inline: 0.75rem 0.85rem;
-    font-size: 0.66rem;
-  }
-
   .super-until-hero__brand-img {
     height: 2rem;
   }
@@ -5423,31 +5419,103 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 }
 
 .super-admin-dash .super-until-hero__links {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   justify-content: stretch;
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
   gap: 0;
   margin-top: 1.15rem;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px solid rgba(28, 25, 23, 0.1);
-  border-radius: 0;
-  background: transparent;
+  padding: 0.22rem;
+  border: 1px solid rgba(28, 25, 23, 0.08);
+  border-radius: 0.72rem;
+  background: #e7e5e4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  isolation: isolate;
+}
+
+.super-admin-dash .super-until-hero__thumb {
+  position: absolute;
+  z-index: 0;
+  top: 0.22rem;
+  bottom: 0.22rem;
+  left: 0.22rem;
+  width: calc((100% - 0.44rem) / 4);
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.72), rgba(255, 252, 247, 0.35) 42%, rgba(245, 236, 220, 0.45)),
+    linear-gradient(105deg, #fffdf8 0%, #f7f1e6 48%, #efe4d2 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, normal, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 10px 18px -12px rgba(120, 90, 50, 0.45);
+  transform: translateX(0);
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 420ms ease,
+    box-shadow 420ms ease;
+}
+
+.super-admin-dash .super-until-hero__links[data-on='propuestas'] .super-until-hero__thumb {
+  transform: translateX(100%);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(252, 165, 165, 0.22)),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 18px -12px rgba(127, 29, 29, 0.85);
+}
+
+.super-admin-dash .super-until-hero__links[data-on='accesos'] .super-until-hero__thumb {
+  transform: translateX(200%);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(147, 197, 253, 0.22)),
+    linear-gradient(105deg, #bfdbfe 0%, #60a5fa 46%, #1d4ed8 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 18px -12px rgba(30, 58, 138, 0.85);
+}
+
+.super-admin-dash .super-until-hero__links[data-on='metricas'] .super-until-hero__thumb {
+  transform: translateX(300%);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
+    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 18px -12px rgba(63, 98, 18, 0.85);
 }
 
 .super-admin-dash .super-until-hero__link {
-  flex: 1 1 0;
-  padding: 0.55rem 0.35rem 0.75rem;
-  border-radius: 0;
+  position: relative;
+  z-index: 1;
+  flex: none;
+  height: 2.15rem;
+  min-height: 2.15rem;
+  max-height: 2.15rem;
+  padding: 0 0.35rem;
+  border-radius: 0.5rem;
   background: transparent !important;
   color: #a8a29e !important;
-  font-size: 0.98rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
   text-align: center;
+  white-space: nowrap;
   box-shadow: none !important;
+  transition: color 280ms ease;
 }
 
 .super-admin-dash .super-until-hero__link:hover {
@@ -5456,9 +5524,29 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 }
 
 .super-admin-dash .super-until-hero__link[aria-selected='true'] {
-  color: #1c1917 !important;
+  color: #3f2e1c !important;
   background: transparent !important;
-  box-shadow: inset 0 -1.5px 0 #1c1917 !important;
+  box-shadow: none !important;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 250, 242, 0.35);
+}
+
+.super-admin-dash .super-until-hero__links[data-on='propuestas'] .super-until-hero__link[aria-selected='true'] {
+  color: #3b0a0a !important;
+}
+
+.super-admin-dash .super-until-hero__links[data-on='accesos'] .super-until-hero__link[aria-selected='true'] {
+  color: #0c1a3a !important;
+}
+
+.super-admin-dash .super-until-hero__links[data-on='metricas'] .super-until-hero__link[aria-selected='true'] {
+  color: #142006 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .super-admin-dash .super-until-hero__thumb {
+    transition: none;
+  }
 }
 
 .access-board {
@@ -5482,7 +5570,6 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   color: #78716c;
 }
 
-.access-board__head p:last-child,
 .access-board__empty {
   max-width: 36rem;
   margin: 0.45rem 0 0;
@@ -5496,40 +5583,72 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
   margin-top: 1.4rem;
 }
 
+.access-board .super-hub-search {
+  margin-top: 1.15rem;
+}
+
+.access-board .access-board__list {
+  margin-top: 0.9rem;
+}
+
 .access-local {
-  border: 1px solid rgba(28, 25, 23, 0.08);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 16px 30px -24px rgba(40, 20, 10, 0.45);
+  background: #f7f5f2;
+  box-shadow: 0 16px 30px -24px rgba(30, 58, 138, 0.35);
 }
 
 .access-local__summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   padding: 0.95rem 1.1rem;
+  border-radius: 1.25rem;
   cursor: pointer;
   list-style: none;
+  color: #1c1917;
+  background: #f7f5f2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-.access-local__summary::after {
+.access-local__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  grid-column: 3;
+  gap: 0.45rem;
+  margin-left: 0;
+  min-height: 2.15rem;
+  padding: 0 0.85rem 0 1rem;
+  border-radius: 999px;
+  color: #0c1a3a;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(147, 197, 253, 0.22)),
+    linear-gradient(105deg, #bfdbfe 0%, #60a5fa 46%, #1d4ed8 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 8px 16px -8px rgba(30, 58, 138, 0.85);
+}
+
+.access-local__edit::after {
   content: '';
   flex-shrink: 0;
-  width: 0.45rem;
-  height: 0.45rem;
-  margin-left: 0.15rem;
-  border-right: 1.5px solid #78716c;
-  border-bottom: 1.5px solid #78716c;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid #0c1a3a;
+  border-bottom: 2px solid #0c1a3a;
   transform: rotate(45deg) translateY(-1px);
   transition: transform 160ms ease;
 }
 
-.access-local__summary .super-hub-card__state {
-  margin-left: auto;
-}
-
-.access-local[open] > .access-local__summary::after {
+.access-local[open] > .access-local__summary .access-local__edit::after {
   transform: rotate(225deg) translateY(-1px);
 }
 
@@ -5538,26 +5657,42 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 }
 
 .access-local__id {
+  grid-column: 2;
   display: grid;
-  gap: 0.1rem;
+  justify-items: center;
   min-width: 0;
+  text-align: center;
 }
 
 .access-local__id strong {
-  font-size: 1rem;
-  font-weight: 560;
-  letter-spacing: -0.02em;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
   color: #1c1917;
 }
 
-.access-local__id em {
-  font-style: normal;
-  font-size: 0.75rem;
-  color: #78716c;
+.access-local[open] > .access-local__summary {
+  border-radius: 1.25rem 1.25rem 0 0;
+  box-shadow: none;
 }
 
 .access-local__body {
-  padding: 0 1.1rem 1.1rem;
+  overflow: visible;
+  border-radius: 0 0 1.25rem 1.25rem;
+  padding: 0 1.1rem 1.15rem;
+}
+
+.access-local > .access-local__body.hub-modal__dialog {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0 0 1.25rem 1.25rem;
+  background: #f7f5f2 !important;
+  box-shadow: none;
+  padding: 0.1rem 1.1rem 1.15rem;
 }
 
 .access-local__logo {
@@ -5589,18 +5724,25 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 .access-add {
   margin-top: 0.85rem;
   border-radius: 1rem;
-  background: #f7f7f8;
+  background: transparent;
 }
 
 .access-add__summary {
   padding: 0.85rem 1rem;
+  border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #44403c;
+  color: #0c1a3a;
   cursor: pointer;
   list-style: none;
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(147, 197, 253, 0.22)),
+    linear-gradient(105deg, #bfdbfe 0%, #60a5fa 46%, #1d4ed8 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .access-add__summary::-webkit-details-marker {
@@ -5621,6 +5763,7 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 
 .access-local .hub-users-add {
   gap: 0.75rem;
+  margin-top: 0.9rem;
   padding: 0 1rem 1rem;
   background: transparent;
 }
@@ -5661,18 +5804,186 @@ html.admin-panel[data-theme='organico'] .super-until-hero__brand-img {
 .access-pass__gen {
   flex-shrink: 0;
   padding: 0 0.9rem;
-  border: 1px solid rgba(28, 25, 23, 0.12);
-  border-radius: 0.85rem;
-  background: #fff;
   font: inherit;
   font-size: 0.78rem;
   font-weight: 650;
-  color: #1c1917;
   cursor: pointer;
 }
 
-.access-pass__gen:hover {
-  background: #fafaf9;
+.access-board .hub-user__actions {
+  gap: 0.3rem;
+  height: 2.05rem;
+  padding: 0;
+  background: transparent;
+}
+
+.access-board .hub-user__btn {
+  height: 2.05rem;
+  padding: 0 0.22rem;
+  font-size: 0.81rem;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.access-board .hub-user__btn--key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0 0.62rem 0 0.5rem;
+}
+
+.access-board .hub-user__lock {
+  width: 0.82rem;
+  height: 0.82rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.access-board .hub-user__lock-shackle {
+  transform-origin: 8px 7.2px;
+  transition: transform 240ms cubic-bezier(0.2, 0.85, 0.2, 1);
+}
+
+.access-board .hub-user__btn--key:hover .hub-user__lock-shackle {
+  transform: translate(-0.6px, -1.6px) rotate(-32deg);
+}
+
+.access-pass__gen,
+.access-board .super-card-sheet__submit,
+.access-board .hub-user__btn:not(.hub-user__btn--danger),
+.access-board .hub-user__cta:not(.is-danger) {
+  border: 0;
+  border-radius: 999px;
+  color: #0c1a3a !important;
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(147, 197, 253, 0.22)),
+    linear-gradient(105deg, #bfdbfe 0%, #60a5fa 46%, #1d4ed8 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 8px 16px -8px rgba(30, 58, 138, 0.85);
+}
+
+.access-pass__gen:hover,
+.access-board .super-card-sheet__submit:hover,
+.access-board .hub-user__btn:not(.hub-user__btn--danger):hover,
+.access-board .hub-user__cta:not(.is-danger):hover {
+  color: #0c1a3a !important;
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(147, 197, 253, 0.22)),
+    linear-gradient(105deg, #bfdbfe 0%, #60a5fa 46%, #1d4ed8 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+}
+
+.access-board .hub-user__btn--danger {
+  color: #e11d48 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.access-board .hub-user__btn--danger:hover {
+  background: rgba(225, 29, 72, 0.14) !important;
+  color: #9f1239 !important;
+}
+
+.access-board .super-card-sheet__submit,
+.access-board .super-card-sheet__submit:hover {
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(147, 197, 253, 0.22)),
+    linear-gradient(105deg, #bfdbfe 0%, #60a5fa 46%, #1d4ed8 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat !important;
+  background-blend-mode: soft-light, hue, normal;
+  color: #0c1a3a !important;
+  opacity: 1;
+}
+
+.super-admin-dash .access-local__edit,
+.super-admin-dash .access-add__summary,
+.super-admin-dash .access-pass__gen,
+.super-admin-dash .access-board .hub-user__btn:not(.hub-user__btn--danger),
+.super-admin-dash .access-board .super-card-sheet__submit,
+.super-admin-dash .access-board .hub-user__cta:not(.is-danger),
+.super-admin-dash .prop-slide,
+.super-admin-dash .super-prop-fx__modes button[aria-pressed='true'] {
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 200ms ease,
+    filter 200ms ease,
+    background 200ms ease;
+}
+
+.super-admin-dash .access-local__edit:hover,
+.super-admin-dash .access-add__summary:hover,
+.super-admin-dash .access-pass__gen:hover,
+.super-admin-dash .access-board .hub-user__btn:not(.hub-user__btn--danger):hover,
+.super-admin-dash .access-board .super-card-sheet__submit:hover,
+.super-admin-dash .access-board .hub-user__cta:not(.is-danger):hover {
+  transform: translateY(-3px) scale(1.035);
+  filter: brightness(1.2) saturate(1.25);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.18) 40%, rgba(191, 219, 254, 0.28)),
+    linear-gradient(105deg, #eff6ff 0%, #93c5fd 42%, #2563eb 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat !important;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 18px 32px -10px rgba(29, 78, 216, 0.95);
+}
+
+.super-admin-dash .prop-slide:hover,
+.super-admin-dash .super-prop-fx__modes button[aria-pressed='true']:hover {
+  transform: translateY(-3px) scale(1.03);
+  filter: brightness(1.18) saturate(1.22);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.55), rgba(255, 250, 255, 0.12) 42%, rgba(254, 202, 202, 0.28)),
+    linear-gradient(105deg, #fee2e2 0%, #fca5a5 42%, #dc2626 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat !important;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 18px 32px -10px rgba(153, 27, 27, 0.9);
+}
+
+.super-admin-dash .access-local__edit:active,
+.super-admin-dash .access-add__summary:active,
+.super-admin-dash .access-pass__gen:active,
+.super-admin-dash .access-board .hub-user__btn:not(.hub-user__btn--danger):active,
+.super-admin-dash .access-board .super-card-sheet__submit:active,
+.super-admin-dash .access-board .hub-user__cta:not(.is-danger):active,
+.super-admin-dash .prop-slide:active,
+.super-admin-dash .super-prop-fx__modes button[aria-pressed='true']:active {
+  transform: translateY(0) scale(0.98);
+  filter: brightness(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .super-admin-dash .access-local__edit,
+  .super-admin-dash .access-add__summary,
+  .super-admin-dash .access-pass__gen,
+  .super-admin-dash .access-board .hub-user__btn,
+  .super-admin-dash .access-board .super-card-sheet__submit,
+  .super-admin-dash .prop-slide,
+  .super-admin-dash .super-prop-fx__modes button[aria-pressed='true'] {
+    transition: none;
+  }
+
+  .super-admin-dash .access-local__edit:hover,
+  .super-admin-dash .access-add__summary:hover,
+  .super-admin-dash .access-pass__gen:hover,
+  .super-admin-dash .access-board .hub-user__btn:not(.hub-user__btn--danger):hover,
+  .super-admin-dash .access-board .super-card-sheet__submit:hover,
+  .super-admin-dash .prop-slide:hover,
+  .super-admin-dash .super-prop-fx__modes button[aria-pressed='true']:hover {
+    transform: none;
+  }
 }
 
 .super-admin-dash [data-nuevo-rest-open].super-until-hero__cta {
@@ -5814,14 +6125,28 @@ html.admin-panel .super-admin-dash .super-hub-card {
   position: absolute;
   top: 10.5%;
   left: 8%;
+  right: 16%;
   z-index: 0;
+  overflow: hidden;
   color: #8a857b;
   font-family: ui-monospace, Menlo, monospace;
   font-size: 0.6rem;
   letter-spacing: 0.32em;
   line-height: 1;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
   pointer-events: none;
+}
+
+.super-admin-dash .super-hub-card__menu {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  line-height: 0;
+  top: calc(10.5% + 0.3rem - 0.4rem);
+  right: 6.5%;
 }
 
 .super-admin-dash .super-hub-card__mark,
@@ -6022,15 +6347,23 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass:has(img.is-square
 }
 
 html.admin-panel .super-admin-dash .super-hub-card__face[data-tarjeta] [data-card-menu] > summary {
-  background: rgba(24, 18, 12, 0.42) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: #111 !important;
+  border-color: transparent !important;
   box-shadow: none !important;
-  backdrop-filter: blur(6px);
+  backdrop-filter: none;
+}
+
+html.admin-panel .super-admin-dash .super-hub-card__face[data-tarjeta] [data-card-menu] > summary:hover,
+html.admin-panel .super-admin-dash .super-hub-card__face[data-tarjeta] [data-card-menu][open] > summary {
+  background: #111 !important;
+  transform: none;
 }
 
 html.admin-panel .super-admin-dash .super-hub-card__face[data-tarjeta] [data-card-menu] > summary,
 html.admin-panel .super-admin-dash .super-hub-card__face[data-tarjeta] [data-card-menu] > summary * {
-  color: #f6f1ea !important;
+  color: #fff !important;
 }
 
 .hub-ficha-folder {
@@ -6799,13 +7132,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   width: calc((100% - 0.44rem) / 3);
   border-radius: 999px;
   background:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
-    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(252, 165, 165, 0.22)),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
     url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
   background-blend-mode: soft-light, hue, normal;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 10px 18px -12px rgba(63, 98, 18, 0.85);
+    0 10px 18px -12px rgba(127, 29, 29, 0.85);
   transform: translateX(0);
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -6938,21 +7271,25 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-prop-form {
   display: grid;
-  gap: 0.7rem;
+  gap: 1.45rem;
   max-width: none;
   margin-top: 1rem;
   padding: 0.85rem;
-  border: 1px solid rgba(28, 25, 23, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 1.35rem;
-  background: rgba(255, 255, 255, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.16) 42%, rgba(255, 255, 255, 0.28));
+  backdrop-filter: blur(28px) saturate(1.7);
+  -webkit-backdrop-filter: blur(28px) saturate(1.7);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 22px 48px -30px rgba(40, 30, 20, 0.28);
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 0 0 1px rgba(28, 25, 23, 0.04),
+    0 22px 48px -30px rgba(40, 30, 20, 0.22);
 }
 
 .super-admin-dash .super-prop-form__top {
   display: grid;
-  gap: 0.7rem;
+  gap: 1.45rem;
 }
 
 @media (min-width: 900px) {
@@ -7138,13 +7475,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   width: calc(50% - 0.22rem);
   border-radius: 999px;
   background:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(196, 181, 253, 0.2)),
-    linear-gradient(105deg, #ddd6fe 0%, #a78bfa 46%, #7c6cf0 100%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(252, 165, 165, 0.22)),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
     url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
   background-blend-mode: soft-light, hue, normal;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 8px 16px -8px rgba(76, 29, 149, 0.85);
+    0 8px 16px -8px rgba(127, 29, 29, 0.85);
   transform: translateX(0);
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -7209,13 +7546,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   width: calc(50% - 0.22rem);
   border-radius: 999px;
   background:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(196, 181, 253, 0.2)),
-    linear-gradient(105deg, #ddd6fe 0%, #a78bfa 46%, #7c6cf0 100%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(252, 165, 165, 0.22)),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
     url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
   background-blend-mode: soft-light, hue, normal;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 8px 16px -8px rgba(76, 29, 149, 0.85);
+    0 8px 16px -8px rgba(127, 29, 29, 0.85);
   transform: translateX(0);
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -7389,14 +7726,14 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-prop-fx__modes button[aria-pressed='true'] {
   background:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
-    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(252, 165, 165, 0.22)),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
     url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
   background-blend-mode: soft-light, hue, normal;
-  color: #142006;
+  color: #3b0a0a;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 8px 16px -8px rgba(63, 98, 18, 0.85);
+    0 8px 16px -8px rgba(127, 29, 29, 0.85);
 }
 
 .super-admin-dash .super-prop-wheel__frame {
@@ -7451,6 +7788,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-wheel__track {
   position: relative;
   z-index: 1;
+  width: 100%;
 }
 
 .super-admin-dash .super-prop-wheel__pad {
@@ -7615,7 +7953,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   border-radius: 1.45rem;
   background-image:
     radial-gradient(ellipse 72% 80% at 50% 42%, rgba(255, 255, 255, 0.16), transparent 70%),
-    linear-gradient(105deg, #ddd6fe 0%, #a78bfa 46%, #7c6cf0 100%),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
     url('/home/fondo.jpg');
   background-repeat: no-repeat;
   background-position: center, center, 46% 40%;
@@ -8002,10 +8340,20 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-ia {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: end;
   gap: 0.7rem;
   width: 100%;
   margin-top: 0.55rem;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz label.super-prop-ia__row:nth-child(1) {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz label.super-prop-ia__row:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz label.super-prop-ia__row {
@@ -8997,15 +9345,15 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   border-radius: 999px;
   overflow: hidden;
   background:
-    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
-    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(252, 165, 165, 0.22)),
+    linear-gradient(105deg, #fecaca 0%, #f87171 46%, #b91c1c 100%),
     url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
   background-blend-mode: soft-light, hue, normal;
   border: 1px solid rgba(28, 25, 23, 0.1);
-  color: #142006;
+  color: #3b0a0a;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 10px 18px -12px rgba(63, 98, 18, 0.85);
+    0 10px 18px -12px rgba(127, 29, 29, 0.85);
   touch-action: none;
   user-select: none;
 }
@@ -9454,14 +9802,6 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 @media (max-width: 420px) {
-  .super-until-hero__cta-icon {
-    display: none;
-  }
-
-  .super-until-hero__cta {
-    padding-inline: 0.8rem;
-  }
-
   .super-hub-search__icon {
     display: none;
   }
@@ -10343,4 +10683,112 @@ html.admin-panel[data-theme='organico'] .studio-search-input {
   flex-wrap: wrap;
   gap: 0.5rem;
   min-height: 2.6rem;
+}
+
+@media (max-width: 760px) {
+  .super-admin-dash,
+  .super-admin-dash .super-props,
+  .super-admin-dash .super-props__head,
+  .super-admin-dash .super-prop-form,
+  .super-admin-dash .super-prop-form__top,
+  .super-admin-dash .super-prop-price,
+  .super-admin-dash .super-prop-price__amounts {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .super-admin-dash .super-until-hero__link {
+    min-width: 0;
+    padding: 0 0.2rem;
+    overflow: hidden;
+    font-size: clamp(0.64rem, 2.4vw, 0.98rem);
+    letter-spacing: 0.02em;
+    text-overflow: ellipsis;
+  }
+
+  .super-admin-dash .super-props__switch {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .super-admin-dash .super-props__switch button {
+    padding: 0 0.15rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+
+  .super-admin-dash .super-prop-form,
+  .super-admin-dash .super-prop-form__top {
+    gap: 0.95rem;
+  }
+
+  .super-admin-dash .super-prop-price__amounts {
+    gap: 0.4rem;
+  }
+
+  .super-admin-dash .super-prop-fx {
+    flex: 0.85 1 0;
+    width: auto;
+    min-width: 0;
+    margin-top: 1.35rem;
+  }
+
+  .super-admin-dash .super-prop-fx__modes button {
+    min-height: 2.65rem;
+    padding: 0.25rem 0.15rem;
+  }
+
+  .super-admin-dash .super-prop-fx__modes button b {
+    font-size: 0.92rem;
+  }
+
+  .super-admin-dash .super-prop-wheel {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+
+  .super-admin-dash .super-prop-wheel__label {
+    font-size: 0.78rem;
+  }
+
+  .super-admin-dash .super-prop-form .super-prop-drop {
+    flex-basis: auto;
+    min-height: 6.2rem;
+  }
+
+  .super-admin-dash .super-prop-addon-list.is-quiz.is-stepped > .super-prop-addon:not([hidden]) {
+    min-height: 0;
+    padding: 1rem 0.8rem 0.85rem;
+  }
+
+  .super-admin-dash .super-prop-addon-list.is-quiz > .super-prop-addon > .super-prop-addon__name {
+    margin-bottom: 0.6rem;
+    font-size: 1.2rem;
+  }
+
+  .super-admin-dash .super-prop-quiz__choice {
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+  }
+
+  .super-admin-dash .super-prop-wheel--addon {
+    width: min(11.5rem, 100%);
+  }
+
+  .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-ia {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.45rem;
+  }
+
+  .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia > label.super-prop-factura {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    align-self: end;
+    margin: 0 0 0.35rem;
+  }
 }

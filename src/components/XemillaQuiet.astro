@@ -1,0 +1,271 @@
+---
+interface Props {
+  kicker: string;
+  title: string;
+  detail?: string;
+  actionHref?: string;
+  actionLabel?: string;
+  /** Dentro de un panel, sin ocupar toda la pantalla. */
+  inset?: boolean;
+}
+
+const {
+  kicker,
+  title,
+  detail = '',
+  actionHref = '',
+  actionLabel = '',
+  inset = false,
+} = Astro.props;
+---
+
+<section class:list={['xe-quiet', inset ? 'xe-quiet--inset' : 'xe-quiet-page']}>
+  {
+    inset ? (
+      <img class="xe-quiet__photo" src="/home/fondo.jpg" alt="" width="1024" height="1024" decoding="async" />
+    ) : (
+      <div class="xe-quiet__studio" aria-hidden="true">
+        <img class="xe-quiet__photo" src="/home/fondo.jpg" alt="" width="1024" height="1024" decoding="async" />
+        <div class="xe-quiet__veil"></div>
+      </div>
+    )
+  }
+  {inset ? <div class="xe-quiet__veil"></div> : null}
+
+  <div class="xe-quiet__body">
+    <p class="xe-quiet__kicker">
+      <span class="xe-quiet__dot" aria-hidden="true"></span>
+      {kicker}
+    </p>
+    {
+      inset ? null : (
+        <img
+          class="xe-quiet__mark"
+          src="/propuesta/xemilla-on-light.png"
+          alt="Xemilla"
+          width="766"
+          height="249"
+          decoding="async"
+        />
+      )
+    }
+    <h1 class="xe-quiet__title">{title}</h1>
+    {detail ? <p class="xe-quiet__detail">{detail}</p> : null}
+    {
+      actionHref && actionLabel ? (
+        <a class="xe-quiet__action" href={actionHref}>{actionLabel}</a>
+      ) : null
+    }
+    <div class="xe-quiet__slot">
+      <slot />
+    </div>
+    {inset ? null : <p class="xe-quiet__foot">powered by CRX</p>}
+  </div>
+</section>
+
+<style>
+  .xe-quiet {
+    position: relative;
+    isolation: isolate;
+    color: #18181b;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .xe-quiet-page {
+    display: flex;
+    min-height: 100dvh;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: max(1.5rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+    text-align: center;
+  }
+
+  .xe-quiet__studio {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #e07028;
+  }
+
+  .xe-quiet--inset {
+    display: grid;
+    place-items: center;
+    min-height: 14rem;
+    margin-top: 1.25rem;
+    overflow: hidden;
+    border-radius: 1.35rem;
+    text-align: center;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      0 18px 40px -28px rgba(40, 30, 20, 0.45);
+  }
+
+  .xe-quiet__photo {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .xe-quiet-page .xe-quiet__photo {
+    transform-origin: 46% 42%;
+    animation: xe-quiet-drift 32s ease-in-out infinite alternate;
+  }
+
+  .xe-quiet__veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      radial-gradient(ellipse 46% 34% at 50% 44%, rgba(255, 250, 242, 0.55), transparent 72%),
+      linear-gradient(180deg, rgba(255, 248, 240, 0.2), rgba(255, 248, 240, 0.08));
+    pointer-events: none;
+  }
+
+  .xe-quiet--inset .xe-quiet__veil {
+    background:
+      linear-gradient(180deg, rgba(255, 250, 242, 0.78), rgba(255, 246, 236, 0.62)),
+      radial-gradient(ellipse 70% 80% at 50% 40%, rgba(255, 250, 242, 0.35), transparent 70%);
+  }
+
+  .xe-quiet__body {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    width: min(100%, 28rem);
+    flex-direction: column;
+    align-items: center;
+    padding: 1.75rem 1.25rem;
+  }
+
+  .xe-quiet__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px -18px rgba(40, 30, 20, 0.35);
+    backdrop-filter: blur(16px);
+    color: #71717a;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .xe-quiet__dot {
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 999px;
+    background: #10b981;
+  }
+
+  .xe-quiet__mark {
+    width: 74%;
+    max-width: 280px;
+    height: auto;
+    margin-top: 1.75rem;
+  }
+
+  .xe-quiet__title {
+    margin: 1.35rem 0 0;
+    max-width: 22rem;
+    color: rgba(9, 9, 11, 0.72);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 1.35rem;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+
+  .xe-quiet-page .xe-quiet__title {
+    margin-top: 2.25rem;
+    font-size: clamp(1.45rem, 3vw, 2rem);
+  }
+
+  .xe-quiet__detail {
+    margin: 0.85rem 0 0;
+    max-width: 22rem;
+    color: rgba(63, 63, 70, 0.8);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .xe-quiet__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    margin-top: 1.5rem;
+    padding: 0 1.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.22));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.82),
+      0 14px 28px -22px rgba(40, 12, 0, 0.4);
+    color: #141414;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    backdrop-filter: blur(8px) saturate(1.2);
+  }
+
+  .xe-quiet__action:hover {
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .xe-quiet__slot:empty {
+    display: none;
+  }
+
+  .xe-quiet__slot:not(:empty) {
+    margin-top: 1.15rem;
+  }
+
+  .xe-quiet__foot {
+    margin: 2.5rem 0 0;
+    color: rgba(9, 9, 11, 0.55);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  @keyframes xe-quiet-drift {
+    from {
+      transform: scale(1.06) translate3d(1.4%, 0.6%, 0);
+    }
+    to {
+      transform: scale(1.16) translate3d(-1.8%, -1.5%, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .xe-quiet-page .xe-quiet__photo {
+      animation: none;
+    }
+  }
+</style>
+
+<style is:global>
+  html:has(.xe-quiet-page),
+  html:has(.xe-quiet-page) body {
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #e07028;
+  }
+</style>

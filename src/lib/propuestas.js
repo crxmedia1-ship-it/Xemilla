@@ -206,6 +206,7 @@ export function propuestaTienePaquetes(value) {
 export function readPropuestaCartaDemo(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const slug = String(source.cartaDemo || '').trim().toLowerCase();
+  if (!slug || slug === 'sin') return '';
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : '';
 }
 

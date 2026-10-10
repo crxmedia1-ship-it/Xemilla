@@ -9,6 +9,8 @@ import { formatVentaMonto } from '../lib/ventas.js';
      * @param {string} id
      */
     function setTab(id) {
+      const nav = document.querySelector('.super-admin-dash .super-until-hero__links');
+      if (nav instanceof HTMLElement) nav.dataset.on = id;
       tabs.forEach((btn) => {
         if (!(btn instanceof HTMLElement)) return;
         const on = btn.dataset.superTab === id;
@@ -190,8 +192,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
               </p>
             </div>
             <div class="hub-user__actions">
-              <button type="button" class="hub-user__btn" data-user-action="${u.suspendido ? 'activate' : 'suspend'}">${u.suspendido ? 'Activar' : 'Suspender'}</button>
-              <button type="button" class="hub-user__btn" data-user-action="password">Editar clave</button>
+              <button type="button" class="hub-user__btn hub-user__btn--key" data-user-action="password" aria-label="Editar clave"><svg class="hub-user__lock" viewBox="0 0 16 16" aria-hidden="true"><path class="hub-user__lock-shackle" d="M5 7.2V5.1a3 3 0 0 1 6 0V7.2"/><rect x="3.15" y="7.1" width="9.7" height="6.15" rx="1.45"/></svg>Clave</button>
               <button type="button" class="hub-user__btn hub-user__btn--danger" data-user-action="delete">Eliminar</button>
             </div>
             <div class="hub-user__panel" data-user-panel hidden></div>
@@ -1388,6 +1389,51 @@ import { formatVentaMonto } from '../lib/ventas.js';
     });
   }
 
+  function initAccessSearch() {
+    const input = document.querySelector('[data-access-search]');
+    const clearBtn = document.querySelector('[data-access-search-clear]');
+    const countEl = document.querySelector('[data-access-search-count]');
+    const emptyEl = document.querySelector('[data-access-search-empty]');
+    const rows = document.querySelectorAll('[data-access-name]');
+    if (!(input instanceof HTMLInputElement) || !rows.length) return;
+    if (input.dataset.bound === 'true') return;
+    input.dataset.bound = 'true';
+
+    /**
+     * @param {string} value
+     */
+    function normalize(value) {
+      return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function applyFilter() {
+      const q = normalize(input.value);
+      let visible = 0;
+      rows.forEach((row) => {
+        if (!(row instanceof HTMLElement)) return;
+        const show = !q || normalize(row.dataset.accessName || '').includes(q);
+        row.hidden = !show;
+        if (show) visible += 1;
+      });
+      if (clearBtn instanceof HTMLElement) clearBtn.hidden = !q;
+      if (countEl) {
+        countEl.textContent = visible === 1 ? '1 restaurante' : `${visible} restaurantes`;
+      }
+      if (emptyEl instanceof HTMLElement) emptyEl.hidden = visible > 0;
+    }
+
+    input.addEventListener('input', applyFilter);
+    clearBtn?.addEventListener('click', () => {
+      input.value = '';
+      input.focus();
+      applyFilter();
+    });
+  }
+
   function initNuevoRestModal() {
     const overlay = document.querySelector('[data-nuevo-rest-overlay]');
     if (!(overlay instanceof HTMLElement)) return;
@@ -1602,17 +1648,12 @@ import { formatVentaMonto } from '../lib/ventas.js';
     }
 
     bindUploader('logo');
-    bindUploader('portada');
 
     // Prefill previews after validation error
     {
       const logoHidden = document.getElementById('logo_url');
       if (logoHidden instanceof HTMLInputElement && logoHidden.value.trim()) {
         showPreview('logo', logoHidden.value.trim());
-      }
-      const portadaHidden = document.querySelector('[data-portada-hidden]');
-      if (portadaHidden instanceof HTMLInputElement && portadaHidden.value.trim()) {
-        showPreview('portada', portadaHidden.value.trim());
       }
     }
 
@@ -2130,14 +2171,27 @@ import { formatVentaMonto } from '../lib/ventas.js';
             if (drum instanceof HTMLElement) drum.dispatchEvent(new Event('wheel-show'));
           });
           const drum = row.querySelector('[data-wheel]');
-          if (drum instanceof HTMLElement) drum.focus();
+          if (drum instanceof HTMLElement) drum.focus({ preventScroll: true });
         } else if (priced) {
           const drum = money.querySelector('[data-wheel]');
           if (drum instanceof HTMLElement) {
             drum.dispatchEvent(new Event('wheel-show'));
-            drum.focus();
-          } else input.focus();
+            drum.focus({ preventScroll: true });
+          } else input.focus({ preventScroll: true });
         }
+      }
+      if (focusPrice && priced && row instanceof HTMLElement && window.matchMedia('(max-width: 760px)').matches) {
+        const revealed =
+          (packsParent && row.querySelector(':scope > .super-prop-packages')) ||
+          (piecesParent && row.querySelector(':scope > .super-prop-pieces')) ||
+          (iaParent && row.querySelector(':scope > .super-prop-ia')) ||
+          row.querySelector(':scope > .super-prop-addon__controls .super-prop-money') ||
+          row;
+        requestAnimationFrame(() => {
+          if (revealed instanceof HTMLElement) {
+            revealed.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          }
+        });
       }
       row.querySelectorAll('.super-prop-quiz__choices').forEach((wrap) => {
         const select = wrap.parentElement?.querySelector('[data-adicional-mode]');
@@ -2287,6 +2341,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
         quizList.querySelectorAll('[data-addon-ia] .super-prop-ia .super-prop-money').forEach((money) => {
           const label = money.parentElement?.querySelector(':scope > span')?.textContent?.trim() || 'Precio';
           mountPriceWheel(money, label);
+          money.querySelector('[data-wheel]')?.setAttribute('data-wheel-step', '25');
         });
 
         quizList.before(shell);
@@ -2512,7 +2567,11 @@ import { formatVentaMonto } from '../lib/ventas.js';
           const parentMode = parent?.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
           if (!(parentMode instanceof HTMLSelectElement) || parentMode.value !== 'precio') return;
           if (!input.disabled && Number(input.value) > 0) paquetes[paquete] = input.value;
-          if (check instanceof HTMLInputElement && check.checked) paquetesFactura.push(paquete);
+          const bill = check instanceof HTMLInputElement ? check : null;
+          const billLabel = bill?.closest('label');
+          const billVisible =
+            billLabel instanceof HTMLElement && getComputedStyle(billLabel).display !== 'none';
+          if (bill?.checked || (paquetes[paquete] && !billVisible)) paquetesFactura.push(paquete);
           const platos = row.querySelector('[data-paquete-platos]');
           if (platos instanceof HTMLInputElement) {
             const n = Math.max(1, Math.min(40, Math.round(Number(platos.value) || 1)));
@@ -2574,7 +2633,10 @@ import { formatVentaMonto } from '../lib/ventas.js';
       const blocked = () => drum.closest('[data-prop-amounts]')?.getAttribute('data-off') === 'true';
 
       const start = Math.max(0, Math.round(Number(input.value) || 0));
-      const step = drum.closest('[data-prop-amounts]') ? 25 : WHEEL_STEP;
+      const marked = Number(drum.dataset.wheelStep);
+      const step = Number.isFinite(marked) && marked > 0
+        ? marked
+        : drum.closest('[data-prop-amounts]') ? 25 : WHEEL_STEP;
       const values = [];
       for (let n = 0; n <= WHEEL_MAX; n += step) values.push(n);
       if (!values.includes(start)) {
@@ -2857,9 +2919,10 @@ import { formatVentaMonto } from '../lib/ventas.js';
             adicionales: {
               ...readAdicionales(form),
               moneda: 'usd',
-              ...(String(data.get('carta_demo') || '').trim()
-                ? { cartaDemo: String(data.get('carta_demo') || '').trim().toLowerCase() }
-                : {}),
+              ...((() => {
+                const carta = String(data.get('carta_demo') || '').trim().toLowerCase();
+                return carta && carta !== 'sin' ? { cartaDemo: carta } : {};
+              })()),
             },
           }),
         });
@@ -3023,6 +3086,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
     initSuperTabs();
     initPropViews();
     initHubSearch();
+    initAccessSearch();
     initCardMenus();
     initFichaForms();
     initOperativoForms();

@@ -247,6 +247,12 @@ const arPaquetes = propuestaTienePaquetes(propuestaGuardada?.adicionales)
       on: paquetesFacturaGuardada ? paquetesEnFactura.has(id) : Boolean(paquetesPrecio[id]),
     }))
   : [];
+const precioAr = () => {
+  if (!arPaquetes.length) return 'A consultar';
+  const priced = arPaquetes.filter((pack) => esPrecio(pack.amount || ''));
+  if (arPaquetes.length === 1 && priced.length === 1) return `${priced[0].amount} USD`;
+  return 'Paquetes';
+};
 const piezaArranca = (id: string) =>
   piezasFacturaGuardada ? piezasEnFactura.has(id) : facturaInicial.has('qr') && id === 'tent';
 
@@ -823,7 +829,7 @@ const glass =
       <div class="ticket" data-collide>
         <div class="ticket__paper">
           <header class="ticket__head">
-            <p class="ticket__brand">Xemilla</p>
+            <img class="ticket__brand" src="/propuesta/xemilla-on-light.png" alt="Xemilla" width="766" height="249" />
             <p class="ticket__for">Propuesta para {para}</p>
             <p class="ticket__meta">
               <span>Mesa 01</span>
@@ -932,7 +938,7 @@ const glass =
                     data-qr-total={gadget.id === 'qr' ? '' : undefined}
                     data-unit={gadget.id === 'qr' ? gadget.price : undefined}
                   >
-                    {gadget.id === 'ar' ? (arPaquetes.length ? 'Paquetes' : 'A consultar') : gadget.id === 'ia' ? precioIa() : gadget.price ? `${gadget.price} USD` : 'A consultar'}
+                    {gadget.id === 'ar' ? precioAr() : gadget.id === 'ia' ? precioIa() : gadget.price ? `${gadget.price} USD` : 'A consultar'}
                   </span>
                 </h3>
                 <p>{gadget.body}</p>
@@ -997,23 +1003,14 @@ const glass =
       >
         Ver demo<br />en vivo
       </a>
-    ) : (
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        class="inline-flex min-h-12 shrink-0 cursor-default items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-center text-[0.68rem] font-medium uppercase leading-tight tracking-[0.12em] text-zinc-300 backdrop-blur-xl disabled:opacity-100"
-      >
-        Ver demo<br />en vivo
-      </button>
-    )}
+    ) : null}
   </nav>
 
   <dialog id="ar-dialog" class="demo-dialog" aria-labelledby="ar-dialog-title">
     <div class="demo-dialog__head">
       <div>
         <p id="ar-dialog-title" class="demo-dialog__title">Plato en 3D</p>
-        <p class="demo-dialog__price">{arPaquetes.length ? 'Paquetes' : 'A consultar'}</p>
+        <p class="demo-dialog__price">{precioAr()}</p>
       </div>
       <button type="button" class="demo-dialog__close" data-dialog-close aria-label="Cerrar">×</button>
     </div>
@@ -2054,10 +2051,11 @@ const glass =
   }
 
   .ticket__brand {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.42em;
-    text-transform: uppercase;
+    display: block;
+    width: auto;
+    height: 34px;
+    margin: 0 auto;
+    object-fit: contain;
   }
 
   .ticket__for {
