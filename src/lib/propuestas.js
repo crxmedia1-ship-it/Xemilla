@@ -12,6 +12,7 @@ export const PROPUESTA_ADICIONALES = [
   { id: 'ia', label: 'Klientiq' },
   { id: 'shop', label: 'Tienda' },
   { id: 'loyalty', label: 'Tarjeta de fidelidad' },
+  { id: 'sede', label: 'Sucursal' },
 ];
 
 /** Formatos físicos de QR & NFC. Cada uno puede tener su precio. */
@@ -94,7 +95,7 @@ export function readPropuestaDominio(value) {
  */
 export function readPropuestaMundo(value) {
   const mundo = String(value || '').trim();
-  return MUNDOS.has(mundo) ? mundo : 'estudio';
+  return MUNDOS.has(mundo) ? mundo : 'barra';
 }
 
 /**
@@ -127,6 +128,17 @@ function montoCobrado(value) {
 export function readPropuestaIaMensual(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return montoCobrado(source.iaMensual);
+}
+
+/**
+ * Cuántas sucursales entran en la propuesta. Vacío = no se indicó.
+ * @param {unknown} value
+ */
+export function readPropuestaSedeCantidad(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const n = Math.round(Number(String(source.sedeCantidad ?? '').replace(/[^\d]/g, '')));
+  if (n >= 1 && n <= 99) return String(n);
+  return '';
 }
 
 /**
@@ -320,11 +332,13 @@ export function packPropuestaAdicionales(value) {
   const moneda = source.moneda === 'bs' || source.moneda === 'eur' ? source.moneda : 'usd';
   const cartaDemo = readPropuestaCartaDemo(source);
   const iaMensual = readPropuestaIaMensual(source);
+  const sedeCantidad = readPropuestaSedeCantidad(source);
   return {
     ...prices,
     factura,
     moneda,
     ...(iaMensual ? { iaMensual } : {}),
+    ...(sedeCantidad ? { sedeCantidad } : {}),
     ...(cartaDemo ? { cartaDemo } : {}),
     ...(Object.keys(piezas).length ? { piezas } : {}),
     ...(piezasFactura ? { piezasFactura } : {}),
@@ -467,6 +481,46 @@ export async function createPropuesta(client, input) {
       return { error: 'Falta aplicar la migración de precios de degustadores en Supabase.' };
     }
     return { error: 'No se pudo crear la propuesta.' };
+  }
+  return { data };
+}
+
+/**
+ * Actualiza la propuesta en su mismo enlace.
+ * @param {import('@supabase/supabase-js').SupabaseClient} client
+ * @param {string} id
+ * @param {{ nombre: string, logoUrl?: string, setup?: string, anual?: string, sinPrecio?: boolean, dominio?: string, mundo?: string, adicionales?: unknown }} input
+ */
+export async function updatePropuesta(client, id, input) {
+  if (!isPropuestaId(id)) return { error: 'Propuesta inválida.' };
+  const nombre = readPropuestaNombre(input.nombre);
+  if (!nombre) return { error: 'El nombre del restaurante es obligatorio.' };
+
+  const row = {
+    nombre,
+    logo_url: readPropuestaLogo(input.logoUrl) || null,
+    setup: readPropuestaSetup(input.setup),
+    anual: readPropuestaAnual(input.anual),
+    sin_precio: input.sinPrecio === true,
+    dominio: readPropuestaDominio(input.dominio) || null,
+    mundo: readPropuestaMundo(input.mundo),
+    adicionales: packPropuestaAdicionales(input.adicionales),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await client
+    .from('propuestas')
+    .update(row)
+    .eq('id', id)
+    .select(PROPUESTA_COLUMNS)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('[propuestas] update:', error?.message);
+    if (missingAdicionalesColumn(error)) {
+      return { error: 'Falta aplicar la migración de precios de degustadores en Supabase.' };
+    }
+    return { error: 'No se pudo guardar la propuesta.' };
   }
   return { data };
 }

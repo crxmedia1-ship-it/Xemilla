@@ -57,6 +57,123 @@ import { formatVentaMonto } from '../lib/ventas.js';
       });
     };
 
+    const paintEditMode = (form, on) => {
+      const label = form.querySelector('.prop-slide__label');
+      const knob = form.querySelector('[data-prop-slide-knob]');
+      if (label) label.textContent = on ? 'Guardar cambios' : 'Crear propuesta';
+      if (knob instanceof HTMLButtonElement) {
+        knob.setAttribute('aria-label', on ? 'Desliza para guardar la propuesta' : 'Desliza para crear la propuesta');
+      }
+    };
+
+    /**
+     * @param {HTMLFormElement} form
+     * @param {string} raw
+     */
+    const applySavedExtras = (form, raw) => {
+      /** @type {Record<string, any>} */
+      let extra = {};
+      try {
+        const parsed = JSON.parse(raw || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) extra = parsed;
+      } catch {
+        extra = {};
+      }
+      const factura = new Set(Array.isArray(extra.factura) ? extra.factura.map(String) : []);
+      const piezas = extra.piezas && typeof extra.piezas === 'object' ? extra.piezas : {};
+      const piezasFactura = new Set(Array.isArray(extra.piezasFactura) ? extra.piezasFactura.map(String) : []);
+      const piezasCantidad = extra.piezasCantidad && typeof extra.piezasCantidad === 'object' ? extra.piezasCantidad : {};
+      const paquetes = extra.paquetes && typeof extra.paquetes === 'object' ? extra.paquetes : {};
+      const platos = extra.paquetesPlatos && typeof extra.paquetesPlatos === 'object' ? extra.paquetesPlatos : {};
+      const paquetesFactura = new Set(Array.isArray(extra.paquetesFactura) ? extra.paquetesFactura.map(String) : []);
+      const orden = Array.isArray(extra.paquetesOrden)
+        ? extra.paquetesOrden.map(String)
+        : Object.keys(paquetes);
+
+      const setMode = (row, on) => {
+        const mode = row.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
+        if (!(mode instanceof HTMLSelectElement)) return;
+        mode.value = on ? 'precio' : '';
+        mode.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+
+      form.querySelectorAll('.super-prop-addon-list > [data-addon-row]').forEach((row) => {
+        if (!(row instanceof HTMLElement)) return;
+        if (row.hasAttribute('data-addon-ia') || row.hasAttribute('data-addon-sede') || row.hasAttribute('data-addon-pieces') || row.hasAttribute('data-addon-packages')) return;
+        const input = row.querySelector(':scope > .super-prop-addon__controls [data-adicional]');
+        if (!(input instanceof HTMLInputElement)) return;
+        const id = input.dataset.adicional || '';
+        const amount = extra[id];
+        input.value = amount ? String(amount) : '';
+        const check = row.querySelector(':scope > .super-prop-addon__controls [data-adicional-factura]');
+        if (check instanceof HTMLInputElement) check.checked = factura.has(id);
+        setMode(row, Boolean(amount));
+      });
+
+      const ia = form.querySelector('[data-addon-ia]');
+      if (ia instanceof HTMLElement) {
+        const instalacion = ia.querySelector('[data-ia-instalacion]');
+        const mensual = ia.querySelector('[data-ia-mensual]');
+        if (instalacion instanceof HTMLInputElement) instalacion.value = extra.ia ? String(extra.ia) : '';
+        if (mensual instanceof HTMLInputElement) mensual.value = extra.iaMensual ? String(extra.iaMensual) : '';
+        const check = ia.querySelector('[data-adicional-factura="ia"]');
+        if (check instanceof HTMLInputElement) check.checked = factura.has('ia');
+        setMode(ia, Boolean(extra.ia || extra.iaMensual));
+      }
+
+      const sede = form.querySelector('[data-addon-sede]');
+      if (sede instanceof HTMLElement) {
+        const precio = sede.querySelector('[data-sede-precio]');
+        const qty = sede.querySelector('[data-sede-qty]');
+        if (precio instanceof HTMLInputElement) precio.value = extra.sede ? String(extra.sede) : '';
+        if (qty instanceof HTMLInputElement) qty.value = extra.sedeCantidad ? String(extra.sedeCantidad) : '1';
+        const check = sede.querySelector('[data-adicional-factura="sede"]');
+        if (check instanceof HTMLInputElement) check.checked = factura.has('sede');
+        setMode(sede, Boolean(extra.sede || extra.sedeCantidad));
+      }
+
+      form.querySelectorAll('[data-piece-row]').forEach((row) => {
+        const input = row.querySelector('[data-pieza]');
+        if (!(input instanceof HTMLInputElement)) return;
+        const id = input.dataset.pieza || '';
+        input.value = piezas[id] ? String(piezas[id]) : '';
+        const qty = row.querySelector('[data-pieza-qty]');
+        if (qty instanceof HTMLInputElement) qty.value = piezasCantidad[id] != null ? String(piezasCantidad[id]) : '0';
+        const check = row.querySelector('[data-adicional-factura]');
+        if (check instanceof HTMLInputElement) check.checked = piezasFactura.has(id);
+      });
+      const pieces = form.querySelector('[data-addon-pieces]');
+      if (pieces instanceof HTMLElement) {
+        const on = Object.keys(piezas).some((id) => Number(piezas[id]) > 0) || piezasFactura.size > 0;
+        setMode(pieces, on);
+      }
+
+      const addPack = form.querySelector('[data-prop-pack-add]');
+      orden.forEach((id) => {
+        let guard = 0;
+        while (!form.querySelector(`[data-paquete="${id}"]`) && addPack instanceof HTMLButtonElement && guard < 12) {
+          addPack.click();
+          guard += 1;
+        }
+        const input = form.querySelector(`[data-paquete="${id}"]`);
+        if (!(input instanceof HTMLInputElement)) return;
+        input.value = paquetes[id] ? String(paquetes[id]) : '';
+        const row = input.closest('[data-prop-pack]');
+        const qty = row?.querySelector('[data-paquete-platos]');
+        if (qty instanceof HTMLInputElement) qty.value = platos[id] ? String(platos[id]) : '1';
+        const check = row?.querySelector('[data-adicional-factura]');
+        if (check instanceof HTMLInputElement) check.checked = paquetesFactura.has(id);
+      });
+      const packs = form.querySelector('[data-addon-packages]');
+      if (packs instanceof HTMLElement) {
+        const on = orden.some((id) => Number(paquetes[id]) > 0) || paquetesFactura.size > 0;
+        setMode(packs, on);
+      }
+
+      const carta = form.querySelector('[data-prop-carta]');
+      if (carta instanceof HTMLSelectElement) carta.value = extra.cartaDemo ? String(extra.cartaDemo) : '';
+    };
+
     root.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -108,6 +225,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
         if (dropSub) dropSub.textContent = logo ? 'Foto lista' : 'Tócala o arrástrala aquí';
         const clear = form.querySelector('[data-prop-logo-clear]');
         if (clear instanceof HTMLElement) clear.hidden = !logo;
+        form.dataset.propId = edit.dataset.propId || '';
+        applySavedExtras(form, edit.dataset.propExtra || '');
+        paintEditMode(form, Boolean(form.dataset.propId));
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
@@ -115,6 +235,13 @@ import { formatVentaMonto } from '../lib/ventas.js';
       if (!(go instanceof HTMLElement) || !root.contains(go)) return;
       const id = go.dataset.propView || go.dataset.propViewGo || '';
       if (!id) return;
+      if (id === 'armar' && go.dataset.propView === 'armar') {
+        const form = document.getElementById('propuesta-form');
+        if (form instanceof HTMLFormElement) {
+          delete form.dataset.propId;
+          paintEditMode(form, false);
+        }
+      }
       show(id);
     });
   }
@@ -2153,8 +2280,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
       const packsParent = row instanceof HTMLElement && row.hasAttribute('data-addon-packages');
       const piecesParent = row instanceof HTMLElement && row.hasAttribute('data-addon-pieces');
       const iaParent = row instanceof HTMLElement && row.hasAttribute('data-addon-ia');
+      const sedeParent = row instanceof HTMLElement && row.hasAttribute('data-addon-sede');
       const priced = mode.value === 'precio';
-      if (packsParent || piecesParent || iaParent) {
+      if (packsParent || piecesParent || iaParent || sedeParent) {
         money.hidden = true;
         input.disabled = true;
         if (packsParent) {
@@ -2169,6 +2297,10 @@ import { formatVentaMonto } from '../lib/ventas.js';
           if (priced) row.dataset.iaOn = 'true';
           else delete row.dataset.iaOn;
         }
+        if (sedeParent) {
+          if (priced) row.dataset.sedeOn = 'true';
+          else delete row.dataset.sedeOn;
+        }
       } else {
         money.hidden = !priced;
         input.disabled = !priced;
@@ -2179,7 +2311,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
         else delete row.dataset.priced;
         const bill = iaParent
           ? row.querySelector(':scope > .super-prop-ia [data-adicional-factura]')
-          : controls?.querySelector('[data-adicional-factura]');
+          : sedeParent
+            ? row.querySelector(':scope > .super-prop-sede [data-adicional-factura]')
+            : controls?.querySelector('[data-adicional-factura]');
         const billLabel = bill?.closest('label');
         if (bill instanceof HTMLInputElement && billLabel instanceof HTMLElement) {
           billLabel.dataset.on = bill.checked ? 'true' : 'false';
@@ -2188,7 +2322,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
       if (focusPrice && !packsParent && !piecesParent) {
         const factura = iaParent
           ? row.querySelector(':scope > .super-prop-ia [data-adicional-factura]')
-          : controls?.querySelector('[data-adicional-factura]');
+          : sedeParent
+            ? row.querySelector(':scope > .super-prop-sede [data-adicional-factura]')
+            : controls?.querySelector('[data-adicional-factura]');
         if (factura instanceof HTMLInputElement && !priced) factura.checked = false;
         if (priced && iaParent) {
           row.querySelectorAll('[data-wheel]').forEach((drum) => {
@@ -2196,6 +2332,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
           });
           const drum = row.querySelector('[data-wheel]');
           if (drum instanceof HTMLElement) drum.focus({ preventScroll: true });
+        } else if (priced && sedeParent) {
+          const precio = row.querySelector('[data-sede-precio]');
+          if (precio instanceof HTMLElement) precio.focus({ preventScroll: true });
         } else if (priced) {
           const drum = money.querySelector('[data-wheel]');
           if (drum instanceof HTMLElement) {
@@ -2239,11 +2378,18 @@ import { formatVentaMonto } from '../lib/ventas.js';
           const wrap = document.createElement('div');
           wrap.className = 'super-prop-quiz__choices';
           wrap.setAttribute('role', 'group');
-          wrap.setAttribute('aria-label', mode.getAttribute('aria-label') || 'Precio');
-          [
-            ['', 'A consultar'],
-            ['precio', 'Con precio'],
-          ].forEach(([value, label]) => {
+          const sedeStep = Boolean(mode.closest('[data-addon-sede]'));
+          wrap.setAttribute('aria-label', sedeStep ? 'Sucursal' : mode.getAttribute('aria-label') || 'Precio');
+          (sedeStep
+            ? [
+                ['', 'No'],
+                ['precio', 'Activar'],
+              ]
+            : [
+                ['', 'A consultar'],
+                ['precio', 'Con precio'],
+              ]
+          ).forEach(([value, label]) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'super-prop-quiz__choice';
@@ -2258,7 +2404,8 @@ import { formatVentaMonto } from '../lib/ventas.js';
           mode.after(wrap);
           const caption = document.createElement('p');
           caption.className = 'super-prop-quiz__caption';
-          caption.textContent = 'Precio';
+          caption.textContent = mode.closest('[data-addon-sede]') ? '' : 'Precio';
+          if (!caption.textContent) caption.hidden = true;
           wrap.before(caption);
         });
         steps.forEach((step) => syncAddonRow(step));
@@ -2516,6 +2663,15 @@ import { formatVentaMonto } from '../lib/ventas.js';
     if (document.documentElement.dataset.addonModesBound !== 'true') {
       document.documentElement.dataset.addonModesBound = 'true';
       document.addEventListener('click', (event) => {
+        const sedeStep = event.target instanceof Element ? event.target.closest('[data-sede-qty-step]') : null;
+        if (sedeStep instanceof HTMLButtonElement) {
+          const field = sedeStep.parentElement?.querySelector('[data-sede-qty]');
+          if (field instanceof HTMLInputElement) {
+            const delta = Number(sedeStep.dataset.sedeQtyStep) || 0;
+            field.value = String(Math.max(1, Math.min(99, (Math.round(Number(field.value) || 1)) + delta)));
+          }
+          return;
+        }
         const step = event.target instanceof Element ? event.target.closest('[data-pieza-qty-step]') : null;
         if (!(step instanceof HTMLButtonElement)) return;
         const field = step.parentElement?.querySelector('[data-pieza-qty]');
@@ -2577,7 +2733,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
       /** @type {string[]} */
       const paquetesFactura = [];
       root.querySelectorAll('[data-addon-row]').forEach((row) => {
-        if (row instanceof HTMLElement && row.hasAttribute('data-addon-ia')) return;
+        if (row instanceof HTMLElement && (row.hasAttribute('data-addon-ia') || row.hasAttribute('data-addon-sede'))) return;
         const input = row.querySelector(':scope > .super-prop-addon__controls [data-adicional], :scope > .super-prop-addon__controls [data-pieza], :scope > .super-prop-addon__controls [data-paquete]');
         const check = row.querySelector(':scope > .super-prop-addon__controls [data-adicional-factura], :scope > label.super-prop-factura [data-adicional-factura]');
         if (!(input instanceof HTMLInputElement)) return;
@@ -2618,6 +2774,17 @@ import { formatVentaMonto } from '../lib/ventas.js';
         if (!input.disabled && Number(input.value) > 0) adicionales[id] = input.value;
         if (check instanceof HTMLInputElement && check.checked) factura.push(id);
       });
+      const sedeRow = root.querySelector('[data-addon-sede]');
+      const sedeMode = sedeRow?.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
+      if (sedeRow instanceof HTMLElement && sedeMode instanceof HTMLSelectElement && sedeMode.value === 'precio') {
+        const precio = sedeRow.querySelector('[data-sede-precio]');
+        const qty = sedeRow.querySelector('[data-sede-qty]');
+        if (precio instanceof HTMLInputElement && Number(precio.value) > 0) adicionales.sede = precio.value.trim();
+        const n = Math.max(1, Math.min(99, Math.round(Number(qty instanceof HTMLInputElement ? qty.value : 1) || 1)));
+        adicionales.sedeCantidad = String(n);
+        const sedeFactura = sedeRow.querySelector(':scope > .super-prop-sede [data-adicional-factura]');
+        if (sedeFactura instanceof HTMLInputElement && sedeFactura.checked) factura.push('sede');
+      }
       const iaRow = root.querySelector('[data-addon-ia]');
       const iaMode = iaRow?.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
       if (iaRow instanceof HTMLElement && iaMode instanceof HTMLSelectElement && iaMode.value === 'precio') {
@@ -2833,7 +3000,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
     });
     amounts?.addEventListener('input', (event) => {
       const target = event.target;
-      if (target instanceof HTMLInputElement && target.matches('[data-wheel-input]')) paintFx();
+      if (target instanceof HTMLInputElement && (target.name === 'setup' || target.name === 'anual')) paintFx();
     });
 
     fetch('/api/tasas-cambio')
@@ -2971,46 +3138,65 @@ import { formatVentaMonto } from '../lib/ventas.js';
         return;
       }
       form.dataset.creating = 'true';
-      setStatus('Creando propuesta…');
+      const editingId = form.dataset.propId || '';
+      setStatus(editingId ? 'Guardando cambios…' : 'Creando propuesta…');
       const data = new FormData(form);
+      const adicionales = {
+        ...readAdicionales(form),
+        moneda: 'usd',
+        ...((() => {
+          const carta = String(data.get('carta_demo') || '').trim().toLowerCase();
+          return carta && carta !== 'sin' ? { cartaDemo: carta } : {};
+        })()),
+      };
       try {
         const response = await fetch('/api/propuestas', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            id: editingId,
             nombre: String(data.get('nombre') || ''),
             setup: String(data.get('setup') || ''),
             anual: String(data.get('anual') || ''),
             sinPrecio: isSinPrecio(),
             logoUrl: sinLogo() ? '' : String(data.get('logo') || ''),
             mundo: String(data.get('mundo') || ''),
-            adicionales: {
-              ...readAdicionales(form),
-              moneda: 'usd',
-              ...((() => {
-                const carta = String(data.get('carta_demo') || '').trim().toLowerCase();
-                return carta && carta !== 'sin' ? { cartaDemo: carta } : {};
-              })()),
-            },
+            adicionales,
           }),
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload.href) {
-          setStatus(payload.error || 'No se pudo crear la propuesta.');
+          setStatus(payload.error || 'No se pudo guardar la propuesta.');
           delete form.dataset.creating;
           slide?.dispatchEvent(new Event('slide-reset'));
           return;
         }
         const href = new URL(payload.href, window.location.origin).href;
+        const savedId = String(payload.id || editingId || '');
+        if (savedId) form.dataset.propId = savedId;
         if (result instanceof HTMLElement) {
           result.hidden = false;
-          result.dataset.id = String(payload.id || '');
+          result.dataset.id = savedId;
         }
         if (resultLink instanceof HTMLAnchorElement) {
           resultLink.href = href;
           resultLink.textContent = 'Entrar';
         }
-        setStatus('');
+        const card = savedId ? document.querySelector(`[data-propuesta-card="${savedId}"]`) : null;
+        const title = card?.querySelector('h3');
+        if (title) title.textContent = String(data.get('nombre') || '');
+        const editBtn = card?.querySelector('[data-prop-edit]');
+        if (editBtn instanceof HTMLButtonElement) {
+          editBtn.dataset.propNombre = String(data.get('nombre') || '');
+          editBtn.dataset.propSin = isSinPrecio() ? 'true' : 'false';
+          editBtn.dataset.propSetup = String(data.get('setup') || '');
+          editBtn.dataset.propAnual = String(data.get('anual') || '');
+          editBtn.dataset.propLogo = sinLogo() ? '' : String(data.get('logo') || '');
+          editBtn.dataset.propExtra = JSON.stringify(adicionales);
+        }
+        delete form.dataset.creating;
+        slide?.dispatchEvent(new Event('slide-reset'));
+        setStatus(editingId ? 'Cambios guardados. El enlace sigue siendo el mismo.' : '');
         result?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch {
         setStatus('No se pudo crear la propuesta.');

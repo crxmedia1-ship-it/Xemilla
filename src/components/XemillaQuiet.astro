@@ -1,21 +1,24 @@
 ---
 interface Props {
-  kicker: string;
+  kicker?: string;
   title: string;
   detail?: string;
   actionHref?: string;
   actionLabel?: string;
   /** Dentro de un panel, sin ocupar toda la pantalla. */
   inset?: boolean;
+  /** Pie «powered by CRX». En las pantallas completas sale si no se apaga. */
+  foot?: boolean;
 }
 
 const {
-  kicker,
+  kicker = '',
   title,
   detail = '',
   actionHref = '',
   actionLabel = '',
   inset = false,
+  foot = true,
 } = Astro.props;
 ---
 
@@ -33,10 +36,12 @@ const {
   {inset ? <div class="xe-quiet__veil"></div> : null}
 
   <div class="xe-quiet__body">
-    <p class="xe-quiet__kicker">
-      <span class="xe-quiet__dot" aria-hidden="true"></span>
-      {kicker}
-    </p>
+    {kicker ? (
+      <p class="xe-quiet__kicker">
+        <span class="xe-quiet__dot" aria-hidden="true"></span>
+        {kicker}
+      </p>
+    ) : null}
     {
       inset ? null : (
         <img
@@ -59,7 +64,7 @@ const {
     <div class="xe-quiet__slot">
       <slot />
     </div>
-    {inset ? null : <p class="xe-quiet__foot">powered by CRX</p>}
+    {inset || !foot ? null : <p class="xe-quiet__foot">powered by CRX</p>}
   </div>
 </section>
 

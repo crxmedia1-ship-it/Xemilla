@@ -3,6 +3,7 @@ import {
   createPropuesta,
   deletePropuesta,
   isPropuestaId,
+  updatePropuesta,
   updatePropuestaAdicionales,
 } from '../../lib/propuestas.js';
 import { createSupabaseServerClient } from '../../lib/supabase/server.js';
@@ -28,7 +29,8 @@ export async function POST({ request, cookies }) {
     return json({ error: 'JSON inválido' }, 400);
   }
 
-  const result = await createPropuesta(gate.client, {
+  const editingId = String(body.id || '').trim();
+  const input = {
     nombre: String(body.nombre || ''),
     logoUrl: String(body.logoUrl || ''),
     setup: String(body.setup || ''),
@@ -36,7 +38,10 @@ export async function POST({ request, cookies }) {
     sinPrecio: body.sinPrecio === true,
     mundo: String(body.mundo || ''),
     adicionales: body.adicionales,
-  });
+  };
+  const result = isPropuestaId(editingId)
+    ? await updatePropuesta(gate.client, editingId, input)
+    : await createPropuesta(gate.client, input);
 
   if (result.error || !result.data) return json({ error: result.error || 'No se pudo crear' }, 400);
 
