@@ -12,7 +12,7 @@ import {
 } from '../../../lib/superadmin.js';
 import { createSupabaseServiceClient } from '../../../lib/supabase/service.js';
 import { fetchNetworkIntelligence } from '../../../lib/metrics.js';
-import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, PROPUESTA_QR_PIEZAS, readPropuestaAdicionales, readPropuestaFactura, readPropuestaPiezas, readPropuestaPiezasFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, propuestaTienePaquetes, readPropuestaIaMensual } from '../../../lib/propuestas.js';
+import { listPropuestas, listPropuestaEventos, getPropuestaDefaults, PROPUESTA_ADICIONALES, PROPUESTA_QR_PIEZAS, readPropuestaPiezas, readPropuestaPiezasFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, propuestaTienePaquetes, readPropuestaIaMensual } from '../../../lib/propuestas.js';
 import { listRestauranteVentas, VENTA_PRODUCTOS, ventaProductoLabel, formatVentaMonto, resumenVentas } from '../../../lib/ventas.js';
 import {
   resolveHubTarjeta,
@@ -158,14 +158,11 @@ const superTab =
 /**
  * @param {string | null | undefined} iso
  */
-function formatPropuestaCuando(iso) {
-  if (!iso) return 'Todavía no la abrieron';
+function formatPropuestaAnio(iso) {
+  if (!iso) return '';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 'Todavía no la abrieron';
-  return new Intl.DateTimeFormat('es-VE', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
+  if (Number.isNaN(date.getTime())) return '';
+  return String(date.getFullYear());
 }
 
 /** @param {Record<string, any>} p */
@@ -205,15 +202,25 @@ const PROP_EVENTO_TEXTO = {
   whatsapp: 'tocó WhatsApp',
 };
 const propNombrePorId = new Map(propuestas.map((p) => [String(p.id), p.nombre]));
-const propActividad = propEventos
-  .filter((e) => propNombrePorId.has(String(e.propuesta_id)))
-  .map((e) => ({
+const propActividad = [];
+for (const e of propEventos) {
+  const nombre = propNombrePorId.get(String(e.propuesta_id));
+  if (!nombre) continue;
+  const prev = propActividad[propActividad.length - 1];
+  if (prev && prev.nombre === nombre && prev.tipo === e.tipo) {
+    prev.veces += 1;
+    continue;
+  }
+  propActividad.push({
     id: e.id,
-    nombre: propNombrePorId.get(String(e.propuesta_id)),
+    nombre,
     texto: PROP_EVENTO_TEXTO[e.tipo] || e.tipo,
     tipo: e.tipo,
     cuando: formatHace(e.created_at),
-  }));
+    veces: 1,
+  });
+}
+const propActividadTotal = propActividad.reduce((sum, ev) => sum + ev.veces, 0);
 
 /** @param {string | null | undefined} iso */
 function formatHace(iso) {
@@ -1864,161 +1871,24 @@ function resolveMapsEmbed(direccion) {
           <ul class="super-props__list">
             {propuestas.map((p) => {
               const href = `/propuesta?p=${p.id}`;
-              const cuando = formatPropuestaCuando(p.ultima_vista);
-              const precio = p.sin_precio ? 'A consultar' : `$${p.setup} + $${p.anual ?? '200'}/año`;
-              const miradas = [
-                ['AR', p.vio_ar],
-                ['Ficha', p.vio_nutri],
-                ['QRs', p.vio_qr],
-                ['Klientiq', p.vio_ia],
-                ['WhatsApp', p.vio_whatsapp],
-              ];
+              const anio = formatPropuestaAnio(p.created_at);
               return (
                 <li>
                   <article class="super-prop" data-propuesta-card={p.id}>
-                    <div class="super-prop__id">
-                      {p.logo_url ? (
-                        <img src={p.logo_url} alt="" class="super-prop__logo" />
-                      ) : (
-                        <span class="super-prop__logo super-prop__logo--letter">{String(p.nombre || '?').charAt(0).toUpperCase()}</span>
-                      )}
-                      <div class="min-w-0">
-                        <h3>{p.nombre}</h3>
-                        <p>{cuando} · {precio}</p>
-                      </div>
-                    </div>
-                    <p class="super-prop__views">
-                      <strong>{p.vistas}</strong>
-                      <span>{p.vistas === 1 ? 'apertura' : 'aperturas'}</span>
-                    </p>
-                    <details class="super-prop__addons">
-                      <summary>Precios de degustadores</summary>
-                      <form data-prop-addons={p.id}>
-                        <div class="super-prop-addon-list">
-                          {PROPUESTA_ADICIONALES.map((item) => {
-                            const amount = readPropuestaAdicionales(p.adicionales)[item.id] || '';
-                            const iaMensual = item.id === 'ia' ? readPropuestaIaMensual(p.adicionales) : '';
-                            const iaConPrecios = item.id === 'ia' && (Boolean(amount) || Boolean(iaMensual));
-                            const enFactura = readPropuestaFactura(p.adicionales).includes(item.id);
-                            const arConPaquetes = item.id === 'ar' && (Boolean(amount) || propuestaTienePaquetes(p.adicionales));
-                            const qrConPiezas = item.id === 'qr' && (Boolean(amount) || Object.keys(readPropuestaPiezas(p.adicionales)).length > 0);
-                            return (
-                              <div class="super-prop-addon" data-addon-row data-addon-packages={item.id === 'ar' ? '' : undefined} data-packs-on={arConPaquetes ? '' : undefined} data-addon-pieces={item.id === 'qr' ? '' : undefined} data-detail-on={qrConPiezas ? '' : undefined} data-addon-ia={item.id === 'ia' ? '' : undefined} data-ia-on={iaConPrecios ? '' : undefined}>
-                                <p class="super-prop-addon__name">{item.label}</p>
-                                <div class="super-prop-addon__controls">
-                                  {item.id === 'ia' ? null : (
-                                    <label class="super-prop-factura">
-                                      <input type="checkbox" data-adicional-factura={item.id} checked={enFactura} />
-                                      <span class="super-prop-factura__ui" aria-hidden="true"></span>
-                                      <span>Factura</span>
-                                    </label>
-                                  )}
-                                  <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${item.label}`}>
-                                    <option value="" selected={!arConPaquetes && !qrConPiezas && !iaConPrecios && !amount}>A consultar</option>
-                                    <option value="precio" selected={arConPaquetes || qrConPiezas || iaConPrecios || Boolean(amount)}>Con precio</option>
-                                  </select>
-                                  <span class="super-prop-money" data-adicional-money hidden={!amount}>
-                                    <input type="number" data-adicional={item.id} min="0" step="1" inputmode="numeric" placeholder="0" value={amount} disabled={!amount} />
-                                    <em>$</em>
-                                  </span>
-                                </div>
-                              {item.id === 'ar' ? (
-                                <div class="super-prop-pieces super-prop-packages" data-prop-packs>
-                                  {arPaqueteRows(p.adicionales).map((pack, index) => (
-                                    <div class:list={['super-prop-addon', 'super-prop-addon--piece', index === 0 && 'is-on']} data-addon-row data-prop-pack>
-                                      <p class="super-prop-addon__name" data-prop-pack-name>{pack.label}</p>
-                                      <div class="super-prop-pack-qty">
-                                        <span>Platos</span>
-                                        <button type="button" data-prop-pack-qty-step="-1" aria-label="Menos platos">−</button>
-                                        <input type="number" data-paquete-platos={pack.id} min="1" max="40" step="1" inputmode="numeric" value={pack.platos} aria-label={`Platos de ${pack.label}`} />
-                                        <button type="button" data-prop-pack-qty-step="1" aria-label="Más platos">+</button>
-                                      </div>
-                                      <div class="super-prop-addon__controls">
-                                        <label class="super-prop-factura">
-                                          <input type="checkbox" data-adicional-factura={pack.id} checked={pack.on} />
-                                          <span class="super-prop-factura__ui" aria-hidden="true"></span>
-                                          <span>Factura</span>
-                                        </label>
-                                        <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${pack.label}`}>
-                                          <option value="precio" selected>Con precio</option>
-                                        </select>
-                                        <span class="super-prop-money" data-adicional-money>
-                                          <span>Precio</span>
-                                          <input type="number" data-paquete={pack.id} min="0" step="1" inputmode="numeric" placeholder="0" value={pack.amount} />
-                                          <em>$</em>
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  <button type="button" class="super-prop-pack-add" data-prop-pack-add>Añadir otro</button>
-                                </div>
-                              ) : null}
-                              {item.id === 'qr' ? (
-                                <div class="super-prop-pieces">
-                                  {qrPiezaRows(p.adicionales, enFactura).map((piece) => (
-                                    <div class="super-prop-addon super-prop-addon--piece" data-addon-row data-piece-row>
-                                      <p class="super-prop-addon__name">{piece.label}</p>
-                                      <div class="super-prop-addon__controls">
-                                        <select class="super-prop-select" data-adicional-mode aria-label={`Precio de ${piece.label}`}>
-                                          <option value="precio" selected>Con precio</option>
-                                        </select>
-                                        <span class="super-prop-money" data-adicional-money>
-                                          <input type="number" data-pieza={piece.id} min="0" step="1" inputmode="numeric" placeholder="A consultar" value={piece.amount} />
-                                        </span>
-                                        <label class="super-prop-factura" title="Si lo marcas, entra en la factura. Si no, lo ven y lo añaden.">
-                                          <input type="checkbox" data-adicional-factura={piece.id} checked={piece.on} aria-label={`Incluir ${piece.label} en la factura`} />
-                                          <span class="super-prop-factura__ui" aria-hidden="true"></span>
-                                          <span>Factura</span>
-                                        </label>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  <p class="super-prop-pieces__hint">Márcalo para que entre en la factura. Si no, lo ven y lo añaden ellos.</p>
-                                </div>
-                              ) : null}
-                              {item.id === 'ia' ? (
-                                <div class="super-prop-ia">
-                                  <label class="super-prop-ia__row">
-                                    <span>Instalación</span>
-                                    <span class="super-prop-money">
-                                      <input type="number" data-ia-instalacion min="0" step="1" inputmode="numeric" placeholder="0" value={amount} aria-label="Precio de instalación de Klientiq" />
-                                      <em>$</em>
-                                    </span>
-                                  </label>
-                                  <label class="super-prop-ia__row">
-                                    <span>Mensual</span>
-                                    <span class="super-prop-money">
-                                      <input type="number" data-ia-mensual min="0" step="1" inputmode="numeric" placeholder="0" value={iaMensual} aria-label="Mantenimiento mensual de Klientiq" />
-                                      <em>$</em>
-                                    </span>
-                                  </label>
-                                  <label class="super-prop-factura" title="Si lo marcas, entra en la factura. Si no, lo ven y lo añaden.">
-                                    <input type="checkbox" data-adicional-factura="ia" checked={enFactura} aria-label="Incluir Klientiq en la factura" />
-                                    <span class="super-prop-factura__ui" aria-hidden="true"></span>
-                                    <span>Factura</span>
-                                  </label>
-                                </div>
-                              ) : null}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <button type="submit">Guardar en esta propuesta</button>
-                        <p data-addons-status role="status"></p>
-                      </form>
-                    </details>
-                    <ul class="super-prop__seen">
-                      {miradas.map(([label, count]) => (
-                        <li data-seen={Number(count) > 0 ? 'yes' : 'no'}>
-                          <span>{label}</span>
-                          <strong>{count}</strong>
-                        </li>
-                      ))}
-                    </ul>
+                    {p.logo_url ? <img src={p.logo_url} alt="" class="super-prop__logo" /> : null}
+                    <h3>{p.nombre}</h3>
+                    {anio ? <p class="super-prop__year">{anio}</p> : null}
                     <div class="super-prop__links">
-                      <a href={href} target="_blank" rel="noopener noreferrer">Abrir</a>
                       <button type="button" data-prop-copy={href}>Copiar enlace</button>
-                      <button type="button" data-prop-delete={p.id}>Borrar</button>
+                      <button
+                        type="button"
+                        data-prop-edit
+                        data-prop-nombre={p.nombre}
+                        data-prop-sin={p.sin_precio ? 'true' : 'false'}
+                        data-prop-setup={p.setup ?? ''}
+                        data-prop-anual={p.anual ?? ''}
+                        data-prop-logo={p.logo_url || ''}
+                      >Editar</button>
                     </div>
                   </article>
                 </li>
@@ -2030,14 +1900,6 @@ function resolveMapsEmbed(direccion) {
       </div>
       <div data-prop-pane="metricas" hidden>
       <section class="super-propm" aria-label="Métricas de propuestas">
-        <header class="super-propm__head">
-          <div class="min-w-0">
-            <h3>Propuestas comerciales</h3>
-            <p>Todas las que enviaste y qué hizo cada restaurante con el enlace</p>
-          </div>
-          <button type="button" class="super-propm__cta" data-prop-view-go="armar">+ Nueva propuesta</button>
-        </header>
-
         <div class="super-propm__top">
           <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card">
             <header class="super-propm__card-head">
@@ -2083,7 +1945,7 @@ function resolveMapsEmbed(direccion) {
           <article class="super-net-card bg-white dark:bg-zinc-950 border border-zinc-200/90 dark:border-zinc-800/80 super-propm__card super-propm__activity">
             <header class="super-propm__card-head">
               <span>Actividad reciente</span>
-              <small>Al recargar</small>
+              <small>{propActividadTotal === 1 ? '1 movimiento' : `${propActividadTotal} movimientos`}</small>
             </header>
             {propActividad.length === 0 ? (
               <p class="super-propm__empty">
@@ -2093,9 +1955,13 @@ function resolveMapsEmbed(direccion) {
               <ol class="super-propm__feed">
                 {propActividad.map((ev) => (
                   <li data-tipo={ev.tipo}>
-                    <span class="super-propm__dot" aria-hidden="true"></span>
+                    <span class="super-propm__mark" aria-hidden="true">{String(ev.nombre || '?').charAt(0).toUpperCase()}</span>
                     <p>
-                      <strong>{ev.nombre}</strong> {ev.texto}
+                      <strong>{ev.nombre}</strong>
+                      <em>
+                        {ev.texto}
+                        {ev.veces > 1 ? <b>×{ev.veces}</b> : null}
+                      </em>
                     </p>
                     <time>{ev.cuando}</time>
                   </li>

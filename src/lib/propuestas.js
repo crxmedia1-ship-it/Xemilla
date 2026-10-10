@@ -113,13 +113,20 @@ export function readPropuestaMonto(value) {
   return String(value || '').trim().replace(/[^\d.,]/g, '').slice(0, 12);
 }
 
+/** Un 0 no es un precio: en la propuesta sale «A consultar». */
+function montoCobrado(value) {
+  const amount = readPropuestaMonto(value);
+  const n = Number(amount.replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? amount : '';
+}
+
 /**
  * Mantenimiento mensual de Klientiq. Vacío = no se cobra mes a mes.
  * @param {unknown} value
  */
 export function readPropuestaIaMensual(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  return readPropuestaMonto(source.iaMensual);
+  return montoCobrado(source.iaMensual);
 }
 
 /**
@@ -131,7 +138,7 @@ export function readPropuestaAdicionales(value) {
   /** @type {Record<string, string>} */
   const out = {};
   for (const id of ADICIONAL_IDS) {
-    const amount = readPropuestaMonto(source[id]);
+    const amount = montoCobrado(source[id]);
     if (amount) out[id] = amount;
   }
   return out;
@@ -148,7 +155,7 @@ export function readPropuestaFactura(value) {
   if (Array.isArray(source.factura)) {
     return source.factura.map((id) => String(id)).filter((id) => ADICIONAL_IDS.has(id));
   }
-  return [...ADICIONAL_IDS].filter((id) => readPropuestaMonto(source[id]));
+  return [...ADICIONAL_IDS].filter((id) => montoCobrado(source[id]));
 }
 
 /**
@@ -162,7 +169,7 @@ export function readPropuestaPiezas(value) {
   /** @type {Record<string, string>} */
   const out = {};
   for (const id of QR_PIEZA_IDS) {
-    const amount = readPropuestaMonto(raw[id]);
+    const amount = montoCobrado(raw[id]);
     if (amount) out[id] = amount;
   }
   return out;
@@ -214,7 +221,7 @@ export function readPropuestaPaquetes(value) {
   const out = {};
   for (const [id, amount] of Object.entries(raw)) {
     if (!AR_PAQUETE_ID.test(id)) continue;
-    const clean = readPropuestaMonto(amount);
+    const clean = montoCobrado(amount);
     if (clean) out[id] = clean;
   }
   return out;
@@ -339,7 +346,7 @@ export async function listPropuestas(client) {
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {number} [limit]
  */
-export async function listPropuestaEventos(client, limit = 12) {
+export async function listPropuestaEventos(client, limit = 40) {
   const { data, error } = await client
     .from('propuesta_eventos')
     .select('id, propuesta_id, tipo, created_at')

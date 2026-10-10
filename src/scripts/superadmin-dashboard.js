@@ -1944,6 +1944,28 @@ import { formatVentaMonto } from '../lib/ventas.js';
     const sinLogo = () =>
       form.querySelector('[data-prop-logo-mode]:checked')?.getAttribute('value') === 'sin';
 
+    const proposalGap = () => {
+      const nombre = nombreInput instanceof HTMLInputElement ? nombreInput.value.trim() : '';
+      if (!nombre) return { message: 'Falta el nombre', field: nombreInput };
+      if (!sinLogo()) {
+        const logo = logoInput instanceof HTMLInputElement ? logoInput.value.trim() : '';
+        if (!logo) return { message: 'Falta el logo', field: form.querySelector('[data-prop-logo-file]') };
+      }
+      const demo = form.querySelector('[data-prop-carta]');
+      if (!(demo instanceof HTMLSelectElement) || !demo.value) return { message: 'Falta el demo', field: demo };
+      return null;
+    };
+
+    const showProposalGap = (gap, label) => {
+      if (!gap) return;
+      if (label) label.textContent = gap.message;
+      const field = gap.field;
+      if (field instanceof HTMLElement) {
+        field.focus();
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+
     const syncLogoMode = () => {
       const off = sinLogo();
       if (logoField instanceof HTMLElement) logoField.dataset.sinLogo = off ? 'true' : 'false';
@@ -2190,10 +2212,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
 
         const revealLink = () => {
           if (!(actions instanceof HTMLElement)) return;
-          const nombre = nombreInput instanceof HTMLInputElement ? nombreInput.value.trim() : '';
-          if (!nombre) {
-            nextBtn.textContent = 'Falta el nombre';
-            if (nombreInput instanceof HTMLInputElement) nombreInput.focus();
+          const gap = proposalGap();
+          if (gap) {
+            showProposalGap(gap, nextBtn);
             window.setTimeout(() => {
               nextBtn.textContent = 'Listo';
             }, 1400);
@@ -2490,7 +2511,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
           const parent = row.closest('[data-addon-packages]');
           const parentMode = parent?.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
           if (!(parentMode instanceof HTMLSelectElement) || parentMode.value !== 'precio') return;
-          if (!input.disabled) paquetes[paquete] = input.value;
+          if (!input.disabled && Number(input.value) > 0) paquetes[paquete] = input.value;
           if (check instanceof HTMLInputElement && check.checked) paquetesFactura.push(paquete);
           const platos = row.querySelector('[data-paquete-platos]');
           if (platos instanceof HTMLInputElement) {
@@ -2504,13 +2525,13 @@ import { formatVentaMonto } from '../lib/ventas.js';
           const parent = row.closest('[data-addon-pieces]');
           const parentMode = parent?.querySelector(':scope > .super-prop-addon__controls [data-adicional-mode]');
           if (parentMode instanceof HTMLSelectElement && parentMode.value !== 'precio') return;
-          if (!input.disabled && input.value.trim()) piezas[pieza] = input.value.trim();
+          if (!input.disabled && input.value.trim() && Number(input.value) > 0) piezas[pieza] = input.value.trim();
           if (check instanceof HTMLInputElement && check.checked) piezasFactura.push(pieza);
           return;
         }
         const id = input.dataset.adicional || '';
         if (!id) return;
-        if (!input.disabled) adicionales[id] = input.value;
+        if (!input.disabled && Number(input.value) > 0) adicionales[id] = input.value;
         if (check instanceof HTMLInputElement && check.checked) factura.push(id);
       });
       const iaRow = root.querySelector('[data-addon-ia]');
@@ -2518,8 +2539,8 @@ import { formatVentaMonto } from '../lib/ventas.js';
       if (iaRow instanceof HTMLElement && iaMode instanceof HTMLSelectElement && iaMode.value === 'precio') {
         const instalacion = iaRow.querySelector('[data-ia-instalacion]');
         const mensual = iaRow.querySelector('[data-ia-mensual]');
-        if (instalacion instanceof HTMLInputElement) adicionales.ia = instalacion.value;
-        if (mensual instanceof HTMLInputElement && mensual.value.trim()) adicionales.iaMensual = mensual.value.trim();
+        if (instalacion instanceof HTMLInputElement && Number(instalacion.value) > 0) adicionales.ia = instalacion.value;
+        if (mensual instanceof HTMLInputElement && Number(mensual.value) > 0) adicionales.iaMensual = mensual.value.trim();
         const iaFactura = iaRow.querySelector(':scope > .super-prop-ia [data-adicional-factura]');
         if (iaFactura instanceof HTMLInputElement && iaFactura.checked) factura.push('ia');
       }
@@ -2553,8 +2574,9 @@ import { formatVentaMonto } from '../lib/ventas.js';
       const blocked = () => drum.closest('[data-prop-amounts]')?.getAttribute('data-off') === 'true';
 
       const start = Math.max(0, Math.round(Number(input.value) || 0));
+      const step = drum.closest('[data-prop-amounts]') ? 25 : WHEEL_STEP;
       const values = [];
-      for (let n = 0; n <= WHEEL_MAX; n += WHEEL_STEP) values.push(n);
+      for (let n = 0; n <= WHEEL_MAX; n += step) values.push(n);
       if (!values.includes(start)) {
         values.push(start);
         values.sort((a, b) => a - b);
@@ -2676,15 +2698,17 @@ import { formatVentaMonto } from '../lib/ventas.js';
     const fx = { usdVes: 0, eurVes: 0 };
     const fxView = () => form.querySelector('[data-prop-fx-view][aria-pressed="true"]')?.getAttribute('data-prop-fx-view') || '';
 
+    const formatMoney = (amount) => {
+      const [ints, decs] = Number(amount).toFixed(2).split('.');
+      return `${ints.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${decs}`;
+    };
+
     const formatFx = (usd, code) => {
       const n = Number(usd);
-      if (!Number.isFinite(n)) return '';
-      const money = (amount) => {
-        const [ints, decs] = amount.toFixed(2).split('.');
-        return `${ints.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${decs}`;
-      };
-      if (code === 'bs' && fx.usdVes > 0) return `${money(n * fx.usdVes)} Bs`;
-      if (code === 'eur' && fx.usdVes > 0 && fx.eurVes > 0) return `${money((n * fx.usdVes) / fx.eurVes)} €`;
+      if (!Number.isFinite(n) || !(fx.usdVes > 0)) return '';
+      const bs = `${formatMoney(n * fx.usdVes)} Bs`;
+      if (code === 'bs') return bs;
+      if (code === 'eur' && fx.eurVes > 0) return `${formatMoney((n * fx.usdVes) / fx.eurVes)} €\n${bs}`;
       return '';
     };
 
@@ -2733,7 +2757,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
         const bcv = form.querySelector('[data-prop-fx-rate="bs"]');
         const euro = form.querySelector('[data-prop-fx-rate="eur"]');
         if (bcv) bcv.textContent = rate(usdVes);
-        if (euro) euro.textContent = rate(eurVes);
+        if (euro) euro.textContent = `${rate(usdVes / eurVes)} €`;
         paintFx();
       })
       .catch(() => {
@@ -2796,64 +2820,8 @@ import { formatVentaMonto } from '../lib/ventas.js';
           }
           return;
         }
-        const deleteBtn = target.closest('[data-prop-delete]');
-        if (!(deleteBtn instanceof HTMLButtonElement)) return;
-        const id = deleteBtn.dataset.propDelete || '';
-        if (!id || !window.confirm('¿Borrar esta propuesta? El enlace deja de abrir esa casa.')) return;
-        deleteBtn.disabled = true;
-        try {
-          const response = await fetch('/api/propuestas', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id }),
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            const status = document.querySelector('[data-prop-status]');
-            if (status) status.textContent = payload.error || 'No se pudo borrar.';
-            deleteBtn.disabled = false;
-            return;
-          }
-          deleteBtn.closest('[data-propuesta-card]')?.parentElement?.remove();
-        } catch {
-          const status = document.querySelector('[data-prop-status]');
-          if (status) status.textContent = 'No se pudo borrar.';
-          deleteBtn.disabled = false;
-        }
       });
     }
-
-    document.querySelectorAll('[data-prop-addons]').forEach((addonsForm) => {
-      if (!(addonsForm instanceof HTMLFormElement) || addonsForm.dataset.bound === 'true') return;
-      addonsForm.dataset.bound = 'true';
-      addonsForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const button = addonsForm.querySelector('button[type="submit"]');
-        const status = addonsForm.querySelector('[data-addons-status]');
-        if (button instanceof HTMLButtonElement) button.disabled = true;
-        if (status) status.textContent = 'Guardando…';
-        try {
-          const response = await fetch('/api/propuestas', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: addonsForm.dataset.propAddons || '',
-              adicionales: readAdicionales(addonsForm),
-            }),
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            if (status) status.textContent = payload.error || 'No se pudieron guardar los precios.';
-            return;
-          }
-          if (status) status.textContent = 'Listo. Esta propuesta ya muestra esos precios.';
-        } catch {
-          if (status) status.textContent = 'No se pudieron guardar los precios.';
-        } finally {
-          if (button instanceof HTMLButtonElement) button.disabled = false;
-        }
-      });
-    });
 
     result?.querySelector('[data-prop-copy]')?.addEventListener('click', async (event) => {
       const button = event.currentTarget;
@@ -2865,6 +2833,13 @@ import { formatVentaMonto } from '../lib/ventas.js';
       event.preventDefault();
       if (form.dataset.creating === 'true') return;
       const slide = form.querySelector('[data-prop-slide]');
+      const gap = proposalGap();
+      if (gap) {
+        showProposalGap(gap, null);
+        setStatus(gap.message);
+        slide?.dispatchEvent(new Event('slide-reset'));
+        return;
+      }
       form.dataset.creating = 'true';
       setStatus('Creando propuesta…');
       const data = new FormData(form);

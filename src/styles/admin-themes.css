@@ -6255,44 +6255,6 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   padding-top: 0.5rem;
 }
 
-.super-admin-dash .super-propm__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-}
-
-.super-admin-dash .super-propm__head h3 {
-  margin: 0;
-  font-size: clamp(1.15rem, 0.95rem + 0.6vw, 1.45rem);
-  font-weight: 300;
-  letter-spacing: -0.02em;
-  color: #18181b;
-}
-
-.super-admin-dash .super-propm__head p {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: #71717a;
-}
-
-.super-admin-dash .super-propm__cta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.1rem;
-  padding: 0 0.9rem;
-  border: 0;
-  border-radius: 999px;
-  background: #18181b;
-  color: #fff !important;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
 .super-admin-dash .super-propm__card {
   min-width: 0;
   padding: clamp(0.95rem, 1.2vw, 1.25rem);
@@ -6487,58 +6449,107 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .super-propm__feed {
   display: grid;
+  gap: 0.35rem;
   margin: 0;
-  padding: 0;
+  padding: 0.15rem 0 0;
   list-style: none;
-  max-height: 11.5rem;
+  max-height: 16rem;
   overflow-y: auto;
 }
 
 .super-admin-dash .super-propm__feed li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 0.55rem;
-  padding: 0.45rem 0;
-  border-top: 1px solid rgba(24, 24, 27, 0.06);
-  font-size: 0.78rem;
+  grid-template-columns: 2.15rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: #fafaf9;
 }
 
 .super-admin-dash .super-propm__feed li:first-child {
-  border-top: 0;
-  padding-top: 0;
+  padding-top: 0.55rem;
 }
 
 .super-admin-dash .super-propm__feed p {
+  display: grid;
+  gap: 0.08rem;
   margin: 0;
-  color: #52525b;
+  min-width: 0;
+  color: #57534e;
 }
 
 .super-admin-dash .super-propm__feed strong {
-  font-weight: 600;
-  color: #18181b;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #1c1917;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.super-admin-dash .super-propm__feed em {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.super-admin-dash .super-propm__feed em b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.15rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #1c1917;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .super-admin-dash .super-propm__feed time {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   white-space: nowrap;
-  color: #a1a1aa;
+  color: #a8a29e;
 }
 
-.super-admin-dash .super-propm__dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: #a1a1aa;
-  transform: translateY(-0.05rem);
+.super-admin-dash .super-propm__mark {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.7rem;
+  background: #e7e5e4;
+  color: #1c1917;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
-.super-admin-dash .super-propm__feed li[data-tipo='whatsapp'] .super-propm__dot {
-  background: #16a34a;
+.super-admin-dash .super-propm__feed li[data-tipo='vista'] .super-propm__mark {
+  background: #e7e5e4;
 }
 
-.super-admin-dash .super-propm__feed li[data-tipo='vista'] .super-propm__dot {
-  background: #18181b;
+.super-admin-dash .super-propm__feed li[data-tipo='whatsapp'] .super-propm__mark {
+  background: #d9f99d;
+}
+
+.super-admin-dash .super-propm__feed li[data-tipo='ar'] .super-propm__mark,
+.super-admin-dash .super-propm__feed li[data-tipo='ia'] .super-propm__mark {
+  background: #ddd6fe;
+}
+
+.super-admin-dash .super-propm__feed li[data-tipo='nutri'] .super-propm__mark,
+.super-admin-dash .super-propm__feed li[data-tipo='qr'] .super-propm__mark {
+  background: #bfdbfe;
 }
 
 .super-admin-dash .super-propm__table {
@@ -6788,11 +6799,13 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   width: calc((100% - 0.44rem) / 3);
   border-radius: 999px;
   background:
-    linear-gradient(105deg, rgba(255, 236, 210, 0.18), rgba(255, 250, 242, 0.05) 42%, rgba(190, 242, 100, 0.12)),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
+    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
     url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 10px 18px -12px rgba(190, 70, 10, 0.85);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 18px -12px rgba(63, 98, 18, 0.85);
   transform: translateX(0);
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -6808,18 +6821,21 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-props__switch button {
   position: relative;
   z-index: 1;
+  height: 2.15rem;
   min-height: 2.15rem;
-  padding: 0 0.85rem;
+  max-height: 2.15rem;
+  padding: 0 0.45rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: #a8a29e;
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
   transition: color 280ms ease;
 }
@@ -7121,10 +7137,14 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   left: 0.22rem;
   width: calc(50% - 0.22rem);
   border-radius: 999px;
-  background: linear-gradient(105deg, #ffe14a 0%, #f0c400 48%, #c89600 100%);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(196, 181, 253, 0.2)),
+    linear-gradient(105deg, #ddd6fe 0%, #a78bfa 46%, #7c6cf0 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    0 8px 16px -8px rgba(160, 110, 0, 0.9);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 8px 16px -8px rgba(76, 29, 149, 0.85);
   transform: translateX(0);
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -7140,18 +7160,25 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   border-radius: 999px;
   background: transparent;
   box-shadow: none;
+  height: 2.2rem;
+  min-height: 2.2rem;
+  max-height: 2.2rem;
+  padding-top: 0;
+  padding-bottom: 0;
   color: #a8a29e;
-  font-size: 0.72rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-transform: uppercase;
+  white-space: nowrap;
   transition: color 280ms ease;
 }
 
 .super-admin-dash .super-prop-form .super-prop-logo-field .super-prop-price__mode input:checked + span {
   color: #1c140c;
   font-weight: 700;
-  text-shadow: 0 1px 0 rgba(255, 250, 242, 0.45);
+  text-shadow: 0 1px 0 rgba(255, 250, 255, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7181,10 +7208,14 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   left: 0.22rem;
   width: calc(50% - 0.22rem);
   border-radius: 999px;
-  background: linear-gradient(105deg, #7adf28 0%, #34b814 52%, #178a0e 100%);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(196, 181, 253, 0.2)),
+    linear-gradient(105deg, #ddd6fe 0%, #a78bfa 46%, #7c6cf0 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 8px 16px -8px rgba(20, 110, 10, 0.95);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 8px 16px -8px rgba(76, 29, 149, 0.85);
   transform: translateX(0);
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -7200,18 +7231,25 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   border-radius: 999px;
   background: transparent;
   box-shadow: none;
+  height: 2.2rem;
+  min-height: 2.2rem;
+  max-height: 2.2rem;
+  padding-top: 0;
+  padding-bottom: 0;
   color: #a8a29e;
-  font-size: 0.72rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-transform: uppercase;
+  white-space: nowrap;
   transition: color 280ms ease;
 }
 
 .super-admin-dash .super-prop-form .super-prop-price > .super-prop-price__modes .super-prop-price__mode input:checked + span {
-  color: #10200a;
+  color: #1c140c;
   font-weight: 700;
-  text-shadow: 0 1px 0 rgba(255, 250, 242, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .super-admin-dash .super-prop-price__amounts {
@@ -7219,7 +7257,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   justify-content: center;
   align-items: flex-start;
   gap: 1.35rem;
-  margin-top: 0.15rem;
+  margin-top: 1rem;
   transition: opacity 0.2s ease;
 }
 
@@ -7262,6 +7300,8 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  line-height: 1.25;
+  white-space: pre-line;
   font-variant-numeric: tabular-nums;
 }
 
@@ -7308,6 +7348,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   border: 0;
   border-radius: 1rem;
   background: #fff;
+  background-blend-mode: normal;
   color: #1c1917;
   font: inherit;
   cursor: pointer;
@@ -7330,9 +7371,10 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop-fx__modes button b {
-  font-size: 0.82rem;
-  font-weight: 650;
+  font-size: 1.2rem;
+  font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
@@ -7346,9 +7388,15 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop-fx__modes button[aria-pressed='true'] {
-  background: #1c1917;
-  color: #fff;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.35);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
+    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
+  color: #142006;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 8px 16px -8px rgba(63, 98, 18, 0.85);
 }
 
 .super-admin-dash .super-prop-wheel__frame {
@@ -7448,8 +7496,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   background: #fff;
 }
 
-.super-admin-dash .super-prop-form .super-prop-money input,
-.super-admin-dash .super-prop__addons .super-prop-money input {
+.super-admin-dash .super-prop-form .super-prop-money input {
   width: 100%;
   min-height: 2.45rem;
   padding: 0.45rem 0.15rem 0.45rem 0.75rem;
@@ -7566,10 +7613,17 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   padding: 1.45rem 1.15rem 1.2rem;
   border: 0;
   border-radius: 1.45rem;
-  background:
-    radial-gradient(ellipse 78% 90% at 50% 42%, rgba(255, 255, 255, 0.78), transparent 72%),
-    linear-gradient(115deg, #8ee63a 0%, #ff9a1f 50%, #ff4d3a 100%);
-  box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.05);
+  background-image:
+    radial-gradient(ellipse 72% 80% at 50% 42%, rgba(255, 255, 255, 0.16), transparent 70%),
+    linear-gradient(105deg, #ddd6fe 0%, #a78bfa 46%, #7c6cf0 100%),
+    url('/home/fondo.jpg');
+  background-repeat: no-repeat;
+  background-position: center, center, 46% 40%;
+  background-size: auto, auto, 240%;
+  background-blend-mode: soft-light, hue, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(28, 25, 23, 0.06);
 }
 
 .super-admin-dash .super-prop-addon-list.is-quiz > .super-prop-addon.is-enter {
@@ -7709,11 +7763,11 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz > .super-prop-addon[data-priced='true']:not([data-addon-packages]):not([data-addon-pieces]) > .super-prop-addon__controls > label.super-prop-factura[data-on='true'] .super-prop-factura__ui,
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz > .super-prop-addon[data-priced='true']:not([data-addon-packages]):not([data-addon-pieces]) > .super-prop-addon__controls > label.super-prop-factura:has(input:checked) .super-prop-factura__ui {
   display: block;
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 1rem;
+  height: 1rem;
   border-radius: 0;
   background: #16a34a;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='black' d='M3.2 8.2 6.4 11.4 12.8 4.6 11.6 3.4 6.4 8.9 4.4 6.9z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M2.6 8.2 6.3 12 13.4 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz > .super-prop-addon[data-priced='true']:not([data-addon-packages]):not([data-addon-pieces]) > .super-prop-addon__controls > label.super-prop-factura > span:last-child {
@@ -7907,10 +7961,10 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-money.is-picker > label.super-prop-factura[data-on='true'] .super-prop-factura__ui,
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-money.is-picker > label.super-prop-factura:has(input:checked) .super-prop-factura__ui {
   display: block;
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 1rem;
+  height: 1rem;
   background: #16a34a;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='black' d='M3.2 8.2 6.4 11.4 12.8 4.6 11.6 3.4 6.4 8.9 4.4 6.9z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M2.6 8.2 6.3 12 13.4 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-money.is-picker > label.super-prop-factura > span:last-child {
@@ -8025,10 +8079,10 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia > label.super-prop-factura[data-on='true'] .super-prop-factura__ui,
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia > label.super-prop-factura:has(input:checked) .super-prop-factura__ui {
   display: block;
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 1rem;
+  height: 1rem;
   background: #16a34a;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='black' d='M3.2 8.2 6.4 11.4 12.8 4.6 11.6 3.4 6.4 8.9 4.4 6.9z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M2.6 8.2 6.3 12 13.4 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-ia > label.super-prop-factura > span:last-child {
@@ -8306,10 +8360,10 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) label.super-prop-factura:has(input:checked) .super-prop-factura__ui,
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) label.super-prop-factura[data-on='true'] .super-prop-factura__ui {
   display: block;
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 1rem;
+  height: 1rem;
   background: #16a34a;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='black' d='M3.2 8.2 6.4 11.4 12.8 4.6 11.6 3.4 6.4 8.9 4.4 6.9z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M2.6 8.2 6.3 12 13.4 4.2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) label.super-prop-factura > span:last-child {
@@ -8942,12 +8996,16 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   padding: 0.22rem;
   border-radius: 999px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f7f5f2 0%, #ece8e3 100%);
+  background:
+    linear-gradient(105deg, rgba(255, 255, 255, 0.28), rgba(255, 250, 255, 0.06) 42%, rgba(190, 242, 100, 0.22)),
+    linear-gradient(105deg, #d9f99d 0%, #84cc16 46%, #4d7c0f 100%),
+    url('/home/fondo.jpg') 46% 40% / 240% no-repeat;
+  background-blend-mode: soft-light, hue, normal;
   border: 1px solid rgba(28, 25, 23, 0.1);
-  color: #161616;
+  color: #142006;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 14px 28px -22px rgba(40, 12, 0, 0.45);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 18px -12px rgba(63, 98, 18, 0.85);
   touch-action: none;
   user-select: none;
 }
@@ -8959,7 +9017,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   left: 0.22rem;
   width: calc(3.05rem + (100% - 3.05rem - 0.44rem) * var(--p));
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.22);
   pointer-events: none;
   transition:
     width 0.55s cubic-bezier(0.16, 1, 0.3, 1),
@@ -8974,7 +9032,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 
 .super-admin-dash .prop-slide.is-done .prop-slide__sheen {
   width: calc(100% - 0.44rem);
-  background: #f6f3ee;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .super-admin-dash .prop-slide.is-done {
@@ -9150,14 +9208,38 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) auto;
-  gap: 0.85rem 1.2rem;
-  padding: 1rem 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 4.4rem;
+  padding: 0.75rem 1.05rem;
   border: 1px solid rgba(28, 25, 23, 0.08);
   border-radius: 1.35rem;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 18px 40px -30px rgba(40, 30, 20, 0.35);
+}
+
+.super-admin-dash .super-prop h3 {
+  margin: 0;
+  min-width: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.super-admin-dash .super-prop__year {
+  margin: 0;
+  color: #78716c;
+  font-size: 0.95rem;
+}
+
+.super-admin-dash .super-prop__logo {
+  width: auto;
+  height: 2.75rem;
+  max-width: 8rem;
+  flex: none;
+  object-fit: contain;
+  background: none;
 }
 
 .super-admin-dash .super-prop__id {
@@ -9181,135 +9263,41 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop__logo {
-  width: 2.7rem;
-  height: 2.7rem;
+  width: auto;
+  height: 2.75rem;
+  max-width: 8rem;
   flex: none;
-  border-radius: 0.8rem;
+  border-radius: 0;
   object-fit: contain;
-  background: #f6f3ee;
-}
-
-.super-admin-dash .super-prop__logo--letter {
-  display: grid;
-  place-items: center;
-  font-size: 1rem;
-  color: #1c1917;
-}
-
-.super-admin-dash .super-prop__views {
-  margin: 0;
-  text-align: right;
-}
-
-.super-admin-dash .super-prop__views strong {
-  display: block;
-  font-size: 1.7rem;
-  font-weight: 400;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.super-admin-dash .super-prop__views span {
-  color: #a8a29e;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.super-admin-dash .super-prop__addons {
-  grid-column: 1 / -1;
-  padding-top: 0.15rem;
-}
-
-.super-admin-dash .super-prop__addons summary {
-  width: fit-content;
-  color: #57534e;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.super-admin-dash .super-prop__addons form {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
-
-.super-admin-dash .super-prop__addons button,
-.super-admin-dash .super-prop__addons [data-addons-status] {
-  grid-column: 1 / -1;
-}
-
-.super-admin-dash .super-prop__addons button {
-  justify-self: start;
-  min-height: 2.35rem;
-  padding: 0.4rem 0.9rem;
-  border: 0;
-  border-radius: 999px;
-  background: #1c1917;
-  color: #fff;
-  font: inherit;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.super-admin-dash .super-prop__addons [data-addons-status] {
-  margin: 0;
-  min-height: 1rem;
-  color: #78716c;
-  font-size: 0.8rem;
-}
-
-.super-admin-dash .super-prop__seen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.super-admin-dash .super-prop__seen li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.28rem 0.55rem;
-  border-radius: 999px;
-  background: #f6f3ee;
-  color: #a8a29e;
-  font-size: 0.75rem;
-}
-
-.super-admin-dash .super-prop__seen li[data-seen='yes'] {
-  background: #fff;
-  color: #1c1917;
-  box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.1);
+  background: none;
 }
 
 .super-admin-dash .super-prop__links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
-  grid-column: 1 / -1;
+  margin-left: auto;
 }
 
-.super-admin-dash .super-prop__links a,
 .super-admin-dash .super-prop__links button {
+  min-height: 2.15rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgba(28, 25, 23, 0.12);
+  border-radius: 999px;
+  background: #fff;
   color: #1c1917;
   font-size: 0.82rem;
-  text-decoration: none;
+  cursor: pointer;
 }
 
-.super-admin-dash .super-prop__links [data-prop-delete] {
-  margin-left: auto;
-  color: #a8a29e;
-  background: transparent;
+.super-admin-dash .super-prop__links [data-prop-edit] {
   border-color: transparent;
+  background: #1c1917;
+  color: #fafaf9;
 }
 
 @media (max-width: 640px) {
-  .super-admin-dash .super-prop-form,
-  .super-admin-dash .super-prop {
+  .super-admin-dash .super-prop-form {
     grid-template-columns: 1fr;
   }
 
@@ -9324,10 +9312,6 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   .super-admin-dash .super-prop-addon {
     flex-wrap: wrap;
     align-items: center;
-  }
-
-  .super-admin-dash .super-prop__views {
-    text-align: left;
   }
 }
 

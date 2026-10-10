@@ -25,6 +25,11 @@ function readAmount(value: string | null, fallback: string) {
   return clean || fallback;
 }
 
+const esPrecio = (value: string) => {
+  const n = Number(String(value).replace(',', '.'));
+  return Number.isFinite(n) && n > 0;
+};
+
 function readLogo(value: string | null) {
   const raw = (value ?? '').trim();
   if (!raw) return '';
@@ -83,7 +88,8 @@ const para = readText(propuestaGuardada?.nombre ?? params.get('para'), 'Tu Resta
 const setup = readAmount(propuestaGuardada?.setup ?? params.get('setup'), '500');
 const anual = readAmount(propuestaGuardada?.anual ?? params.get('anual'), '200');
 const cartaDemo = readPropuestaCartaDemo(propuestaGuardada?.adicionales);
-const iaMensual = readPropuestaIaMensual(propuestaGuardada?.adicionales);
+const iaMensualGuardado = readPropuestaIaMensual(propuestaGuardada?.adicionales);
+const iaMensual = esPrecio(iaMensualGuardado) ? iaMensualGuardado : '';
 const sinPrecio = propuestaGuardada ? propuestaGuardada.sin_precio === true : params.get('precio') === 'consultar';
 const logo = readLogo(propuestaGuardada?.logo_url ?? params.get('logo'));
 const initial = para.charAt(0).toUpperCase();
@@ -211,7 +217,8 @@ const ticketDate = new Intl.DateTimeFormat('es-VE', { day: '2-digit', month: 'sh
 const adicionalPrecio = (id: string) => {
   const raw = propuestaGuardada?.adicionales;
   const map = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
-  return readAmount(map[id] == null ? '' : String(map[id]), '');
+  const amount = readAmount(map[id] == null ? '' : String(map[id]), '');
+  return esPrecio(amount) ? amount : '';
 };
 
 const precioIa = () => {
@@ -226,7 +233,7 @@ const facturaInicial = new Set(readPropuestaFactura(propuestaGuardada?.adicional
 const piezasPrecio = readPropuestaPiezas(propuestaGuardada?.adicionales);
 const piezasFacturaGuardada = Array.isArray(propuestaGuardada?.adicionales?.piezasFactura);
 const piezasEnFactura = new Set(readPropuestaPiezasFactura(propuestaGuardada?.adicionales));
-const precioPieza = (id: string) => piezasPrecio[id] || '';
+const precioPieza = (id: string) => (esPrecio(piezasPrecio[id] || '') ? piezasPrecio[id] : '');
 const paquetesPrecio = readPropuestaPaquetes(propuestaGuardada?.adicionales);
 const paquetesFacturaGuardada = Array.isArray(propuestaGuardada?.adicionales?.paquetesFactura);
 const paquetesEnFactura = new Set(readPropuestaPaquetesFactura(propuestaGuardada?.adicionales));
@@ -236,7 +243,7 @@ const arPaquetes = propuestaTienePaquetes(propuestaGuardada?.adicionales)
       id,
       label: `Paquete ${id}`,
       platos: paquetesPlatos[id] || '1',
-      amount: paquetesPrecio[id] || '',
+      amount: esPrecio(paquetesPrecio[id] || '') ? paquetesPrecio[id] : '',
       on: paquetesFacturaGuardada ? paquetesEnFactura.has(id) : Boolean(paquetesPrecio[id]),
     }))
   : [];
@@ -831,12 +838,12 @@ const glass =
                   <p class="ticket__row">
                     <span>1 × {plan.label}</span>
                     <i aria-hidden="true" />
-                    <b data-prop-usd={!sinPrecio && plan.cadence !== 'Anual' ? plan.amount : undefined}>
-                      {sinPrecio ? 'A consultar' : plan.cadence === 'Anual' ? 'Incluida' : `${plan.amount} USD`}
+                    <b data-prop-usd={!sinPrecio && plan.cadence !== 'Anual' && esPrecio(plan.amount) ? plan.amount : undefined}>
+                      {sinPrecio || !esPrecio(plan.amount) ? 'A consultar' : plan.cadence === 'Anual' ? 'Incluida' : `${plan.amount} USD`}
                     </b>
                   </p>
                   <p class="ticket__note">
-                    {plan.cadence === 'Anual' && !sinPrecio ? (
+                    {plan.cadence === 'Anual' && !sinPrecio && esPrecio(anual) ? (
                       <>
                         Primer año gratis · luego <span data-prop-usd={anual}>{anual} USD</span>/año
                       </>
@@ -873,10 +880,13 @@ const glass =
             <p class="ticket__row">
               <span>{sinPrecio ? 'Total' : 'Total primer año'}</span>
               <i aria-hidden="true" />
-              <b data-ticket-total data-prop-usd={sinPrecio ? undefined : setup} data-base={sinPrecio ? '' : setup}>{sinPrecio ? 'A consultar' : `${setup} USD`}</b>
+              <b data-ticket-total data-prop-usd={!sinPrecio && esPrecio(setup) ? setup : undefined} data-base={!sinPrecio && esPrecio(setup) ? setup : ''}>{sinPrecio || !esPrecio(setup) ? 'A consultar' : `${setup} USD`}</b>
             </p>
-            {!sinPrecio && (
+            {!sinPrecio && esPrecio(anual) && (
               <p class="ticket__note">Desde el 2.º año, solo <span data-prop-usd={anual}>{anual} USD</span> al año.</p>
+            )}
+            {!sinPrecio && !esPrecio(anual) && (
+              <p class="ticket__note">Desde el 2.º año, a consultar.</p>
             )}
             <p class="ticket__note" data-ticket-consultar hidden>Incluye adicionales a consultar.</p>
           </div>
@@ -1753,7 +1763,7 @@ const glass =
 
   const formatPropUsd = (amount: number) => {
     const n = Number(amount);
-    if (!Number.isFinite(n)) return 'A consultar';
+    if (!Number.isFinite(n) || n <= 0) return 'A consultar';
     const whole = Number.isInteger(n) ? String(n) : n.toFixed(2);
     return `${whole} USD`;
   };
