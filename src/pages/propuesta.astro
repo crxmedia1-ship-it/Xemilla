@@ -43,6 +43,23 @@ function readLogo(value: string | null) {
   }
 }
 
+/** Un SVG guardado como archivo crudo llega como descarga y el ticket no lo pinta. */
+async function logoVisible(value: string | null) {
+  const href = readLogo(value);
+  if (!href.includes('res.cloudinary.com') || !href.includes('/raw/upload/')) return href;
+  try {
+    const res = await fetch(href);
+    if (!res.ok) return href;
+    const text = await res.text();
+    const svg = text.trimStart();
+    if (!svg.startsWith('<svg') && !svg.startsWith('<?xml')) return href;
+    const safe = svg.replace(/<script[\s\S]*?<\/script>/gi, '');
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(safe)}`;
+  } catch {
+    return href;
+  }
+}
+
 /** Quita el cuadrado blanco que viene pegado alrededor del logo. */
 function logoSinPlaca(href: string) {
   const marker = '/image/upload/';
@@ -98,7 +115,7 @@ const cartaDemo = readPropuestaCartaDemo(propuestaGuardada?.adicionales);
 const iaMensualGuardado = readPropuestaIaMensual(propuestaGuardada?.adicionales);
 const iaMensual = esPrecio(iaMensualGuardado) ? iaMensualGuardado : '';
 const sinPrecio = propuestaGuardada ? propuestaGuardada.sin_precio === true : params.get('precio') === 'consultar';
-const logo = readLogo(propuestaGuardada?.logo_url ?? params.get('logo'));
+const logo = await logoVisible(propuestaGuardada?.logo_url ?? params.get('logo'));
 const initial = para.charAt(0).toUpperCase();
 const slug = toSlug(para);
 const domain = readDomain(
@@ -438,7 +455,7 @@ const foods = [
 const WORLDS = {
   barra: { themeColor: '#0a0806', fade: 'from-[#0a0806]' },
   espacio: { themeColor: '#050508', fade: 'from-[#050508]' },
-  estudio: { themeColor: '#f2f1ee', fade: 'from-[#f2f1ee]' },
+  estudio: { themeColor: '#f7f6f4', fade: 'from-[#f7f6f4]' },
 } as const;
 type World = keyof typeof WORLDS;
 const requestedWorld = propuestaGuardada?.mundo ?? params.get('mundo');
@@ -876,9 +893,9 @@ const glass =
                   </div>
                   </div>
                   <div class="feat feat-flip__face feat-flip__back" aria-hidden="true">
-                    <p class="feat-flip__eyebrow text-zinc-500">{item.title}</p>
-                    <p class="feat-flip__hook text-zinc-950">{item.hook}</p>
-                    <p class="feat-flip__more text-zinc-600">{item.more}</p>
+                    <p class="feat-flip__eyebrow">{item.title}</p>
+                    <p class="feat-flip__hook">{item.hook}</p>
+                    <p class="feat-flip__more">{item.more}</p>
                     <span class="feat-flip__hint" aria-hidden="true">
                       <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" /></svg>
                     </span>
@@ -1236,7 +1253,7 @@ const glass =
         <p class="qr-mockups__title">Soporte de mesa</p>
         <p class="qr-mockups__sub">Acrílico con base de madera</p>
         <p class="qr-piece__price" data-prop-usd={precioPieza('tent') || undefined}>{precioPieza('tent') ? `${precioPieza('tent')} USD` : 'A consultar'}</p>
-        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Acrílico QR + NFC" data-piece-price={precioPieza('tent')} role="group" aria-label="Acrílico QR + NFC">
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Acrílico QR + NFC" data-piece-price={precioPieza('tent')} role="group" aria-label="Acrílico QR + NFC" hidden={!precioPieza('tent')}>
           <button type="button" data-qr-step="-1" aria-label="Quitar un acrílico">−</button>
           <span data-qr-qty>{piezaQtyInicial('tent')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir un acrílico">+</button>
@@ -1258,7 +1275,7 @@ const glass =
         <p class="qr-mockups__title">Tag NFC</p>
         <p class="qr-mockups__sub">Acerca el teléfono y abre la carta</p>
         <p class="qr-piece__price" data-prop-usd={precioPieza('nfc') || undefined}>{precioPieza('nfc') ? `${precioPieza('nfc')} USD` : 'A consultar'}</p>
-        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Tag NFC" data-piece-price={precioPieza('nfc')} role="group" aria-label="Tag NFC">
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Tag NFC" data-piece-price={precioPieza('nfc')} role="group" aria-label="Tag NFC" hidden={!precioPieza('nfc')}>
           <button type="button" data-qr-step="-1" aria-label="Quitar un tag NFC">−</button>
           <span data-qr-qty>{piezaQtyInicial('nfc')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir un tag NFC">+</button>
@@ -1275,7 +1292,7 @@ const glass =
         <p class="qr-mockups__title">Otros</p>
         <p class="qr-mockups__sub">Número de mesa y QR en una pieza</p>
         <p class="qr-piece__price" data-prop-usd={precioPieza('plate') || undefined}>{precioPieza('plate') ? `${precioPieza('plate')} USD` : 'A consultar'}</p>
-        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Otros" data-piece-price={precioPieza('plate')} role="group" aria-label="Otros">
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Otros" data-piece-price={precioPieza('plate')} role="group" aria-label="Otros" hidden={!precioPieza('plate')}>
           <button type="button" data-qr-step="-1" aria-label="Quitar uno">−</button>
           <span data-qr-qty>{piezaQtyInicial('plate')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir uno">+</button>
@@ -1991,12 +2008,18 @@ const glass =
       let qrMoney = 0;
       for (const piece of qrPieces) {
         const qtyEl = piece.querySelector<HTMLElement>('[data-qr-qty]');
+        const unit = amountOf(piece.dataset.piecePrice ?? '');
+        if (!unit) {
+          if (qtyEl) qtyEl.textContent = '0';
+          piece.hidden = true;
+          piece.setAttribute('aria-pressed', 'false');
+          continue;
+        }
         const qty = Math.max(0, Math.min(99, Number(qtyEl?.textContent) || 0));
         if (qtyEl) qtyEl.textContent = String(qty);
         piece.setAttribute('aria-pressed', qty > 0 ? 'true' : 'false');
         if (!qty) continue;
         qrCount += qty;
-        const unit = amountOf(piece.dataset.piecePrice ?? '');
         const price = unit ? unit * qty : 0;
         if (price) {
           extra += price;
@@ -2058,7 +2081,7 @@ const glass =
         const step = (event.target as HTMLElement | null)?.closest?.('[data-qr-step]');
         if (!(step instanceof HTMLElement)) return;
         const qtyEl = piece.querySelector<HTMLElement>('[data-qr-qty]');
-        if (!qtyEl) return;
+        if (!qtyEl || !amountOf(piece.dataset.piecePrice ?? '')) return;
         const qty = Math.max(0, Number(qtyEl.textContent) || 0);
         const next = Math.max(0, Math.min(99, qty + (step.dataset.qrStep === '1' ? 1 : -1)));
         if (next === qty) return;
@@ -3236,16 +3259,19 @@ const glass =
   }
 
   .demo-dialog--plate {
+    width: min(92vw, 420px);
+    max-height: min(92dvh, 720px);
+    margin: auto;
     padding: 0 0 16px;
-    overflow: hidden;
+    overflow: auto;
   }
 
   .nutri-photo {
     position: relative;
     display: grid;
     place-items: center;
-    aspect-ratio: 1.45;
-    max-height: 240px;
+    width: 100%;
+    height: 210px;
     overflow: hidden;
     background:
       radial-gradient(ellipse 55% 70% at 50% 46%, rgba(255, 255, 255, 0.82), transparent 68%),
@@ -4697,43 +4723,17 @@ const glass =
     display: none;
   }
 
-  @media (max-width: 639px) {
-    .gadget-slide {
-      gap: 0.85rem;
-      padding: 1.15rem 1rem 1.15rem;
-    }
-
-    .gadget-slide__icon {
-      width: min(40%, 8.5rem);
-      margin-top: 0;
-      border-radius: 1.7rem;
-    }
-
-    .gadget-slide__title {
-      font-size: 1.15rem;
-    }
-
-    .gadget-slide__copy {
-      width: 100%;
-      padding: 0.45rem 0.7rem 0.55rem;
-    }
-
-    .gadget-slide__copy p {
-      font-size: 0.86rem;
-    }
-  }
-
   .gadget-slide {
     position: relative;
     display: flex;
-    flex: 0 0 100%;
+    flex: 0 0 min(78%, 17.5rem);
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1.35rem;
-    aspect-ratio: 1;
-    min-height: 26rem;
-    padding: 1.75rem 1.5rem 1.5rem;
+    gap: 0.75rem;
+    min-height: 0;
+    height: 21rem;
+    padding: 1rem 0.85rem 0.9rem;
     overflow: hidden;
     scroll-snap-align: center;
     text-align: center;
@@ -4895,10 +4895,10 @@ const glass =
     display: grid;
     flex: 0 0 auto;
     place-items: center;
-    width: min(52%, 12.5rem);
+    width: 4.75rem;
     aspect-ratio: 1;
-    margin-top: 0.5rem;
-    border-radius: 2.4rem;
+    margin-top: 0;
+    border-radius: 1.35rem;
     border: 1px solid rgb(255 255 255 / 0.7);
     background:
       linear-gradient(155deg, rgb(255 255 255 / 0.72) 0%, rgb(255 255 255 / 0.22) 42%, rgb(255 255 255 / 0.08) 100%);
@@ -4929,9 +4929,9 @@ const glass =
 
   .gadget-slide__copy {
     display: grid;
-    gap: 0.45rem;
+    gap: 0.3rem;
     width: min(100%, 24rem);
-    padding: 0.55rem 0.9rem 0.7rem;
+    padding: 0.45rem 0.7rem 0.55rem;
     border-radius: 1.35rem;
     border: 1px solid rgb(255 255 255 / 0.62);
     background: linear-gradient(180deg, rgb(255 255 255 / 0.46), rgb(255 255 255 / 0.18));
@@ -4944,8 +4944,8 @@ const glass =
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    font-size: 1.35rem;
+    gap: 0.35rem;
+    font-size: 1.02rem;
     font-weight: 600;
     letter-spacing: -0.03em;
     color: #1c1917;
@@ -4954,7 +4954,7 @@ const glass =
   .gadget-slide__copy p {
     max-width: 22rem;
     margin-inline: auto;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     font-weight: 400;
     line-height: 1.35;
     color: #44403c;
@@ -5104,74 +5104,6 @@ const glass =
     background: var(--color-zinc-300);
   }
 
-  /* iPad y escritorio: grilla compacta, sin cuadrados a todo el ancho. */
-  @media (min-width: 700px) {
-    #gadgets-title {
-      font-size: clamp(2rem, 3.4vw, 2.6rem);
-    }
-
-    .gadget-rail {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      overflow: visible;
-      scroll-snap-type: none;
-    }
-
-    .gadget-slide {
-      flex: none;
-      aspect-ratio: auto;
-      min-height: 0;
-      gap: 0.65rem;
-      padding: 0.95rem 0.8rem 0.9rem;
-      scroll-snap-align: none;
-    }
-
-    .gadget-slide__icon {
-      width: 4.25rem;
-      margin-top: 0;
-      border-radius: 1.15rem;
-    }
-
-    .gadget-slide__title {
-      flex-direction: column;
-      font-size: 1.02rem;
-      gap: 0.28rem;
-    }
-
-    .gadget-slide__action {
-      padding: 0.55rem 0.9rem;
-      font-size: 0.8rem;
-    }
-
-    .gadget-slide__add {
-      width: 2.4rem;
-      height: 2.4rem;
-    }
-
-    .gadget-slide__copy {
-      width: 100%;
-      gap: 0.25rem;
-      padding: 0.4rem 0.55rem 0.45rem;
-    }
-
-    .gadget-slide__copy p {
-      font-size: 0.78rem;
-      line-height: 1.3;
-    }
-
-    .gadget-dots {
-      display: none;
-    }
-  }
-
-  @media (min-width: 1100px) {
-    .gadget-rail {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-  }
-
   /* Tarjeta que gira: las dos caras ocupan la misma celda, así mide lo que la más alta. */
   .feat-flip {
     perspective: 1200px;
@@ -5216,8 +5148,9 @@ const glass =
 
   .feat-flip__back {
     justify-content: center;
+    align-items: flex-start;
     gap: 0;
-    padding: 18px 18px 42px;
+    padding: 22px 22px 46px;
     border-color: rgba(255, 255, 255, 0.72);
     background: rgba(255, 255, 255, 0.62);
     backdrop-filter: blur(18px);
@@ -5226,32 +5159,42 @@ const glass =
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       0 10px 28px -18px rgba(28, 25, 23, 0.35);
     transform: rotateY(180deg);
+    text-align: left;
   }
 
   .feat-flip__eyebrow {
-    font-size: 10.5px;
+    color: #a8a29e;
+    font-size: 0.68rem;
     font-weight: 600;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.13em;
+    line-height: 1.2;
     text-transform: uppercase;
   }
 
   .feat-flip__hook {
-    margin-top: 6px;
+    margin-top: 8px;
+    max-width: 16ch;
     color: #1c1917;
-    font-size: 1.2rem;
+    font-size: 1.28rem;
     font-weight: 600;
-    line-height: 1.12;
-    letter-spacing: -0.035em;
+    line-height: 1.16;
+    letter-spacing: -0.032em;
     text-wrap: balance;
   }
 
+  .feat--wide .feat-flip__hook {
+    max-width: 18ch;
+    font-size: 1.5rem;
+  }
+
   .feat-flip__more {
-    margin-top: 10px;
+    margin-top: 8px;
+    max-width: 34ch;
     color: #57534e;
-    font-size: 0.84rem;
+    font-size: 0.92rem;
     font-weight: 400;
-    line-height: 1.5;
-    letter-spacing: -0.005em;
+    line-height: 1.45;
+    letter-spacing: -0.011em;
     text-wrap: pretty;
   }
 
@@ -6135,25 +6078,26 @@ const glass =
   }
 
   .white-studio {
-    background: linear-gradient(180deg, #fbfaf8 0%, #f2f1ee 55%, #e9e7e3 100%);
+    background: #f7f6f4;
   }
 
   .softbox {
     position: absolute;
-    inset: 0;
+    inset: -12%;
     background:
-      radial-gradient(ellipse 70% 38% at 50% -4%, rgba(255, 255, 255, 1), transparent 70%),
-      radial-gradient(ellipse 35% 60% at 0% 40%, rgba(255, 255, 255, 0.7), transparent 70%),
-      radial-gradient(ellipse 35% 60% at 100% 40%, rgba(255, 255, 255, 0.55), transparent 70%);
+      radial-gradient(ellipse 48% 36% at 8% 16%, rgba(255, 196, 168, 0.34), transparent 72%),
+      radial-gradient(ellipse 46% 34% at 92% 10%, rgba(176, 206, 255, 0.32), transparent 70%),
+      radial-gradient(ellipse 42% 32% at 84% 78%, rgba(186, 224, 176, 0.28), transparent 72%),
+      radial-gradient(ellipse 38% 30% at 14% 84%, rgba(255, 214, 196, 0.26), transparent 74%),
+      radial-gradient(ellipse 70% 38% at 50% -4%, rgba(255, 255, 255, 0.95), transparent 70%);
+    filter: blur(36px);
   }
 
   .cyclorama {
     position: absolute;
     inset: auto -10% 0;
     height: 46%;
-    background:
-      radial-gradient(ellipse 60% 70% at 50% 100%, rgba(255, 255, 255, 0.85), transparent 70%),
-      linear-gradient(180deg, transparent 0%, rgba(120, 110, 100, 0.07) 40%, rgba(120, 110, 100, 0.04) 100%);
+    background: radial-gradient(ellipse 60% 70% at 50% 100%, rgba(255, 255, 255, 0.92), transparent 70%);
     border-radius: 50% 50% 0 0 / 22% 22% 0 0;
   }
 
@@ -6161,7 +6105,7 @@ const glass =
     position: absolute;
     inset: 0;
     background-size: 320px 320px;
-    opacity: 0.5;
+    opacity: 0.18;
     mix-blend-mode: multiply;
     filter: invert(1);
   }

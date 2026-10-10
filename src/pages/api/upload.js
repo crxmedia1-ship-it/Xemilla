@@ -177,7 +177,7 @@ export async function POST({ request, cookies }) {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: targetFolder,
-          resource_type: 'auto',
+          resource_type: isSvg ? 'image' : 'auto',
           overwrite: false,
           unique_filename: true,
           use_filename: true,
