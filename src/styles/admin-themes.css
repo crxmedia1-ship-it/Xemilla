@@ -8772,9 +8772,11 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-pieces:not(.super-prop-packages) .super-prop-addon__name {
   grid-column: auto;
   margin: 0;
-  font-size: 0.92rem;
+  min-width: 0;
+  font-size: 0.82rem;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
   text-align: left;
   text-transform: uppercase;
 }

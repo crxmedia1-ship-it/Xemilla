@@ -876,6 +876,9 @@ export function normalizeMenuNavegacion(value) {
   ) {
     return 'swiper_catalog';
   }
+  if (v === 'category_reel' || v === 'vitrina' || v === 'vitrina_categoria') {
+    return 'category_reel';
+  }
   return 'scroll';
 }
 
@@ -905,11 +908,17 @@ export const MENU_LAYOUT_OPTIONS = Object.freeze([
     label: 'Catálogo Deslizable',
     hint: 'Sliders horizontales por categoría',
   },
+  {
+    id: 'category_reel',
+    navegacion: 'category_reel',
+    label: 'Vitrina por categoría',
+    hint: 'Categorías arriba. Imagen grande y deslizas a la derecha',
+  },
 ]);
 
 /**
  * @param {unknown} value
- * @returns {'hub_categories' | 'classic_grid' | 'split_sidebar' | 'swiper_catalog'}
+ * @returns {'hub_categories' | 'classic_grid' | 'split_sidebar' | 'swiper_catalog' | 'category_reel'}
  */
 export function normalizeMenuLayout(value) {
   const clean = String(value || '')
@@ -925,6 +934,9 @@ export function normalizeMenuLayout(value) {
   if (clean === 'swiper_catalog' || clean.includes('swiper') || clean.includes('desliz')) {
     return 'swiper_catalog';
   }
+  if (clean === 'category_reel' || clean.includes('vitrina') || clean.includes('reel')) {
+    return 'category_reel';
+  }
   if (clean === 'classic_grid' || clean === 'scroll' || clean.includes('continua') || clean.includes('filtro')) {
     return 'classic_grid';
   }
@@ -932,17 +944,18 @@ export function normalizeMenuLayout(value) {
   if (nav === 'hub_categories') return 'hub_categories';
   if (nav === 'split_sidebar') return 'split_sidebar';
   if (nav === 'swiper_catalog') return 'swiper_catalog';
+  if (nav === 'category_reel') return 'category_reel';
   return 'classic_grid';
 }
 
 /**
  * @param {unknown} layoutOrNav
- * @returns {'hub_categories' | 'scroll' | 'split_sidebar' | 'swiper_catalog'}
+ * @returns {'hub_categories' | 'scroll' | 'split_sidebar' | 'swiper_catalog' | 'category_reel'}
  */
 export function menuLayoutToNavegacion(layoutOrNav) {
   const layout = normalizeMenuLayout(layoutOrNav);
   const hit = MENU_LAYOUT_OPTIONS.find((opt) => opt.id === layout);
-  return /** @type {'hub_categories' | 'scroll' | 'split_sidebar' | 'swiper_catalog'} */ (
+  return /** @type {'hub_categories' | 'scroll' | 'split_sidebar' | 'swiper_catalog' | 'category_reel'} */ (
     hit?.navegacion || normalizeMenuNavegacion(layoutOrNav)
   );
 }

@@ -16,9 +16,9 @@ export const PROPUESTA_ADICIONALES = [
 
 /** Formatos físicos de QR & NFC. Cada uno puede tener su precio. */
 export const PROPUESTA_QR_PIEZAS = [
-  { id: 'tent', label: 'Acrílico' },
+  { id: 'tent', label: 'Acrílico QR + NFC' },
   { id: 'nfc', label: 'Tag NFC' },
-  { id: 'plate', label: 'Placa' },
+  { id: 'plate', label: 'Otros' },
 ];
 
 const ADICIONAL_IDS = new Set(PROPUESTA_ADICIONALES.map((item) => item.id));

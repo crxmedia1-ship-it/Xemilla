@@ -141,11 +141,13 @@ export async function POST({ request, cookies }) {
     return json({ error: 'El archivo no puede superar 25 MB' }, 400);
   }
 
-  if (!ALLOWED.has(file.type)) {
+  const fileType = file.type === 'image/jpg' || file.type === 'image/pjpeg' ? 'image/jpeg' : file.type;
+  const namedImage = !fileType && /\.(png|jpe?g|webp|gif|avif|heic|heif|svg)$/i.test(file.name);
+  if (!ALLOWED.has(fileType) && !namedImage) {
     return json({ error: `Tipo no permitido: ${file.type || 'desconocido'}` }, 400);
   }
 
-  const isSvg = file.type === SVG_TYPE;
+  const isSvg = fileType === SVG_TYPE || (!fileType && /\.svg$/i.test(file.name));
   if (isSvg) {
     if (file.size > MAX_SVG_BYTES) {
       return json({ error: 'El SVG no puede superar 2 MB' }, 400);

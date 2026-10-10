@@ -225,6 +225,7 @@ const destacadosTitulo = destacadosHeading(destacados);
 const destacadosEfecto = normalizeDestacadosEfecto(menuUi.destacados_efecto);
 const menuNavegacion = normalizeMenuNavegacion(menuUi.navegacion);
 const isHubMode = menuNavegacion === 'hub_categories';
+const isReelMode = menuNavegacion === 'category_reel';
 const useMarquee =
   destacadosEstilo !== 'fade' && destacadosEfecto === 'marquee';
 const destacadosTrackClass =
@@ -677,6 +678,15 @@ function hubCardStyle(
                   data-has-media={hasMedia(mediaUrl) ? 'true' : 'false'}
                   data-estilo-tarjeta={estiloTarjetas}
                 >
+                  {isReelMode ? (
+                    <div class="menu-reel-media">
+                      {hasMedia(mediaUrl) && !isVideoUrl(mediaUrl) ? (
+                        <img src={mediaUrl} alt="" loading="lazy" decoding="async" />
+                      ) : (
+                        <span class="menu-reel-media__empty">Sin foto</span>
+                      )}
+                    </div>
+                  ) : null}
                   {isChefPick ? (
                     <span class="menu-chef-pick-badge">{DESTACADO_TIPO_LABELS[destacadoTipo]}</span>
                   ) : null}
@@ -2996,6 +3006,98 @@ function hubCardStyle(
       padding-left: max(var(--menu-gutter-x), env(safe-area-inset-left, 0px));
       padding-right: max(var(--menu-gutter-x), env(safe-area-inset-right, 0px));
     }
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] [data-cat-filter='all'],
+  .menu-panel[data-menu-navegacion='category_reel'] [data-destacados],
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-cat-section > h3,
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-bento-media,
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-leader {
+    display: none;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-list {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-cat-section:not(.is-hidden) .menu-items {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.8rem;
+    margin: 0;
+    padding: 0.4rem 7vw 1.4rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 7vw;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-cat-section:not(.is-hidden) .menu-items::-webkit-scrollbar {
+    display: none;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-plato-item {
+    display: flex;
+    flex: 0 0 86%;
+    flex-direction: column;
+    min-width: 0;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    padding: 0.65rem;
+    border-radius: 1.4rem;
+  }
+
+  .menu-reel-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    width: 100%;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    border-radius: 1.05rem;
+    background: rgb(0 0 0 / 0.38);
+  }
+
+  .menu-reel-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .menu-reel-media__empty {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: rgb(255 255 255 / 0.45);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-plato-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-plato-name {
+    font-size: 1.15rem;
+    line-height: 1.2;
+  }
+
+  .menu-panel[data-menu-navegacion='category_reel'] .menu-plato-desc {
+    display: -webkit-box;
+    margin-top: 0.45rem;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    font-size: 0.92rem;
+    line-height: 1.45;
   }
 </style>
 

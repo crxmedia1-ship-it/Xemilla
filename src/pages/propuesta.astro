@@ -344,9 +344,9 @@ const ticketExtras: Array<{ label: string; value: string; note?: string }> = [
       note: platosNota(pack.platos),
     })),
   ...[
-    ['tent', 'Acrílico'],
+    ['tent', 'Acrílico QR + NFC'],
     ['nfc', 'Tag NFC'],
-    ['plate', 'Placa'],
+    ['plate', 'Otros'],
   ]
     .filter(([id]) => piezaQtyInicial(id) > 0)
     .map(([id, name]) => {
@@ -1213,7 +1213,7 @@ const glass =
         <p class="qr-mockups__title">Soporte de mesa</p>
         <p class="qr-mockups__sub">Acrílico con base de madera</p>
         <p class="qr-piece__price" data-prop-usd={precioPieza('tent') || undefined}>{precioPieza('tent') ? `${precioPieza('tent')} USD` : 'A consultar'}</p>
-        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Acrílico" data-piece-price={precioPieza('tent')} role="group" aria-label="Acrílico">
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Acrílico QR + NFC" data-piece-price={precioPieza('tent')} role="group" aria-label="Acrílico QR + NFC">
           <button type="button" data-qr-step="-1" aria-label="Quitar un acrílico">−</button>
           <span data-qr-qty>{piezaQtyInicial('tent')}</span>
           <button type="button" data-qr-step="1" aria-label="Añadir un acrílico">+</button>
@@ -1249,13 +1249,13 @@ const glass =
             <QrArt url={`https://${domain}`} initial={initial} class="qr-print__code" ink="#18181b" accent="#b08d57" />
           </div>
         </div>
-        <p class="qr-mockups__title">Placa numerada</p>
+        <p class="qr-mockups__title">Otros</p>
         <p class="qr-mockups__sub">Número de mesa y QR en una pieza</p>
         <p class="qr-piece__price" data-prop-usd={precioPieza('plate') || undefined}>{precioPieza('plate') ? `${precioPieza('plate')} USD` : 'A consultar'}</p>
-        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Placa" data-piece-price={precioPieza('plate')} role="group" aria-label="Placa">
-          <button type="button" data-qr-step="-1" aria-label="Quitar una placa">−</button>
+        <div class="gadget-slide__pick qr-piece" data-qr-piece data-piece-name="Otros" data-piece-price={precioPieza('plate')} role="group" aria-label="Otros">
+          <button type="button" data-qr-step="-1" aria-label="Quitar uno">−</button>
           <span data-qr-qty>{piezaQtyInicial('plate')}</span>
-          <button type="button" data-qr-step="1" aria-label="Añadir una placa">+</button>
+          <button type="button" data-qr-step="1" aria-label="Añadir uno">+</button>
         </div>
       </li>
     </ul>

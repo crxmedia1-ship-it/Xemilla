@@ -505,6 +505,7 @@ import { initCurrencyEngine } from './currency-engine';
       const scrollRoot =
         sectionEl?.querySelector('.panel-scroll-root') ?? null;
       const isHubNav = panel.dataset.menuNavegacion === 'hub_categories';
+      const isReelNav = panel.dataset.menuNavegacion === 'category_reel';
       const hubNav = panel.querySelector('[data-menu-hub-nav]');
       const hubTitle = panel.querySelector('[data-menu-hub-title]');
       const hubSection = panel.querySelector('[data-menu-hub]');
@@ -610,6 +611,10 @@ import { initCurrencyEngine } from './currency-engine';
         }
         paintChips(id);
         emitCategory(id);
+        if (panel.dataset.menuNavegacion === 'category_reel' && !showAll) {
+          const track = panel.querySelector(`[data-menu-cat="${id}"] .menu-items`);
+          if (track instanceof HTMLElement) track.scrollTo({ left: 0 });
+        }
 
         if (panel.dataset.chipsLayout === 'scroll') {
           const activeChip = panel.querySelector(`[data-cat-filter="${id}"]`);
@@ -736,6 +741,24 @@ import { initCurrencyEngine } from './currency-engine';
         panel.addEventListener('xemilla:menu-reset', () => resetMenuPanel());
 
         filterByCategory('all');
+      }
+
+      if (isReelNav) {
+        const firstChip = panel.querySelector(
+          '[data-cat-filter]:not([data-cat-filter="all"])',
+        );
+        const firstId =
+          firstChip instanceof HTMLElement ? firstChip.dataset.catFilter || '' : '';
+        const openFirst = () => {
+          if (firstId) filterByCategory(firstId);
+        };
+        panel.addEventListener('xemilla:menu-reset', () => {
+          openFirst();
+          if (scrollRoot instanceof HTMLElement) {
+            scrollRoot.scrollTo({ top: 0, behavior: 'auto' });
+          }
+        });
+        openFirst();
       }
 
       buttons.forEach((btn) => {
