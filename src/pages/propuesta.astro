@@ -4,7 +4,7 @@ export const prerender = false;
 import PhoneSync from '../components/propuesta/PhoneSync.astro';
 import QrArt from '../components/propuesta/QrArt.astro';
 import CurrencySwitcher from '../components/app/CurrencySwitcher.astro';
-import { getPropuesta, isPropuestaId, readPropuestaFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, readPropuestaPiezas, readPropuestaPiezasFactura, readPropuestaPiezasCantidad, propuestaTienePaquetes, readPropuestaCartaDemo, readPropuestaIaMensual, touchPropuesta } from '../lib/propuestas.js';
+import { getPropuesta, getPropuestaPorEnlace, isPropuestaId, readPropuestaFactura, readPropuestaPaquetes, readPropuestaPaquetesFactura, readPropuestaPaquetesOrden, readPropuestaPaquetesPlatos, readPropuestaPiezas, readPropuestaPiezasFactura, readPropuestaPiezasCantidad, propuestaTienePaquetes, readPropuestaCartaDemo, readPropuestaIaMensual, touchPropuesta } from '../lib/propuestas.js';
 import { createSupabaseServiceClient } from '../lib/supabase/service.js';
 import Layout from '../layouts/Layout.astro';
 
@@ -74,11 +74,15 @@ function toSlug(name: string) {
 }
 
 const params = Astro.url.searchParams;
+const propuestaIdPedido = String(params.get('p') || '').trim();
 const propuestaService = createSupabaseServiceClient();
-const propuestaGuardada =
-  propuestaService && isPropuestaId(params.get('p'))
-    ? await getPropuesta(propuestaService, String(params.get('p')))
+let propuestaGuardada =
+  propuestaService && isPropuestaId(propuestaIdPedido)
+    ? await getPropuesta(propuestaService, propuestaIdPedido)
     : null;
+if (!propuestaGuardada && isPropuestaId(propuestaIdPedido)) {
+  propuestaGuardada = await getPropuestaPorEnlace(propuestaIdPedido);
+}
 if (propuestaGuardada && propuestaService) {
   await touchPropuesta(propuestaService, propuestaGuardada.id, 'vista');
 }

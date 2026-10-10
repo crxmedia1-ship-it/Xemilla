@@ -412,6 +412,31 @@ export async function getPropuesta(client, id) {
 }
 
 /**
+ * Lectura pública de un enlace. No lista propuestas: solo la fila de ese id.
+ * @param {string} id
+ */
+export async function getPropuestaPorEnlace(id) {
+  if (!isPropuestaId(id)) return null;
+  const url = String(import.meta.env.PUBLIC_SUPABASE_URL || '').trim();
+  const key = String(import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '').trim();
+  if (!url || !key) return null;
+  const { createClient } = await import('@supabase/supabase-js');
+  const client = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init = {}) => fetch(input, { ...init, cache: 'no-store' }),
+    },
+  });
+  const { data, error } = await client.rpc('leer_propuesta', { pid: id });
+  if (error) {
+    console.error('[propuestas] enlace:', error.message);
+    return null;
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  return data;
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} client
  * @param {{ nombre: string, logoUrl?: string, setup?: string, anual?: string, sinPrecio?: boolean, dominio?: string, mundo?: string, adicionales?: unknown }} input
  */

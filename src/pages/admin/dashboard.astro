@@ -2750,15 +2750,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     >
 
                     {/* 1 — Estructura & Layout */}
-                    <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-estructura">
-                      <div class="flex flex-wrap items-end justify-between gap-2">
-                        <div>
-                          <p id="marca-sec-estructura" class={identidadHeadingClass}>Estructura &amp; Layout</p>
-                          <p class="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                            Elige la composición del Home. La navegación se deriva del layout.
-                          </p>
-                        </div>
-                      </div>
+                    <details class={`${studioCardClass} lg:col-span-2 group`} open aria-labelledby="marca-sec-estructura">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-estructura" class={identidadHeadingClass}>Estructura &amp; Layout</p>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                            {HOME_LAYOUT_OPTIONS.find((opt) => opt.id === marca.home_layout)?.label || 'Layout'}
+                          </span>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
 
                       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Layout del Home">
                         {
@@ -2813,11 +2814,19 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       </div>
                       <input type="hidden" id="marca-home-theme" name="home_theme" value={marca.home_theme} data-home-theme-input />
                       <input type="hidden" id="marca-home-nav" name="estilo_navegacion" value={resolvedHomeMarca.estiloNavegacion} />
-                    </section>
+                    </details>
 
                     {/* Columna izquierda — Identidad & Textos */}
-                    <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-identidad-textos">
-                      <p id="marca-sec-identidad-textos" class={identidadHeadingClass}>Identidad &amp; Textos</p>
+                    <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-identidad-textos">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-identidad-textos" class={identidadHeadingClass}>Identidad &amp; Textos</p>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                            {marca.nombre_comercial || 'Sin título'}
+                          </span>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
 
                       <label class="block space-y-1.5">
                         <span class={labelClass}>Combo Tipográfico</span>
@@ -2873,11 +2882,35 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           }
                         </div>
                       </div>
-                    </section>
+                    </details>
 
                     {/* Columna derecha — Logo & Atmósfera */}
-                    <section class={studioCardClass} aria-labelledby="marca-sec-logo-atmosfera">
-                      <p id="marca-sec-logo-atmosfera" class={identidadHeadingClass}>Logo &amp; Atmósfera</p>
+                    <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-logo-atmosfera">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-logo-atmosfera" class={identidadHeadingClass}>Logo &amp; Atmósfera</p>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                            {marca.fondo_home_tipo === 'carrusel'
+                              ? 'Carrusel'
+                              : marca.fondo_home_tipo === 'video'
+                                ? 'Video'
+                                : marca.fondo_home_tipo === 'image'
+                                  ? 'Imagen'
+                                  : 'Color'}
+                            {' · '}
+                            {marca.home_overlay_estilo === 'puro'
+                              ? 'Puro'
+                              : marca.home_overlay_estilo === 'gradiente'
+                                ? 'Gradiente'
+                                : marca.home_overlay_estilo === 'vineta'
+                                  ? 'Viñeta'
+                                  : marca.home_overlay_estilo === 'cinematico'
+                                    ? 'Cinemático'
+                                    : 'Oscuro'}
+                          </span>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
 
                       <div class="flex items-center gap-5 rounded-xl border border-white/15 bg-transparent px-4 py-4">
                         <div
@@ -3044,11 +3077,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           />
                         </div>
                       </div>
-                    </section>
+                    </details>
 
                     {/* Cinemática & Efectos */}
-                    <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-cinematica">
-                      <p id="marca-sec-cinematica" class={identidadHeadingClass}>Cinemática &amp; Efectos</p>
+                    <details class={`${studioCardClass} lg:col-span-2 group`} aria-labelledby="marca-sec-cinematica">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-cinematica" class={identidadHeadingClass}>Cinemática &amp; Efectos</p>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
                       <div class="grid gap-4 md:grid-cols-3">
                         <label class="block space-y-1.5" for="marca-home-efecto-entrada">
                           <span class={labelClass}>Animación de Entrada</span>
@@ -3101,7 +3139,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </option>
                         </select>
                       </label>
-                    </section>
+                    </details>
 
                     {/* Avanzado — acordeón */}
                     <details class={`${studioCardClass} lg:col-span-2 group`} aria-labelledby="marca-sec-avanzado">
@@ -3140,13 +3178,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                     >
 
                     {/* Layouts superiores */}
-                    <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-nosotros-layouts">
-                      <div>
+                    <details class={`${studioCardClass} lg:col-span-2 group`} open aria-labelledby="marca-sec-nosotros-layouts">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                         <p id="marca-sec-nosotros-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
-                        <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
-                          Elige la composición narrativa de la sección Nosotros.
-                        </p>
-                      </div>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                            {NOSOTROS_LAYOUT_OPTIONS.find((opt) => opt.id === marca.nosotros_layout)?.label || 'Layout'}
+                          </span>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
                       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Layout de Nosotros">
                         {
                           NOSOTROS_LAYOUT_OPTIONS.map((opt) => {
@@ -3189,11 +3230,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         }
                       </div>
                       <input type="hidden" id="marca-nosotros-theme" name="nosotros_theme" value={marca.nosotros_theme} data-nosotros-theme-input />
-                    </section>
+                    </details>
 
                     {/* Columna izquierda — Estilo & Atmósfera */}
-                    <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-nosotros-estilo">
-                      <p id="marca-sec-nosotros-estilo" class={identidadHeadingClass}>Estilo &amp; Atmósfera</p>
+                    <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-nosotros-estilo">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-nosotros-estilo" class={identidadHeadingClass}>Estilo &amp; Atmósfera</p>
+                        <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                      </summary>
 
                       <label class="block space-y-1.5">
                         <span class={labelClass}>Tipografía títulos</span>
@@ -3288,11 +3332,19 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           <option value="solido" selected={marca.nosotros_contenedor_estilo === 'solido'}>Sólido</option>
                         </select>
                       </label>
-                    </section>
+                    </details>
 
                     {/* Columna derecha — Narrativa & Bloques */}
-                    <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-nosotros-bloques">
-                      <p id="marca-sec-nosotros-bloques" class={identidadHeadingClass}>Narrativa &amp; Bloques</p>
+                    <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-nosotros-bloques">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-nosotros-bloques" class={identidadHeadingClass}>Narrativa &amp; Bloques</p>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-now text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                            {marca.nosotros_bloques.length} {marca.nosotros_bloques.length === 1 ? 'bloque' : 'bloques'}
+                          </span>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
 
                       <div id="nosotros-bloques-list" class="space-y-3">
                         {
@@ -3457,7 +3509,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       >
                         + Añadir Bloque
                       </button>
-                    </section>
+                    </details>
 
                     </div>
                   </div>
@@ -3470,13 +3522,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       style={`--color-acento: ${marca.menu_color_acento || marca.color_primario || '#818cf8'};`}
                     >
 
-                    <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-menu-layouts">
-                      <div>
+                    <details class={`${studioCardClass} lg:col-span-2 group`} open aria-labelledby="marca-sec-menu-layouts">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                         <p id="marca-sec-menu-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
-                        <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
-                          Elige la experiencia de navegación del menú digital.
-                        </p>
-                      </div>
+                        <span class="flex shrink-0 items-center gap-2">
+                          <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                            {MENU_LAYOUT_OPTIONS.find((opt) => opt.id === marca.menu_layout)?.label || 'Layout'}
+                          </span>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </span>
+                      </summary>
                       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Layout del Menú">
                         {
                           MENU_LAYOUT_OPTIONS.map((opt) => {
@@ -3517,11 +3572,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         }
                       </div>
                       <input type="hidden" id="marca-menu-navegacion" name="menu_navegacion" value={marca.menu_navegacion} data-menu-navegacion-input />
-                    </section>
+                    </details>
 
                     {/* Columna izquierda */}
-                    <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-menu-estructura">
-                      <p id="marca-sec-menu-estructura" class={identidadHeadingClass}>Estructura &amp; Componentes</p>
+                    <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-menu-estructura">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-menu-estructura" class={identidadHeadingClass}>Estructura &amp; Componentes</p>
+                        <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                      </summary>
 
                       <label class="block space-y-1.5">
                         <span class={labelClass}>Layout de Platos</span>
@@ -3585,11 +3643,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </select>
                         </label>
                       </div>
-                    </section>
+                    </details>
 
                     {/* Columna derecha */}
-                    <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-menu-atmosfera">
-                      <p id="marca-sec-menu-atmosfera" class={identidadHeadingClass}>Atmósfera, Media &amp; Tipografía</p>
+                    <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-menu-atmosfera">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                        <p id="marca-sec-menu-atmosfera" class={identidadHeadingClass}>Atmósfera, Media &amp; Tipografía</p>
+                        <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                      </summary>
 
                       <div id="menu-fondo-general" class="space-y-3" hidden={marca.menu_fondos_cinematicos}>
                         <div class="relative flex items-center gap-4 rounded-xl border border-white/15 bg-transparent px-3 py-3">
@@ -3718,22 +3779,20 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           <span class="ios-toggle__knob"></span>
                         </span>
                       </label>
-                    </section>
+                    </details>
 
                     {/* Hub portal config */}
-                    <section
+                    <details
                       id="categorias-hub-portal-wrap"
-                      class={`${studioCardClass} lg:col-span-2`}
+                      class={`${studioCardClass} lg:col-span-2 group`}
                       hidden={marca.menu_navegacion !== 'hub_categories'}
                       data-shows-when-hub-nav
                       aria-labelledby="marca-sec-menu-hub"
                     >
-                      <div class="space-y-1">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                         <p id="marca-sec-menu-hub" class={identidadHeadingClass}>Portal Hub — tarjetas por categoría</p>
-                        <p class="text-[11px] leading-relaxed text-neutral-400">
-                          Color, imagen o video de fondo para cada tarjeta del portal. Sin URLs a la vista.
-                        </p>
-                      </div>
+                        <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                      </summary>
                       {
                         categorias.length === 0 ? (
                           <p class="text-xs text-zinc-600">Sin categorías</p>
@@ -3878,22 +3937,20 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </div>
                         )
                       }
-                    </section>
+                    </details>
 
-                    <section
+                    <details
                       id="categorias-fondos-wrap"
-                      class={`${studioCardClass} lg:col-span-2`}
+                      class={`${studioCardClass} lg:col-span-2 group`}
                       hidden={!marca.menu_fondos_cinematicos}
                       aria-labelledby="marca-sec-menu-cinematic"
                       aria-hidden={marca.menu_fondos_cinematicos ? 'false' : 'true'}
                       data-cinematic-fondos-card
                     >
-                      <div class="space-y-1">
+                      <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                         <p id="marca-sec-menu-cinematic" class={identidadHeadingClass}>Fondos por Categoría</p>
-                        <p class="text-[11px] leading-relaxed text-neutral-400">
-                          Color, imagen o video por categoría. Sin URLs a la vista.
-                        </p>
-                      </div>
+                        <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                      </summary>
                       {
                         categorias.length === 0 ? (
                           <p class="text-xs text-zinc-600">Sin categorías</p>
@@ -4033,7 +4090,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           </div>
                         )
                       }
-                    </section>
+                    </details>
 
                     </div>
                   </div>
@@ -4046,13 +4103,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       style={`--color-acento: ${marca.color_primario || '#818cf8'};`}
                       data-local-ops="marca"
                     >
-                      <section class={`${identidadCardClass} lg:col-span-2`} aria-labelledby="marca-sec-ubicacion-layouts">
-                        <div>
+                      <details class={`${identidadCardClass} lg:col-span-2 group`} open aria-labelledby="marca-sec-ubicacion-layouts">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                           <p id="marca-sec-ubicacion-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
-                          <p class="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                            Elige la composición de Horarios y Ubicación en la WebApp.
-                          </p>
-                        </div>
+                          <span class="flex shrink-0 items-center gap-2">
+                            <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                              {UBICACION_LAYOUT_OPTIONS.find((opt) => opt.id === marca.ubicacion_layout)?.label || 'Layout'}
+                            </span>
+                            <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                          </span>
+                        </summary>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Layout de Ubicación">
                           {
                             UBICACION_LAYOUT_OPTIONS.map((opt) => {
@@ -4101,12 +4161,15 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           value={marca.ubicacion_theme}
                           data-ubicacion-theme-input
                         />
-                      </section>
+                      </details>
 
                       {/* Columna izquierda — Atmósfera + Mapa */}
                       <div class="flex flex-col gap-5 min-w-0">
-                      <section class={identidadCardClass} aria-labelledby="marca-sec-ubicacion-atmosfera">
-                        <p id="marca-sec-ubicacion-atmosfera" class={identidadHeadingClass}>Atmósfera, Colores &amp; Mapa</p>
+                      <details class={`${identidadCardClass} group`} aria-labelledby="marca-sec-ubicacion-atmosfera">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                          <p id="marca-sec-ubicacion-atmosfera" class={identidadHeadingClass}>Atmósfera, Colores &amp; Mapa</p>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </summary>
 
                         <label class="block space-y-1.5">
                           <span class={labelClass}>Tipografía títulos</span>
@@ -4193,7 +4256,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                         >
                           Usar colores del Home
                         </button>
-                      </section>
+                      </details>
 
                       <PerfilLocalCard
                         scope="marca"
@@ -4282,13 +4345,16 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                       data-marca-reservas-controls
                       style={`--color-acento: ${marca.color_primario || '#818cf8'};`}
                     >
-                      <section class={`${studioCardClass} lg:col-span-2`} aria-labelledby="marca-sec-reservas-layouts">
-                        <div>
+                      <details class={`${studioCardClass} lg:col-span-2 group`} open aria-labelledby="marca-sec-reservas-layouts">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
                           <p id="marca-sec-reservas-layouts" class={identidadHeadingClass}>Estructura &amp; Layout</p>
-                          <p class="mt-1 text-[11px] leading-relaxed text-neutral-400">
-                            Elige cómo el comensal pide o reserva mesa.
-                          </p>
-                        </div>
+                          <span class="flex shrink-0 items-center gap-2">
+                            <span class="identidad-pack-now max-w-[11rem] truncate text-[0.68rem] font-medium normal-case tracking-normal text-zinc-500">
+                              {RESERVAS_LAYOUT_OPTIONS.find((opt) => opt.id === marca.reservas_layout)?.label || 'Layout'}
+                            </span>
+                            <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                          </span>
+                        </summary>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Layout de Reservas">
                           {
                             RESERVAS_LAYOUT_OPTIONS.map((opt) => {
@@ -4337,11 +4403,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                           value={marca.reservas_destino_tipo}
                           data-reservas-destino-input
                         />
-                      </section>
+                      </details>
 
                       {/* Columna izquierda */}
-                      <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-reservas-visual">
-                        <p id="marca-sec-reservas-visual" class={identidadHeadingClass}>Visual &amp; Ubicación del Botón</p>
+                      <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-reservas-visual">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                          <p id="marca-sec-reservas-visual" class={identidadHeadingClass}>Visual &amp; Ubicación del Botón</p>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </summary>
 
                         <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/15 bg-transparent px-3 py-2.5">
                           <span class="min-w-0">
@@ -4453,11 +4522,14 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             </option>
                           </select>
                         </label>
-                      </section>
+                      </details>
 
                       {/* Columna derecha */}
-                      <section class={`${studioCardClass} !pb-5`} aria-labelledby="marca-sec-reservas-motor">
-                        <p id="marca-sec-reservas-motor" class={identidadHeadingClass}>Motor &amp; Datos de Destino</p>
+                      <details class={`${studioCardClass} group`} aria-labelledby="marca-sec-reservas-motor">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+                          <p id="marca-sec-reservas-motor" class={identidadHeadingClass}>Motor &amp; Datos de Destino</p>
+                          <span class="identidad-pack-chevron text-zinc-400" aria-hidden="true">▾</span>
+                        </summary>
 
                         <div data-reservas-panel="whatsapp_concierge" hidden={marca.reservas_layout !== 'whatsapp_concierge'} class="space-y-3">
                           <label class="block space-y-1.5">
@@ -4581,7 +4653,7 @@ Postres | Tres leches | Coco | 9.00 | SI |`
                             class={fieldClass}
                           >{marca.reservas_politica}</textarea>
                         </label>
-                      </section>
+                      </details>
                     </div>
                   </div>
 
