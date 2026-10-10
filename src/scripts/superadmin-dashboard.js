@@ -37,6 +37,36 @@ import { formatVentaMonto } from '../lib/ventas.js';
     });
   }
 
+  /**
+   * @param {HTMLFormElement} form
+   * @param {boolean} on
+   */
+  function paintEditMode(form, on) {
+    const label = form.querySelector('.prop-slide__label');
+    const knob = form.querySelector('[data-prop-slide-knob]');
+    if (label) label.textContent = on ? 'Guardar cambios' : 'Crear propuesta';
+    if (knob instanceof HTMLButtonElement) {
+      knob.setAttribute('aria-label', on ? 'Desliza para guardar la propuesta' : 'Desliza para crear la propuesta');
+    }
+  }
+
+  /** @param {string} id */
+  function bindResult(id) {
+    const result = document.querySelector('[data-prop-result]');
+    const resultLink = document.querySelector('[data-prop-result-link]');
+    if (!(result instanceof HTMLElement) || !(resultLink instanceof HTMLAnchorElement)) return;
+    if (!id) {
+      result.hidden = true;
+      delete result.dataset.id;
+      resultLink.href = '/propuesta';
+      return;
+    }
+    result.hidden = false;
+    result.dataset.id = id;
+    resultLink.href = new URL(`/propuesta?p=${id}`, window.location.origin).href;
+    resultLink.textContent = 'Entrar';
+  }
+
   function initPropViews() {
     const root = document.querySelector('[data-super-panel="propuestas"]');
     if (!(root instanceof HTMLElement) || root.dataset.viewsBound === 'true') return;
@@ -55,15 +85,6 @@ import { formatVentaMonto } from '../lib/ventas.js';
         if (!(pane instanceof HTMLElement)) return;
         pane.hidden = pane.dataset.propPane !== id;
       });
-    };
-
-    const paintEditMode = (form, on) => {
-      const label = form.querySelector('.prop-slide__label');
-      const knob = form.querySelector('[data-prop-slide-knob]');
-      if (label) label.textContent = on ? 'Guardar cambios' : 'Crear propuesta';
-      if (knob instanceof HTMLButtonElement) {
-        knob.setAttribute('aria-label', on ? 'Desliza para guardar la propuesta' : 'Desliza para crear la propuesta');
-      }
     };
 
     /**
@@ -228,6 +249,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
         form.dataset.propId = edit.dataset.propId || '';
         applySavedExtras(form, edit.dataset.propExtra || '');
         paintEditMode(form, Boolean(form.dataset.propId));
+        bindResult(form.dataset.propId || '');
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
@@ -237,9 +259,14 @@ import { formatVentaMonto } from '../lib/ventas.js';
       if (!id) return;
       if (id === 'armar' && go.dataset.propView === 'armar') {
         const form = document.getElementById('propuesta-form');
-        if (form instanceof HTMLFormElement) {
+        if (form instanceof HTMLFormElement && form.dataset.propId) {
           delete form.dataset.propId;
           paintEditMode(form, false);
+          bindResult('');
+          form.reset();
+          form.querySelectorAll('[data-adicional-mode], [data-prop-price-mode]:checked, [data-prop-logo-mode]:checked').forEach((field) => {
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+          });
         }
       }
       show(id);
@@ -2334,6 +2361,7 @@ import { formatVentaMonto } from '../lib/ventas.js';
           if (drum instanceof HTMLElement) drum.focus({ preventScroll: true });
         } else if (priced && sedeParent) {
           const precio = row.querySelector('[data-sede-precio]');
+          if (precio instanceof HTMLInputElement && !(Number(precio.value) > 0)) precio.value = '100';
           if (precio instanceof HTMLElement) precio.focus({ preventScroll: true });
         } else if (priced) {
           const drum = money.querySelector('[data-wheel]');
@@ -3100,23 +3128,6 @@ import { formatVentaMonto } from '../lib/ventas.js';
           }
           return;
         }
-        const copyBtn = target.closest('[data-prop-copy]');
-        if (copyBtn instanceof HTMLButtonElement && copyBtn.dataset.propCopy) {
-          event.preventDefault();
-          const href = new URL(copyBtn.dataset.propCopy, window.location.origin).href;
-          try {
-            await navigator.clipboard.writeText(href);
-            const prev = copyBtn.textContent;
-            copyBtn.textContent = 'Copiado';
-            window.setTimeout(() => {
-              copyBtn.textContent = prev;
-            }, 1400);
-          } catch {
-            const status = document.querySelector('[data-prop-status]');
-            if (status) status.textContent = 'No se pudo copiar. Seleccioná el enlace a mano.';
-          }
-          return;
-        }
       });
     }
 
@@ -3171,17 +3182,10 @@ import { formatVentaMonto } from '../lib/ventas.js';
           slide?.dispatchEvent(new Event('slide-reset'));
           return;
         }
-        const href = new URL(payload.href, window.location.origin).href;
         const savedId = String(payload.id || editingId || '');
         if (savedId) form.dataset.propId = savedId;
-        if (result instanceof HTMLElement) {
-          result.hidden = false;
-          result.dataset.id = savedId;
-        }
-        if (resultLink instanceof HTMLAnchorElement) {
-          resultLink.href = href;
-          resultLink.textContent = 'Entrar';
-        }
+        paintEditMode(form, Boolean(savedId));
+        bindResult(savedId);
         const card = savedId ? document.querySelector(`[data-propuesta-card="${savedId}"]`) : null;
         const title = card?.querySelector('h3');
         if (title) title.textContent = String(data.get('nombre') || '');

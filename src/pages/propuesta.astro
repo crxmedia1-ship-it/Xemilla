@@ -370,12 +370,11 @@ const ticketExtras: Array<{ label: string; value: string; note?: string }> = [
         {
           label: `${sedeCantidadInicial} × Sucursal`,
           value: adicionalPrecio('sede')
-            ? `${Number(adicionalPrecio('sede')) * Number(sedeCantidadInicial)} USD`
+            ? `${Number(adicionalPrecio('sede')) * Number(sedeCantidadInicial)} USD/año`
             : 'A consultar',
-          note:
-            Number(sedeCantidadInicial) > 1 && adicionalPrecio('sede')
-              ? `${adicionalPrecio('sede')} USD c/u`
-              : undefined,
+          note: adicionalPrecio('sede')
+            ? `${adicionalPrecio('sede')} USD al año cada una · mantenimiento`
+            : 'Mantenimiento al año',
         },
       ]
     : []),
@@ -443,8 +442,8 @@ const WORLDS = {
 } as const;
 type World = keyof typeof WORLDS;
 const requestedWorld = propuestaGuardada?.mundo ?? params.get('mundo');
-const storedWorld: World = requestedWorld && requestedWorld in WORLDS ? (requestedWorld as World) : 'barra';
-const world: World = storedWorld === 'estudio' ? 'barra' : storedWorld;
+const storedWorld: World = requestedWorld && requestedWorld in WORLDS ? (requestedWorld as World) : 'estudio';
+const world: World = storedWorld === 'barra' ? 'estudio' : storedWorld;
 const palette = world === 'estudio' ? 'light' : 'dark';
 
 /** Partículas deterministas: mismo cielo (o polvo) en cada visita. */
@@ -878,8 +877,8 @@ const glass =
                   </div>
                   <div class="feat feat-flip__face feat-flip__back" aria-hidden="true">
                     <p class="feat-flip__eyebrow text-zinc-500">{item.title}</p>
-                    <p class="feat-flip__hook text-zinc-100">{item.hook}</p>
-                    <p class="feat-flip__more text-zinc-400">{item.more}</p>
+                    <p class="feat-flip__hook text-zinc-950">{item.hook}</p>
+                    <p class="feat-flip__more text-zinc-600">{item.more}</p>
                     <span class="feat-flip__hint" aria-hidden="true">
                       <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" /></svg>
                     </span>
@@ -1215,7 +1214,6 @@ const glass =
       <div class="qr-hero__copy">
         <p class="qr-hero__name">{para}</p>
         <p class="qr-hero__domain">{domain}</p>
-        <p class="qr-hero__note">Sigue siendo un QR real: escanéalo con tu cámara.</p>
       </div>
     </div>
 
@@ -2016,12 +2014,11 @@ const glass =
         const qty = Math.max(1, Math.min(99, Number(sedeBill.dataset.sedeQty) || 1));
         const unit = amountOf(sedeBill.dataset.sedePrice ?? '');
         const price = unit ? unit * qty : 0;
-        if (price) extra += price;
-        else consultar = true;
+        if (!price) consultar = true;
         addLine(
           `${qty} × Sucursal`,
-          price ? formatPropUsd(price) : 'A consultar',
-          qty > 1 && unit ? `${formatPropUsd(unit)} c/u` : '',
+          price ? `${formatPropUsd(price)}/año` : 'A consultar',
+          unit ? `${formatPropUsd(unit)} al año cada una · mantenimiento` : 'Mantenimiento al año',
         );
       }
       if (qrTotal) {
@@ -2453,6 +2450,11 @@ const glass =
     color: #1c1917;
   }
 
+  .bento__stage:has(.bn-eco) {
+    height: 228px;
+    max-width: 280px;
+  }
+
   /* Tres caminos al menú: QR a un lado, NFC al otro y Google o redes arriba. */
   .bn-open {
     position: absolute;
@@ -2481,14 +2483,14 @@ const glass =
     display: grid;
     flex: none;
     place-items: center;
-    width: 46px;
-    height: 46px;
+    width: 62px;
+    height: 62px;
     overflow: hidden;
   }
 
   .bn-open__qr svg {
-    width: 26px;
-    height: 26px;
+    width: 34px;
+    height: 34px;
   }
 
   .bn-open__nfc {
@@ -2498,8 +2500,8 @@ const glass =
   }
 
   .bn-open__nfc svg {
-    width: 21px;
-    height: 21px;
+    width: 28px;
+    height: 28px;
   }
 
   .bn-open__nfc path {
@@ -2516,7 +2518,7 @@ const glass =
 
   .bn-open__nfc b {
     color: #78716c;
-    font-size: 7px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.14em;
   }
@@ -2526,16 +2528,16 @@ const glass =
     top: 3px;
     left: 50%;
     display: flex;
-    gap: 7px;
-    padding: 6px 10px;
+    gap: 8px;
+    padding: 8px 12px;
     border-radius: 999px;
     translate: -50% 0;
     animation-delay: 3.2s;
   }
 
   .bn-open__social svg {
-    width: 15px;
-    height: 15px;
+    width: 20px;
+    height: 20px;
   }
 
   .bn-open__scan {
@@ -2563,10 +2565,10 @@ const glass =
 
   .bn-open__link--top {
     position: absolute;
-    top: 32px;
+    top: 44px;
     left: 50%;
     width: 2px;
-    height: 36px;
+    height: 28px;
     background: repeating-linear-gradient(180deg, #a8a29e 0 4px, transparent 4px 8px) 0 0 / 2px 8px;
     translate: -50% 0;
     animation-name: bn-dash-y;
@@ -2715,8 +2717,8 @@ const glass =
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 150px;
-    height: 150px;
+    width: 214px;
+    height: 214px;
     transform: translate(-50%, -50%);
   }
 
@@ -2758,8 +2760,8 @@ const glass =
   .bn-eco__node > span {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     background: #fff;
     color: #44403c;
@@ -2770,8 +2772,8 @@ const glass =
   }
 
   .bn-eco__node svg {
-    width: 15px;
-    height: 15px;
+    width: 20px;
+    height: 20px;
   }
 
   .bn-eco__core {
@@ -2781,18 +2783,18 @@ const glass =
     z-index: 1;
     display: grid;
     place-items: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 15px;
-    font-size: 19px;
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    font-size: 30px;
     font-weight: 700;
     box-shadow: 0 12px 24px -10px rgba(28, 25, 23, 0.55);
     transform: translate(-50%, -50%);
   }
 
   .bn-eco__core--logo {
-    width: 52px;
-    height: 52px;
+    width: 78px;
+    height: 78px;
     background: transparent;
     border-radius: 0;
     box-shadow: none;
@@ -2804,8 +2806,8 @@ const glass =
   }
 
   .bn-eco__core--logo img {
-    width: 52px;
-    height: 52px;
+    width: 78px;
+    height: 78px;
     object-fit: contain;
   }
 
@@ -2827,8 +2829,8 @@ const glass =
 
   .bn-eco__pdf {
     position: absolute;
-    top: 16px;
-    right: -30px;
+    top: 10px;
+    right: -34px;
     padding: 2px 7px;
     border-radius: 6px;
     background: rgba(185, 28, 28, 0.1);
@@ -3494,7 +3496,7 @@ const glass =
     overflow: hidden;
   }
 
-  #qr-dialog {
+  #qr-dialog[open] {
     display: flex;
     flex-direction: column;
     padding: 18px 16px 14px;
@@ -3609,13 +3611,6 @@ const glass =
     color: #b08d57;
     font-size: 13px;
     font-weight: 600;
-  }
-
-  .qr-hero__note {
-    margin-top: 10px;
-    color: #71717a;
-    font-size: 12px;
-    line-height: 1.4;
   }
 
   .qr-carousel__bar {
@@ -3899,11 +3894,6 @@ const glass =
 
     .qr-hero__name {
       font-size: 18px;
-    }
-
-    .qr-hero__note {
-      margin-top: 6px;
-      font-size: 11px;
     }
 
     .qr-mockups {
@@ -5228,7 +5218,13 @@ const glass =
     justify-content: center;
     gap: 0;
     padding: 18px 18px 42px;
-    background: color-mix(in oklab, #14120f 94%, white);
+    border-color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      0 10px 28px -18px rgba(28, 25, 23, 0.35);
     transform: rotateY(180deg);
   }
 
@@ -5241,6 +5237,7 @@ const glass =
 
   .feat-flip__hook {
     margin-top: 6px;
+    color: #1c1917;
     font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.12;
@@ -5250,6 +5247,7 @@ const glass =
 
   .feat-flip__more {
     margin-top: 10px;
+    color: #57534e;
     font-size: 0.84rem;
     font-weight: 400;
     line-height: 1.5;

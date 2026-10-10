@@ -180,7 +180,7 @@ function formatPropuestaAnio(iso) {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return String(date.getFullYear());
+  return date.toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 /** @param {Record<string, any>} p */
@@ -1869,10 +1869,10 @@ function resolveMapsEmbed(direccion) {
                   {item.id === 'sede' ? (
                     <div class="super-prop-sede">
                       <label class="super-prop-ia__row">
-                        <span>Precio por sucursal</span>
+                        <span>Mantenimiento al año</span>
                         <span class="super-prop-money">
-                          <input type="number" data-sede-precio min="0" step="1" inputmode="numeric" placeholder="0" value={amount} aria-label="Precio por sucursal" />
-                          <em>$</em>
+                          <input type="number" data-sede-precio min="0" step="1" inputmode="numeric" placeholder="100" value={amount || '100'} aria-label="Mantenimiento anual por sucursal" />
+                          <em>$/año</em>
                         </span>
                       </label>
                       <label class="super-prop-ia__row">
@@ -1896,7 +1896,7 @@ function resolveMapsEmbed(direccion) {
           </div>
         </fieldset>
 
-        <input type="hidden" name="mundo" value="barra" />
+        <input type="hidden" name="mundo" value="estudio" />
         <div class="super-prop-form__actions" data-prop-actions hidden>
           <div class="prop-slide" data-prop-slide>
             <span class="prop-slide__sheen" aria-hidden="true"></span>
@@ -1936,7 +1936,7 @@ function resolveMapsEmbed(direccion) {
                     <h3>{p.nombre}</h3>
                     {anio ? <p class="super-prop__year">{anio}</p> : null}
                     <div class="super-prop__links">
-                      <button type="button" data-prop-copy={href}>Copiar enlace</button>
+                      <a href={href} target="_blank" rel="noopener noreferrer">Entrar</a>
                       <button
                         type="button"
                         data-prop-edit

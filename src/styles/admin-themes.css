@@ -8569,6 +8569,12 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   min-height: 2.6rem;
 }
 
+.super-admin-dash .super-prop-form .super-prop-addon-list.is-quiz .super-prop-sede .super-prop-money em {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .super-admin-dash .super-prop-addon-list.is-quiz .super-prop-ia {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
@@ -9682,6 +9688,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
 }
 
 .super-admin-dash .super-prop-logo__pick,
+.super-admin-dash .super-prop__links a,
 .super-admin-dash .super-prop__links button,
 .super-admin-dash .super-prop-result button {
   flex: none;
@@ -10004,7 +10011,10 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   margin-left: auto;
 }
 
+.super-admin-dash .super-prop__links a,
 .super-admin-dash .super-prop__links button {
+  display: inline-flex;
+  align-items: center;
   min-height: 2.15rem;
   padding: 0.35rem 0.85rem;
   border: 1px solid rgba(28, 25, 23, 0.12);
@@ -10012,6 +10022,7 @@ html.admin-panel .super-admin-dash .super-hub-card__logo-glass img.is-light-logo
   background: #fff;
   color: #1c1917;
   font-size: 0.82rem;
+  text-decoration: none;
   cursor: pointer;
 }
 

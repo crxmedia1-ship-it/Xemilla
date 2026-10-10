@@ -95,7 +95,7 @@ export function readPropuestaDominio(value) {
  */
 export function readPropuestaMundo(value) {
   const mundo = String(value || '').trim();
-  return MUNDOS.has(mundo) ? mundo : 'barra';
+  return MUNDOS.has(mundo) ? mundo : 'estudio';
 }
 
 /**
